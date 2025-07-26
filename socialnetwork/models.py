@@ -14,7 +14,7 @@ class Profile(models.Model):
     date_of_birth=models.DateField(null=True)
     phone_number=PhoneNumberField(null=True,blank=True)
     bio=models.CharField(max_length=50,null=True,blank=True)
-    friends=models.ManyToManyField(User, related_name="profile_friends", blank=True,symmetrical=True)#symmetrical=True (mặc định): Nếu A là bạn B → B tự động là bạn A
+    friends=models.ManyToManyField('self', blank=True,symmetrical=True)#symmetrical=True (mặc định): Nếu A là bạn B → B tự động là bạn A, di voi self
     def __str__(self):
         return self.user.username
 
@@ -60,7 +60,7 @@ class AddFriendRequest(models.Model):
         return f"{self.sender} send request to {self.receiver}"
     
 
-class Log(models.Model):
+class Log(models.Model): #sau này dùng django-activity-stream 
     user=models.ForeignKey(User, on_delete=models.CASCADE)
     logtext=models.CharField(max_length=200, null=False)
     created_log_at=models.DateTimeField(auto_now_add=True)

@@ -30,18 +30,24 @@ ALLOWED_HOSTS = []
 
 
 INSTALLED_APPS = [
-    'jazzmin',  
+    'jazzmin',  #giao diện admin 
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'socialnetwork',
-    
+    'socialnetwork', #app
+    # 'cacheops' # lưu các truy vấn đã truy vấn và trả về luôn, save tài nguyên
+    'django_extensions',# công cụ tiện ích 
+    'debug_toolbar',#hiển thị các tiến trình
+    'silk', #theo dõi sâu
 ]
 
 MIDDLEWARE = [
+
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
+    
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -49,6 +55,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
+    "silk.middleware.SilkyMiddleware",
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -230,3 +238,34 @@ JAZZMIN_UI_TWEAKS = {
         "secondary": "btn btn-outline-light",
     },
 }
+
+#======================================================================
+
+#cấu hình cacheops
+# CACHEOPS_REDIS={
+#     'host':'localhost',
+#     'port':'6379',
+#     'db':1,
+#     'socket_timeout':3,
+# }
+
+# CACHEOPS={
+#     'socialnework.*':{'ops':'all', 'timeout':60*15},# ở tất cả bảng, cache(lưu vào bộ nhớ phụ và reuse) ví dụ get,filter,count...trong 15p. Muốn 1 bảng cố định thì 'socialnetwork.tên bảng'
+#     'auth.user':{'ops':('get','filter'),'timeout':60*60} # cache user từ auth, ví dụ cache khi lấy ra user, lọc user
+# }
+
+#==========================================================================
+
+#Cấu hình tool bar
+# MIDDLEWARE = [
+#     ...
+#     'debug_toolbar.middleware.DebugToolbarMiddleware',
+# ] 
+
+INTERNAL_IPS = [ # xem ip nào đc xem toolbar 
+    "127.0.0.1",
+]
+
+# if settings.DEBUG: urls.py
+#     import debug_toolbar
+#     urlpatterns += [path('__debug__/', include(debug_toolbar.urls))]
