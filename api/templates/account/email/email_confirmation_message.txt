@@ -1,0 +1,7 @@
+From TCN:
+Please verify your email by clicking here:
+
+http://192.168.1.5:3000/email-verified?key={{ key }}
+
+Sincerely, 
+TCN
