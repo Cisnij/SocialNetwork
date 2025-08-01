@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     #Phần dưới là spectacular sinh ra tài liệu 
     'drf_spectacular',
     'drf_spectacular_sidecar',
-    #django clenup
+    #django cleanup
     "django_cleanup.apps.CleanupConfig",
 ]
 
