@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Khôi phục mật khẩu</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 30px;
+    }
+    .container {
+      background: white;
+      padding: 20px 30px;
+      border-radius: 10px;
+      max-width: 600px;
+      margin: auto;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 25px;
+      background-color: #4f46e5;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .footer {
+      margin-top: 30px;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Xin chào {{ user.get_username }},</h2>
+    <p>Bạn đã yêu cầu khôi phục mật khẩu cho tài khoản của mình.</p>
+    <p>Vui lòng nhấn vào nút bên dưới để đặt lại mật khẩu:</p>
+
+    <a href="{{ password_reset_url }}" class="button">Đặt lại mật khẩu</a>
+
+    <p>Nếu bạn không yêu cầu thay đổi này, bạn có thể bỏ qua email này.</p>
+
+    <div class="footer">
+      <p>Trân trọng,<br>Đội ngũ hỗ trợ</p>
+    </div>
+  </div>
+</body>
+</html>

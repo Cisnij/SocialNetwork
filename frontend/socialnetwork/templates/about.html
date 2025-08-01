@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>About My Website</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet">
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+</head>
+<body class="bg-gradient-to-br from-slate-900 to-gray-800 text-white font-sans">
+
+  <!-- Hero Section -->
+  <section class="min-h-screen flex flex-col justify-center items-center px-6 text-center">
+    <h1 class="text-5xl font-extrabold mb-4" data-aos="fade-down">Welcome to <span class="text-teal-400">My Website</span></h1>
+    <p class="text-lg text-gray-300 max-w-xl" data-aos="fade-up" data-aos-delay="200">
+      This is a modern social network built with Django & React. Connect, chat, share your moments, and experience the future of social media.
+    </p>
+    <div class="mt-8" data-aos="zoom-in" data-aos-delay="400">
+      <a href="/" class="bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 px-6 rounded-full transition duration-300 shadow-lg">Go Home</a>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="py-20 px-6 bg-gray-900">
+    <div class="max-w-6xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-12" data-aos="fade-up">🔥 Highlight Features</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+        <div class="bg-gray-800 p-6 rounded-xl shadow-lg" data-aos="flip-left">
+          <h3 class="text-xl font-semibold mb-2 text-teal-400">Real-time Chat</h3>
+          <p class="text-gray-300">Experience live chatting with WebSocket powered backend.</p>
+        </div>
+        <div class="bg-gray-800 p-6 rounded-xl shadow-lg" data-aos="flip-left" data-aos-delay="150">
+          <h3 class="text-xl font-semibold mb-2 text-teal-400">Smart Feed</h3>
+          <p class="text-gray-300">Our algorithm tailors your newsfeed to match your interests.</p>
+        </div>
+        <div class="bg-gray-800 p-6 rounded-xl shadow-lg" data-aos="flip-left" data-aos-delay="300">
+          <h3 class="text-xl font-semibold mb-2 text-teal-400">Security First</h3>
+          <p class="text-gray-300">Multi-layered protection with JWT, captcha, brute-force blocking.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Team or Mission -->
+  <section class="py-20 px-6">
+    <div class="max-w-4xl mx-auto text-center" data-aos="fade-up">
+      <h2 class="text-3xl font-bold mb-6">Our Mission</h2>
+      <p class="text-gray-300 text-lg leading-relaxed">
+        We're passionate about building a fast, reliable, and fun social experience for everyone. Whether you're making new friends or building a community, this platform is designed to support you with cutting-edge technology.
+      </p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-slate-800 py-6 text-center text-gray-400 text-sm">
+    © 2025 MySocialNetwork. All rights reserved.
+  </footer>
+
+  <script>
+    AOS.init({
+      duration: 1000,
+      once: true
+    });
+  </script>
+</body>
+</html>

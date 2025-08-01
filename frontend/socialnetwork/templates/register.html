@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Đăng ký</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+    }
+    .input-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center px-4 py-10 text-white">
+
+  <div class="w-full max-w-md bg-[#0c2d57]/70 p-8 rounded-xl shadow-2xl backdrop-blur-sm">
+    <h2 class="text-3xl font-bold text-center mb-3 text-cyan-300">Account Register</h2>
+    <p class="text-center text-gray-300 mb-6 text-sm">Please fill this form to create an account</p>
+
+   <form action="" method="POST" class="space-y-5">
+  {% csrf_token %}
+
+  <!-- Username -->
+  <div class="relative">
+    <span class="input-icon text-gray-400">👤</span>
+    <input type="text" name="name" placeholder="Username"
+           class="w-full pl-10 pr-4 py-2 bg-[#10316b]/80 text-white border border-[#2657a4] rounded-lg placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-400"/>
+  </div>
+
+  <!-- Email -->
+  <div class="relative">
+    <span class="input-icon text-gray-400">📧</span>
+    <input type="email" name="email" placeholder="Email"
+           class="w-full pl-10 pr-4 py-2 bg-[#10316b]/80 text-white border border-[#2657a4] rounded-lg placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-400"/>
+  </div>
+
+  <!-- Phone Number -->
+  <div class="relative">
+    <span class="input-icon text-gray-400">📱</span>
+    <input type="tel" name="phone" placeholder="Phone Number"
+           class="w-full pl-10 pr-4 py-2 bg-[#10316b]/80 text-white border border-[#2657a4] rounded-lg placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-400"/>
+  </div>
+
+  <!-- Birthday -->
+  <div class="relative">
+    <span class="input-icon text-gray-400">🎂</span>
+    <input type="date" name="birthday"
+           class="w-full pl-10 pr-4 py-2 bg-[#10316b]/80 text-white border border-[#2657a4] rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"/>
+  </div>
+
+  <!-- Password -->
+  <div class="relative">
+    <span class="input-icon text-gray-400">🔒</span>
+    <input type="password" name="password1" placeholder="Enter password"
+           class="w-full pl-10 pr-4 py-2 bg-[#10316b]/80 text-white border border-[#2657a4] rounded-lg placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-400"/>
+  </div>
+
+  <!-- Confirm Password -->
+  <div class="relative">
+    <span class="input-icon text-gray-400">🔒</span>
+    <input type="password" name="password2" placeholder="Enter password again"
+           class="w-full pl-10 pr-4 py-2 bg-[#10316b]/80 text-white border border-[#2657a4] rounded-lg placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-400"/>
+  </div>
+
+  <!-- Submit -->
+  <button type="submit"
+          class="w-full py-2 rounded-lg font-semibold bg-cyan-400 hover:bg-cyan-500 text-[#10316b] transition">
+    Đăng ký
+  </button>
+</form>
+
+
+    <p class="text-center text-sm text-gray-300 mt-4">
+      Have an account?
+      <a href="/login" class="text-cyan-300 hover:underline">Log in</a>
+    </p>
+  </div>
+
+</body>
+</html>

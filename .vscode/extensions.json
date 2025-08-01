@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "ms-dotnettools.vscodeintellicode-csharp",
+        "github.copilot-chat",
+        "github.copilot"
+    ]
+    
+}

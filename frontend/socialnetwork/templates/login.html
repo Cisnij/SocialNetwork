@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    @keyframes glow {
+      0%, 100% {
+        box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+      }
+      50% {
+        box-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
+      }
+    }
+
+    .glow {
+      animation: glow 2.5s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-[#0f0f0f] min-h-screen flex items-center justify-center px-4 py-8">
+
+  <div class="w-full max-w-4xl mx-auto bg-[#1c1c1c] rounded-2xl glow shadow-xl flex flex-col-reverse md:flex-row overflow-hidden">
+
+    <!-- Left: Form -->
+    <div class="w-full md:w-1/2 p-8 md:p-12 text-white">
+      <h2 class="text-3xl font-semibold mb-6">Welcome back 👋</h2>
+      <p class="text-gray-400 mb-8 text-sm">Login to your dashboard</p>
+
+      <form class="space-y-5">
+        <div>
+          <label class="block text-sm mb-1 text-gray-300">Email</label>
+          <input type="email" class="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="you@example.com">
+        </div>
+
+        <div>
+          <label class="block text-sm mb-1 text-gray-300">Password</label>
+          <input type="password" class="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="••••••••">
+        </div>
+
+        <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 transition text-white py-3 rounded-lg font-semibold">
+          Log In
+        </button>
+
+        <p class="text-center text-sm text-gray-400 mt-4">
+          Don't have an account?
+          <a href="/register" class="text-purple-400 hover:underline">Register here</a>
+        </p>
+      </form>
+
+      <div class="mt-8 space-y-3">
+        <div class="flex items-center justify-between">
+          <hr class="w-1/3 border-gray-700">
+          <span class="text-gray-500 text-sm">or</span>
+          <hr class="w-1/3 border-gray-700">
+        </div>
+
+        <div class="flex gap-4">
+          <button class="w-1/2 flex items-center justify-center border border-gray-600 rounded-lg py-2 bg-[#2a2a2a] hover:bg-[#333]">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5 mr-2">
+            <span class="text-white text-sm">Google</span>
+          </button>
+          <button class="w-1/2 flex items-center justify-center border border-gray-600 rounded-lg py-2 bg-[#2a2a2a] hover:bg-[#333]">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png" class="w-5 h-5 mr-2">
+            <span class="text-white text-sm">Facebook</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Illustration / background -->
+    <div class="w-full md:w-1/2 bg-cover bg-center relative hidden md:block" style="background-image: url('https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80');">
+      <div class="w-full h-full bg-black/50 flex flex-col items-center justify-center p-10 text-center text-white">
+        <h3 class="text-2xl font-semibold">Your Space. Your Flow.</h3>
+        <p class="text-sm text-gray-300 mt-2">Seamless login experience, modern & secure.</p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

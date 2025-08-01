@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xác thực Email</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            color: #4a5568;
+        }
+        button {
+            background-image: linear-gradient(to right, #6366f1, #8b5cf6);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.6);
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Xác thực Email của bạn</h2>
+    <button id="confirmButton" onclick="confirmEmail()">Xác thực</button>
+    <p id="result" class="message loading">Vui lòng nhấn nút để xác thực email.</p>
+</div>
+
+<script>
+    async function confirmEmail() {
+        const resultParagraph = document.getElementById("result");
+        const confirmButton = document.getElementById("confirmButton");
+
+        resultParagraph.textContent = "Đang xác thực email...";
+        resultParagraph.className = "message loading";
+        confirmButton.disabled = true;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const key = urlParams.get("key");
+
+        if (!key) {
+            resultParagraph.textContent = "Không tìm thấy khóa xác thực trong URL.";
+            resultParagraph.className = "message error";
+            confirmButton.disabled = false;
+            return;
+        }
+
+        try {
+            const res = await fetch("http://127.0.0.1:8000/api/auth/registration/verify-email/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ key }),
+            });
+
+            const data = await res.json();
+            console.log("res.status:", res.status);
+            console.log("response:", data);
+
+            if (res.ok) {
+                resultParagraph.textContent = data.detail || "Email đã được xác thực thành công!";
+                resultParagraph.className = "message success";
+            } else {
+                resultParagraph.textContent = data.detail || "Xác thực email thất bại. Vui lòng thử lại.";
+                resultParagraph.className = "message error";
+            }
+        } catch (err) {
+            resultParagraph.textContent = "Lỗi kết nối đến máy chủ.";
+            resultParagraph.className = "message error";
+            console.error("Lỗi xác thực:", err);
+        } finally {
+            confirmButton.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
