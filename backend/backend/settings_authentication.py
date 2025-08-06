@@ -2,7 +2,7 @@
 
 from .settings import *
 
-SITE_ID=1
+SITE_ID = 2
 REST_FRAMEWORK={ #Cấu hình token
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  #Spectacular
     'DEFAULT_RENDERER_CLASSES': (
@@ -35,7 +35,8 @@ REST_AUTH={ #Đăng kí trả về json
     'REGISTER_SERIALIZER': 'api.serializers.CustomRegisterSerializer',#bên serializers.py
     'LOGOUT_ON_PASSWORD_CHANGE':True, #logout khi change pass
     'TOKEN_MODEL': None,
-    'OLD_PASSWORD_FIELD_ENABLED' : True # Phải nhập mk cũ mới đc đổi mk
+    'OLD_PASSWORD_FIELD_ENABLED' : True, # Phải nhập mk cũ mới đc đổi mk
+    'LOGIN_SERIALIZER': 'api.serializers.CustomeLoginSerializer',#bên serializers.py
 }
 
 from datetime import timedelta
@@ -78,12 +79,10 @@ ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1 #Thời hạn hết hạn verify
 ACCOUNT_RATE_LIMITS={'confirm_email':'180/m'} # Thời gian cool down sau mỗi lần resend link  
 ACCOUNT_EMAIL_VALIDATORS = ['allauth.account.email_validators.ValidateEmailDomain',] #xác thực phải là email thật 
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION=True #đăng nhập luôn sau khi confirm email
-ACCOUNT_AUTHENTICATED_REDIRECT_URL = 'http://192.168.1.5:3000/'# redirect khi login
-ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = "http://127.0.0.1:3000/register/success-regis/"#redirect sau khi thành công xác thực
-ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = "http://127.0.0.1:3000/register/success-regis/"
 ACCOUNT_PASSWORD_MIN_LENGTH = 8 #độ dài tối thiểu mk là 8
 ACCOUNT_USERNAME_MIN_LENGTH = 5 #độ dài tối thiểu username là 5
-
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_ADAPTER = "api.adapters.MySocialAccountAdapter"
 AUTHENTICATION_BACKENDS=[
     'axes.backends.AxesStandaloneBackend',#axes
     'django.contrib.auth.backends.ModelBackend',
@@ -93,10 +92,15 @@ AUTHENTICATION_BACKENDS=[
 SOCIALACCOUNT_PROVIDERS={
     'google':{
         'APP':{
-            'client_id': env('GOOGLE_CLIENT_ID'),
-            'secret':env('GOOGLE_SECRET'),
+            'client_id': env.list('GOOGLE_CLIENT_ID'),
+            'secret':env.list('GOOGLE_SECRET'),
             'key':''
-        }
+        },
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {
+            'access_type': 'offline',
+            'prompt': 'consent'  # Bắt buộc Google luôn hỏi quyền
+        }    
     },
     # 'facebook':{
     #     'APP':{
@@ -107,21 +111,23 @@ SOCIALACCOUNT_PROVIDERS={
     #     }
     # }
 }
+#Axes
 AXES_ENABLED=True
-AXES_FAILURE_LIMIT=4 #giới hạn lần sai
+AXES_FAILURE_LIMIT=7 #giới hạn lần sai
 AXES_CACHE_TIMEOUT = 60 * 60 # reset lại sau từ n lần sai thành 0 nếu sau 1h
 AXES_COOLOFF_TIME=timedelta(hours=1) #Số giờ cooldown sau 4 lần sai
 AXES_LOCK_OUT_AT_FAILURE = True # Khoá tài khoản sau khi vượt quá số lần đăng nhập sai
 AXES_RESET_ON_SUCCESS=True #reset khi đăng nhập thành công
+AXES_USERNAME_FORM_FIELD = 'email' #k dùng username login thì chỉ định email thay thế
 AXES_LOCKOUT_PARAMETERS=['username','ip_address'] #lockout theo username và ip
 USE_X_FORWARDED_HOST=True
-CORS_ALLOW_CREDENTIALS = True
 X_FRAME_OPTIONS = 'DENY'
 REFERRER_POLICY = 'same-origin'
 IPWARE_USE_X_FORWARDED_FOR = True
 IPWARE_IP_HEADER = 'HTTP_X_FORWARDED_FOR'
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS')
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS')
+CORS_ALLOW_CREDENTIALS = True
 from corsheaders.defaults import default_headers
 CORS_ALLOW_HEADERS=list(default_headers)+['authorization','X-CSRFToken'] #thêm csrf token và bearer vào cho phép truy cập
 
@@ -133,3 +139,30 @@ if not DEBUG:
      SECURE_HSTS_INCLUDE_SUBDOMAINS = True
      SECURE_HSTS_PRELOAD = True
      SECURE_SSL_REDIRECT = True #chuyển hướng http-> https(sau này deploy bật)
+
+from csp.constants import SELF, NONE
+
+
+#CSP
+# CONTENT_SECURITY_POLICY = {
+#     "EXCLUDE_URL_PREFIXES": ["supremacy/admin",],  # ✅ Hợp lý, tránh chặn giao diện admin Django
+#     "REPORT_ONLY": False,  # ✅ Dùng chế độ thật, không chỉ ghi log
+#     "DIRECTIVES": {
+#         "default-src": [SELF],  # ✅ Gốc chính là server
+#         "script-src": [SELF],  # ✅ Cho phép script nội bộ (cần nếu Swagger UI hoặc Django template)
+#         "style-src": [SELF,"accounts.google.com", "apis.google.com"],  # ✅ Cho phép CSS nội bộ
+#         "img-src": [SELF, "data:"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
+#         "connect-src": [SELF,"wss://localhost:8000","accounts.google.com", "oauth2.googleapis.com"],  # ✅ Cho phép fetch/xhr từ chính server
+#         "form-action": [SELF],  # ✅ Không cho gửi form ra ngoài
+#         "frame-ancestors": [NONE],  # ✅ Ngăn clickjacking
+#         "base-uri": [SELF],  # ✅ Giới hạn `<base>` tag
+#         "object-src": [NONE],  # ✅ Ngăn Flash, PDF embeds
+#         "font-src": [SELF, "fonts.gstatic.com"],# Cho phép nhúng font nếu dùng Google Font hoặc font local       
+#         "media-src": [SELF],  # Cho phép nhúng audio/video bạn host, nếu video/ảnh hosted trên server
+#         "frame-src": ["https://www.youtube.com", "https://player.vimeo.com", "accounts.google.com"]
+#     }
+# }
+
+#USER-SESSIONS
+SESSION_ENGINE = 'user_sessions.backends.db'
+

@@ -29,7 +29,7 @@ INSTALLED_APPS = [
     'debug_toolbar',#hiển thị các tiến trình
     'silk', #theo dõi sâu
     'corsheaders',#corsheader 
-    #Phần dưới là thư viện dùng log in(bắt buộc dùng chung allauth với dj-rest-auth và axes[ipware] )
+    # Phần bảo mật
     'django.contrib.sites',
     'rest_framework',
     'rest_framework.authtoken',
@@ -40,6 +40,10 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'axes',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
+    'csp',
+    'user_sessions',
     #Phần dưới là spectacular sinh ra tài liệu 
     'drf_spectacular',
     'drf_spectacular_sidecar',
@@ -48,7 +52,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-
+    "csp.middleware.CSPMiddleware",#csp
     'corsheaders.middleware.CorsMiddleware',# corsheader
 
     'django.middleware.security.SecurityMiddleware',
@@ -57,6 +61,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'axes.middleware.AxesMiddleware',#axes
+    
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     
