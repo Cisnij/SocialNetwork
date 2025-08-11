@@ -1,4 +1,4 @@
-{%load static%}
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,7 +29,7 @@
 <body class="bg-[#0f0f0f] min-h-screen flex items-center justify-center px-4 py-8">
   <div id="login-error" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-sm px-6 py-3 rounded shadow-lg z-50">
   <!-- Nội dung lỗi sẽ được chèn tự động -->
-</div>
+  </div>
 
   <div class="w-full max-w-4xl mx-auto bg-[#1c1c1c] rounded-2xl glow shadow-xl flex flex-col-reverse md:flex-row overflow-hidden">
 
@@ -44,9 +44,15 @@
           <input type="email" id="email" class="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="you@example.com">
         </div>
 
-        <div>
+        <div class="relative">
           <label class="block text-sm mb-1 text-gray-300" autocomplete="current-password">Password</label>
           <input type="password" id="password" class="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="••••••••">
+          <button
+            type="button"
+            id="togglePassword"
+            class="absolute right-3 top-[38px] text-gray-400 hover:text-purple-600"
+            aria-label="Toggle password visibility"
+          >👁️</button>
         </div>
 
         <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 transition text-white py-3 rounded-lg font-semibold">
@@ -87,6 +93,19 @@
       </div>
     </div>
   </div>
-  <script src="{%static 'js/login.js' %}"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const passwordInput = document.getElementById('password');
+      const toggleBtn = document.getElementById('togglePassword');
+
+      toggleBtn.addEventListener('click', () => {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        toggleBtn.textContent = type === 'password' ? '👁️' : '🙈';
+      });
+    });
+  </script>
+  <script type="module" src="{%static 'js/login.js' %}"></script>
 </body>
 </html>

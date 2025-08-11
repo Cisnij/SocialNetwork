@@ -1,9 +1,14 @@
-window.addEventListener('DOMContentLoaded', function () {
+import { RedirectIfAuth } from './auth.js';
+
+document.addEventListener('DOMContentLoaded', () => { // Kiểm tra nếu đã đăng nhập thì chuyển hướng về trang chính
+  RedirectIfAuth();
   const form = document.getElementById('login-form');
   const errorDiv = document.getElementById('login-error');
-  let accessToken = null; // Vẫn có thể giữ token tạm trong RAM nếu muốn
 
-  if (!form) return console.error('Không tìm thấy form!');
+  if (!form) {
+    console.error('Không tìm thấy form!');
+    return;  // Dừng chạy nếu không có form
+  }
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -19,10 +24,10 @@ window.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    fetch('http://localhost:8000/api/auth/login/', {
+    fetch('http://localhost:8000/api/auth/web/login/', {
       method: 'POST',
+      credentials: 'include', 
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // Để gửi kèm refresh token dạng cookie
       body: JSON.stringify({ email, password })
     })
     .then(response => {
@@ -31,14 +36,9 @@ window.addEventListener('DOMContentLoaded', function () {
     })
     .then(data => {
       accessToken = data.access;
-
-      // 🔄 Chuyển từ sessionStorage sang localStorage
       localStorage.setItem('accessToken', accessToken);
-
-      // Reset bộ đếm khi đăng nhập thành công
       localStorage.removeItem('loginFailCount');
       localStorage.removeItem('loginFailTimestamp');
-
       window.location.href = 'http://localhost:3000/';
     })
     .catch(error => {
@@ -48,7 +48,6 @@ window.addEventListener('DOMContentLoaded', function () {
       let lastFailTime = parseInt(localStorage.getItem('loginFailTimestamp') || '0');
       let now = Date.now();
 
-      // Reset đếm lỗi sau 15 phút
       if (now - lastFailTime > 15 * 60 * 1000) {
         failCount = 0;
       }
@@ -70,7 +69,6 @@ window.addEventListener('DOMContentLoaded', function () {
   const google_id = '337443264476-9kc3budl5faen2679fandvc6u305iu9q.apps.googleusercontent.com';
   const redirectUri = 'http://localhost:3000/google/callback/';
   const google_redirect = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${google_id}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20email%20profile&access_type=offline&prompt=consent`;
-
 
   window.loginWithGoogle = function () {
     window.location.href = google_redirect;

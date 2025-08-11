@@ -6,7 +6,6 @@
   <title>Thành công!</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Animation tick scale + opacity */
     @keyframes popTick {
       0% {
         transform: scale(0.5);
@@ -35,23 +34,23 @@
     }
   </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+<body class="bg-[#0f0f0f] flex items-center justify-center min-h-screen text-white">
 
-  <!-- Overlay Container -->
-  <div class="bg-white shadow-xl rounded-xl p-10 max-w-sm w-full text-center fade-in">
+  <!-- Success Container -->
+  <div class="bg-[#1c1c1c] shadow-lg rounded-2xl p-10 max-w-sm w-full text-center fade-in">
 
     <!-- Animated Tick Icon -->
-    <div class="mx-auto w-20 h-20 rounded-full bg-green-100 flex items-center justify-center tick-animate mb-6">
-      <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+    <div class="mx-auto w-20 h-20 rounded-full bg-green-900/20 flex items-center justify-center tick-animate mb-6">
+      <svg class="w-10 h-10 text-green-400" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
       </svg>
     </div>
 
-    <h2 class="text-xl font-bold text-gray-800 mb-2">Thành công!</h2>
-    <p class="text-gray-600 mb-6">Dữ liệu đã được gửi thành công. Cảm ơn bạn!</p>
+    <h2 class="text-xl font-bold text-green-400 mb-2">Thành công!</h2>
+    <p class="text-gray-400 mb-6">Dữ liệu đã được gửi thành công. Cảm ơn bạn!</p>
 
-    <a href="/" class="inline-block bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition">
-      Quay lại trang chủ
+    <a href="/login" class="inline-block bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-semibold transition">
+      Đăng nhập ngay
     </a>
   </div>
 

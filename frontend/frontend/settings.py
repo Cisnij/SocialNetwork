@@ -47,6 +47,7 @@ CORS_ALLOWED_ORIGINS = ["http://127.0.0.1:8000"]
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', #cors
     'django.middleware.security.SecurityMiddleware',
+    #'user_sessions.middleware.SessionMiddleware',#
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

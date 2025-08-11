@@ -1,0 +1,91 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Đăng ký</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .input-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+  </style>
+</head>
+<body class="bg-[#0f0f0f] min-h-screen flex items-center justify-center px-4 py-10 text-white">
+  <div id="login-error" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-sm px-6 py-3 rounded shadow-lg z-50"></div>
+
+  <div class="w-full max-w-md bg-[#1c1c1c] p-8 rounded-2xl shadow-lg backdrop-blur-sm">
+    <h2 class="text-3xl font-bold text-center mb-3 text-purple-400">Đăng ký tài khoản</h2>
+    <p class="text-center text-gray-400 mb-6 text-sm">Điền thông tin để tạo tài khoản mới</p>
+
+    <form class="space-y-5" id='register-form'>
+
+      <!-- First Name -->
+      <div class="relative">
+        <span class="input-icon text-gray-400">📝</span>
+        <input type="text" name="first_name" placeholder="Họ" id='first_name'
+               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      </div>
+
+      <!-- Last Name -->
+      <div class="relative">
+        <span class="input-icon text-gray-400">📝</span>
+        <input type="text" name="last_name" placeholder="Tên" id='last_name'
+               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      </div>
+
+      <!-- Email -->
+      <div class="relative">
+        <span class="input-icon text-gray-400">📧</span>
+        <input type="email" name="email" placeholder="Email" id='email'
+               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      </div>
+
+      <!-- Phone Number -->
+      <div class="relative">
+        <span class="input-icon text-gray-400">📱</span>
+        <input type="tel" name="phone_number" placeholder="Số điện thoại" id='phone_number'
+               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      </div>
+
+      <!-- Birthday -->
+      <div class="relative">
+        <span class="input-icon text-gray-400">🎂</span>
+        <input type="date" name="birthday" id='birthday'
+               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      </div>
+
+      <!-- Password -->
+      <div class="relative">
+        <span class="input-icon text-gray-400">🔒</span>
+        <input type="password" name="password1" placeholder="Mật khẩu" id='password1'
+               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="relative">
+        <span class="input-icon text-gray-400">🔒</span>
+        <input type="password" name="password2" placeholder="Nhập lại mật khẩu" id='password2'
+               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit"
+              class="w-full py-2 rounded-lg font-semibold bg-purple-600 hover:bg-purple-500 text-white transition">
+        Đăng ký
+      </button>
+    </form>
+
+    <p class="text-center text-sm text-gray-400 mt-4">
+      Đã có tài khoản?
+      <a href="/login" class="text-purple-400 hover:underline">Đăng nhập</a>
+    </p>
+  </div>
+  <script src="{% static 'js/register.js' %}"></script>
+</body>
+</html>

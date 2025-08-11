@@ -24,12 +24,16 @@ from api.authentication import *
 from django.contrib.auth import views as auth_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView,SpectacularRedocView
 #--------------------------------------------
-
+#api http_only
+from api.http_only import *
+from api.views import CustomeRegisterView,CustomePasswordResetView,
 urlpatterns = [
     path('supremacy/admin/', admin.site.urls),
     path('i18n/', include('django.conf.urls.i18n')),
     path('',include('api.urls')),
     #url của dj-rest-auth và allauth và simplejwt  để authentication 
+    path('api/auth/registration/',CustomeRegisterView.as_view(), name='custom_register'), #đăng kí
+    path('api/auth/password/reset/',CustomePasswordResetView.as_view(), name='custom_password_reset'), #reset pass
     path('api/auth/',include('dj_rest_auth.urls')),
     path('api/auth/registration/',include('dj_rest_auth.registration.urls')), #đăng kí, mail verify
     path('api/auth/account/',include('allauth.socialaccount.urls')), #đăng nhập google/fb
@@ -42,8 +46,11 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-    #user-sessions
-    path('user_sessions/', include('user_sessions.urls', namespace='user_sessions')),
+    #url cho cookie http-only, dùng cho mobile thì dùng mặc định api/auth/login,logout,refresh 
+    path('api/auth/web/login/', CookieLoginView.as_view(), name='cookie_login'),
+    path('api/auth/web/logout/', CookieLogoutView.as_view(), name='cookie_logout'),
+    path('api/auth/web/token/refresh/', CookieTokenRefreshView.as_view(), name='cookie_refresh'),
+    
 ]
 
 

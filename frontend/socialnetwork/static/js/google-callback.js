@@ -11,7 +11,6 @@
     fetch('http://localhost:8000/api/auth/google/login/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // gửi cookie (refresh token có thể nằm ở đây)
       body: JSON.stringify({
         code: code,
         redirect_uri: "http://localhost:3000/google/callback/" // phải khớp với URI đã cấu hình trong Google
@@ -23,7 +22,6 @@
     })
     .then(data => {
       if (data.access) {
-        localStorage.setItem('accessToken', data.access); // ✅ dùng localStorage thay vì sessionStorage
         window.location.href = 'http://localhost:3000/';
       } else {
         throw new Error('No token returned');

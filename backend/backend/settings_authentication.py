@@ -1,25 +1,24 @@
 #Setting Xác thực với dj-rest-auth và allauth và axes[ipware], corsheaders
 
 from .settings import *
-
 SITE_ID = 2
 REST_FRAMEWORK={ #Cấu hình token
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  #Spectacular
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer',  # Để debug trực tiếp bằng trình duyệt
+        'rest_framework.renderers.BrowsableAPIRenderer',  # Để debug trực tiếp bằng trình duyệt bằng spectacular 
     ),
     'DEFAULT_AUTHENTICATION_CLASSES':[
         'rest_framework_simplejwt.authentication.JWTAuthentication',#xác thực jwt
         
     ],
-    'DEFAULT_THROTTLE_CLASSES': [ #Chống spam và bruteforce
-    'rest_framework.throttling.UserRateThrottle',
-    'rest_framework.throttling.AnonRateThrottle',
+    'DEFAULT_THROTTLE_CLASSES': [ #Chống spam và bruteforce của rest framework
+        'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '1000/day',
-        'anon': '100/day',
+        'register':'20/hour', # giới hạn đăng kí là 5 lần/giờ
+        'cookie_refresh': '30/minute', 
+        'reset_password': '3/hour', 
     }
 
     
@@ -37,6 +36,8 @@ REST_AUTH={ #Đăng kí trả về json
     'TOKEN_MODEL': None,
     'OLD_PASSWORD_FIELD_ENABLED' : True, # Phải nhập mk cũ mới đc đổi mk
     'LOGIN_SERIALIZER': 'api.serializers.CustomeLoginSerializer',#bên serializers.py
+    'JWT_AUTH_HTTPONLY' : False #Nếu dùng cho mobile thì false để trả vể refresh token, chỉ dùng web thì nên true để bảo mật 
+    #JWT_AUTH_COOKIE và JWT_AUTH_REFRESH_COOKIE sẽ được sử dụng nếu bạn muốn lưu token trong cookie web
 }
 
 from datetime import timedelta
@@ -77,12 +78,10 @@ ACCOUNT_UNIQUE_EMAIL=True #mỗi email chỉ 1 tài khoản duy nhất
 ACCOUNT_CONFIRM_EMAIL_ON_GET=False 
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1 #Thời hạn hết hạn verify
 ACCOUNT_RATE_LIMITS={'confirm_email':'180/m'} # Thời gian cool down sau mỗi lần resend link  
-ACCOUNT_EMAIL_VALIDATORS = ['allauth.account.email_validators.ValidateEmailDomain',] #xác thực phải là email thật 
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION=True #đăng nhập luôn sau khi confirm email
 ACCOUNT_PASSWORD_MIN_LENGTH = 8 #độ dài tối thiểu mk là 8
-ACCOUNT_USERNAME_MIN_LENGTH = 5 #độ dài tối thiểu username là 5
 SOCIALACCOUNT_AUTO_SIGNUP = True
-SOCIALACCOUNT_ADAPTER = "api.adapters.MySocialAccountAdapter"
+SOCIALACCOUNT_ADAPTER = "api.adapter.MySocialAccountAdapter"
 AUTHENTICATION_BACKENDS=[
     'axes.backends.AxesStandaloneBackend',#axes
     'django.contrib.auth.backends.ModelBackend',
@@ -111,7 +110,7 @@ SOCIALACCOUNT_PROVIDERS={
     #     }
     # }
 }
-#Axes
+#Axes, ipware 
 AXES_ENABLED=True
 AXES_FAILURE_LIMIT=7 #giới hạn lần sai
 AXES_CACHE_TIMEOUT = 60 * 60 # reset lại sau từ n lần sai thành 0 nếu sau 1h
@@ -125,11 +124,25 @@ X_FRAME_OPTIONS = 'DENY'
 REFERRER_POLICY = 'same-origin'
 IPWARE_USE_X_FORWARDED_FOR = True
 IPWARE_IP_HEADER = 'HTTP_X_FORWARDED_FOR'
+
+IPWARE_META_PRECEDENCE_ORDER = [# Thứ tự ưu tiên header để tìm IP (tùy môi trường)
+    'HTTP_CF_CONNECTING_IP',
+    'HTTP_X_FORWARDED_FOR',
+    'HTTP_X_REAL_IP',
+    'REMOTE_ADDR',
+]
+IPWARE_PRIVATE_IP_PREFIX = ('10.', '192.168.', '172.', '127.', 'fc00:')# Dải IP nội bộ (private IP range)
+IPWARE_TRUSTED_PROXY_LIST = ['203.0.113.5', '198.51.100.0/24']# Danh sách proxy đáng tin cậy
+AXES_IPWARE_PROXY_COUNT = 1  # số proxy giữa client và server
+AXES_IPWARE_META_PRECEDENCE_ORDER = IPWARE_META_PRECEDENCE_ORDER
+
+#CORS
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS')
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS')
 CORS_ALLOW_CREDENTIALS = True
 from corsheaders.defaults import default_headers
 CORS_ALLOW_HEADERS=list(default_headers)+['authorization','X-CSRFToken'] #thêm csrf token và bearer vào cho phép truy cập
+
 
 if not DEBUG:
      SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -144,25 +157,24 @@ from csp.constants import SELF, NONE
 
 
 #CSP
-# CONTENT_SECURITY_POLICY = {
-#     "EXCLUDE_URL_PREFIXES": ["supremacy/admin",],  # ✅ Hợp lý, tránh chặn giao diện admin Django
-#     "REPORT_ONLY": False,  # ✅ Dùng chế độ thật, không chỉ ghi log
-#     "DIRECTIVES": {
-#         "default-src": [SELF],  # ✅ Gốc chính là server
-#         "script-src": [SELF],  # ✅ Cho phép script nội bộ (cần nếu Swagger UI hoặc Django template)
-#         "style-src": [SELF,"accounts.google.com", "apis.google.com"],  # ✅ Cho phép CSS nội bộ
-#         "img-src": [SELF, "data:"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
-#         "connect-src": [SELF,"wss://localhost:8000","accounts.google.com", "oauth2.googleapis.com"],  # ✅ Cho phép fetch/xhr từ chính server
-#         "form-action": [SELF],  # ✅ Không cho gửi form ra ngoài
-#         "frame-ancestors": [NONE],  # ✅ Ngăn clickjacking
-#         "base-uri": [SELF],  # ✅ Giới hạn `<base>` tag
-#         "object-src": [NONE],  # ✅ Ngăn Flash, PDF embeds
-#         "font-src": [SELF, "fonts.gstatic.com"],# Cho phép nhúng font nếu dùng Google Font hoặc font local       
-#         "media-src": [SELF],  # Cho phép nhúng audio/video bạn host, nếu video/ảnh hosted trên server
-#         "frame-src": ["https://www.youtube.com", "https://player.vimeo.com", "accounts.google.com"]
-#     }
-# }
+CONTENT_SECURITY_POLICY = {
+    "EXCLUDE_URL_PREFIXES": ["supremacy/admin",'/api/docs/'],  # ✅ Hợp lý, tránh chặn giao diện admin Django
+    "REPORT_ONLY": False,  # ✅ Dùng chế độ thật, không chỉ ghi log
+    "DIRECTIVES": {
+        "default-src": [SELF],  # ✅ Gốc chính là server
+        "script-src": [SELF],  # ✅ Cho phép script nội bộ (cần nếu Swagger UI hoặc Django template)
+        "style-src": [SELF,"accounts.google.com", "apis.google.com"],  # ✅ Cho phép CSS nội bộ
+        "img-src": [SELF, "data:"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
+        "connect-src": [SELF,"wss://localhost:8000","accounts.google.com", "oauth2.googleapis.com",'http://localhost:8000'],  # ✅ Cho phép fetch/xhr từ chính server
+        "form-action": [SELF],  # ✅ Không cho gửi form ra ngoài
+        "frame-ancestors": [NONE],  # ✅ Ngăn clickjacking
+        "base-uri": [SELF],  # ✅ Giới hạn `<base>` tag
+        "object-src": [NONE],  # ✅ Ngăn Flash, PDF embeds
+        "font-src": [SELF, "fonts.gstatic.com"],# Cho phép nhúng font nếu dùng Google Font hoặc font local       
+        "media-src": [SELF],  # Cho phép nhúng audio/video bạn host, nếu video/ảnh hosted trên server
+        "frame-src": ["https://www.youtube.com", "https://player.vimeo.com", "accounts.google.com"]
+    }
+}
 
-#USER-SESSIONS
-SESSION_ENGINE = 'user_sessions.backends.db'
+
 

@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'csp',
-    'user_sessions',
+    'django_pwned_passwords',
     #Phần dưới là spectacular sinh ra tài liệu 
     'drf_spectacular',
     'drf_spectacular_sidecar',
@@ -106,6 +106,10 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [ 
     {
+        "NAME": "pwned_passwords_django.validators.PwnedPasswordsValidator", #pwn_password 
+        
+    },
+    {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
     {
@@ -119,13 +123,13 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'vi'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Ho_Chi_Minh'
 
 USE_I18N = True
-
-USE_TZ = True
+USE_L10N = True
+USE_TZ = False
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

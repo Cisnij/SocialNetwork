@@ -1,0 +1,44 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Xác minh Email đã gửi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.6s ease-out;
+    }
+  </style>
+</head>
+<body class="bg-[#0f0f0f] min-h-screen flex items-center justify-center px-4 text-white">
+
+  <div class="bg-[#1c1c1c] w-full max-w-md p-8 rounded-xl shadow-lg text-center fade-in">
+    <div class="text-blue-400 text-5xl mb-4">📨</div>
+    <h2 class="text-2xl font-bold mb-3">Đã gửi email xác minh</h2>
+    <p class="text-gray-300 mb-6 leading-relaxed">
+      Chúng tôi đã gửi một email xác minh đến địa chỉ bạn đã đăng ký.<br>
+      Vui lòng kiểm tra hộp thư đến hoặc thư rác của bạn.
+    </p>
+
+    <!-- Nút gửi lại email xác minh -->
+    <button id="resend-email-btn" class="mb-6 inline-block bg-blue-600 hover:bg-blue-700 transition px-6 py-3 rounded-lg font-semibold text-white">
+      Gửi lại email xác minh
+    </button>
+    <div id="resend-message" class="mb-6 text-sm"></div>
+    <a href="/login" class="inline-block bg-blue-500 hover:bg-blue-600 transition px-6 py-3 rounded-lg font-semibold text-[#1c1c1c]">
+      Quay lại đăng nhập
+    </a>
+    <script src="{%static 'js/resend-email.js'%}"></script>
+  </div>
