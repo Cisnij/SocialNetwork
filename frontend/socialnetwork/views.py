@@ -7,7 +7,7 @@ from django.shortcuts import render
 
 def getBase(request):
     context={}
-    return render(request, 'base.html', context)
+    return render(request, 'app/home.html', context)
 def getLogin(request):
     context={}
     return render(request,'authenticate/login.html',context)
@@ -15,7 +15,7 @@ def getRegister(request):
     context={}
     return render(request, 'authenticate/register.html', context)
 def getAbout(request):
-    return render(request, 'about.html')
+    return render(request, 'app/about.html')
 def getSuccessRegis(request):
     return render(request, 'authenticate/success_regis.html')
 def getEmailVerified(request):
@@ -36,3 +36,7 @@ def getEmailResetPassword(request):
     return render(request, 'authenticate/email-reset-password.html')
 def getEmailVerifiedSend(request):
     return render(request, 'authenticate/email-verified-send.html')
+def getMyProfile(request,pk):
+    return render(request, 'app/myprofile.html', {"user_id": pk})
+def getAddPost(request):
+    return render(request, 'app/add_post.html')

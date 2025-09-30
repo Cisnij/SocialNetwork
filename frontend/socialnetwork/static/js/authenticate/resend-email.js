@@ -1,4 +1,3 @@
-
 const search = new URLSearchParams(window.location.search)
 const email = search.get('email')
 const url= 'http://localhost:8000/api/auth/registration/resend-email/'

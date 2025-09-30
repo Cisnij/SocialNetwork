@@ -1,4 +1,6 @@
-// import {checkLogin} from './auth.js'
+import { RedirectIfAuth } from './auth.js';
+RedirectIfAuth();
+
 document.getElementById('register-form').addEventListener('submit',function(e){
     e.preventDefault();
     const firstname = document.getElementById('first_name').value.trim()

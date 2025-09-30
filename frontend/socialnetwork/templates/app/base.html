@@ -1,0 +1,146 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>{%block title%}{%endblock title%}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-200 font-sans">
+
+<!-- Navbar -->
+<nav class="bg-white shadow-md px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+  <!-- Left -->
+  <div class="flex items-center gap-4">
+    <a href="/"> <img src="https://cdn-icons-png.flaticon.com/512/1041/1041916.png" alt="Logo" class="w-9 h-9"> </a>
+    <div class="relative">
+      <input 
+        type="text" 
+        placeholder="Tìm kiếm bài viết, bạn bè..." 
+        class="pl-10 pr-4 py-2 w-72 rounded-xl bg-slate-100 text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+      <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Center Nav -->
+  <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-8">
+    <a href="/" class="text-indigo-600 hover:text-indigo-800 transition">
+      <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <path d="M9 22V12h6v10"/>
+      </svg>
+    </a>
+    <a href="/friends" class="text-gray-500 hover:text-indigo-600 transition">
+      <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M17 20h5v-2a4 4 0 00-3-3.87"/>
+        <path d="M9 20H4v-2a4 4 0 013-3.87"/>
+        <circle cx="9" cy="7" r="4"/>
+        <circle cx="17" cy="7" r="4"/>
+      </svg>
+    </a>
+  </div>
+
+  <!-- Right -->
+  <div class="flex items-center gap-5">
+    <!-- Nút mở modal -->
+    <button id="openPostModal" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+        Tạo post
+    </button>
+
+    <button class="relative hover:text-indigo-600 transition">
+      <svg class="w-7 h-7 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M21 15a2 2 0 01-2 2H5l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+    </button>
+
+    <button class="relative hover:text-indigo-600 transition">
+      <svg class="w-7 h-7 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M15 17h5l-1.405-1.405C18.79 14.79 18 13.42 18 12V8a6 6 0 10-12 0v4c0 1.42-.79 2.79-2.595 3.595L2 17h5"/>
+        <path d="M13.73 21a2 2 0 01-3.46 0"/>
+      </svg>
+    </button>
+
+    <!-- Avatar + Dropdown -->
+    <div class="relative">
+      <img 
+        src="" 
+        alt="avatar" 
+        class="w-11 h-11 rounded-full border border-gray-300 cursor-pointer"
+        id="avatarBtn"
+      >
+
+      <!-- Dropdown -->
+      <div id="dropdownMenu" 
+        class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg overflow-hidden z-50">
+
+        <!-- User Info -->
+        <div class="flex items-center gap-3 px-4 py-3 border-b">
+          <img id="dropdownAvatar" src="/static/default-avatar.png" class="w-10 h-10 rounded-full border">
+          <div>
+            <p id="dropdownName" class="font-semibold text-gray-800"></p>
+            <a id="profileLink" href="" class="text-sm text-indigo-600 hover:underline">Xem trang cá nhân</a>
+          </div>
+        </div>
+
+        <!-- Menu Items -->
+        <a href="/settings" class="px-4 py-2 hover:bg-gray-100 block">Cài đặt</a>
+        <a href="" id="logoutLink" class="px-4 py-2 hover:bg-gray-100 block text-red-500">Đăng xuất</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+{%block main_content%}{%endblock main_content%}
+{%block profile%}{%endblock profile%}
+
+<!-- Modal Tạo post -->
+<div id="postModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden z-50">
+  <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-5 relative">
+    
+    <!-- Header -->
+    <div class="flex justify-between items-center border-b pb-3">
+      <h2 class="text-xl font-semibold">Tạo bài viết</h2>
+      <button id="closePostModal" class="text-gray-500 hover:text-red-500 text-2xl">&times;</button>
+    </div>
+
+    <!-- Body -->
+    <div class="mt-4 space-y-4">
+      <!-- Nhập title -->
+      <input 
+        type="text" 
+        id="postTitle"
+        placeholder="Tiêu đề bài viết..." 
+        class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      >
+
+      <!-- Chọn file ảnh -->
+      <div>
+        <label class="block mb-2 text-gray-700 font-medium">Chọn ảnh</label>
+        <input 
+          type="file" 
+          accept="image/*" 
+          multiple 
+          class="w-full text-gray-700 border p-2 rounded-lg cursor-pointer focus:outline-none"
+          id="imageInput"
+        >
+        <!-- Preview ảnh -->
+        <div id="imagePreview" class="grid grid-cols-3 gap-2 mt-2 max-h-64 overflow-y-auto"></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-4 flex justify-end gap-3">
+      <button id="closePostModal2" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Hủy</button>
+      <button id='submit' type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Đăng</button>
+    </div>
+  </div>
+</div>
+
+<script type='module' src="{% static 'js/authenticate/base.js' %}"></script>
+<script type='module' src="{% static 'js/app/profile.js' %}"></script>
+<script type='module' src="{%static 'js/app/add_post.js'%}"></script>
+</body>
+</html>

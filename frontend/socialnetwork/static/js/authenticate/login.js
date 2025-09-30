@@ -35,8 +35,7 @@ document.addEventListener('DOMContentLoaded', () => { // Kiểm tra nếu đã �
       return response.json();
     })
     .then(data => {
-      accessToken = data.access;
-      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('accessToken', data.access);
       localStorage.removeItem('loginFailCount');
       localStorage.removeItem('loginFailTimestamp');
       window.location.href = 'http://localhost:3000/';

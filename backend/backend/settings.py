@@ -49,6 +49,11 @@ INSTALLED_APPS = [
     'drf_spectacular_sidecar',
     #django cleanup
     "django_cleanup.apps.CleanupConfig",
+    #Phần like và thả reaction post,comments
+    'reaction.apps.ReactionConfig',
+    #lọc filter cho restframework
+    'django_filters',
+
 ]
 
 MIDDLEWARE = [
@@ -137,7 +142,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-MEDIA_ROOT=os.path.join(BASE_DIR,'media')
+MEDIA_ROOT=os.path.join(BASE_DIR,'media') #basedir là tìm trong thư mục gốc có media
 MEDIA_URL='/media/'
 
 #=====================================================================================================================================================================================
@@ -163,3 +168,4 @@ INTERNAL_IPS = [ # xem ip nào đc xem toolbar
 #cấu hình các file setting nhỏ phụ thuộc
 from .settings_authentication import *
 from .settings_admin import *
+#==========================================================================================================================================================================================================

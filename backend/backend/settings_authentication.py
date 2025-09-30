@@ -10,6 +10,7 @@ REST_FRAMEWORK={ #Cấu hình token
     ),
     'DEFAULT_AUTHENTICATION_CLASSES':[
         'rest_framework_simplejwt.authentication.JWTAuthentication',#xác thực jwt
+        'rest_framework.authentication.SessionAuthentication',
         
     ],
     'DEFAULT_THROTTLE_CLASSES': [ #Chống spam và bruteforce của rest framework
@@ -19,8 +20,16 @@ REST_FRAMEWORK={ #Cấu hình token
         'register':'20/hour', # giới hạn đăng kí là 5 lần/giờ
         'cookie_refresh': '30/minute', 
         'reset_password': '3/hour', 
-    }
-
+        'google_login': '10/minute', # giới hạn đăng nhập bằng google là 10 lần/phút
+        'dj_rest_auth': '20/minute',
+        'profile':'100/minute',
+        'post':'100/minute',
+        'post_article':'100/minute',
+        'comment':'100/minute',
+        'setting':'10/minute',
+        'add_friend':'1000/minute',
+        'create_post':'100/minute',
+    },
     
 }
 REST_AUTH={ #Đăng kí trả về json
@@ -31,13 +40,13 @@ REST_AUTH={ #Đăng kí trả về json
     'PASSWORD_RESET_CONFIRM_SERIALIZER': 'dj_rest_auth.serializers.PasswordResetConfirmSerializer',
     'PASSWORD_CHANGE_SERIALIZER': 'dj_rest_auth.serializers.PasswordChangeSerializer',
     'USER_DETAILS_SERIALIZER':'dj_rest_auth.serializers.UserDetailsSerializer',
-    'REGISTER_SERIALIZER': 'api.serializers.CustomRegisterSerializer',#bên serializers.py
+    'REGISTER_SERIALIZER': 'api.custome_authen.CustomRegisterSerializer',#bên serializers.py
     'LOGOUT_ON_PASSWORD_CHANGE':True, #logout khi change pass
     'TOKEN_MODEL': None,
     'OLD_PASSWORD_FIELD_ENABLED' : True, # Phải nhập mk cũ mới đc đổi mk
-    'LOGIN_SERIALIZER': 'api.serializers.CustomeLoginSerializer',#bên serializers.py
-    'JWT_AUTH_HTTPONLY' : False #Nếu dùng cho mobile thì false để trả vể refresh token, chỉ dùng web thì nên true để bảo mật 
-    #JWT_AUTH_COOKIE và JWT_AUTH_REFRESH_COOKIE sẽ được sử dụng nếu bạn muốn lưu token trong cookie web
+    'LOGIN_SERIALIZER': 'api.custome_authen.CustomeLoginSerializer',#bên serializers.py
+    'JWT_AUTH_HTTPONLY' : False #Nếu dùng cho mobile thì false để trả vể refresh token, chỉ dùng web thì nên true để bảo mật, nhưng đã custome cho web riêng nên để false
+    #JWT_AUTH_COOKIE và JWT_AUTH_REFRESH_COOKIE sẽ được sử dụng nếu bạn muốn lưu token trong cookie web và k trả về json 
 }
 
 from datetime import timedelta
@@ -119,6 +128,7 @@ AXES_LOCK_OUT_AT_FAILURE = True # Khoá tài khoản sau khi vượt quá số l
 AXES_RESET_ON_SUCCESS=True #reset khi đăng nhập thành công
 AXES_USERNAME_FORM_FIELD = 'email' #k dùng username login thì chỉ định email thay thế
 AXES_LOCKOUT_PARAMETERS=['username','ip_address'] #lockout theo username và ip
+AXES_ENABLE_ACCESS_FAILURE_LOG =True
 USE_X_FORWARDED_HOST=True
 X_FRAME_OPTIONS = 'DENY'
 REFERRER_POLICY = 'same-origin'
@@ -158,14 +168,14 @@ from csp.constants import SELF, NONE
 
 #CSP
 CONTENT_SECURITY_POLICY = {
-    "EXCLUDE_URL_PREFIXES": ["supremacy/admin",'/api/docs/'],  # ✅ Hợp lý, tránh chặn giao diện admin Django
+    "EXCLUDE_URL_PREFIXES": ["/supremacy/admin",'/api/docs/'],  # ✅ Hợp lý, tránh chặn giao diện admin Django
     "REPORT_ONLY": False,  # ✅ Dùng chế độ thật, không chỉ ghi log
     "DIRECTIVES": {
         "default-src": [SELF],  # ✅ Gốc chính là server
-        "script-src": [SELF],  # ✅ Cho phép script nội bộ (cần nếu Swagger UI hoặc Django template)
+        "script-src": [SELF, "accounts.google.com", "apis.google.com"],  # ✅ Cho phép script nội bộ (cần nếu Swagger UI hoặc Django template)
         "style-src": [SELF,"accounts.google.com", "apis.google.com"],  # ✅ Cho phép CSS nội bộ
         "img-src": [SELF, "data:"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
-        "connect-src": [SELF,"wss://localhost:8000","accounts.google.com", "oauth2.googleapis.com",'http://localhost:8000'],  # ✅ Cho phép fetch/xhr từ chính server
+        "connect-src": [SELF,"wss://localhost:8000","accounts.google.com", "oauth2.googleapis.com",'http://localhost:8000', "apis.google.com",],  # ✅ Cho phép fetch/xhr từ chính server
         "form-action": [SELF],  # ✅ Không cho gửi form ra ngoài
         "frame-ancestors": [NONE],  # ✅ Ngăn clickjacking
         "base-uri": [SELF],  # ✅ Giới hạn `<base>` tag

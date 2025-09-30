@@ -17,6 +17,8 @@ urlpatterns = [
     path('change-password/', views.getChangePassword),
     path('email-reset-password/', views.getEmailResetPassword),
     path('email-verified-send/', views.getEmailVerifiedSend),
+    path('profile/<int:pk>/', views.getMyProfile),
+    path('create-post/',views.getAddPost),
 ]
 
    

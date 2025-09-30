@@ -8,8 +8,9 @@
       return;
     }
 
-    fetch('http://localhost:8000/api/auth/google/login/', {
+    fetch('http://localhost:8000/api/auth/web/google/login/', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         code: code,
@@ -22,6 +23,7 @@
     })
     .then(data => {
       if (data.access) {
+        localStorage.setItem('accessToken', data.access);
         window.location.href = 'http://localhost:3000/';
       } else {
         throw new Error('No token returned');
