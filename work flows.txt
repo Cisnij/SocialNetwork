@@ -6,13 +6,17 @@ work flows
 	-Bước register: tạo tài khoản, chuyển đến trang html hiển thị gửi mail ,gửi email verified, lưu tài khoản tạm vào db Pending account, nhấn vào email load ra html kèm key fetch tới xác nhận, sau khi xác nhận xóa db Pending account và tạo Profile
 	-Bước login: đăng nhập, fetch tới api login, chuyển tới trang chủ
 	-Bước reset-password: chuyển tới trang resetpassword, điền email fetch tới password/reset, sau đó gửi mail tới trang html có giao diện điền mật khẩu, post tới reset confirm, load ra trang đã thành công
+	-Bước forgot-password: nhấn, chuyển sang trang điền mail, điền mail xong sẽ post mail đó tới api, api tạo ra uid và token gửi kèm mail, mail sẽ gửi link có trang tự tạo để điền mk mới kèm uid và token, sau đó post mk mới,uid,token backend sẽ xác nhận và đổi 
 	-Bước login google: nhấn vào login google, load tới trang https://account của gg có chứa google id và callback, sau đó load tới trang html call back tự tạo kèm theo đó là code, sau đó lấy code từ trang call back post tới google login(lưu ý khi đăng nhập gmail đã tồn tại thì gộp lại làm 1), sau khi backend post tới google qua adapter_class thì trả về access token và ta tự tạo refresh
 	-Bước accessToken và refreshToken: viết hàm fetch tới dùng refresh để đổi access sau đó lưu vào local, xây hàm để thông qua nó khi post put máy sẽ biết access hết hạn chưa và làm mới , hàm check login sẽ redirect về trang chủ nếu có access và refresh token
 	-Tạo file cookie để set vào cookie refresh token
 4: Sau khi xây Authenticate thì xây serializers
 5. phân trang
+	data.next để lấy ra trang tiếp theo, phân các dữ liêu lớn thành nhỏ
 6. Dùng django-reactions xây like
+	tạo react.py có url riêng là create, khi ng dùng post lên thì lấy cái react, lọc ra post đó nếu đã thả và react trùng cũ thì xóa, nếu react mới thì update, nếu chưa có thì tạo. Kèm theo là tạo thêm user_reaction lưu lại lịch sử. Mỗi post có 1 bản ghi đếm là reaction, trả response count,status,type
 7. Xây frontend load ra post, like,...
+	Khi ng dùng nhấn, nó sẽ post tới url create kèm type và post id, post id lấy từ dữ liệu được render ra và khi nhấn nút post nào nó lấy id post đó
 8. thực hiện like post, gán cảm xúc sau khi f5 vẫn giữ, load ra người like, tạo url láy về người like
 
 

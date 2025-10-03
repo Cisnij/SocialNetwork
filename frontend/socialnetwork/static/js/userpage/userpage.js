@@ -272,12 +272,14 @@ async function loadPosts(initial=true){
     isLoadingPosts=false;
 }
 
-// Infinite scroll
-window.addEventListener("scroll", ()=>{
-    if(window.innerHeight+window.scrollY>=document.body.offsetHeight-200){
-        loadPosts(false);
-    }
-});
+// Infinite scroll chỉ kích hoạt khi là profilePage
+if (document.body.id === "profilePage") {
+    window.addEventListener("scroll", ()=>{
+        if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 200){
+            loadPosts(false);
+        }
+    });
+}
 
 // ======================== PHOTO MODAL ========================
 function openPhotoModal(photos,index=0,caption=""){
