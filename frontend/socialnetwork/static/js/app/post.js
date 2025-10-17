@@ -80,23 +80,23 @@ function createReactionBar(postId, reactBtn, wrapper, reactionCount, post) { //t
       e.stopPropagation();
       const res = await reactToPost(postId, r.type);
 
-      if (res) {
-        updateReactionButton(
-          reactBtn,
-          res.status === "added" ? res.reaction_type : ""
-        );
+    if (res) {
+      // cập nhật nút
+      updateReactionButton(reactBtn, res.reaction_type || "");
 
-        if (Array.isArray(res.count)) {
-          const newTotal = res.count.reduce((sum, x) => sum + x.total, 0);
-          reactionCount.textContent =
-            newTotal > 0 ? `${newTotal} lượt thích` : "";
-          post.reactions = res.count;
-        }
-
-        post.user_is_reaction =
-          res.status === "added" ? res.reaction_type : "";
-        reactBtn.dataset.reaction = post.user_is_reaction;
+      // cập nhật tổng reactions
+      if (Array.isArray(res.count)) {
+        const newTotal = res.count.reduce((sum, x) => sum + x.total, 0);
+        reactionCount.textContent =
+          newTotal > 0 ? `${newTotal} lượt thích` : "";
+        post.reactions = res.count;
       }
+
+      // luôn lưu trạng thái mới
+      post.user_is_reaction = res.reaction_type || "";
+      reactBtn.dataset.reaction = post.user_is_reaction;
+    }
+
 
       bar.classList.add("hidden");
     });
@@ -122,34 +122,90 @@ function createReactionBar(postId, reactBtn, wrapper, reactionCount, post) { //t
 function renderPost(post) {
   const article = document.createElement("article");
   article.className = "bg-white shadow rounded-xl p-5 mb-4";
+  article.dataset.postId = post.post_id;
 
-  // Header
-  const header = document.createElement("div");
-  header.className = "flex items-center gap-3 mb-3";
+// Header
+const header = document.createElement("div");
+header.className = "flex items-center justify-between mb-3";
 
-  const userId = post.user?.id;
-  const profileLink = document.createElement("a");
-  profileLink.href = `http://localhost:3000/profile/${userId}`;
-  profileLink.className = "flex items-center gap-3";
+// --- Left side: avatar + tên + thời gian
+const left = document.createElement("div");
+left.className = "flex items-center gap-3";
 
-  const avatar = document.createElement("img");
-  avatar.className = "w-10 h-10 rounded-full";
-  avatar.src = post.user?.picture || "/default-avatar.png";
+const userId = post.user?.id;
+const profileLink = document.createElement("a");
+profileLink.href = `http://localhost:3000/profile/${userId}`;
+profileLink.className = "flex items-center gap-3";
 
-  const info = document.createElement("div");
-  const name = document.createElement("h2");
-  name.className = "font-semibold text-gray-800";
-  name.textContent =
-    `${post?.user?.first_name || ""} ${post?.user?.last_name || ""}`.trim() ||
-    "Người dùng";
+const avatar = document.createElement("img");
+avatar.className = "w-10 h-10 rounded-full";
+avatar.src = post.user?.picture || "/default-avatar.png";
 
-  const time = document.createElement("p");
-  time.className = "text-sm text-gray-500";
-  time.textContent = new Date(post.created_at).toLocaleString("vi-VN");
+const info = document.createElement("div");
+const name = document.createElement("h2");
+name.className = "font-semibold text-gray-800";
+name.textContent =
+  `${post?.user?.first_name || ""} ${post?.user?.last_name || ""}`.trim() ||
+  "Người dùng";
 
-  info.append(name, time);
-  profileLink.append(avatar, info);
-  header.appendChild(profileLink);
+const time = document.createElement("p");
+time.className = "text-sm text-gray-500";
+time.textContent = new Date(post.created_at).toLocaleString("vi-VN");
+
+info.append(name, time);
+profileLink.append(avatar, info);
+left.appendChild(profileLink);
+
+// --- Right side: menu ba chấm
+const menuWrapper = document.createElement("div");
+menuWrapper.className = "relative";
+
+const menuBtn = document.createElement("button");
+menuBtn.className = "text-gray-500 hover:text-gray-800 text-2xl font-bold px-2";
+menuBtn.textContent = "⋯";
+
+const menuDropdown = document.createElement("div");
+menuDropdown.className =
+  "absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg hidden z-50";
+
+const editBtn = document.createElement("button");
+editBtn.className =
+  "block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100";
+editBtn.textContent = "✏️ Chỉnh sửa bài viết";
+
+const deleteBtn = document.createElement("button");
+deleteBtn.className =
+  "block w-full text-left px-4 py-2 text-red-600 hover:bg-red-100";
+deleteBtn.textContent = "🗑️ Xóa bài viết";
+
+// Gắn sự kiện cho nút
+menuBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  menuDropdown.classList.toggle("hidden");
+});
+
+document.addEventListener("click", () => {
+  menuDropdown.classList.add("hidden");
+});
+
+editBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  menuDropdown.classList.add("hidden");
+  alert(`Chỉnh sửa bài viết: ${post.post_id}`);
+});
+
+deleteBtn.addEventListener("click",async  (e) => {
+  e.stopPropagation();
+  menuDropdown.classList.add("hidden");
+  await deletePost(post.post_id);
+});
+
+menuDropdown.append(editBtn, deleteBtn);
+menuWrapper.append(menuBtn, menuDropdown);
+
+// --- Gắn cả 2 bên vào header
+header.append(left, menuWrapper);
+
 
   // Title
   const title = document.createElement("p");
@@ -177,7 +233,12 @@ if (post.photos && post.photos.length > 0) {
   } else {
     // nhiều ảnh → grid
     photoWrapper.className = "grid grid-cols-2 gap-2 mb-3";
-    post.photos.forEach((p, index) => {
+    const maxVisible = 5;
+
+    post.photos.slice(0, maxVisible).forEach((p, index) => {
+      const imgWrapper = document.createElement("div");
+      imgWrapper.className = "relative";
+
       const img = document.createElement("img");
       img.className =
         "w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition";
@@ -188,12 +249,22 @@ if (post.photos && post.photos.length > 0) {
         openPhotoModal(photoUrls, index, post.title || "");
       });
 
-      photoWrapper.appendChild(img);
+      imgWrapper.appendChild(img);
+
+      // Nếu là ảnh thứ 5 và vẫn còn ảnh phía sau
+      if (index === maxVisible - 1 && post.photos.length > maxVisible) {
+        const overlay = document.createElement("div");
+        overlay.className =
+          "absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center rounded-lg text-white text-3xl font-bold";
+        overlay.textContent = `+${post.photos.length - maxVisible}`;
+        imgWrapper.appendChild(overlay);
+      }
+
+      photoWrapper.appendChild(imgWrapper);
     });
+
   }
 }
-
-
   // Reaction count
   const totalReactions = post.reactions.reduce((sum, r) => sum + r.total, 0);
   const reactionCount = document.createElement("button");
@@ -268,9 +339,8 @@ if (post.photos && post.photos.length > 0) {
   article.appendChild(reactionCount);
   article.appendChild(actions);
 
-  postContainer.appendChild(article);
+  return article;
 }
-
 // ==================== Load Posts ====================
 async function loadPosts(initial = true) {
   if (!nextPageUrl || isLoading) return;
@@ -291,7 +361,10 @@ async function loadPosts(initial = true) {
     spinner.remove();
 
     const posts = data.results || data;
-    posts.forEach((post) => renderPost(post));
+    posts.forEach((post) => {
+      const article = renderPost(post); // load lần đầu lấy ra các post và truyền vào render tạo header title 
+      postContainer.appendChild(article); // sau đó append vào container để hiển thị
+    });
     nextPageUrl = data.next;
   } catch (err) {
     console.error("Error loading posts:", err);
@@ -427,6 +500,62 @@ window.addEventListener("scroll", () => {
     loadPosts(false);
   }
 });
+//===================== Delete Post ===================
+let postToDeleteId = null;
+
+async function deletePost(postId) {
+  if (!postId) return;
+
+  // Mở modal
+  postToDeleteId = postId;
+  document.getElementById("deleteModal").classList.remove("hidden");
+}
+
+// Nút hủy
+document.getElementById("cancelDelete").addEventListener("click", () => {
+  postToDeleteId = null;
+  document.getElementById("deleteModal").classList.add("hidden");
+});
+
+// Nút xác nhận xóa
+document.getElementById("confirmDelete").addEventListener("click", async () => {
+  if (!postToDeleteId) return;
+
+  try {
+    const res = await authFetch(`http://localhost:8000/api/user/post/${postToDeleteId}/`, {
+      method: "DELETE",
+    });
+
+    if (res.ok) {
+      const article = document.querySelector(`[data-post-id="${postToDeleteId}"]`);
+      if (article) article.remove();
+
+      showToast("✅ Bạn đã xóa bài viết thành công!");
+    } else {
+      showToast("⚠️ Không thể xóa bài viết. Vui lòng thử lại.", "red");
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("⚠️ Lỗi khi xóa bài viết.", "red");
+  } finally {
+    postToDeleteId = null;
+    document.getElementById("deleteModal").classList.add("hidden");
+  }
+});
+
+// Hàm hiển thị toast
+function showToast(message, color = "green") {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.className = `fixed bottom-5 right-5 bg-${color}-500 text-white px-4 py-3 rounded shadow-lg`;
+  toast.classList.remove("hidden");
+
+  setTimeout(() => {
+    toast.classList.add("hidden");
+  }, 3000); // 3 giây
+}
+
 
 // ==================== INIT ====================
 loadPosts(true);
+export { renderPost};

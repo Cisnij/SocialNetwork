@@ -1,4 +1,5 @@
 import { authFetch } from "../authenticate/auth.js";
+import {renderPost} from "./post.js";
 
 const openBtn = document.getElementById("openPostModal");
 const closeBtn = document.getElementById("closePostModal");
@@ -38,6 +39,23 @@ imageInput.addEventListener("change", (event) => {
     reader.readAsDataURL(file);
   });
 });
+//=================================TOAST=========================================
+function showToast(message, color = "green") {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.className = `fixed bottom-5 right-5 bg-${color}-500 text-white px-4 py-3 rounded shadow-lg toast-slide`;
+  toast.classList.remove("hidden");
+
+  // Tự động ẩn sau 3 giây
+  setTimeout(() => {
+    toast.classList.add("toast-hide");
+  }, 3000);
+
+  setTimeout(() => {
+    toast.classList.add("hidden");
+    toast.classList.remove("toast-slide", "toast-hide");
+  }, 3500);
+}
 
 //=================================Tạo Bài Post==================================
 
@@ -48,7 +66,7 @@ submitBtn.addEventListener("click", async () => {
   const files = imageInput.files;
 
   if (!title) {
-    alert("Vui lòng nhập tiêu đề");
+    showToast("⚠️ Vui lòng nhập tiêu đề", "red");
     return;
   }
 
@@ -62,18 +80,18 @@ submitBtn.addEventListener("click", async () => {
     });
   } catch (err) {
     console.error("Không gọi được API tạo bài viết:", err);
-    alert("Không thể kết nối server khi tạo post");
+    showToast("Không thể kết nối server khi tạo post", "red");
     return;
   }
 
   if (!resPost.ok) {
     const error = await resPost.json().catch(() => ({}));
     console.error("Lỗi khi tạo bài viết:", error);
-    alert("Không tạo được bài viết");
+    showToast("Không tạo được bài viết", "red");
     return;
   }
 
-  const newPost = await resPost.json();
+  let newPost = await resPost.json();
   console.log("Đã tạo bài viết:", newPost);
   const postId = newPost.post_id;
 
@@ -90,18 +108,26 @@ submitBtn.addEventListener("click", async () => {
       });
     } catch (err) {
       console.error("Không gọi được API upload ảnh:", err);
-      alert("Không thể kết nối server khi upload ảnh");
+      showToast("Không thể kết nối server khi upload ảnh", "red");
       return;
     }
 
     if (!resImages.ok) {
       const error = await resImages.json().catch(() => ({}));
       console.error("Lỗi khi upload ảnh:", error);
-      alert("Upload ảnh thất bại");
+      showToast("Upload ảnh thất bại", "red");
       return;
     }
 
     console.log("Upload ảnh thành công");
+
+    if (resImages.ok) {
+      // Lấy lại post đầy đủ sau khi upload ảnh
+      const resFullPost = await authFetch(`http://localhost:8000/api/user/post/${postId}/`);
+      if (resFullPost.ok) {
+        newPost = await resFullPost.json(); // ✅ ghi đè vào biến cũ
+      }
+    }
   }
 
   // 3. Reset form
@@ -110,5 +136,10 @@ submitBtn.addEventListener("click", async () => {
   while (imagePreview.firstChild) imagePreview.removeChild(imagePreview.firstChild);
 
   modal.classList.add("hidden");
-  alert("Bài viết đã được tạo thành công");
+  showToast("Bài viết đã được tạo thành công");
+
+  const postContainer = document.getElementById("post-container");
+  const newArticle = renderPost(newPost);
+  postContainer.prepend(newArticle); //prepend để thêm lên đầu danh sách bài viết
 });
+

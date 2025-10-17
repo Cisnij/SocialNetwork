@@ -18,8 +18,7 @@ work flows
 7. Xây frontend load ra post, like,...
 	Khi ng dùng nhấn, nó sẽ post tới url create kèm type và post id, post id lấy từ dữ liệu được render ra và khi nhấn nút post nào nó lấy id post đó
 8. thực hiện like post, gán cảm xúc sau khi f5 vẫn giữ, load ra người like, tạo url láy về người like
-
-
+9. Thêm ảnh nhiều: nhớ tạo 1 model photo(1-n với post), logic  khi ng dùng thêm vào post và ảnh, nó lấy title ra tạo ra post trước, sau đó lọc ảnh ra thêm vào form data và gửi tới view, view listcreateview gọi serializer của postphoto để create từng ấy ảnh, parser_classes = [MultiPartParser, FormParser] để láy ra dạng formdata, sau đó cuối cùng perform create gán cái id của từng ấy ảnh vào post id
 
 
 Email Change: allauth có tính năng cho phép người dùng thay đổi địa chỉ email của họ và xác minh email mới. dj-rest-auth có một view cho việc này (EmailChangeView). Nếu bạn cần tính năng này, bạn có thể thêm:

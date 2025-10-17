@@ -55,30 +55,30 @@ urlpatterns = [
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     #url cho cookie http-only, dùng cho mobile thì dùng mặc định api/auth/login,logout,refresh 
-    path('api/auth/web/login/', CookieLoginView.as_view(), name='cookie_login'),
-    path('api/auth/web/logout/', CookieLogoutView.as_view(), name='cookie_logout'),
-    path('api/auth/web/token/refresh/', CookieTokenRefreshView.as_view(), name='cookie_refresh'),
-    path('api/auth/web/google/login/', CookieGoogleLoginView.as_view(), name='cookie_google_login'),
+    path('api/auth/web/login/', CookieLoginView.as_view(), name='cookie_login'), #login cho cookie
+    path('api/auth/web/logout/', CookieLogoutView.as_view(), name='cookie_logout'), #logout cho cookie
+    path('api/auth/web/token/refresh/', CookieTokenRefreshView.as_view(), name='cookie_refresh'),#refresh token cho cookie
+    path('api/auth/web/google/login/', CookieGoogleLoginView.as_view(), name='cookie_google_login'),#gg login cho cookie
     #url cho xử lý người dùng
-    path('api/user/profile/<int:pk>/',ProfileModify.as_view(),name='profile-modify'),
-    path('api/user/profile/',ProfileList.as_view(), name='profile-list'),
-    path('api/auth/profile/userpage/<int:user>', ProfileUser.as_view(), name='user-info'),
+    path('api/user/profile/<int:pk>/',ProfileModify.as_view(),name='profile-modify'), #lấy ra infor ng dùng thêm sửa xóa
+    path('api/user/profile/',ProfileList.as_view(), name='profile-list'), #lấy tất cả user
+    path('api/auth/profile/userpage/<int:user>', ProfileUser.as_view(), name='user-info'), #lấy ra thông tin chính mình
     path('api/user/',ProfileView.as_view(),name='profile-view'),
 
-    path('api/user/pending-profile/',PendingProfileList.as_view(), name='pending-profile-list'),
+    path('api/user/pending-profile/',PendingProfileList.as_view(), name='pending-profile-list'), #lấy ra tất cả pending profile
 
-    path('api/user/post-photo/<int:post_id>/',PostPhotoListCreate.as_view(),name='post-photo'),
-    path('api/user/post/<int:pk>/',PostModify.as_view(), name='post-modify'),
-    path('api/user/post/show', PostFriend.as_view(), name='post-friend'),
-    path('api/user/post/userpage/<int:user>', PostUser.as_view(), name='post-user'),
-    path('api/user/post/create/',PostCreate.as_view(),name='post-create'),
-    path('api/admin/post/',PostListAll.as_view(), name='post-list'),
+    path('api/user/post-photo/<int:post_id>/',PostPhotoListCreate.as_view(),name='post-photo'), #thêm lấy ra ảnh của post cụ thể 
+    path('api/user/post/<int:pk>/',PostModify.as_view(), name='post-modify'), #thêm sửa xóa post cụ thể
+    path('api/user/post/show', PostFriend.as_view(), name='post-friend'), #Láy ra post của bạn bè
+    path('api/user/post/userpage/<int:user>', PostUser.as_view(), name='post-user'),#lấy ra tất cả post của chính user đó
+    path('api/user/post/create/',PostCreate.as_view(),name='post-create'), #tạo post để gán ảnh
+    path('api/admin/post/',PostListAll.as_view(), name='post-list'), #láy ra tất cả post cho admin
 
-    path('api/user/post-article/', PostArticleListCreate.as_view(), name='post-article-list'),
-    path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'),
+    path('api/user/post-article/', PostArticleListCreate.as_view(), name='post-article-list'), #thêm láy tất cả post article
+    path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể
 
-    path('api/user/comments/post/<int:post_id>',CommentListCreate.as_view(),name='comment-list'),
-    path('api/user/comments/<int:pk>/',CommentModify.as_view(),name='comment-modify'),
+    path('api/user/comments/post/<int:post_id>',CommentListCreate.as_view(),name='comment-list'), #lấy Thêm comments từ post cụ thể
+    path('api/user/comments/<int:pk>/',CommentModify.as_view(),name='comment-modify'), #lấy ra comment từ id
 
     path('api/user/setting/<int:pk>/',SettingModify.as_view(), name='setting-modify'),
 
@@ -87,7 +87,7 @@ urlpatterns = [
     
     path('api/user/friends/<int:user>',FriendList.as_view(),name='user-friend'),
 
-    path('api/user/reaction/<int:post_id>',UserReactionList.as_view(),name='user-reaction')
+    path('api/user/reaction/<int:post_id>',UserReactionList.as_view(),name='user-reaction') #lấy ra tất cả user đã thẻ react post 
 
 ] + router.urls
 

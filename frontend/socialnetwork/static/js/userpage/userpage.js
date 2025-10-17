@@ -115,144 +115,251 @@ function updateReactionButton(reactBtn, type) {
 }
 
 function createReactionBar(postId, reactBtn, wrapper, reactionCount, post) {
-    const bar = document.createElement("div");
-    bar.className = "absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white shadow-lg rounded-full px-2 py-1 flex gap-2 z-50 hidden";
-    let hideTimeout;
+  const bar = document.createElement("div");
+  bar.className =
+    "absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white shadow-lg rounded-full px-2 py-1 flex gap-2 z-50 hidden";
+  let hideTimeout;
 
-    REACTIONS.forEach(r=>{
-        const btn = document.createElement("button");
-        btn.type="button";
-        btn.title = r.label;
-        btn.dataset.type = r.type;
-        btn.className = "text-xl leading-none p-1 rounded-full hover:scale-125 transition-transform outline-none";
-        btn.textContent = r.icon;
+  REACTIONS.forEach((r) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.title = r.label;
+    btn.dataset.type = r.type;
+    btn.className =
+      "text-xl leading-none p-1 rounded-full hover:scale-125 transition-transform outline-none";
+    btn.textContent = r.icon;
 
-        btn.addEventListener("click", async e=>{
-            e.stopPropagation();
-            const res = await reactToPost(postId, r.type);
-            if(res){
-                updateReactionButton(reactBtn, res.status==="added"?res.reaction_type:"");
-                if(Array.isArray(res.count)){
-                    const newTotal = res.count.reduce((sum,x)=>sum+x.total,0);
-                    reactionCount.textContent = newTotal>0?`${newTotal} lượt thích`:"";
-                    post.reactions = res.count;
-                }
-                post.user_is_reaction = res.status==="added"?res.reaction_type:"";
-                reactBtn.dataset.reaction = post.user_is_reaction;
-            }
-            bar.classList.add("hidden");
-        });
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      try {
+        const res = await reactToPost(postId, r.type);
+        if (!res) {
+          bar.classList.add("hidden");
+          return;
+        }
 
-        bar.appendChild(btn);
+        let newReaction = "";
+        if (res.reaction_type) newReaction = res.reaction_type;
+        else if (res.status === "added") newReaction = r.type;
+
+        updateReactionButton(reactBtn, newReaction);
+
+        // cập nhật tổng lượt thích
+        if (Array.isArray(res.count)) {
+          const newTotal = res.count.reduce((sum, x) => sum + x.total, 0);
+          reactionCount.textContent =
+            newTotal > 0 ? `${newTotal} lượt thích` : "";
+          post.reactions = res.count;
+        } else if (typeof res.total === "number") {
+          reactionCount.textContent =
+            res.total > 0 ? `${res.total} lượt thích` : "";
+        }
+
+        post.user_is_reaction = newReaction;
+        reactBtn.dataset.reaction = newReaction;
+      } catch (err) {
+        console.error("Error reacting (bar):", err);
+      } finally {
+        bar.classList.add("hidden");
+      }
     });
 
-    wrapper.addEventListener("mouseenter", ()=>{ clearTimeout(hideTimeout); bar.classList.remove("hidden"); });
-    wrapper.addEventListener("mouseleave", ()=>{ hideTimeout = setTimeout(()=>bar.classList.add("hidden"),100); });
+    bar.appendChild(btn);
+  });
 
-    return bar;
+  wrapper.addEventListener("mouseenter", () => {
+    clearTimeout(hideTimeout);
+    bar.classList.remove("hidden");
+  });
+  wrapper.addEventListener("mouseleave", () => {
+    hideTimeout = setTimeout(() => bar.classList.add("hidden"), 100);
+  });
+
+  return bar;
 }
+
 
 // ======================== POSTS ========================
-function renderPostCard(post){
-    const card = document.createElement("div");
-    card.className = "bg-white rounded-lg shadow p-4 mb-6";
+function renderPostCard(post) {
+  const card = document.createElement("div");
+  card.className = "bg-white rounded-lg shadow p-4 mb-6 relative";
+  card.dataset.postId = post.post_id;
 
-    // Header
-    const header = document.createElement("div");
-    header.className = "flex items-center gap-3";
+  // ===== HEADER =====
+  const header = document.createElement("div");
+  header.className = "flex items-center justify-between";
 
-    const avatar = document.createElement("img");
-    avatar.src = post.user.picture;
-    avatar.alt = "avatar";
-    avatar.className = "w-10 h-10 rounded-full";
+  // --- Left: Avatar + Info
+  const left = document.createElement("div");
+  left.className = "flex items-center gap-3";
 
-    const info = document.createElement("div");
-    const name = document.createElement("p");
-    name.textContent = `${post.user.first_name||""} ${post.user.last_name||""}`.trim();
-    name.className = "font-semibold";
+  const avatar = document.createElement("img");
+  avatar.src = post.user.picture;
+  avatar.alt = "avatar";
+  avatar.className = "w-10 h-10 rounded-full";
 
-    const time = document.createElement("p");
-    time.textContent = new Date(post.created_at).toLocaleString("vi-VN");
-    time.className = "text-sm text-gray-500";
+  const info = document.createElement("div");
+  const name = document.createElement("p");
+  name.className = "font-semibold";
+  name.textContent = `${post.user.first_name || ""} ${post.user.last_name || ""}`.trim();
 
-    info.append(name,time);
-    header.append(avatar,info);
+  const time = document.createElement("p");
+  time.className = "text-sm text-gray-500";
+  time.textContent = new Date(post.created_at).toLocaleString("vi-VN");
 
-    const content = document.createElement("p");
-    content.textContent = post.title;
-    content.className = "mt-3";
+  info.append(name, time);
+  left.append(avatar, info);
 
-    card.append(header, content);
+  // --- Right: Menu "⋯"
+  const menuWrapper = document.createElement("div");
+  menuWrapper.className = "relative";
 
-    // Photos
-    if(post.photos && post.photos.length>0){
-        const grid = document.createElement("div");
-        grid.className="grid grid-cols-2 gap-2 mt-3";
-        post.photos.forEach((p,index)=>{
-            const img = document.createElement("img");
-            img.src=p.photo; img.alt="post image";
-            img.className="rounded-lg cursor-pointer hover:opacity-90 transition";
-            img.addEventListener("click", ()=>{
-                const urls = post.photos.map(x=>x.photo);
-                openPhotoModal(urls,index,post.title||"");
-            });
-            grid.appendChild(img);
-        });
-        card.appendChild(grid);
-    }
+  const menuBtn = document.createElement("button");
+  menuBtn.textContent = "⋯";
+  menuBtn.className = "text-2xl text-gray-500 hover:text-gray-800 px-2 rounded-full";
+  menuWrapper.appendChild(menuBtn);
 
-    // Reaction count & actions
-    const totalReactions = post.reactions?.reduce((sum,r)=>sum+r.total,0) || 0;
-    const reactionCount = document.createElement("button");
-    reactionCount.type="button";
-    reactionCount.className="text-sm text-gray-600 mb-2 hover:underline";
-    reactionCount.textContent = totalReactions>0?`${totalReactions} lượt thích`:"";
-    reactionCount.addEventListener("click",()=>openReactionsModal(post.post_id));
+  const menuDropdown = document.createElement("div");
+  menuDropdown.className = "absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg hidden z-50";
 
-    const actions = document.createElement("div");
-    actions.className="flex justify-between text-gray-600 mt-1";
+  const editBtn = document.createElement("button");
+  editBtn.className = "block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100";
+  editBtn.textContent = "✏️ Chỉnh sửa";
 
-    const reactionWrapper = document.createElement("div");
-    reactionWrapper.className="relative inline-block group";
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "block w-full text-left px-4 py-2 text-red-600 hover:bg-red-100";
+  deleteBtn.textContent = "🗑️ Xóa bài viết";
 
-    const reactBtn = document.createElement("button");
-    reactBtn.type="button";
-    reactBtn.className="flex items-center gap-2 hover:text-indigo-600";
-    updateReactionButton(reactBtn, post.user_is_reaction||"");
+  menuDropdown.append(editBtn, deleteBtn);
+  menuWrapper.append(menuDropdown);
 
-    const reactionBar = createReactionBar(post.post_id, reactBtn, reactionWrapper, reactionCount, post);
-    reactBtn.addEventListener("click", async e=>{
-        e.stopPropagation();
-        const current = reactBtn.dataset.reaction;
-        const res = await reactToPost(post.post_id, current||"like");
-        if(res){
-            updateReactionButton(reactBtn,res.status==="added"?res.reaction_type:"");
-            if(Array.isArray(res.count)){
-                const newTotal = res.count.reduce((sum,x)=>sum+x.total,0);
-                reactionCount.textContent=newTotal>0?`${newTotal} lượt thích`:"";
-                post.reactions=res.count;
-            }
-            post.user_is_reaction=res.status==="added"?res.reaction_type:"";
-            reactBtn.dataset.reaction=post.user_is_reaction;
-        }
+  //Nhấn nút xóa
+  deleteBtn.addEventListener("click",async  (e) => {
+    e.stopPropagation();
+    menuDropdown.classList.add("hidden");
+    await deletePost(post.post_id);
+  });
+  // Toggle menu
+  menuBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    menuDropdown.classList.toggle("hidden");
+  });
+  document.addEventListener("click", () => menuDropdown.classList.add("hidden"));
+
+  // Gắn header
+  header.append(left, menuWrapper);
+  card.appendChild(header);
+
+  // ===== CONTENT =====
+  const content = document.createElement("p");
+  content.className = "mt-3";
+  content.textContent = post.title;
+  card.appendChild(content);
+
+  // ===== PHOTOS =====
+  if (post.photos && post.photos.length > 0) {
+    const grid = document.createElement("div");
+    grid.className = "grid grid-cols-2 gap-2 mt-3";
+
+    const maxVisible = 5;
+    post.photos.slice(0, maxVisible).forEach((p, index) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "relative";
+
+      const img = document.createElement("img");
+      img.src = p.photo;
+      img.alt = "photo";
+      img.className = "rounded-lg cursor-pointer hover:opacity-90 transition w-full h-48 object-cover";
+      img.addEventListener("click", () => {
+        const urls = post.photos.map((x) => x.photo);
+        openPhotoModal(urls, index, post.title || "");
+      });
+      wrapper.appendChild(img);
+
+      // overlay "+x"
+      if (index === maxVisible - 1 && post.photos.length > maxVisible) {
+        const overlay = document.createElement("div");
+        overlay.className =
+          "absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center rounded-lg text-white text-3xl font-bold";
+        overlay.textContent = `+${post.photos.length - maxVisible}`;
+        wrapper.appendChild(overlay);
+      }
+
+      grid.appendChild(wrapper);
     });
 
-    reactionWrapper.append(reactBtn,reactionBar);
+    card.appendChild(grid);
+  }
 
-    const commentBtn = document.createElement("button");
-    commentBtn.className="flex items-center gap-2 hover:text-indigo-600";
-    commentBtn.textContent="🗨️ Comment";
+  // ===== REACTIONS =====
+  const totalReactions = post.reactions?.reduce((sum, r) => sum + r.total, 0) || 0;
+  const reactionCount = document.createElement("button");
+  reactionCount.type = "button";
+  reactionCount.className = "text-sm text-gray-600 mb-2 hover:underline";
+  reactionCount.textContent = totalReactions > 0 ? `${totalReactions} lượt thích` : "";
+  reactionCount.addEventListener("click", () => openReactionsModal(post.post_id));
+  card.appendChild(reactionCount);
 
-    const shareBtn = document.createElement("button");
-    shareBtn.className="flex items-center gap-2 hover:text-indigo-600";
-    shareBtn.textContent="🔂 Share";
+  // ===== ACTIONS =====
+  const actions = document.createElement("div");
+  actions.className = "flex justify-between text-gray-600 mt-1";
 
-    actions.append(reactionWrapper,commentBtn,shareBtn);
+  const reactionWrapper = document.createElement("div");
+  reactionWrapper.className = "relative inline-block group";
 
-    card.append(reactionCount,actions);
+  const reactBtn = document.createElement("button");
+  reactBtn.type = "button";
+  reactBtn.className = "flex items-center gap-2 hover:text-indigo-600";
+  updateReactionButton(reactBtn, post.user_is_reaction || "");
 
-    return card;
+  const reactionBar = createReactionBar(post.post_id, reactBtn, reactionWrapper, reactionCount, post);
+
+reactBtn.addEventListener("click", async (e) => {
+  e.stopPropagation();
+  const res = await reactToPost(post.post_id, "like");
+
+  if (res) {
+    // cập nhật nút
+    updateReactionButton(reactBtn, res.reaction_type || "");
+
+    // cập nhật tổng reactions
+    if (Array.isArray(res.count)) {
+      const newTotal = res.count.reduce((sum, x) => sum + x.total, 0);
+      reactionCount.textContent =
+        newTotal > 0 ? `${newTotal} lượt thích` : "";
+      post.reactions = res.count;
+    }
+
+    // lưu trạng thái mới
+    post.user_is_reaction = res.reaction_type || "";
+    reactBtn.dataset.reaction = post.user_is_reaction;
+  }
+});
+
+
+  reactionWrapper.append(reactBtn, reactionBar);
+
+  const commentBtn = document.createElement("button");
+  commentBtn.className = "flex items-center gap-2 hover:text-indigo-600";
+  commentBtn.textContent = "🗨️ Comment";
+
+  const shareBtn = document.createElement("button");
+  shareBtn.className = "flex items-center gap-2 hover:text-indigo-600";
+  shareBtn.textContent = "🔂 Share";
+
+  actions.append(reactionWrapper, commentBtn, shareBtn);
+  card.append(actions);
+
+  // ===== MENU EVENTS =====
+  editBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    menuDropdown.classList.add("hidden");
+    showToast("⚙️ Tính năng chỉnh sửa chưa được triển khai", "info");
+  });
+
+  return card;
 }
+
 
 async function loadPosts(initial=true){
     const container = document.getElementById("content");
@@ -273,13 +380,15 @@ async function loadPosts(initial=true){
 }
 
 // Infinite scroll chỉ kích hoạt khi là profilePage
-if (document.body.id === "profilePage") {
-    window.addEventListener("scroll", ()=>{
-        if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 200){
-            loadPosts(false);
-        }
-    });
-}
+window.addEventListener("scroll", () => {
+    // Chỉ chạy khi tab "Bài viết" đang active 
+    const activeTab = document.querySelector('#tabs a.border-indigo-600'); 
+    if (activeTab && activeTab.dataset.tab === "posts" &&
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) { //chiều cao của màn hình đang nhìn mà không cuộn + số pixel đã cuộn mà >= tổng độ dài - 200 thì load ra thêm(tức cách đáy 200 thì load ra)
+        loadPosts(false);
+    }
+});
+
 
 // ======================== PHOTO MODAL ========================
 function openPhotoModal(photos,index=0,caption=""){
@@ -426,6 +535,61 @@ function setupTabs(){
         });
     });
 }
+// ======================== DELETE POST ========================
+let postToDeleteId = null;
+
+async function deletePost(postId) {
+  if (!postId) return;
+
+  // Mở modal
+  postToDeleteId = postId;
+  document.getElementById("deleteModal").classList.remove("hidden");
+}
+
+// Nút hủy
+document.getElementById("cancelDelete").addEventListener("click", () => {
+  postToDeleteId = null;
+  document.getElementById("deleteModal").classList.add("hidden");
+});
+
+// Nút xác nhận xóa
+document.getElementById("confirmDelete").addEventListener("click", async () => {
+  if (!postToDeleteId) return;
+
+  try {
+    const res = await authFetch(`http://localhost:8000/api/user/post/${postToDeleteId}/`, {
+      method: "DELETE",
+    });
+
+    if (res.ok) {
+      const article = document.querySelector(`[data-post-id="${postToDeleteId}"]`);
+      if (article) article.remove();
+
+      showToast("✅ Bạn đã xóa bài viết thành công!");
+    } else {
+      showToast("⚠️ Không thể xóa bài viết. Vui lòng thử lại.", "red");
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("⚠️ Lỗi khi xóa bài viết.", "red");
+  } finally {
+    postToDeleteId = null;
+    document.getElementById("deleteModal").classList.add("hidden");
+  }
+});
+
+// Hàm hiển thị toast
+function showToast(message, color = "green") {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.className = `fixed bottom-5 right-5 bg-${color}-500 text-white px-4 py-3 rounded shadow-lg`;
+  toast.classList.remove("hidden");
+
+  setTimeout(() => {
+    toast.classList.add("hidden");
+  }, 3000); // 3 giây
+}
+
 
 // ======================== INIT ========================
 loadUserInfo();
