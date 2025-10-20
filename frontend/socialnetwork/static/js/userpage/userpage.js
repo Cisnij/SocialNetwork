@@ -180,7 +180,7 @@ function createReactionBar(postId, reactBtn, wrapper, reactionCount, post) {
 
 
 // ======================== POSTS ========================
-function renderPostCard(post) {
+export function renderPostCard(post) {
   const card = document.createElement("div");
   card.className = "bg-white rounded-lg shadow p-4 mb-6 relative";
   card.dataset.postId = post.post_id;

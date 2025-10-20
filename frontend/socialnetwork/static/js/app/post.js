@@ -554,8 +554,16 @@ function showToast(message, color = "green") {
     toast.classList.add("hidden");
   }, 3000); // 3 giây
 }
+//===================Chỉnh sửa bài viết=====================
 
 
 // ==================== INIT ====================
-loadPosts(true);
+document.addEventListener("DOMContentLoaded", () => {
+    const container = document.getElementById("post-container");
+    if (container) {
+        loadPosts(true); 
+    } else {
+        console.warn("Element #post-container not found. LoadPosts skipped.");
+    }
+});
 export { renderPost};
