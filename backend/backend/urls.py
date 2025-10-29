@@ -63,11 +63,13 @@ urlpatterns = [
     path('api/user/profile/<int:pk>/',ProfileModify.as_view(),name='profile-modify'), #lấy ra infor ng dùng thêm sửa xóa
     path('api/user/profile/',ProfileList.as_view(), name='profile-list'), #lấy tất cả user
     path('api/auth/profile/userpage/<int:user>', ProfileUser.as_view(), name='user-info'), #lấy ra thông tin chính mình
-    path('api/user/',ProfileView.as_view(),name='profile-view'),
+    path('api/user/',ProfileView.as_view(),name='profile-view'), #lẩy ra thông tin user hiện tại
 
     path('api/user/pending-profile/',PendingProfileList.as_view(), name='pending-profile-list'), #lấy ra tất cả pending profile
 
-    path('api/user/post-photo/<int:post_id>/',PostPhotoListCreate.as_view(),name='post-photo'), #thêm lấy ra ảnh của post cụ thể 
+    path('api/user/post-photo/<int:post_id>/',PostPhotoListCreate.as_view(),name='post-photo'), #thêm lấy ra ảnh của post cụ thể \
+    path('api/user/delete-photo/<int:pk>/',PostPhotoDelete.as_view(),name='post-photo-delete'), #xóa ảnh cụ thể phục vụ chức năng chỉnh sửa post
+    
     path('api/user/post/<int:pk>/',PostModify.as_view(), name='post-modify'), #thêm sửa xóa post cụ thể
     path('api/user/post/show', PostFriend.as_view(), name='post-friend'), #Láy ra post của bạn bè
     path('api/user/post/userpage/<int:user>', PostUser.as_view(), name='post-user'),#lấy ra tất cả post của chính user đó
