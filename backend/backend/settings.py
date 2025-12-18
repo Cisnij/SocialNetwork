@@ -53,6 +53,15 @@ INSTALLED_APPS = [
     'reaction.apps.ReactionConfig',
     #lọc filter cho restframework
     'django_filters',
+    #safe delete
+    'safedelete',
+    #activity stream
+    'actstream',
+    #django-friendship để xây dựng follow
+    'friendship',
+    #django-channels
+    'channels',
+
 
 ]
 
@@ -60,16 +69,16 @@ MIDDLEWARE = [
     "csp.middleware.CSPMiddleware",#csp
     'corsheaders.middleware.CorsMiddleware',# corsheader
 
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.middleware.security.SecurityMiddleware', # các header bảo mật
+    'django.contrib.sessions.middleware.SessionMiddleware', #Quản lý session
+    'django.middleware.common.CommonMiddleware', # Xử lý các request thông thường
+    'django.middleware.csrf.CsrfViewMiddleware',# CSRF chống giả mạo request
+    'django.contrib.auth.middleware.AuthenticationMiddleware', #Xác thực user
+    
+    
+    'django.contrib.messages.middleware.MessageMiddleware',# Hệ thống message Django
+    'django.middleware.clickjacking.XFrameOptionsMiddleware', #bảo vệ web khỏi bị nhúng iframe
     'axes.middleware.AxesMiddleware',#axes
-    
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    
     "silk.middleware.SilkyMiddleware",#silk
     'debug_toolbar.middleware.DebugToolbarMiddleware',#debug tool bar
     'allauth.account.middleware.AccountMiddleware',#allauth
@@ -168,4 +177,13 @@ INTERNAL_IPS = [ # xem ip nào đc xem toolbar
 #cấu hình các file setting nhỏ phụ thuộc
 from .settings_authentication import *
 from .settings_admin import *
+from .settings_backend import *
 #==========================================================================================================================================================================================================
+#Channels
+ASGI_APPLICATION = "backend.asgi.application"
+#redis chạy channels 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}

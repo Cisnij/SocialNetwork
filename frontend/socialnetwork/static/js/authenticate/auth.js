@@ -3,7 +3,7 @@ var accessToken = localStorage.getItem('accessToken');
 async function refreshAccessToken() { // hàm này sẽ được gọi khi accessToken hết hạn
   const res = await fetch('http://localhost:8000/api/auth/web/token/refresh/', {
     method: 'POST',
-    credentials: 'include', // gửi cookie HTTP-only
+    credentials: 'include', // gửi cookie HTTP-only và dùng refresh đổi access token
     headers: {
       'Content-Type': 'application/json'
     }
@@ -18,7 +18,7 @@ async function refreshAccessToken() { // hàm này sẽ được gọi khi acces
   localStorage.setItem('accessToken', accessToken);
 }
 
-async function authFetch(url, options = {}) { // hàm này dùng để sau này fetch cần kiểm tra authentic k, nếu có mới cho post, options dùng để lấy ra method
+async function authFetch(url, options = {}) { // hàm này dùng để sau này fetch cần kiểm tra authentic k, nếu có mới cho post, options dùng để lấy ra method là POST hay GET...
   if (!accessToken) { //chưa đăng nhập
     try {
       await refreshAccessToken();

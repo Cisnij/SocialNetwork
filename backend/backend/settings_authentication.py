@@ -18,8 +18,8 @@ REST_FRAMEWORK={ #Cấu hình token
     ],
     'DEFAULT_THROTTLE_RATES': {
         'register':'20/hour', # giới hạn đăng kí là 5 lần/giờ
-        'cookie_refresh': '30/minute', 
-        'reset_password': '3/hour', 
+        'cookie_refresh': '30/minute', # giới hạn làm mới cookie là 30 lần/phút
+        'reset_password': '3/hour',  # giới hạn yêu cầu đặt lại mật khẩu là 3 lần/giờ
         'google_login': '10/minute', # giới hạn đăng nhập bằng google là 10 lần/phút
         'dj_rest_auth': '20/minute',
         'profile':'100/minute',
@@ -53,7 +53,7 @@ from datetime import timedelta
 SIMPLE_JWT={
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": True,
+    "ROTATE_REFRESH_TOKENS": True, # có nghĩa là nếu hoạt động tiếp tục thì sẽ chưa bị đăng nhập lại để làm mới refresh token, chỉ khi nào tính từ lúc off 7 ngày mới phải đăng nhập lại
     "BLACKLIST_AFTER_ROTATION": True,
 
     "ALGORITHM": "HS256",
@@ -123,16 +123,16 @@ SOCIALACCOUNT_PROVIDERS={
 AXES_ENABLED=True
 AXES_FAILURE_LIMIT=7 #giới hạn lần sai
 AXES_CACHE_TIMEOUT = 60 * 60 # reset lại sau từ n lần sai thành 0 nếu sau 1h
-AXES_COOLOFF_TIME=timedelta(hours=1) #Số giờ cooldown sau 4 lần sai
+AXES_COOLOFF_TIME=timedelta(hours=1) #Số giờ cooldown sau n lần sai
 AXES_LOCK_OUT_AT_FAILURE = True # Khoá tài khoản sau khi vượt quá số lần đăng nhập sai
 AXES_RESET_ON_SUCCESS=True #reset khi đăng nhập thành công
 AXES_USERNAME_FORM_FIELD = 'email' #k dùng username login thì chỉ định email thay thế
 AXES_LOCKOUT_PARAMETERS=['username','ip_address'] #lockout theo username và ip
-AXES_ENABLE_ACCESS_FAILURE_LOG =True
-USE_X_FORWARDED_HOST=True
-X_FRAME_OPTIONS = 'DENY'
-REFERRER_POLICY = 'same-origin'
-IPWARE_USE_X_FORWARDED_FOR = True
+AXES_ENABLE_ACCESS_FAILURE_LOG =True #log lại các lần đăng nhập thất bại
+USE_X_FORWARDED_HOST=True   # nếu dùng proxy ngược như nginx
+X_FRAME_OPTIONS = 'DENY' #Ngăn chặn clickjacking tức là trang web bị load trong iframe của trang khác
+REFERRER_POLICY = 'same-origin'  
+IPWARE_USE_X_FORWARDED_FOR = True 
 IPWARE_IP_HEADER = 'HTTP_X_FORWARDED_FOR'
 
 IPWARE_META_PRECEDENCE_ORDER = [# Thứ tự ưu tiên header để tìm IP (tùy môi trường)
@@ -141,14 +141,14 @@ IPWARE_META_PRECEDENCE_ORDER = [# Thứ tự ưu tiên header để tìm IP (tù
     'HTTP_X_REAL_IP',
     'REMOTE_ADDR',
 ]
-IPWARE_PRIVATE_IP_PREFIX = ('10.', '192.168.', '172.', '127.', 'fc00:')# Dải IP nội bộ (private IP range)
+IPWARE_PRIVATE_IP_PREFIX = ('10.', '192.168.', '172.', '127.', 'fc00:')# Dải IP nội bộ (private IP range) để không ghi lại
 IPWARE_TRUSTED_PROXY_LIST = ['203.0.113.5', '198.51.100.0/24']# Danh sách proxy đáng tin cậy
 AXES_IPWARE_PROXY_COUNT = 1  # số proxy giữa client và server
 AXES_IPWARE_META_PRECEDENCE_ORDER = IPWARE_META_PRECEDENCE_ORDER
 
 #CORS
-CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS')
-CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS')
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS') #danh sách các domain đc phép truy cập api
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS') #danh sách các domain đc phép gửi csrf token
 CORS_ALLOW_CREDENTIALS = True
 from corsheaders.defaults import default_headers
 CORS_ALLOW_HEADERS=list(default_headers)+['authorization','X-CSRFToken'] #thêm csrf token và bearer vào cho phép truy cập
@@ -163,15 +163,16 @@ if not DEBUG:
      SECURE_HSTS_PRELOAD = True
      SECURE_SSL_REDIRECT = True #chuyển hướng http-> https(sau này deploy bật)
 
+
+
+
+#CSP tránh clickjacking và các tấn công XSS
 from csp.constants import SELF, NONE
-
-
-#CSP
 CONTENT_SECURITY_POLICY = {
-    "EXCLUDE_URL_PREFIXES": ["/supremacy/admin",'/api/docs/'],  # ✅ Hợp lý, tránh chặn giao diện admin Django
-    "REPORT_ONLY": False,  # ✅ Dùng chế độ thật, không chỉ ghi log
+    "EXCLUDE_URL_PREFIXES": ["/supremacy/admin",'/api/docs/'],  # Loại trừ trang admin và docs khỏi CSP để tránh lỗi hiển thị
+    "REPORT_ONLY": False,  # Chế độ chỉ báo cáo, không chặn
     "DIRECTIVES": {
-        "default-src": [SELF],  # ✅ Gốc chính là server
+        "default-src": [SELF],  #  Mặc định chỉ cho phép tải tài nguyên từ chính server
         "script-src": [SELF, "accounts.google.com", "apis.google.com"],  # ✅ Cho phép script nội bộ (cần nếu Swagger UI hoặc Django template)
         "style-src": [SELF,"accounts.google.com", "apis.google.com"],  # ✅ Cho phép CSS nội bộ
         "img-src": [SELF, "data:"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
