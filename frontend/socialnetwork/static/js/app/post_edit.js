@@ -11,7 +11,7 @@ function buildPhotoUrl(photoObj) {
     photoObj.image ||
     photoObj.url ||
     photoObj.photo_url ||
-    photoObj.file ||
+    photoObj.file ||  
     "";
   if (!candidate) return null;
   if (candidate === "null" || candidate === "undefined") return null;

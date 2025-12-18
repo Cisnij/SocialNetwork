@@ -55,6 +55,12 @@ INSTALLED_APPS = [
     'django_filters',
     #safe delete
     'safedelete',
+    #activity stream
+    'actstream',
+    #django-friendship để xây dựng follow
+    'friendship',
+    #django-channels
+    'channels',
 
 
 ]
@@ -171,4 +177,13 @@ INTERNAL_IPS = [ # xem ip nào đc xem toolbar
 #cấu hình các file setting nhỏ phụ thuộc
 from .settings_authentication import *
 from .settings_admin import *
+from .settings_backend import *
 #==========================================================================================================================================================================================================
+#Channels
+ASGI_APPLICATION = "backend.asgi.application"
+#redis chạy channels 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
