@@ -129,7 +129,7 @@ class Log(SafeDeleteModel): #sau này dùng django-activity-stream
 #==========================================REALTIME CHAT MODELS==========================================================
 class Conversation(models.Model):
     id=models.BigAutoField(primary_key=True, editable=False)
-    is_group=models.BooleanField(default=False)
+    is_group=models.BooleanField(default=False) 
     created_at=models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"Conversation {self.id}"
@@ -137,7 +137,10 @@ class Conversation(models.Model):
 class ConversationMember(models.Model):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
     user=models.ForeignKey(User, on_delete=models.CASCADE)
+    last_read_message = models.ForeignKey("Message",null=True,blank=True,on_delete=models.SET_NULL)
     joined_at=models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"{self.user.username} in Conversation {self.conversation.id}"
     class Meta:
         unique_together = ('conversation', 'user') # đảm bảo mỗi user chỉ tham gia 1 lần trong 1 conversation
 
@@ -160,13 +163,6 @@ class MessageAttachment(models.Model): #phục vụ gửi file, hình ảnh tron
     file = models.FileField(upload_to='chat/')
     file_type = models.CharField(max_length=20) 
 
-class MessageRead(models.Model):
-    message = models.ForeignKey(Message, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    read_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ('message', 'user') # đảm bảo mỗi user chỉ đánh dấu đã đọc 1 lần cho mỗi message
 
 class MessageRequest(models.Model): #model để lưu lời mời nhắn tin vào hộp thư phụ
     from_user = models.ForeignKey(User, related_name='sent_requests', on_delete=models.CASCADE)

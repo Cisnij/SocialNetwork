@@ -19,7 +19,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 application = ProtocolTypeRouter({
             "http": get_asgi_application(), # Xử lý các yêu cầu HTTP thông thường
             "websocket": AllowedHostsOriginValidator( # Bảo vệ các kết nối WebSocket từ các nguồn không được phép
-                AuthMiddlewareStack( # Xử lý xác thực người dùng cho WebSocket
+                AuthMiddlewareStack( # Xử lý xác thực người dùng cho WebSocket, chỉ dùng cho web vì nó đọc cookie xác thực
                     URLRouter(
                         wsPattern  # Lấy ra từ routing
                     )

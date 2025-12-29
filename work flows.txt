@@ -25,6 +25,8 @@ work flows
 13. thêm thư viện django-activity-stream để tạo log(dùng làm lịch sử hoạt động). Đầu tiên tải thư viện, sau đó thêm vào urls, sau đó đăng kí vào apps.py và cuối cùng chạy signal để tự động chạy. Chức năng nâng cao dùng các hàm helper để lấy hoạt động liên quan tới post và user(thêm vào serializers.py) sau đó xây view
 14. Xây thêm 1 model Log để lấy cái meta data trong action, dùng signal tạo ra
 15. dùng thư viện django-friendship để xây follow, xây serializer từ model của nó, xây views dựa trên serializer, sau đó xây signal. Sửa trong thư viện gốc cái xử lý lọc reject chưa trong gửi lời mời kết bạn, thêm nữa đưa 1 model nào đó lên đầu, ở cancel đem delete xuống dưới
+16. Sửa lại logic của đăng nhập, đăng nhập gg thì sẽ tạo profile và xóa pending profile, tạo tk thì tạo pending profile, thêm extra_data từ goole cung cấp vào profile
+17. xây dựng web socket và channels: logic: nhấn chat-> gọi POST server tạo conversation id nếu chưa có, có thì lấy ra, trả về conversation_id-> mở routing thông qua dùng websocket-> kích hoạt consumer để chat 
 
 
 Email Change: allauth có tính năng cho phép người dùng thay đổi địa chỉ email của họ và xác minh email mới. dj-rest-auth có một view cho việc này (EmailChangeView). Nếu bạn cần tính năng này, bạn có thể thêm:

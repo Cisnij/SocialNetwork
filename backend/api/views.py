@@ -10,6 +10,7 @@ from .pagination import *
 from .signals import unfriended_log
 from rest_framework.parsers import MultiPartParser, FormParser #upload file ảnh
 from django.db.models import Q
+from .permissions import IsConversationMember
 #filter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter,OrderingFilter
@@ -135,7 +136,7 @@ class PostFriend(generics.ListAPIView):#List tất cả post của bạn bè
 
         # bạn bè (list User)
         friends = Friend.objects.friends(user)
-        friends_ids = [u.id for u in friends] #lấy ra tất cả id friend để bỏ vào lọc lấy ra post có user_id=friend
+        friends_ids = [u.id for u in friends] #lấy ra tất cả id friend để bỏ mảng và lọc lấy ra post có user_id=friend
 
         # người mình follow (list User)
         following = Follow.objects.following(user)
@@ -590,3 +591,166 @@ class ListBlockedFromUser(generics.ListAPIView): #danh sách user đã bị ch�
 
     def get_queryset(self):
         return Block.objects.blocking(user=self.request.user)
+    
+#===========================Chat=====================================================================
+class SendMessageAPIView(APIView): #gửi tin nhắn tới cuộc trò chuyện, nên dùng APIView vì có nhiều logic hơn là chỉ tạo và đặc biệt là k cho gửi body mà phải gán người gửi sender vào luôn
+    permission_classes=[IsAuthenticated,IsConversationMember]
+    def post(self,request,pk):
+        conv=get_object_or_404(Conversation, id=pk)
+
+        self.check_object_permissions(request, conv) #kiểm tra permission custom vì dùng APIView nên k tự kiểm tra được
+
+        serializer=MessageSerializer(data=request.data) # tạo serializer từ data gửi lên
+        serializer.is_valid(raise_exception=True) #check valid
+        serializer.save(
+            sender=request.user,
+            conversation_id=conv)
+        return Response(serializer.data,status=201)
+    
+
+class UnsendMessageAPIView(APIView): #action xóa message
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        message = get_object_or_404(Message, pk=pk)
+
+        if message.sender != request.user:
+            raise PermissionDenied("You can only unsend your own message")
+
+        message.delete()
+        return Response({"detail": "Message unsent"}) 
+
+
+class StartConversationAPIView(generics.GenericAPIView): #bấm chat với ai đó sẽ get_or_create cuộc trò chuyện với ng đó, truyền vào id user đó
+    permission_classes = [IsAuthenticated]
+    serializer_class = ConversationSerializer
+
+    def post(self, request):
+        target_id = request.data.get("user_id")
+        target_profile  = get_object_or_404(Profile, id=target_id) #láy ra profile từ id
+        target_user= target_profile.user #lấy ra user từ profile
+        current_user= request.user
+
+        if target_user == current_user:
+            return Response(
+                {"detail": "Cannot chat with yourself"},
+                status=400
+            )
+        convo=( Conversation.objects.filter(is_group=False,conversationmember__user=current_user) #lọc ra đoạn chat 1-1 đã có giữa cả 2, và lọc ra xem member trong đó có mình và ng đó k, nếu có thì true, không thì chưa tạo. Chỉ áp dụng cho đoạn chat 1-1, vì group thì cần thêm member chứ k ấn chat được như 1-1
+               .filter(conversationmember__user=target_user).distinct().first() ) 
+        if not convo: #nếu chưa có thì tạo mới
+            convo= Conversation.objects.create(is_group=False)
+            ConversationMember.objects.bulk_create([ #bulk create là tạo nhiều bảng cùng 1 lúc thay vì 2 lênh riêng biệt gây nhiều truy vấn
+                ConversationMember(conversation=convo, user=current_user),
+                ConversationMember(conversation=convo, user=target_user),
+            ])
+        return Response(
+            self.get_serializer(convo).data,
+            status=200
+        )
+    
+class ConversationListAPIView(generics.ListAPIView): #mở app chat lên sẽ load tất cả đoạn chat
+    serializer_class = ConversationSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
+    
+
+    def get_queryset(self):
+        return Conversation.objects.filter(
+            conversationmember__user=self.request.user
+        ).distinct().prefetch_related("conversationmember_set__user__profile") # khi lấy conversation thì lấy luôn user và profile của member
+     #distinct để tránh trùng lặp, vì 1 conversation có nhiều member nên conversation sẽ bị lặp nhiều lần(ví dụ conv 1 user 1, conv 1 user 2). 
+    
+class ConversationMessage(generics.ListAPIView): #xem tin nhắn cuộc trò chuyện
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = LargePagePagination
+    filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
+    search_fields=['content'] #tìm kiếm trong nội dung tin nhắn
+    ordering_fields=['created_at']
+    filterset_fields = ['sender'] #lọc theo người gửi
+
+    def get_queryset(self):
+        convo_id = self.kwargs.get("pk")
+
+        if self.request.user.is_superuser or self.request.user.is_staff:
+            return Message.objects.filter(conversation_id=convo_id).select_related("sender__profile").prefetch_related("attachments").order_by("created_at")
+            
+        if not ConversationMember.objects.filter(
+            conversation_id=convo_id,
+            user=self.request.user
+        ).exists():
+            raise PermissionDenied("You are not a member of this conversation.")
+
+        return (
+            Message.objects
+            .filter(conversation_id=convo_id) # lọc theo cuộc trò chuyên 
+            .select_related("sender__profile") #lấy ra profile của sender để hiển thị thông tin người gửi đồng thời với message(1-1 với sender)
+            .prefetch_related("attachments") #lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments)
+            .order_by("created_at")
+        )
+
+class MessageRequestList(generics.ListAPIView): #danh sách tin nhắn yêu cầu để khi nhấn fe ấn ok thì post start conversation
+    permission_classes = [IsAuthenticated]
+    serializer_class = MessageRequestSerializer
+    pagination_class = SmallPagePagination
+    filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
+    search_fields=['content']
+    ordering_fields=['created_at']
+
+    def get_queryset(self):
+        return MessageRequest.objects.filter(to_user=self.request.user)
+    
+class MemberOfConversation(generics.ListAPIView): #danh sách thành viên trong cuộc trò chuyện
+    permission_classes = [IsAuthenticated, IsConversationMember]
+    serializer_class = ConversationMemberSerializer
+    filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
+    filter_fields=['user__profile__first_name','user__profile__last_name']
+
+    def get_queryset(self):
+        convo_id = self.kwargs["pk"]
+
+        # 404 trước
+        if not Conversation.objects.filter(id=convo_id).exists():
+            raise NotFound("Conversation not found.")
+
+        return (
+            ConversationMember.objects
+            .filter(conversation_id=convo_id)
+            .select_related("user", "user__profile")
+        )
+
+class SeenMessage(APIView): #đánh dấu đã xem tin nhắn, logic là khi mở trò chuyện sẽ post về server be, be sẽ lấy ra tin nhắn mới nhất và đánh dấu last_read là tin nhắn đó 
+    permission_classes = [IsAuthenticated, IsConversationMember]
+
+    def post(self, request, *args, **kwargs):
+        convo_id = self.kwargs.get("pk")
+
+        conversation = get_object_or_404(Conversation, id=convo_id)
+        last_message = (Message.objects.filter(conversation=conversation).order_by("-created_at").first()) #lấy ra tin nhắn mới nhất trong cuộc trò chuyện
+        if not last_message:
+            return Response({"detail": "No messages"}, status=200)
+
+        ConversationMember.objects.filter(
+            conversation=conversation,
+            user=request.user
+        ).update(last_read_message=last_message)
+
+        return Response({
+            "detail": "Conversation marked as seen",
+            "last_read_message_id": last_message.id
+        })
+    
+class UpdateMessage(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, pk):
+        message = get_object_or_404(Message, pk=pk)
+        if message.sender != request.user:
+            raise PermissionDenied("You can only edit your own message")
+        new_content= request.data.get('new_content')
+        serializer= MessageSerializer(message, data={'content':new_content}, partial=True)# vì là update nên phải truyền instance là message đầu tiên, còn create thì k cần truyền instance, partial true để chỉ cập nhật 1 số trường
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+    
+class CreateGroupChat()

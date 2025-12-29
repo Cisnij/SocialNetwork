@@ -140,4 +140,4 @@ class PostPhotoAdmin(SafeDeleteAdmin):
             obj.delete(force_policy=HARD_DELETE)
         self.message_user(request, f"⚠️ Đã xóa cứng {count} ảnh.")
     
-admin.site.register([Conversation,ConversationMember,Message,MessageAttachment,MessageRead,MessageRequest])
+admin.site.register([Conversation,ConversationMember,Message,MessageAttachment,MessageRequest])

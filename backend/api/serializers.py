@@ -68,7 +68,7 @@ class PostSerializer(serializers.ModelSerializer):
         return reactions
     
     def get_user_is_reaction(self,obj):
-        user=self.context.get('request').user #lấy ra user đã react, self.context.get(request) là lấy request truyền vào và sau đó lấy ra .user
+        user=self.context.get('request').user #lấy ra user đã react, self.context.get(request) là lấy request truyền vào theo dạng json serializer và sau đó lấy ra .user
         if not user.is_authenticated:
             return False
         qs = UserReaction.objects.filter(
@@ -181,3 +181,71 @@ class BlockSerializer(serializers.ModelSerializer):
     class Meta:
         model = Block
         fields = ['blocker', 'blocked', 'blocked_at']
+
+#===========================REALTIME CHAT SERIALIZERS=================================================================================
+
+class ConversationMemberSerializer(serializers.ModelSerializer):
+    user = ProfileSerializer(source="user.profile", read_only=True)
+    class Meta:
+        model = ConversationMember
+        fields = [
+            "user",
+            "joined_at",
+        ]
+
+class ConversationSerializer(serializers.ModelSerializer):
+    members = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Conversation
+        fields = [
+            "id",
+            "is_group",
+            "created_at",
+            "members",
+            "last_message",
+        ]
+
+    def get_members(self, obj):
+        members = obj.conversationmember_set.select_related(
+            "user__profile"
+        )
+        return ConversationMemberSerializer(members, many=True).data
+
+    def get_last_message(self, obj):
+        msg = (
+            Message.objects
+            .filter(conversation=obj)
+            .order_by("-created_at")
+            .first()
+        )
+        return MessageSerializer(msg).data if msg else None
+    
+class MessageAttachmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MessageAttachment
+        fields = '__all__'
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender = ProfileSerializer(source="sender.profile", read_only=True)
+    attachments = MessageAttachmentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Message
+        fields = [
+            "id",
+            "conversation",
+            "sender",
+            "content",
+            "message_type",
+            "attachments",
+            "created_at",
+        ]
+
+class MessageRequestSerializer(serializers.ModelSerializer):
+    from_user=ProfileSerializer(source='from_user.profile', read_only=True)
+    to_user=ProfileSerializer(source='to_user.profile', read_only=True)
+    class Meta:
+        model = MessageRequest
+        fields = '__all__'
