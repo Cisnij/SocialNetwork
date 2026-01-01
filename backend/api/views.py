@@ -8,7 +8,7 @@ from rest_framework.exceptions import NotFound,PermissionDenied
 from rest_framework import viewsets
 from .pagination import *
 from .signals import unfriended_log
-from rest_framework.parsers import MultiPartParser, FormParser #upload file ảnh
+from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
 from django.db.models import Q
 from .permissions import IsConversationMember
 #filter
@@ -95,14 +95,14 @@ class PostPhotoListCreate(generics.ListCreateAPIView):
         post_id = self.kwargs.get("post_id")
         return PostPhoto.objects.filter(post_id=post_id)
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer): #trước khi lưu ảnh vào postphoto thì gán post id vào cùng
         post_id = self.kwargs.get("post_id")
-        serializer.save(post_id=post_id)
+        serializer.save(post_id=post_id) # gán id vào
     
     def post(self, request, *args, **kwargs): #gọi hàm post để thêm nhiều ảnh vào 1 post
         post_id=self.kwargs.get('post_id')
         post=get_object_or_404(Post,pk=post_id) #pk ở đây là bí danh alias cho primary key ở tất cả bảng, vì v khi gọi pk thì dùng pk luôn k cần tên
-        photos = request.FILES.getlist('photo')
+        photos = request.FILES.getlist('photo') # lấy data dạng file từ form data gửi lên và dùng form parser để parse về json và lưu
         for photo in photos:
             photo= PostPhoto.objects.create(post=post,photo=photo) 
         return Response({'message': 'success'})
@@ -595,16 +595,17 @@ class ListBlockedFromUser(generics.ListAPIView): #danh sách user đã bị ch�
 #===========================Chat=====================================================================
 class SendMessageAPIView(APIView): #gửi tin nhắn tới cuộc trò chuyện, nên dùng APIView vì có nhiều logic hơn là chỉ tạo và đặc biệt là k cho gửi body mà phải gán người gửi sender vào luôn
     permission_classes=[IsAuthenticated,IsConversationMember]
+    
     def post(self,request,pk):
         conv=get_object_or_404(Conversation, id=pk)
 
-        self.check_object_permissions(request, conv) #kiểm tra permission custom vì dùng APIView nên k tự kiểm tra được
+        self.check_object_permissions(request, conv) #kiểm tra permission custom vì dùng APIView nên k tự kiểm tra được khác với generics là tự động kiểm tra permission object
 
         serializer=MessageSerializer(data=request.data) # tạo serializer từ data gửi lên
         serializer.is_valid(raise_exception=True) #check valid
         serializer.save(
             sender=request.user,
-            conversation_id=conv)
+            conversation=conv)
         return Response(serializer.data,status=201)
     
 
@@ -625,9 +626,8 @@ class StartConversationAPIView(generics.GenericAPIView): #bấm chat với ai đ
     permission_classes = [IsAuthenticated]
     serializer_class = ConversationSerializer
 
-    def post(self, request):
-        target_id = request.data.get("user_id")
-        target_profile  = get_object_or_404(Profile, id=target_id) #láy ra profile từ id
+    def post(self, request,user_id): # hàm post sẽ tự lấy tham số truyền vào từ url là post_id
+        target_profile = get_object_or_404(Profile, id=user_id) #láy ra profile từ id
         target_user= target_profile.user #lấy ra user từ profile
         current_user= request.user
 
@@ -645,7 +645,7 @@ class StartConversationAPIView(generics.GenericAPIView): #bấm chat với ai đ
                 ConversationMember(conversation=convo, user=target_user),
             ])
         return Response(
-            self.get_serializer(convo).data,
+            self.get_serializer(convo).data, #get_serializer là hàm của GenericAPIView để lấy serializer đã khai báo ở trên
             status=200
         )
     
@@ -753,4 +753,4 @@ class UpdateMessage(APIView):
         serializer.save()
         return Response(serializer.data)
     
-class CreateGroupChat()
+

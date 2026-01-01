@@ -17,19 +17,26 @@ REST_FRAMEWORK={ #Cấu hình token
         'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'register':'20/hour', # giới hạn đăng kí là 5 lần/giờ
+        'register':'5/hour', # giới hạn đăng kí là 5 lần/giờ
         'cookie_refresh': '30/minute', # giới hạn làm mới cookie là 30 lần/phút
         'reset_password': '3/hour',  # giới hạn yêu cầu đặt lại mật khẩu là 3 lần/giờ
         'google_login': '10/minute', # giới hạn đăng nhập bằng google là 10 lần/phút
         'dj_rest_auth': '20/minute',
-        'profile':'100/minute',
+        'profile':'20/hour',
         'post':'100/minute',
         'post_article':'100/minute',
-        'comment':'100/minute',
+        'comment':'30/minute',
         'setting':'10/minute',
-        'add_friend':'1000/minute',
-        'create_post':'100/minute',
+        'add_friend':'100/hour',
+        'create_post':'30/hour',
+        'follow_user': '100/minute',
+        'block_user': '50/minute'
     },
+    "DEFAULT_PARSER_CLASSES": [ #dùng cho phép nhận nhiều định dạng dữ liệu khác nhau 
+        "rest_framework.parsers.JSONParser",
+        "rest_framework.parsers.FormParser",
+        "rest_framework.parsers.MultiPartParser",
+    ]
     
 }
 REST_AUTH={ #Đăng kí trả về json

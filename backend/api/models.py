@@ -137,7 +137,7 @@ class Conversation(models.Model):
 class ConversationMember(models.Model):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
     user=models.ForeignKey(User, on_delete=models.CASCADE)
-    last_read_message = models.ForeignKey("Message",null=True,blank=True,on_delete=models.SET_NULL)
+    last_read_message = models.ForeignKey("Message",null=True,blank=True,on_delete=models.SET_NULL) #ondelete set null để khi message bị xóa thì trường này sẽ null
     joined_at=models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"{self.user.username} in Conversation {self.conversation.id}"
@@ -156,7 +156,7 @@ class Message(SafeDeleteModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
-        return f"Message {self.id} in Conversation {self.conversation.id} by {self.sender.username}"
+        return f"Message {self.content} in Conversation {self.conversation.id} by {self.sender.username}"
 
 class MessageAttachment(models.Model): #phục vụ gửi file, hình ảnh trong chat
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='attachments')
