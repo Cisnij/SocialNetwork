@@ -39,7 +39,7 @@ router.register(r'posts',PostViewSet,basename='reactions')
 urlpatterns = [
     path('supremacy/admin/', admin.site.urls),
     path('i18n/', include('django.conf.urls.i18n')),
-    path('',include('api.urls')),
+    path('',include('api.urls')), # muốn tạo v1,v2 thì nên đem cái urls này vào api.urls, sau đó tạo app mới và include vào đây là v2.Ví dụ path('v1',include('api.urls')), path('v2',include('api2.urls'))
     #url của dj-rest-auth và allauth và simplejwt  để authentication 
     path('api/auth/registration/',CustomeRegisterView.as_view(), name='custom_register'),#có throttle
     path('api/auth/password/reset/',CustomePasswordResetView.as_view(), name='custom_password_reset'),#có throttle
@@ -99,16 +99,20 @@ urlpatterns = [
     path('api/unblock/<int:pk>',UnblockView.as_view(),name='unblock'), #unblock 1 người
     path('api/block/touser',ListBlockedUser.as_view(),name='listblocktouser'), #danh sách người block user
     path('api/block/user',ListBlockedFromUser.as_view(),name='listblockfromuser'), #danh sách block của user
-    
-
-    
+    #url lấy ra user đã react và activity
     path('api/user/reaction/<int:post_id>',UserReactionList.as_view(),name='user-reaction'), #lấy ra tất cả user đã thẻ react post 
     path('api/user/activity/', UserActivity.as_view(), name='user-activity'), #lấy ra lịch sử hoạt động của user hoặc tất cả user
     path('api/admin/logs/', LogList.as_view(), name='log-list'), #lấy ra tất cả log cho admin
-
-    #channels
-    # path('room/<str:room_name>/<str:username>/',views.RoomView,name="room"),
-
+    # url cho chat
+    path('api/chat/messages/send/<int:pk>/', SendMessageAPIView.as_view(), name='send-message'), #gửi tin nhắn trong cuộc trò chuyện cụ thể
+    path('api/chat/messages/unsend/<int:pk>/', UnsendMessageAPIView.as_view(), name='unsend-message'), # thu hồi tin nhắn
+    path('api/chat/conversations/', ConversationListAPIView.as_view(), name='conversation-list'), #danh sách cuộc trò chuyện của user
+    path('api/chat/start/<int:user_id>/', StartConversationAPIView.as_view(), name='conversation-start'), #bắt đầu cuộc trò chuyện mới
+    path('api/chat/messages/list/<int:pk>/', ConversationMessage.as_view(), name='message-list'), #danh sách tin nhắn trong cuộc trò chuyện cụ thể
+    path('api/chat/messages/request/',MessageRequestList.as_view(),name='message-request-list'), #danh sách lời mời nhắn tin
+    path('api/chat/conversation/members/<int:pk>/', MemberOfConversation.as_view(), name='conversation-members'), #danh sách thành viên trong cuộc trò chuyện
+    path('api/chat/messages/seen/<int:pk>/', SeenMessage.as_view(), name='mark-message-seen'), #đánh dấu tin nhắn đã xem
+    path('api/chat/messages/update/<int:pk>/', UpdateMessage.as_view(), name='update-message'), #cập nhật tin nhắn đã gửi
 ] + router.urls
 
 

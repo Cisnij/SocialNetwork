@@ -29,7 +29,7 @@ class PostPhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model=PostPhoto
         fields='__all__'
-        extra_kwargs = {"post": {"read_only": True}} #để k bị lỗi khi post ảnh lên vì post là foreign key bắt buộc phải có giá trị nhưng khi post ảnh thì chưa có post_id nên để read only
+        extra_kwargs = {"post": {"read_only": True}} #để k bị lỗi khi post ảnh lên vì post là foreign key bắt buộc phải có giá trị nhưng khi post ảnh thì chưa có post_id nên để read only, read only là chỉ để đọc mà k cần nạp data từ fe gửi
 
 class PostSerializer(serializers.ModelSerializer):
     url =serializers.SerializerMethodField() #thêm field vào json trả về 
@@ -63,12 +63,12 @@ class PostSerializer(serializers.ModelSerializer):
         reactions = (
             Reaction.objects.filter(content_type=content_type, object_id=obj.pk)
             .values("settings__name")          # group by theo tên reaction like, wow...
-            .annotate(total=Count("reactions"))  # đếm số user reaction
+            .annotate(total=Count("reactions"))  # đếm số user reaction, annotate là để thêm 1 field tính toán vào kết quả querry, total là tên field hiển thị ra json
         )
         return reactions
     
     def get_user_is_reaction(self,obj):
-        user=self.context.get('request').user #lấy ra user đã react, self.context.get(request) là lấy request truyền vào và sau đó lấy ra .user
+        user=self.context.get('request').user #lấy ra user đã react, self.context.get(request) là lấy request truyền vào theo dạng json serializer và sau đó lấy ra .user
         if not user.is_authenticated:
             return False
         qs = UserReaction.objects.filter(
@@ -181,3 +181,82 @@ class BlockSerializer(serializers.ModelSerializer):
     class Meta:
         model = Block
         fields = ['blocker', 'blocked', 'blocked_at']
+
+#===========================REALTIME CHAT SERIALIZERS=================================================================================
+
+class ConversationMemberSerializer(serializers.ModelSerializer):
+    user = ProfileSerializer(source="user.profile", read_only=True)
+    last_read_message= serializers.SerializerMethodField
+    class Meta:
+        model = ConversationMember
+        fields = [
+            "user",
+            "joined_at",
+            "last_read_message",
+        ]
+    def get_last_read_message(self, obj):
+        return obj.last_read_message.id if obj.last_read_message else None # là lấy ra cái id của tin nhắn cuối, vì last_read_message là foreign key nên lấy ra id, obj chính là member 
+
+class ConversationSerializer(serializers.ModelSerializer):
+    members = ConversationMemberSerializer( # vì là serializer này lấy ra model conversation,mà conversationmember là FK, nên đoạn conversation sẽ là obj khi được gọi, gọi ra member thì chỉ cần set
+        source="conversationmember_set",
+        many=True,
+        read_only=True
+    )
+    last_message = serializers.SerializerMethodField()
+    class Meta:
+        model = Conversation
+        fields = [
+            "id",
+            "is_group",
+            "created_at",
+            "members",
+            "last_message",
+        ]
+    def get_last_message(self, obj):
+        msg = (
+            Message.objects
+            .filter(conversation=obj)
+            .order_by("-created_at")
+            .first()
+        )
+        return MessageSerializer(msg).data if msg else None #return theo kiểu serializer của message nếu có msg, k thì trả về None
+    
+class MessageAttachmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MessageAttachment
+        fields = '__all__'
+
+class MessageSerializer(serializers.ModelSerializer):
+    #khi người dùng post sẽ tạo content cho message, validate data rồi lấy ra cái attatchment có liên quan từ messageattachment đã validate rồi lưu vào message
+    sender = ProfileSerializer(source="sender.profile", read_only=True)
+    attachments = MessageAttachmentSerializer(many=True, read_only=True)
+    conversation = serializers.PrimaryKeyRelatedField(read_only=True) #láy ra khóa chính của model khác có liên quan đến object này, Ví dụ gửi message thì message đó thuộc về conversation nào thì lấy ra id của conversation đó
+    
+    class Meta:
+        model = Message
+        fields = [
+            "id",
+            "conversation",
+            "sender",
+            "content",
+            "message_type",
+            "attachments",
+            "created_at",
+        ]
+        read_only_fields = [ # định nghĩa các trường chỉ đọc
+            "id",
+            "conversation",
+            "sender",
+            "attachments",
+            "created_at",
+        ]
+    def get_conversation(self, obj):
+        return obj.conversation.id
+
+class MessageRequestSerializer(serializers.ModelSerializer):
+    from_user=ProfileSerializer(source='from_user.profile', read_only=True)
+    to_user=ProfileSerializer(source='to_user.profile', read_only=True)
+    class Meta:
+        model = MessageRequest
+        fields = '__all__'
