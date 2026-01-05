@@ -167,6 +167,7 @@ class MessageAttachment(models.Model): #phục vụ gửi file, hình ảnh tron
 class MessageRequest(models.Model): #model để lưu lời mời nhắn tin vào hộp thư phụ
     from_user = models.ForeignKey(User, related_name='sent_requests', on_delete=models.CASCADE)
     to_user = models.ForeignKey(User, related_name='received_requests', on_delete=models.CASCADE)
+    content=models.TextField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"Message Request from {self.from_user.username} to {self.to_user.username}"

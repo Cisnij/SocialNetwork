@@ -1,0 +1,129 @@
+Social Media Web Application (Backend)
+Overview
+
++ This project is a backend system for a social media web application, developed independently using Python, Django, and Django REST Framework.
++ The system is built with an API-first architecture, focusing on scalability, security, and extensibility.
+It supports core social media features such as authentication, posts, social interactions, activity logging, and real-time chat.
++ This is a personal project with a broad scope, developed alongside continuous learning and research, and is currently under active development.
+
+🛠 Tech Stack
+Backend: Python,Django, Django REST Framework
+Frontend: JavaScript, HTML, CSS
+
++ Authentication & Security:
+JWT Authentication (SimpleJWT)
+dj-rest-auth for API-based login/logout
+django-allauth (Google OAuth2 login)
+django-axes + ipware (brute-force protection, IP-based lockout)
+CORS & CSP configuration for API security
+Email verification & password reset via SMTP (Gmail)
+
++ Core Features: User & Profile
+
+View, update, and delete user profiles
+Admin access to all profiles
+User settings management
+
++ Posts & Content
+
+CRUD APIs for posts and articles
+Upload multiple images per post (multipart/form-data)
+Post visibility based on friendship, follow, and block rules
+Pagination, filtering, searching, and ordering
+Admin access to all posts
+
++ Comments & Reactions
+
+Create, update, delete comments
+Like / reaction system on posts
+Filter reactions by type
+User activity tracking on content interactions
+
++ Social Interactions
+
+Friend request system:
+Send, accept, reject, cancel, unfriend
+Follow / unfollow users
+Block / unblock users
+Full permission checks to prevent invalid actions
+Automatic cleanup of relationships when blocking users
+
++ Activity & Logging
+
+User activity stream using django-activity-stream
+Action logging (actor, verb, target, timestamp)
+Admin log monitoring
+Paginated activity history APIs
+
++ Real-time Chat System
+
+One-to-one conversation creation
+Message sending, editing, and unsending
+Conversation membership permissions
+Message seen/read tracking
+Conversation list & message history APIs
+Optimized queries with select_related and prefetch_related
+Built with Django Channels & Redis
+
++ API Capabilities
+
+JWT-based authentication
+Scoped rate throttling for spam prevention
+Filtering, searching, and ordering with django-filter
+Multipart & JSON request parsing
+Auto-generated API documentation with drf-spectacular
+
++ Development & Performance
+
+Pagination strategies for large datasets
+Query optimization (select_related, prefetch_related)
+Django Silk integration for performance profiling
+Structured logging for monitoring and debugging
+
++ Key Libraries Used (Selected)
+
+django-rest-framework
+
+dj-rest-auth
+
+django-allauth
+
+django-axes
+
+django-cors-headers
+
+django-guardian
+
+django-activity-stream
+
+Django Channels + Redis
+
+Celery (background tasks)
+
+drf-spectacular
+
+Additional libraries are used for performance optimization, admin enhancements, testing, and future feature expansion.
+
++  Future Plans & Roadmap
+
+Advanced Authentication & Security such as 2FA, CAPCHA, CLOUDFLARE
+
+Advanced Post & Content Features such as bookmark functionality, restore posts, scheduled post publishing or academic articles with PDF export and post visibility levels
+
+Real-time & Social Enhancements such as sharing images in chat,  online/offline presence tracking in real time 
+
+Reactions, Comments & Engagement such as real-time like and reaction updates and star rating system for acedemic posts
+
+Notifications & Events such as background task processing using **Celery**
+
+Search & Discovery
+
+Image & Media Processing
+
+Analytics & Monitoring
+
+AI & Third-party Integrations
+
+Deployment & Scalability
+
+Mobile Development (Long-term)
