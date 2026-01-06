@@ -253,10 +253,3 @@ class MessageSerializer(serializers.ModelSerializer):
         ]
     def get_conversation(self, obj):
         return obj.conversation.id
-
-class MessageRequestSerializer(serializers.ModelSerializer):
-    from_user=ProfileSerializer(source='from_user.profile', read_only=True)
-    to_user=ProfileSerializer(source='to_user.profile', read_only=True)
-    class Meta:
-        model = MessageRequest
-        fields = '__all__'

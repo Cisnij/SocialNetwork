@@ -27,7 +27,7 @@ work flows
 15. dùng thư viện django-friendship để xây follow, xây serializer từ model của nó, xây views dựa trên serializer, sau đó xây signal. Sửa trong thư viện gốc cái xử lý lọc reject chưa trong gửi lời mời kết bạn, thêm nữa đưa 1 model nào đó lên đầu, ở cancel đem delete xuống dưới
 16. Sửa lại logic của đăng nhập, đăng nhập gg thì sẽ tạo profile và xóa pending profile, tạo tk thì tạo pending profile, thêm extra_data từ goole cung cấp vào profile
 17. xây dựng web socket và channels: logic: nhấn chat-> gọi POST server tạo conversation id nếu chưa có, có thì lấy ra, trả về conversation_id-> mở routing thông qua dùng websocket-> kích hoạt consumer để chat 
-
+18. Request message, lúc start conversation nếu là friend thì status là accept còn k thì là pending, xây 2 api accept và reject message request để thay đổi status
 
 Email Change: allauth có tính năng cho phép người dùng thay đổi địa chỉ email của họ và xác minh email mới. dj-rest-auth có một view cho việc này (EmailChangeView). Nếu bạn cần tính năng này, bạn có thể thêm:
 path('api/auth/email/change/', EmailChangeView.as_view(), name='rest_email_change'),

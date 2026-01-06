@@ -81,7 +81,6 @@ urlpatterns = [
     path('api/user/comments/post/<int:post_id>',CommentListCreate.as_view(),name='comment-list'), #lấy Thêm comments từ post cụ thể
     path('api/user/comments/<int:pk>/',CommentModify.as_view(),name='comment-modify'), #lấy ra comment từ id
     path('api/user/setting/<int:pk>/',SettingModify.as_view(), name='setting-modify'),
-
     #url xử lý bạn bè, follow
     path("api/friends/request/<int:pk>/", SendFriendRequestView.as_view(), name="send-friend-request"), #gửi lời mời kết bạn
     path("api/friends/requests/incoming/", IncomingFriendRequestsView.as_view(), name="incoming-requests"), #lấy ra lời mời kết bạn đã nhận
@@ -108,8 +107,9 @@ urlpatterns = [
     path('api/chat/messages/unsend/<int:pk>/', UnsendMessageAPIView.as_view(), name='unsend-message'), # thu hồi tin nhắn
     path('api/chat/conversations/', ConversationListAPIView.as_view(), name='conversation-list'), #danh sách cuộc trò chuyện của user
     path('api/chat/start/<int:user_id>/', StartConversationAPIView.as_view(), name='conversation-start'), #bắt đầu cuộc trò chuyện mới
+    path('api/chat/accept/conversation/<int:conv_id>',AcceptMessageRequest.as_view(),name='accept-conversation'),
+    path('api/chat/reject/conversation/<int:conv_id>',RejectMessageRequest.as_view(),name='reject-conversation'),
     path('api/chat/messages/list/<int:pk>/', ConversationMessage.as_view(), name='message-list'), #danh sách tin nhắn trong cuộc trò chuyện cụ thể
-    path('api/chat/messages/request/',MessageRequestList.as_view(),name='message-request-list'), #danh sách lời mời nhắn tin
     path('api/chat/conversation/members/<int:pk>/', MemberOfConversation.as_view(), name='conversation-members'), #danh sách thành viên trong cuộc trò chuyện
     path('api/chat/messages/seen/<int:pk>/', SeenMessage.as_view(), name='mark-message-seen'), #đánh dấu tin nhắn đã xem
     path('api/chat/messages/update/<int:pk>/', UpdateMessage.as_view(), name='update-message'), #cập nhật tin nhắn đã gửi

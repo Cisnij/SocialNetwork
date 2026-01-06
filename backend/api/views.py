@@ -11,6 +11,8 @@ from .signals import unfriended_log
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
 from django.db.models import Q
 from .permissions import IsConversationMember
+from django.db import transaction # tạo đồng bộ db
+from rest_framework import status
 #filter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter,OrderingFilter
@@ -102,9 +104,12 @@ class PostPhotoListCreate(generics.ListCreateAPIView):
     def post(self, request, *args, **kwargs): #gọi hàm post để thêm nhiều ảnh vào 1 post
         post_id=self.kwargs.get('post_id')
         post=get_object_or_404(Post,pk=post_id) #pk ở đây là bí danh alias cho primary key ở tất cả bảng, vì v khi gọi pk thì dùng pk luôn k cần tên
+        if post.user != request.user and not request.user.is_staff: # không phải là user chủ post kh được upload
+            raise PermissionDenied()
         photos = request.FILES.getlist('photo') # lấy data dạng file từ form data gửi lên và dùng form parser để parse về json và lưu
-        for photo in photos:
-            photo= PostPhoto.objects.create(post=post,photo=photo) 
+        with transaction.atomic():
+            for photo in photos:
+                photo= PostPhoto.objects.create(post=post,photo=photo) 
         return Response({'message': 'success'})
 
 class PostPhotoDelete(generics.DestroyAPIView): #xóa ảnh (chức năng của sửa post)
@@ -365,7 +370,8 @@ class SendFriendRequestView(generics.CreateAPIView): #tạo lời mời kết b�
             return Response({"error": "Cannot send friend request due to blocking"}, status=400)
         
         # Tạo request
-        req = Friend.objects.add_friend(request.user, to_user, message="")
+        with transaction.atomic():
+            req = Friend.objects.add_friend(request.user, to_user, message="")
 
         serializer = self.get_serializer(req, context={"request": request})
         return Response(serializer.data, status=201)
@@ -459,14 +465,16 @@ class UnfriendView(generics.DestroyAPIView): #hủy kết bạn
         profile = get_object_or_404(Profile, id=profile_id)
         friend_user = profile.user
 
+        if not Friend.objects.are_friends(request.user, friend_user): #kiểm tra có phải là bạn trước khi xóa
+            return Response({"error": "Not friends"}, status=400)
         # Xóa bạn bè
-        Friend.objects.remove_friend(request.user, friend_user)
-        
-        unfriended_log.send( #hook thẳng signal vào view
-            sender=self.__class__, 
-            user=request.user, 
-            target=friend_user,
-            verb="unfriended",)
+        with transaction.atomic():
+            Friend.objects.remove_friend(request.user, friend_user)     
+            unfriended_log.send( #hook thẳng signal vào view
+                sender=self.__class__, 
+                user=request.user, 
+                target=friend_user,
+                verb="unfriended",)
         
         return Response({"detail": "Unfriended"})
 
@@ -547,18 +555,18 @@ class BlockView(generics.CreateAPIView): # chặn người dùng
         if Block.objects.is_blocked(request.user, user):
             return Response({"detail": "You have already blocked this user."}, status=400)
         
-        #Xóa follow nếu có, delete() khi không có bản ghi ở trên querryset cũng sẽ k báo lỗi
-        Follow.objects.filter(follower=request.user, followee=user).delete()
-        Follow.objects.filter(follower=user, followee=request.user).delete()
-        #Xóa bạn nếu có
-        Friend.objects.filter(from_user=request.user, to_user=user).delete()
-        Friend.objects.filter(from_user=user, to_user=request.user).delete()
-        #Xóa lời mời kb 
-        FriendshipRequest.objects.filter(from_user=request.user, to_user=user).delete()
-        FriendshipRequest.objects.filter(from_user=user, to_user=request.user).delete()
+        with transaction.atomic():
+            #Xóa follow nếu có, delete() khi không có bản ghi ở trên querryset cũng sẽ k báo lỗi    
+            Follow.objects.filter(follower=request.user, followee=user).delete()
+            Follow.objects.filter(follower=user, followee=request.user).delete()
+            #Xóa bạn nếu có
+            Friend.objects.filter(from_user=request.user, to_user=user).delete()
+            Friend.objects.filter(from_user=user, to_user=request.user).delete()
+            #Xóa lời mời kb 
+            FriendshipRequest.objects.filter(from_user=request.user, to_user=user).delete()
+            FriendshipRequest.objects.filter(from_user=user, to_user=request.user).delete()
+            Block.objects.add_block(request.user,profile.user)
 
-
-        Block.objects.add_block(request.user,profile.user)
         return Response({'detail':'Blocked'},status=201)
 
 class UnblockView(generics.DestroyAPIView): # bỏ chặn người dùng
@@ -598,9 +606,13 @@ class SendMessageAPIView(APIView): #gửi tin nhắn tới cuộc trò chuyện,
     
     def post(self,request,pk):
         conv=get_object_or_404(Conversation, id=pk)
-
         self.check_object_permissions(request, conv) #kiểm tra permission custom vì dùng APIView nên k tự kiểm tra được khác với generics là tự động kiểm tra permission object
 
+        if conv.status == 'pending': # dành cho message request khi chưa là bạn thì phải check, nếu là người nhận đc request thì phải accept mới được gửi tin nhắn
+            first_message = Message.objects.filter(conversation=conv).order_by('created_at').first()
+            if first_message and request.user != first_message.sender:
+                raise PermissionDenied("You must accept the request before replying")
+            
         serializer=MessageSerializer(data=request.data) # tạo serializer từ data gửi lên
         serializer.is_valid(raise_exception=True) #check valid
         serializer.save(
@@ -622,33 +634,130 @@ class UnsendMessageAPIView(APIView): #action xóa message
         return Response({"detail": "Message unsent"}) 
 
 
+
 class StartConversationAPIView(generics.GenericAPIView): #bấm chat với ai đó sẽ get_or_create cuộc trò chuyện với ng đó, truyền vào id user đó
     permission_classes = [IsAuthenticated]
     serializer_class = ConversationSerializer
 
-    def post(self, request,user_id): # hàm post sẽ tự lấy tham số truyền vào từ url là post_id
+    def post(self, request, user_id): # hàm post sẽ tự lấy tham số truyền vào từ url là post_id
         target_profile = get_object_or_404(Profile, id=user_id) #láy ra profile từ id
-        target_user= target_profile.user #lấy ra user từ profile
-        current_user= request.user
+        target_user = target_profile.user #lấy ra user từ profile
+        current_user = request.user
 
         if target_user == current_user:
             return Response(
                 {"detail": "Cannot chat with yourself"},
-                status=400
+                status=status.HTTP_400_BAD_REQUEST
             )
-        convo=( Conversation.objects.filter(is_group=False,conversationmember__user=current_user) #lọc ra đoạn chat 1-1 đã có giữa cả 2, và lọc ra xem member trong đó có mình và ng đó k, nếu có thì true, không thì chưa tạo. Chỉ áp dụng cho đoạn chat 1-1, vì group thì cần thêm member chứ k ấn chat được như 1-1
-               .filter(conversationmember__user=target_user).distinct().first() ) 
+
+        if Block.objects.is_blocked(current_user, target_user) or Block.objects.is_blocked(target_user, current_user):
+            return Response(
+                {"detail": "You cannot start a conversation with this user"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        convo = (
+            Conversation.objects.filter(
+                is_group=False,
+                conversationmember__user=current_user
+            ) #lọc ra đoạn chat 1-1 đã có giữa cả 2, và lọc ra xem member trong đó có mình và ng đó k, nếu có thì true, không thì chưa tạo. Chỉ áp dụng cho đoạn chat 1-1, vì group thì cần thêm member chứ k ấn chat được như 1-1
+            .filter(conversationmember__user=target_user)
+            .distinct()
+            .first()
+        )
+
+        is_friend = Friend.objects.are_friends(current_user, target_user)
+        status_value = 'accept' if is_friend else 'pending'
+
         if not convo: #nếu chưa có thì tạo mới
-            convo= Conversation.objects.create(is_group=False)
-            ConversationMember.objects.bulk_create([ #bulk create là tạo nhiều bảng cùng 1 lúc thay vì 2 lênh riêng biệt gây nhiều truy vấn
-                ConversationMember(conversation=convo, user=current_user),
-                ConversationMember(conversation=convo, user=target_user),
-            ])
+            with transaction.atomic(): # đồng bộ database, 1 là thành công hết 2 là 1 cái fail sẽ rollback
+                convo = Conversation.objects.create(
+                    is_group=False,
+                    status=status_value
+                )
+                ConversationMember.objects.bulk_create([ #bulk create là tạo nhiều bảng cùng 1 lúc thay vì 2 lênh riêng biệt gây nhiều truy vấn
+                    ConversationMember(conversation=convo, user=current_user),
+                    ConversationMember(conversation=convo, user=target_user),
+                ])
         return Response(
             self.get_serializer(convo).data, #get_serializer là hàm của GenericAPIView để lấy serializer đã khai báo ở trên
-            status=200
+            status=status.HTTP_200_OK
         )
-    
+
+class AcceptMessageRequest(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, conv_id):
+        conv = get_object_or_404(Conversation, pk=conv_id)
+
+        if conv.is_group:# chỉ áp dụng cho chat 1-1 và bỏ qua nếu là group
+            return Response(
+                {"detail": "Invalid conversation"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if conv.status != 'pending':# chỉ accept khi đang pending
+            return Response({"detail": "Conversation is not pending"},status=status.HTTP_400_BAD_REQUEST)
+        
+        if not ConversationMember.objects.filter(conversation=conv,user=request.user).exists():# user phải là member
+            return Response(
+                {"detail": "You are not a member of this conversation"},
+                status=status.HTTP_403_FORBIDDEN
+            ) 
+        
+        first_message = (# lấy message đầu tiên
+            Message.objects.filter(conversation=conv).order_by('created_at').first()
+        ) 
+        # nếu chưa có message thì không cho accept
+        if not first_message:
+            return Response(
+                {"detail": "No message request to accept"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if Block.objects.is_blocked(request.user, first_message.sender) or Block.objects.is_blocked(first_message.sender, request.user): #kiểm tra người gửi request có bị mình block trước đó k
+            return Response({"error": "Cannot accept request due to blocking"}, status=400)
+        
+        # người gửi message đầu tiên KHÔNG được accept
+        if request.user == first_message.sender:
+            return Response(
+                {"detail": "You cannot accept your own message request"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        conv.status = 'accept'
+        conv.save()
+        return Response(
+            {"detail": "Message request accepted"},
+            status=status.HTTP_200_OK
+        )
+
+class RejectMessageRequest(APIView):
+    def post(self,request,conv_id):
+        conv=get_object_or_404(Conversation,pk=conv_id)
+        if conv.is_group:
+            return Response({'invalid'},status=400)
+        if not ConversationMember.objects.filter(conversation=conv,user=request.user).exists():
+            return Response({'You are not member of this Conversation'},status=400)
+        if conv.status=='accept':
+            return Response({'This conversation has already accepted'},status=400)
+        first_message= Message.objects.filter(conversation=conv).order_by('created_at').first()
+        if not first_message:
+            return Response(
+                {"detail": "No message request to reject"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if request.user == first_message.sender: # ng gửi message đầu tiên không được reject
+            return Response(
+                {"detail": "You cannot reject your own message request"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        with transaction.atomic():
+            conv.delete()
+        return Response(
+            {"detail": "Message delete"},
+            status=status.HTTP_200_OK
+        )
+        
+
 class ConversationListAPIView(generics.ListAPIView): #mở app chat lên sẽ load tất cả đoạn chat
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
@@ -690,17 +799,7 @@ class ConversationMessage(generics.ListAPIView): #xem tin nhắn cuộc trò chu
             .order_by("created_at")
         )
 
-class MessageRequestList(generics.ListAPIView): #danh sách tin nhắn yêu cầu để khi nhấn fe ấn ok thì post start conversation
-    permission_classes = [IsAuthenticated]
-    serializer_class = MessageRequestSerializer
-    pagination_class = SmallPagePagination
-    filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
-    search_fields=['content']
-    ordering_fields=['created_at']
 
-    def get_queryset(self):
-        return MessageRequest.objects.filter(to_user=self.request.user)
-    
 class MemberOfConversation(generics.ListAPIView): #danh sách thành viên trong cuộc trò chuyện
     permission_classes = [IsAuthenticated, IsConversationMember]
     serializer_class = ConversationMemberSerializer
@@ -753,4 +852,5 @@ class UpdateMessage(APIView):
         serializer.save()
         return Response(serializer.data)
     
+
 
