@@ -20,6 +20,7 @@ from django.contrib.auth.models import User
 from .filters import UserReactionFilter
 from rest_framework.response import Response
 #friendship xay dựng hệ thống follow bạn bè
+from friendship.models import Friend
 
 
 
@@ -366,7 +367,7 @@ class SendFriendRequestView(generics.CreateAPIView): #tạo lời mời kết b�
             return Response({"error": "Friend request already sent"}, status=400)
 
         # Kiểm tra xem có bị chặn không
-        if Block.objects.is_blocked(request.user, to_user) or Block.objects.is_blocked(to_user, request.user):
+        if Block.objects.is_blocked(request.user, to_user):
             return Response({"error": "Cannot send friend request due to blocking"}, status=400)
         
         # Tạo request
@@ -503,7 +504,7 @@ class FollowView(generics.CreateAPIView): # theo dõi người dùng
             return Response({"error": "Already following"}, status=400)
         
         #kiểm tra block 
-        if Block.objects.is_blocked(request.user, user_to_follow) or Block.objects.is_blocked(user_to_follow, request.user):
+        if Block.objects.is_blocked(request.user, user_to_follow):
             return Response({"error": "Cannot follow user due to blocking"}, status=400)
         
         Follow.objects.add_follower(request.user, user_to_follow)
@@ -650,7 +651,7 @@ class StartConversationAPIView(generics.GenericAPIView): #bấm chat với ai đ
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if Block.objects.is_blocked(current_user, target_user) or Block.objects.is_blocked(target_user, current_user):
+        if Block.objects.is_blocked(current_user, target_user):
             return Response(
                 {"detail": "You cannot start a conversation with this user"},
                 status=status.HTTP_403_FORBIDDEN
@@ -714,7 +715,7 @@ class AcceptMessageRequest(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        if Block.objects.is_blocked(request.user, first_message.sender) or Block.objects.is_blocked(first_message.sender, request.user): #kiểm tra người gửi request có bị mình block trước đó k
+        if Block.objects.is_blocked(request.user, first_message.sender): #kiểm tra người gửi request có bị mình block trước đó k
             return Response({"error": "Cannot accept request due to blocking"}, status=400)
         
         # người gửi message đầu tiên KHÔNG được accept
@@ -847,10 +848,31 @@ class UpdateMessage(APIView):
         if message.sender != request.user:
             raise PermissionDenied("You can only edit your own message")
         new_content= request.data.get('new_content')
-        serializer= MessageSerializer(message, data={'content':new_content}, partial=True)# vì là update nên phải truyền instance là message đầu tiên, còn create thì k cần truyền instance, partial true để chỉ cập nhật 1 số trường
+        serializer= MessageSerializer(message, data={'content':new_content}, partial=True)# vì là update nên phải truyền instance là message đầu tiên, còn create thì k cần truyền instance, partial true để chỉ cập nhật 1 số trường, nếu k có nó sẽ yêu cầu truyền đủ field để cập nhật
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
     
 
+class ProfileRelationship(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request, profile_id):#get khác post là chỉ dùng khi lấy dữ liệu. Còn post thì dùng khi thay đổi csdl như tạo update
+        profile = get_object_or_404(Profile, pk=profile_id)
+
+        target_user = profile.user
+        current_user = request.user
+
+        if target_user == current_user:
+            return Response({"status": "myself"})
+        if Block.objects.is_blocked(current_user, target_user):
+            return Response({"status": "blocked"})
+        if Friend.objects.are_friends(current_user, target_user):
+            return Response({"status": "friend"})
+        if FriendshipRequest.objects.filter(from_user=current_user,to_user=target_user).exists():
+            return Response({"status": "request_sent"})
+        if FriendshipRequest.objects.filter(from_user=target_user,to_user=current_user).exists():
+            return Response({"status": "request_received"})
+        if Follow.objects.follows(current_user, target_user):
+            return Response({"status": "following"})
+        return Response({"status": "none"})
