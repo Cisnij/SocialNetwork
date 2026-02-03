@@ -483,10 +483,21 @@ class UnfriendView(generics.DestroyAPIView): #hủy kết bạn
 
 class FriendListView(generics.ListAPIView): #danh sách bạn bè
     permission_classes = [IsAuthenticated]
-    serializer_class = UserSerializer # vì trong model friendship lấy user làm khóa ngoại nên phải dùng user serializer để parse ra json
+    serializer_class = FriendSerializer 
 
     def get_queryset(self):
-        return Friend.objects.friends(self.request.user)
+        return Friend.objects.filter(from_user=self.request.user)
+    
+class FriendUser(generics.ListAPIView):
+    permission_classes=[IsAuthenticated]
+    serializer_class = FriendSerializer
+    
+    def get_queryset(self):
+        user_id = self.kwargs.get("pk")
+        profile = get_object_or_404(Profile,id=user_id)
+        user= profile.user
+        return Friend.objects.filter(from_user=user)
+    
     
 class FollowView(generics.CreateAPIView): # theo dõi người dùng
     permission_classes = [IsAuthenticated]
