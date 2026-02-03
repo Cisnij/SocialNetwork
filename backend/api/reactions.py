@@ -10,12 +10,12 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
 #flow: nhấn like, kiểm tra reactiontype, ko có thì trả về lỗi, có thì check trong reaction setting có cái type đó k, nếu có thì tạo ra reactions sau đó check nếu nhấn 2 lần thì hủy, đổi cảm xúc thì cập nhât
 #reaction là bảng ghi đếm like nên sẽ k bị xóa, còn user reaction mới là cái record từng user và sẽ bị xóa nếu unlike
-
+# nên dùng viewset nếu url dạng /api/post/id/react, và gom nhiều hành động trong 1 resource( ví dụ sau này comment share like), vì viewset tích hợp đc nhiều vào 1 class thay vì viết nhiều apiview con
 class PostViewSet(viewsets.ViewSet): #ViewSet khác modelViewSet là nó không cung cấp sẵn crud mà mình tự định nghĩa qua @action
     permission_classes = [IsAuthenticated]
 
     @action(detail=True, methods=['post']) #tạo ra url riêng biệt cho post
-    def react(self, request, pk=None): #tên react sẽ tạo ra url có tên nó vì dùng @action
+    def react(self, request, pk=None): #tên react sẽ tạo ra url có tên nó vì dùng @action,pk null tránh lỗi khi k truyền, có thì sẽ có giá trị
         reaction_type = request.data.get("reaction_type")
         if not reaction_type:
             return Response({"detail": "reaction_type is required"}, status=400)

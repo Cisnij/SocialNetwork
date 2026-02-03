@@ -49,6 +49,7 @@ class ProfileList(generics.ListAPIView):#List tất cả profile
     filterset_fields=['first_name','last_name','phone_number','date_of_birth'] # các trường để tìm kiếm theo trường đó 
     search_fields=['first_name','last_name','phone_number'] #tìm kiếm
     ordering_fields=['id','created_at'] #sắp xếp theo thứ tự tăng giảm dần 
+    pagination_class = LargePagePagination
 
     def get_queryset(self):
         user=self.request.user
@@ -346,15 +347,16 @@ class SendFriendRequestView(generics.CreateAPIView): #tạo lời mời kết b�
     serializer_class = FriendShipRequestSerializer
 
     def create(self, request, *args, **kwargs):
-        to_user_id = self.kwargs.get("pk")      # 🔥 Lấy từ URL
-
-        # Kiểm tra ID hợp lệ
-        if request.user.id == int(to_user_id):
-            return Response({"error": "Cannot send friend request to yourself"}, status=400)
-
+        to_user_id = self.kwargs.get("pk")      # Lấy từ URL
+        
         # Lấy user từ Profile 
         profile = get_object_or_404(Profile, id=to_user_id)
         to_user = profile.user
+        
+        # Kiểm tra ID hợp lệ
+        if request.user == profile.user:
+            return Response({"error": "Cannot send friend request to yourself"}, status=400)
+
 
         # Kiểm tra xem đã là bạn bè chưa
         if Friend.objects.are_friends(request.user, to_user):
@@ -627,7 +629,6 @@ class UnsendMessageAPIView(APIView): #action xóa message
 
     def post(self, request, pk):
         message = get_object_or_404(Message, pk=pk)
-
         if message.sender != request.user:
             raise PermissionDenied("You can only unsend your own message")
 
@@ -876,3 +877,5 @@ class ProfileRelationship(APIView):
         if Follow.objects.follows(current_user, target_user):
             return Response({"status": "following"})
         return Response({"status": "none"})
+    
+   
