@@ -114,6 +114,10 @@ urlpatterns = [
     path('api/chat/conversation/members/<int:pk>/', MemberOfConversation.as_view(), name='conversation-members'), #danh sách thành viên trong cuộc trò chuyện
     path('api/chat/messages/seen/<int:pk>/', SeenMessage.as_view(), name='mark-message-seen'), #đánh dấu tin nhắn đã xem
     path('api/chat/messages/update/<int:pk>/', UpdateMessage.as_view(), name='update-message'), #cập nhật tin nhắn đã gửi
+    #fire base notification
+    path("fcm-token/", SaveFCMTokenView.as_view()),
+    #in-app notification
+    path("api/notifications/", NotifiationListView.as_view(), name="notification-list"),
 ] + router.urls
 
 

@@ -55,8 +55,8 @@ class ProfileList(generics.ListAPIView):#List tất cả profile
         user=self.request.user
         if user.is_superuser or user.is_staff:
             return Profile.objects.all()
-        else:
-            return Profile.objects.filter(user=user)
+        # return Profile.objects.filter(user=user)
+        return Profile.objects.all()
 
 class ProfileUser(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
@@ -210,7 +210,8 @@ class PostCreate(generics.CreateAPIView):
         serializer.save(user=self.request.user)
 
 class PostListAll(generics.ListAPIView):
-    permission_classes=[IsAdminUser]
+    # permission_classes=[IsAdminUser]
+    permissions_classes =[IsAuthenticated]
     serializer_class=PostSerializer
     filter_backends=[DjangoFilterBackend,OrderingFilter,SearchFilter]
     filter_fields=['title','created_at']
@@ -267,8 +268,8 @@ class CommentListCreate(generics.ListCreateAPIView): #thêm list comment
         user=self.request.user
         if not post_id:
             raise NotFound("Cần truyền ID post để truy cập.")
-        if user.is_superuser or user.is_staff:
-            return Comment.objects.all()
+        # if user.is_superuser or user.is_staff:
+        #     return Comment.objects.all()
         return Comment.objects.filter(post_id=post_id)
     
     def perform_create(self, serializer): #gán user và post_id khi tạo comment
@@ -808,7 +809,7 @@ class ConversationMessage(generics.ListAPIView): #xem tin nhắn cuộc trò chu
             Message.objects
             .filter(conversation_id=convo_id) # lọc theo cuộc trò chuyên 
             .select_related("sender__profile") #lấy ra profile của sender để hiển thị thông tin người gửi đồng thời với message(1-1 với sender)
-            .prefetch_related("attachments") #lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments)
+            .prefetch_related("attachments") #lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments 1-n)
             .order_by("created_at")
         )
 
@@ -888,5 +889,46 @@ class ProfileRelationship(APIView):
         if Follow.objects.follows(current_user, target_user):
             return Response({"status": "following"})
         return Response({"status": "none"})
+#===============================Thông báo in-app==========================================
+
+class NotifiationListView(generics.ListAPIView):
+    permission_classes= [IsAuthenticated]
+    serializer_class= NotificationSerializer
     
-   
+    def get_queryset(self):
+        user = self.request.user
+        post_ct= ContentType.objects.get_for_model(Post)
+        comments= (
+            Comment.objects
+            .filter(post__user=user)   # comment trên post của mình
+            .exclude(user=user)        # không lấy comment của chính mình
+            .select_related("user", "post") # lấy luôn thông tin user và post
+            .order_by("-created_at")
+        )
+        reactions = UserReaction.objects.filter(
+            reaction__content_type=post_ct, # lọc ra model post
+            reaction__object_id__in=Post.objects.filter(user=user).values_list("post_id", flat=True) # đem vào list các id của user
+        ).exclude(user=user)
+        
+        from itertools import chain
+        return sorted( #sắp xếp 
+            chain(comments, reactions), #chain để gộp 2 list thành 1 list
+            key=lambda x: x.created_at if hasattr(x, "created_at") else x.created, #nếu có field created_at thì lấy ra và sắp xếp
+            reverse=True # sắp xếp giảm dần
+        )
+        
+
+#===========================Firebase=======================================
+class SaveFCMTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        token = request.data.get("token")# nhận token từ client gửi lên
+        if not token:
+            return Response({"error": "missing token"}, status=400)
+
+        FCMToken.objects.update_or_create( # nếu có thì update còn không thì cập nhật 
+            token=token,
+            defaults={"user": request.user}
+        )
+        return Response({"ok": True})

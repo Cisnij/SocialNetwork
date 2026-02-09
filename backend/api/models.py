@@ -164,4 +164,10 @@ class MessageAttachment(models.Model): #phục vụ gửi file, hình ảnh tron
     file = models.FileField(upload_to='chat/')
     file_type = models.CharField(max_length=20) 
 
+#Firebase Token 
 
+class FCMToken(models.Model): #đại diện cho 1 app, 1 thiết bị, 1 lần cài 
+    user = models.ForeignKey(User,on_delete=models.CASCADE)
+    token = models.CharField(max_length=255, unique=True)
+    device = models.CharField(max_length=20, default="android")
+    updated_at = models.DateTimeField(auto_now=True)

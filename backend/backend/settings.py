@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'friendship',
     #django-channels
     'channels',
+    
 
 
 ]

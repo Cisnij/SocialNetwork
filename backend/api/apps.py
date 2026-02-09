@@ -17,10 +17,13 @@ class ApiConfig(AppConfig):
         from .models import Profile, Post, PostArticle, Comment
         from reaction.models import UserReaction
         from friendship.models import Friend, FriendshipRequest,Follow,Block
+        
         #registry để giúp đăng ký các model với activity stream ghi log
         registry.register(get_user_model()) #đăng ký model User
         registry.register(Profile, Post, PostArticle, Comment, UserReaction, Friend, FriendshipRequest, Follow, Block)
-        #ngăn xóa log khi xóa cứng 
+        
+        #import firebase
+        import api.firebase #file firebase.py đã tạo 
     
 
 

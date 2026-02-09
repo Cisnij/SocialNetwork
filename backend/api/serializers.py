@@ -88,6 +88,7 @@ class PostArticalSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     post = PostSerializer(read_only=True) # để show ra post có tên gì... trong response
+    user = ProfileSerializer(source="user.profile", read_only=True)
     class Meta:
         model=Comment
         fields='__all__'
@@ -253,3 +254,35 @@ class MessageSerializer(serializers.ModelSerializer):
         ]
     def get_conversation(self, obj):
         return obj.conversation.id
+
+#==========================in-app noti ===============================
+class NotificationSerializer(serializers.Serializer):
+    id = serializers.SerializerMethodField()
+    actor = serializers.SerializerMethodField()
+    verb = serializers.SerializerMethodField()
+    post_id = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+    #sau khi đã có các comment và react trên post mình thì thực hiện phân loại
+    
+    def get_id(self, obj):
+        return obj.pk #lấy ra id của object đang được serializer
+
+    def get_actor(self, obj):
+        return f'{obj.user.first_name } {obj.user.last_name}' #lấy ra email của user thực hiện hành động, cả comment và react sau lọc đều có trường user
+
+    def get_verb(self, obj):
+        if isinstance(obj, Comment): # nếu obj là của comment
+            return "commented"
+        if isinstance(obj, UserReaction): #nếu obj là của react
+            return "reacted"
+        return ""
+
+    def get_post_id(self, obj): #post chắc chắn có vì cả 2 là sự kiện post
+        if isinstance(obj, Comment):
+            return obj.post.post_id
+        if isinstance(obj, UserReaction):
+            return obj.reaction.object_id
+        return None
+
+    def get_created_at(self, obj):
+        return getattr(obj, "created_at", getattr(obj, "created", None))

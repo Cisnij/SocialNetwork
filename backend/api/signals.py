@@ -18,6 +18,9 @@ from friendship.signals import (
     friendship_request_canceled,
     friendship_request_accepted,
 )
+#firebase notification
+from .firebase import push_to_user
+
 
 # #xây tín hiệu tự động tạo pending profile khi tạo user
 # @receiver(post_save,sender=User)# có nghĩa là chạy sau khi sender là user gửi tín hiệu, đây là mặc định, post la sau khi tạo user
@@ -374,4 +377,23 @@ def log_block_deleted(sender, instance, **kwargs):
             "blocked_id": instance.blocked.id,
             "status": "unblock user"
         }
+    )
+#Notification
+@receiver(action) # bắt tín hiệu action của activity stream 
+def push_from_activity(sender,verb,action_object=None,target=None,**kwargs):
+    actor = sender
+    # chỉ quan tâm reaction, những thứ post các thứ không quan tâm
+    if not isinstance(action_object, UserReaction):
+        return
+    post = target  # target = Post
+    # vareturn, nếu k có thuộc tính user trong post thì return ngay
+    if not hasattr(post, "user"):
+        return
+    # không push cho chính mình
+    if post.user_id == actor.id:
+        return
+    push_to_user(
+        post.user,
+        title="Có người tương tác",
+        body=f"{actor.username} {verb} bài viết của bạn"
     )
