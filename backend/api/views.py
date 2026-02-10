@@ -30,10 +30,13 @@ class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa prof
     serializer_class=ProfileSerializer
     throttle_classes=[ScopedRateThrottle]
     throttle_scope='profile'
+    
+    def perform_update(self, serializer): # gán user khi update
+        serializer.save(user=self.request.user)  # Lưu các thay đổi được thực hiện trên đối tượng Profile
 
     def get_object(self): #nên dùng get object thay vì get querry vì ở đây cần lấy chỉ 1 đối tượng, get querryset thường dùng trả nhiều đối tượng 
         user = self.request.user 
-        profile_id= self.kwargs.get('pk') #cách lấy ra từ url
+        profile_id= self.kwargs.get('pk') #cách lấy ra từ urlS
 
         if user.is_superuser or user.is_staff:
             if not profile_id:
@@ -894,25 +897,29 @@ class ProfileRelationship(APIView):
 class NotifiationListView(generics.ListAPIView):
     permission_classes= [IsAuthenticated]
     serializer_class= NotificationSerializer
+    pagination_class =LargePagePagination
     
     def get_queryset(self):
         user = self.request.user
-        post_ct= ContentType.objects.get_for_model(Post)
-        comments= (
+        post_ct= ContentType.objects.get_for_model(Post) # lấy ra content type cho post
+        
+        comments= ( #lọc ra tất cả comment trên post mình
             Comment.objects
             .filter(post__user=user)   # comment trên post của mình
             .exclude(user=user)        # không lấy comment của chính mình
             .select_related("user", "post") # lấy luôn thông tin user và post
             .order_by("-created_at")
         )
-        reactions = UserReaction.objects.filter(
+        reactions = UserReaction.objects.filter( #lọc ra reaction trên post mình
             reaction__content_type=post_ct, # lọc ra model post
             reaction__object_id__in=Post.objects.filter(user=user).values_list("post_id", flat=True) # đem vào list các id của user
         ).exclude(user=user)
+        fr_requests= FriendshipRequest.objects.filter(to_user=user)
+        follow_requests= Follow.objects.filter(followee=user)
         
         from itertools import chain
         return sorted( #sắp xếp 
-            chain(comments, reactions), #chain để gộp 2 list thành 1 list
+            chain(comments, reactions, fr_requests, follow_requests), #chain để gộp 2 list thành 1 list
             key=lambda x: x.created_at if hasattr(x, "created_at") else x.created, #nếu có field created_at thì lấy ra và sắp xếp
             reverse=True # sắp xếp giảm dần
         )

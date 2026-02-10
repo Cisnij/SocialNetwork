@@ -249,7 +249,7 @@ def copy_to_log(sender, instance, created, **kwargs):
 
 
 #=======================LOG CHO FRIENDSHIP ============================================================================
-@receiver(friendship_request_created) #gửi lời mời kết bạn
+@receiver(friendship_request_created) #log gửi lời mời kết bạn 
 def log_friend_request_created(sender, **kwargs):
     action.send(
         sender.from_user,
@@ -263,17 +263,18 @@ def log_friend_request_created(sender, **kwargs):
         }
     )
 
-@receiver(friendship_request_canceled) #log hủy lời mời kết bạn
-def log_friend_request_canceled(sender, **kwargs):
+
+@receiver(friendship_request_canceled) #log hủy lời mời kb 
+def log_friend_request_canceled(sender, instance, **kwargs):
     action.send(
-        sender.to_user,
-        verb="canceled friend request",
-        target=sender.from_user,
+        instance.from_user,
+        verb='canceled',
+        target=instance.to_user,
         data={
-            "friendship_request_id": sender.pk,   # sẽ là None vì delete rồi
-            "from_user_id": sender.from_user.id,
-            "to_user_id": sender.to_user.id,
-            "status": "canceled friend request"
+            "friendship_request_id": instance.pk,
+            "from_user_id": instance.from_user.id,
+            "to_user_id": instance.to_user.id,
+            "status": "canceled friend request",
         }
     )
 

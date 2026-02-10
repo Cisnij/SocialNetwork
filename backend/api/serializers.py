@@ -19,6 +19,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model=Profile
         fields='__all__'
+        extra_kwargs = {"user": {"read_only": True}} # loại trừ trường user là read only 
     
 class PendingProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -268,14 +269,26 @@ class NotificationSerializer(serializers.Serializer):
         return obj.pk #lấy ra id của object đang được serializer
 
     def get_actor(self, obj):
-        return f'{obj.user.first_name } {obj.user.last_name}' #lấy ra email của user thực hiện hành động, cả comment và react sau lọc đều có trường user
-
+        if isinstance(obj, Comment):
+            return f'{obj.user.first_name} {obj.user.last_name}' #lấy ra email của user thực hiện hành động, cả comment và react sau lọc đều có trường user
+        if isinstance(obj, UserReaction):
+            return f'{obj.user.first_name} {obj.user.last_name}'
+        if isinstance(obj, FriendshipRequest):
+            return f'{obj.from_user.first_name} {obj.from_user.last_name}'
+        if isinstance(obj, Follow):
+            return f'{obj.follower.first_name} {obj.follower.last_name}' 
+        
     def get_verb(self, obj):
-        if isinstance(obj, Comment): # nếu obj là của comment
+        if isinstance(obj, Comment): # nếu obj là của comment , isinstance là kiểm tra đối tượng có phải là của 1 lớp nào
             return "commented"
         if isinstance(obj, UserReaction): #nếu obj là của react
             return "reacted"
-        return ""
+        if isinstance(obj, FriendshipRequest):
+            if Friend.objects.are_friends(obj.from_user, obj.to_user): #nếu đã là bạn bè thì return accept
+                return 'accepted'
+            return "requested"
+        if isinstance(obj, Follow):
+            return "followed"
 
     def get_post_id(self, obj): #post chắc chắn có vì cả 2 là sự kiện post
         if isinstance(obj, Comment):
@@ -285,4 +298,4 @@ class NotificationSerializer(serializers.Serializer):
         return None
 
     def get_created_at(self, obj):
-        return getattr(obj, "created_at", getattr(obj, "created", None))
+        return getattr(obj, "created_at", getattr(obj, "created", None)) #get attr nếu có trả ra k là none

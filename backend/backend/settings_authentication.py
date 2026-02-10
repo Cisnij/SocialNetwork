@@ -137,7 +137,7 @@ AXES_USERNAME_FORM_FIELD = 'email' #k dùng username login thì chỉ định em
 AXES_LOCKOUT_PARAMETERS=['username','ip_address'] #lockout theo username và ip
 AXES_ENABLE_ACCESS_FAILURE_LOG =True #log lại các lần đăng nhập thất bại
 USE_X_FORWARDED_HOST=True   # nếu dùng proxy ngược như nginx
-X_FRAME_OPTIONS = 'DENY' #Ngăn chặn clickjacking tức là trang web bị load trong iframe của trang khác
+X_FRAME_OPTIONS = 'SAMEORIGIN' #Ngăn chặn clickjacking tức là trang web bị load trong iframe của trang khác
 REFERRER_POLICY = 'same-origin'  
 IPWARE_USE_X_FORWARDED_FOR = True 
 IPWARE_IP_HEADER = 'HTTP_X_FORWARDED_FOR'
@@ -185,14 +185,14 @@ CONTENT_SECURITY_POLICY = {
         "img-src": [SELF, "data:"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
         "connect-src": [SELF,"wss://localhost:8000","accounts.google.com", "oauth2.googleapis.com",'http://localhost:8000', "apis.google.com",],  # ✅ Cho phép fetch/xhr từ chính server
         "form-action": [SELF],  # ✅ Không cho gửi form ra ngoài
-        "frame-ancestors": [NONE],  # ✅ Ngăn clickjacking
+        "frame-ancestors": [SELF],  # ✅ Ngăn clickjacking
         "base-uri": [SELF],  # ✅ Giới hạn `<base>` tag
         "object-src": [NONE],  # ✅ Ngăn Flash, PDF embeds
         "font-src": [SELF, "fonts.gstatic.com"],# Cho phép nhúng font nếu dùng Google Font hoặc font local       
         "media-src": [SELF],  # Cho phép nhúng audio/video bạn host, nếu video/ảnh hosted trên server
         "frame-src": ["https://www.youtube.com", "https://player.vimeo.com", "accounts.google.com"]
     }
-}
+}   
 
 
 

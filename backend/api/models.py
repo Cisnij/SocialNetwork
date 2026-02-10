@@ -115,8 +115,12 @@ class Log(SafeDeleteModel): #sau này dùng django-activity-stream
     created_log_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         # Cố gắng parse JSON để có một chuỗi mô tả dễ đọc hơn, dùng các hàm để xử lý json để tìm kiếm thuận tiện hơn
+        if not self.metadata_json:
+            return f"[{self.created_log_at:%Y-%m-%d %H:%M}] Empty metadata"
         try:
             data = json.loads(self.metadata_json) # chuyển chuỗi json của trường trên thành dict
+            if not isinstance(data, dict):
+                return f"[{self.created_log_at:%Y-%m-%d %H:%M}] Invalid metadata"
             action = data.get('action', 'N/A')
             target = data.get('target_type', 'N/A')
             pk = data.get('target_id', 'N/A')
@@ -167,7 +171,7 @@ class MessageAttachment(models.Model): #phục vụ gửi file, hình ảnh tron
 #Firebase Token 
 
 class FCMToken(models.Model): #đại diện cho 1 app, 1 thiết bị, 1 lần cài 
-    user = models.ForeignKey(User,on_delete=models.CASCADE)
-    token = models.CharField(max_length=255, unique=True)
-    device = models.CharField(max_length=20, default="android")
+    user = models.ForeignKey(User,on_delete=models.CASCADE) #user là ai
+    token = models.CharField(max_length=255, unique=True) # token nào
+    device = models.CharField(max_length=20, default="android") # thiết bị nào
     updated_at = models.DateTimeField(auto_now=True)
