@@ -286,7 +286,7 @@ class NotificationSerializer(serializers.Serializer):
         if isinstance(obj, FriendshipRequest):
             if Friend.objects.are_friends(obj.from_user, obj.to_user): #nếu đã là bạn bè thì return accept
                 return 'accepted'
-            return "requested"
+            return "requested" # nếu chưa thì request
         if isinstance(obj, Follow):
             return "followed"
 

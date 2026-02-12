@@ -6,7 +6,7 @@ REST_FRAMEWORK={ #Cấu hình token
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  #Spectacular
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer',  # Để debug trực tiếp bằng trình duyệt bằng spectacular 
+        'rest_framework.renderers.BrowsableAPIRenderer',  # Để debug trực tiếp bằng trình duyệt bằng spectacular, production nên tắt 
     ),
     'DEFAULT_AUTHENTICATION_CLASSES':[
         'rest_framework_simplejwt.authentication.JWTAuthentication',#xác thực jwt
@@ -15,6 +15,8 @@ REST_FRAMEWORK={ #Cấu hình token
     ],
     'DEFAULT_THROTTLE_CLASSES': [ #Chống spam và bruteforce của rest framework
         'rest_framework.throttling.ScopedRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle', # Chống quét cho khách
+        'rest_framework.throttling.UserRateThrottle', # Chống quét cho user đã login
     ],
     'DEFAULT_THROTTLE_RATES': {
         'register':'5/hour', # giới hạn đăng kí là 5 lần/giờ
@@ -138,7 +140,7 @@ AXES_LOCKOUT_PARAMETERS=['username','ip_address'] #lockout theo username và ip
 AXES_ENABLE_ACCESS_FAILURE_LOG =True #log lại các lần đăng nhập thất bại
 USE_X_FORWARDED_HOST=True   # nếu dùng proxy ngược như nginx
 X_FRAME_OPTIONS = 'SAMEORIGIN' #Ngăn chặn clickjacking tức là trang web bị load trong iframe của trang khác
-REFERRER_POLICY = 'same-origin'  
+REFERRER_POLICY = 'strict-origin-when-cross-origin'  
 IPWARE_USE_X_FORWARDED_FOR = True 
 IPWARE_IP_HEADER = 'HTTP_X_FORWARDED_FOR'
 
@@ -156,19 +158,26 @@ AXES_IPWARE_META_PRECEDENCE_ORDER = IPWARE_META_PRECEDENCE_ORDER
 #CORS
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS') #danh sách các domain đc phép truy cập api
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS') #danh sách các domain đc phép gửi csrf token
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_CREDENTIALS = True # bắt buộc để gửi cookie 
 from corsheaders.defaults import default_headers
-CORS_ALLOW_HEADERS=list(default_headers)+['authorization','X-CSRFToken'] #thêm csrf token và bearer vào cho phép truy cập
+CORS_ALLOW_HEADERS=list(default_headers)+['content-type','authorization','X-CSRFToken'] #thêm csrf token và bearer vào cho phép truy cập
 
 
 if not DEBUG:
-     SECURE_CONTENT_TYPE_NOSNIFF = True
-     SECURE_BROWSER_XSS_FILTER = True
+     SECURE_CONTENT_TYPE_NOSNIFF = True # không cho đoán định dạng file 
+     SECURE_BROWSER_XSS_FILTER = True # bộ lọc tránh xss truyền sscript
      SECURE_PROXY_SSL_HEADER=('HTTP_X_FORWARDED_PROTO','https')
-     SECURE_HSTS_SECONDS = 31536000  # nếu dùng HTTPS
-     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+     SECURE_HSTS_SECONDS = 31536000  # nếu dùng HTTPS, nếu ng dùng dùng http vẫn redirect về http trong 1 năm tới 
+     SECURE_HSTS_INCLUDE_SUBDOMAINS = True # áp dụng cho tất cả domain kể cả sub domain 
      SECURE_HSTS_PRELOAD = True
      SECURE_SSL_REDIRECT = True #chuyển hướng http-> https(sau này deploy bật)
+     #mới 
+     SESSION_COOKIE_SECURE = True # chỉ cho gửi cookie nếu là https 
+     CSRF_COOKIE_SECURE = True #csrf cho https
+     SESSION_COOKIE_HTTPONLY = True # Đảm bảo JS không đọc được Session Cookie
+     SESSION_COOKIE_SAMESITE = 'Lax'
+     CSRF_COOKIE_SAMESITE = 'Lax'
+     
 
 
 

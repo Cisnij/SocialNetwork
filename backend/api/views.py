@@ -478,7 +478,7 @@ class UnfriendView(generics.DestroyAPIView): #hủy kết bạn
         with transaction.atomic():
             Friend.objects.remove_friend(request.user, friend_user)     
             unfriended_log.send( #hook thẳng signal vào view
-                sender=self.__class__, 
+                sender=self.__class__,  # gửi class hiện tại làm sender 
                 user=request.user, 
                 target=friend_user,
                 verb="unfriended",)
