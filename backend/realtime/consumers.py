@@ -54,7 +54,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     #sau khi chạy receive rồi thì chạy hàm này 
-    # chat_message sẽ chạy khi 'type' ở receive chạy, hiểu nôm na là hàm này gửi tin nhắn server đến fe dạng json và load ra
+    # chat_message sẽ chạy khi 'type' ở receive chạy, hiểu nôm na là hàm này gửi tin nhắn server đến fe dạng json và load ra, bắt buộc phải giống khai báo của group_send
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
             'id': event['id'],

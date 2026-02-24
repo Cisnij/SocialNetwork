@@ -379,6 +379,7 @@ def log_block_deleted(sender, instance, **kwargs):
             "status": "unblock user"
         }
     )
+    
 #Notification
 @receiver(action) # bắt tín hiệu action của activity stream 
 def push_from_activity(sender,verb,action_object=None,target=None,**kwargs):

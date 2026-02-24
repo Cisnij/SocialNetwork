@@ -15,8 +15,10 @@ REST_FRAMEWORK={ #Cấu hình token
     ],
     'DEFAULT_THROTTLE_CLASSES': [ #Chống spam và bruteforce của rest framework
         'rest_framework.throttling.ScopedRateThrottle',
-        'rest_framework.throttling.AnonRateThrottle', # Chống quét cho khách
-        'rest_framework.throttling.UserRateThrottle', # Chống quét cho user đã login
+        
+        #khai báo throttle mặc đinh cho khách và user
+        # 'rest_framework.throttling.AnonRateThrottle', # Chống quét cho khách
+        # 'rest_framework.throttling.UserRateThrottle', # Chống quét cho user đã login
     ],
     'DEFAULT_THROTTLE_RATES': {
         'register':'5/hour', # giới hạn đăng kí là 5 lần/giờ

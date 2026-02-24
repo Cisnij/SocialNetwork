@@ -184,16 +184,22 @@ from .settings_backend import *
 #Channels
 ASGI_APPLICATION = "backend.asgi.application"
 #redis chạy channels 
-# CHANNEL_LAYERS = { # setting này chuẩn cho production
-#     'default': {
-#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
-#         'CONFIG': {
-#             'hosts': [('127.0.0.1', 6379)],
-#         },
-#     },
-# }
-
-# CACHES = {
+# dùng daphne để chạy cả http + websocket 
+if DEBUG:
+    CHANNEL_LAYERS = {
+        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {'hosts': [('127.0.0.1', 6379)]},
+        }
+    }
+    
+#============================================================================================
+# lưu query vào cache  tránh gọi trong db
+# CACHES = { 
 #     "default": {
 #         "BACKEND": "django_redis.cache.RedisCache",
 #         "LOCATION": "redis://127.0.0.1:6379/1",
