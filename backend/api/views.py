@@ -642,7 +642,7 @@ class SendMessageAPIView(APIView): #gửi tin nhắn tới cuộc trò chuyện,
 class UnsendMessageAPIView(APIView): #action xóa message
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, pk):
+    def delete(self, request, pk):
         message = get_object_or_404(Message, pk=pk)
         if message.sender != request.user:
             raise PermissionDenied("You can only unsend your own message")
@@ -873,7 +873,7 @@ class SeenMessage(APIView): #đánh dấu đã xem tin nhắn, logic là khi m�
     
 class UpdateMessage(APIView):
     permission_classes = [IsAuthenticated]
-    def post(self, request, pk):
+    def patch(self, request, pk): #patch vì partial là true 
         message = get_object_or_404(Message, pk=pk)
         if message.sender != request.user:
             raise PermissionDenied("You can only edit your own message")

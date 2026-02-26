@@ -167,11 +167,11 @@ def create_comment_log(sender, instance, created, **kwargs):
         data={
             "user_id": instance.user.id,
             "username": instance.user.username,
-            "target_type": "Comment",
-            "target_id": instance.pk,
-            "post_id": instance.post_id,
+            "action_object_type": "Comment",              # chủ thể hành động
+            "action_object_id": instance.pk,              # id Comment
+            "target_type": "Post",                        # đối tượng bị tác động
+            "target_id": instance.post_id,                # id Post             
             "content": instance.content[:50],
-            "action": verb,
         }
     )
 
@@ -197,8 +197,8 @@ def delete_comment_log(sender, instance, **kwargs):
 @receiver(post_save, sender=UserReaction)
 def reaction_activity(sender, instance, created, **kwargs):
     reaction = getattr(instance, "reaction", None) # kiểm tra xem có thuộc tính reaction trong instance không, nếu có thì lấy ra, không có thì trả về None
-    target = getattr(reaction, "object", None) or getattr(instance, "content_object", None) or instance # ưu tiên lấy reaction.object, nếu không có thì lấy content_object, nếu không có thì lấy instance
-    emoji_name = getattr(getattr(reaction, "settings", None), "name", None)
+    target = getattr(reaction, "content_object", None) # láy cái post đang được react tới 
+    emoji_name = getattr(getattr(reaction, "settings", None), "name", None) # truy xuất ra setting có name k 
 
     if created:
         verb = f"reacted '{emoji_name}'" if emoji_name else "reacted" # nếu có emoji name thì hiển thị kh thì reacted
@@ -213,10 +213,11 @@ def reaction_activity(sender, instance, created, **kwargs):
         data={
             "user_id": instance.user.id,
             "username": instance.user.username,
-            "target_type": "UserReaction",
-            "target_id": getattr(instance, "pk", None),
+            "action_object_type": "UserReaction",       # loại chủ thể hành động
+            "action_object_id": getattr(instance, "pk", None), # id của UserReaction
+            "target_type": "Post",                      # loại đối tượng bị tác động
+            "target_id": getattr(target, "pk", None),   # id của Post
             "emoji": emoji_name,
-            "target_object_id": getattr(target, "pk", None),
             "action": verb,
         }
     )
@@ -224,7 +225,7 @@ def reaction_activity(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=UserReaction)
 def reaction_removed(sender, instance, **kwargs):
     reaction = getattr(instance, "reaction", None)
-    target = getattr(reaction, "object", None) or getattr(instance, "content_object", None) or instance
+    target = getattr(reaction, "content_object", None) if reaction else None # guard nếu reaction là None
     emoji_name = getattr(getattr(reaction, "settings", None), "name", None)
 
     verb = f"removed '{emoji_name}'" if emoji_name else "removed reaction"
@@ -232,16 +233,17 @@ def reaction_removed(sender, instance, **kwargs):
     action.send(
         instance.user,
         verb=verb,
-        action_object=instance,
-        target=target,
+        action_object=instance, # UserReaction là chủ thể hành động
+        target=target,          # Post là đối tượng bị tác động
         data={
             "user_id": instance.user.id,
             "username": instance.user.username,
-            "target_type": "UserReaction",
-            "target_id": getattr(instance, "pk", None),
+            "action_object_type": "UserReaction",            # loại chủ thể hành động
+            "action_object_id": getattr(instance, "pk", None), # id của UserReaction
+            "target_type": "Post",                           # loại đối tượng bị tác động
+            "target_id": getattr(target, "pk", None),        # id của Post
             "emoji": emoji_name,
-            "target_object_id": getattr(target, "pk", None),
-            "action": "removed",
+            "action": verb,
         }
     )
 

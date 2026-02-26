@@ -125,7 +125,7 @@ urlpatterns = [
     path('api/email/add/',AddEmailView.as_view(),name='add-email'),
     path('api/email/set/<int:pk>/',SetPrimaryEmailView.as_view(),name='add-email'),
     path('api/email/add/<int:pk>/',DeleteEmailView.as_view(),name='add-email'),
-    #v2-test
+    #v2-test full chức năng tạo post va ảnh trong 1 api
     path('api/user/post/create/v2/',CreateFullPostView.as_view(),name='post-create-v2')
     
 ] + router.urls

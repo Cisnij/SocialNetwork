@@ -3,87 +3,87 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from api.models import ConversationMember,Message
 from friendship.models import Block
-class ChatConsumer(AsyncWebsocketConsumer):
-    # Kết nối đến WebSocket
-    async def connect(self):
-        self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']#lấy tên phòng từ url nhập
-        self.user=self.scope['user'] # lấy user đang trong tiến trình
-        self.room_name=f'chat_{self.conversation_id}' #tên phòng
+# class ChatConsumer(AsyncWebsocketConsumer):
+#     # Kết nối đến WebSocket
+#     async def connect(self):
+#         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']#lấy tên phòng từ url nhập
+#         self.user=self.scope['user'] # lấy user đang trong tiến trình
+#         self.room_name=f'chat_{self.conversation_id}' #tên phòng
 
-        if not self.user.is_authenticated: #check đăng nhập
-            await self.close()  # Đóng kết nối nếu người dùng chưa xác thực
-            return
+#         if not self.user.is_authenticated: #check đăng nhập
+#             await self.close()  # Đóng kết nối nếu người dùng chưa xác thực
+#             return
         
-        is_member= await self.is_member()
-        if not is_member: 
-            await self.close()  # Đóng kết nối nếu người dùng không phải thành viên
-            return
+#         is_member= await self.is_member()
+#         if not is_member: 
+#             await self.close()  # Đóng kết nối nếu người dùng không phải thành viên
+#             return
         
-        await self.channel_layer.group_add( self.room_name, self.channel_name)#thêm phòng vào group
-        await self.accept() #chấp nhận kết nối từ client
+#         await self.channel_layer.group_add( self.room_name, self.channel_name)#thêm phòng vào group
+#         await self.accept() #chấp nhận kết nối từ client
 
-    # Ngắt kết nối
-    async def disconnect(self,close_code):
-        await self.channel_layer.group_discard(self.room_name,self.channel_name)
+#     # Ngắt kết nối
+#     async def disconnect(self,close_code):
+#         await self.channel_layer.group_discard(self.room_name,self.channel_name)
 
-    # Đây là nơi xử lý khi nhận dữ liệu từ client từ sendMessage ở frontend và lưu(server)
-    async def receive(self, text_data): #text data bắt buộc ghi đúng 
-        #nhận message từ client và lấy ra từ json
-        try:
-            data = json.loads(text_data)
-        except json.JSONDecodeError:
-            return
-        message = data['message']
+#     # Đây là nơi xử lý khi nhận dữ liệu từ client từ sendMessage ở frontend và lưu(server)
+#     async def receive(self, text_data): #text data bắt buộc ghi đúng 
+#         #nhận message từ client và lấy ra từ json
+#         try:
+#             data = json.loads(text_data)
+#         except json.JSONDecodeError:
+#             return
+#         message = data['message']
         
-        if not message:
-            return
+#         if not message:
+#             return
         
-        #lưu vào db
-        msg= await self.save_message(message) #dùng hàm ở dưới save message vào db
-        # Gửi đến nhóm phòng
-        await self.channel_layer.group_send(
-            self.room_name,  
-            {
-                'type':'chat_message',  # Loại sự kiện
-                'message':message,  # Tin nhắn từ client
-                'sender': self.user.username,  # Tên người dùng gửi tin nhắn
-                'id': msg.id,
-                'created_at': msg.created_at.isoformat()
-            }
-        )
+#         #lưu vào db
+#         msg= await self.save_message(message) #dùng hàm ở dưới save message vào db
+#         # Gửi đến nhóm phòng
+#         await self.channel_layer.group_send(
+#             self.room_name,  
+#             {
+#                 'type':'chat_message',  # Loại sự kiện
+#                 'message':message,  # Tin nhắn từ client
+#                 'sender': self.user.username,  # Tên người dùng gửi tin nhắn
+#                 'id': msg.id,
+#                 'created_at': msg.created_at.isoformat()
+#             }
+#         )
 
-    #sau khi chạy receive rồi thì chạy hàm này 
-    # chat_message sẽ chạy khi 'type' ở receive chạy, hiểu nôm na là hàm này gửi tin nhắn server đến fe dạng json và load ra, bắt buộc phải giống khai báo của group_send
-    async def chat_message(self, event):
-        await self.send(text_data=json.dumps({
-            'id': event['id'],
-            'message': event['message'],
-            'sender': event['sender'],
-            'created_at': event['created_at'],
-            }))
+#     #sau khi chạy receive rồi thì chạy hàm này 
+#     # chat_message sẽ chạy khi 'type' ở receive chạy, hiểu nôm na là hàm này gửi tin nhắn server đến fe dạng json và load ra, bắt buộc phải giống khai báo của group_send
+#     async def chat_message(self, event):
+#         await self.send(text_data=json.dumps({
+#             'id': event['id'],
+#             'message': event['message'],
+#             'sender': event['sender'],
+#             'created_at': event['created_at'],
+#             }))
         
-    # seen message đồng bộ giữa các thiết bị
-    # async def seen_message(self, event): 
-    #     await self.send(text_data=json.dumps({
-    #         'type': 'seen_message',
-    #         'user_id': event['user_id'],
-    #         'last_message_id': event['last_message_id'],
-    #     }))
+#     # seen message đồng bộ giữa các thiết bị
+#     # async def seen_message(self, event): 
+#     #     await self.send(text_data=json.dumps({
+#     #         'type': 'seen_message',
+#     #         'user_id': event['user_id'],
+#     #         'last_message_id': event['last_message_id'],
+#     #     }))
         
 
-    #làm việc với db phải dùng database_sync_to_async
-    async def is_member(self):#kiểm tra xem có là thành viên
-        return await database_sync_to_async(
-            ConversationMember.objects.filter(
-                conversation_id=self.conversation_id,
-                user=self.user
-            ).exists
-        )()
+#     #làm việc với db phải dùng database_sync_to_async
+#     async def is_member(self):#kiểm tra xem có là thành viên
+#         return await database_sync_to_async(
+#             ConversationMember.objects.filter(
+#                 conversation_id=self.conversation_id,
+#                 user=self.user
+#             ).exists
+#         )()
 
-    #lưu vào cơ sở dữ liệu sau khi nhận tin nhắn từ client
-    @database_sync_to_async
-    def save_message(self, message):
-        return Message.objects.create(conversation_id=self.conversation_id, sender=self.user, content=message)
+#     #lưu vào cơ sở dữ liệu sau khi nhận tin nhắn từ client
+#     @database_sync_to_async
+#     def save_message(self, message):
+#         return Message.objects.create(conversation_id=self.conversation_id, sender=self.user, content=message)
     
 
 
@@ -108,4 +108,152 @@ server nhận,lưu và gửi tín hiệu event các máy trong group, sau đó d
 Mở rộng ra, cứ nghĩ cái backend là server chỉ nhận và truyền. Thì ng dùng nhập typing hay gì đó sẽ gọi type:'type" cho backend xử lý và trả lại json cho toàn bộ 
 group send và send luôn đi chung, 1 cái gửi tín hiệu và cái còn lại gửi dữ liệu json cho fe load ra
 '''
+
+import json
+from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from api.models import ConversationMember, Message, Conversation
+from friendship.models import Block
+from django.contrib.auth.models import User
+
+
+class ChatConsumer(AsyncWebsocketConsumer):
+
+    # ===== CONNECT =====
+    async def connect(self):
+        self.conversation_id = self.scope['url_route']['kwargs']['conversation_id'] # lấy conversation_id từ url
+        self.user = self.scope['user'] # lấy user từ middleware (JWT đã xác thực)
+        self.room_name = f'chat_{self.conversation_id}' # tên phòng để group_send
+        # check đăng nhập, middleware JWT không hợp lệ sẽ bị đây
+        if self.user.is_anonymous:
+            await self.close()
+            return
+
+        is_member = await self.is_member()
+        if not is_member: # check có phải thành viên không
+            await self.close()
+            return
+
+        await self.channel_layer.group_add(self.room_name, self.channel_name) # thêm vào group phòng chat
+        await self.accept() # chấp nhận kết nối WebSocket
+
+    # ===== DISCONNECT =====
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.room_name, self.channel_name) # rời khỏi group khi ngắt kết nối
+
+    # ===== RECEIVE - nhận tin nhắn từ client =====
+    async def receive(self, text_data):
+        try:
+            data = json.loads(text_data)
+        except json.JSONDecodeError:
+            return
+
+        message = data.get('message', '').strip() # lấy message và xóa khoảng trắng
+        message_type = data.get('message_type', 'text') # mặc định là text
+
+        if not message: # không cho gửi tin rỗng
+            return
+
+        # check các điều kiện trước khi lưu (block, pending status...)
+        allowed, reason = await self.can_send()
+        if not allowed:
+            await self.send(text_data=json.dumps({'error': reason})) # báo lỗi về client
+            return
+
+        # lưu vào db
+        msg = await self.save_message(message, message_type)
+        if not msg: # lưu thất bại
+            await self.send(text_data=json.dumps({'error': 'Không thể gửi tin nhắn'}))
+            return
+
+        # broadcast tới tất cả client trong phòng
+        await self.channel_layer.group_send(
+            self.room_name,
+            {
+                'type': 'chat_message', # maps tới hàm chat_message bên dưới
+                'id': msg.id,
+                'message': message,
+                'sender': self.user.username,
+                'message_type': message_type,
+                'created_at': msg.created_at.isoformat(),
+            }
+        )
+
+    # ===== CHAT_MESSAGE - gửi tin nhắn tới từng client trong group =====
+    # hàm này chạy sau group_send, bắt buộc tên phải giống type trong group_send
+    async def chat_message(self, event):
+        await self.send(text_data=json.dumps({
+            'id': event['id'],
+            'message': event['message'],
+            'sender': event['sender'],
+            'message_type': event.get('message_type', 'text'),
+            'created_at': event['created_at'],
+        }))
+
+    # ===== SEEN MESSAGE - đồng bộ trạng thái đã xem giữa các thiết bị =====
+    # uncomment khi cần đồng bộ seen realtime qua WebSocket
+    # async def seen_message(self, event):
+    #     await self.send(text_data=json.dumps({
+    #         'type': 'seen_message',
+    #         'user_id': event['user_id'],
+    #         'last_message_id': event['last_message_id'],
+    #     }))
+
+    # ===== DB HELPERS =====
+
+    @database_sync_to_async
+    def is_member(self): # check có phải thành viên conversation không
+        return ConversationMember.objects.filter(
+            conversation_id=self.conversation_id,
+            user=self.user
+        ).exists()
+
+    @database_sync_to_async
+    def can_send(self): # check đủ điều kiện gửi tin nhắn chưa
+        try:
+            conv = Conversation.objects.get(id=self.conversation_id)
+        except Conversation.DoesNotExist:
+            return False, "Conversation not found"
+
+        # check block - lấy tất cả member khác trong phòng
+        other_ids = list(
+            ConversationMember.objects
+            .filter(conversation=conv)
+            .exclude(user=self.user)
+            .values_list('user_id', flat=True)
+        )
+        for uid in other_ids:
+            try:
+                other = User.objects.get(id=uid)
+                if Block.objects.is_blocked(self.user, other): # nếu bị block thì không gửi được
+                    return False, "Bạn đã bị chặn bởi người dùng này"
+            except User.DoesNotExist:
+                pass
+
+        # nếu conversation đang pending thì người nhận phải accept trước mới reply được
+        if conv.status == 'pending':
+            first_message = (
+                Message.objects
+                .filter(conversation=conv)
+                .order_by('created_at')
+                .first()
+            )
+            if first_message and self.user != first_message.sender:
+                return False, "Bạn phải chấp nhận yêu cầu tin nhắn trước khi trả lời"
+
+        return True, None
+
+    @database_sync_to_async
+    def save_message(self, message, message_type='text'): # lưu tin nhắn vào db
+        try:
+            return Message.objects.create(
+                conversation_id=self.conversation_id,
+                sender=self.user,
+                content=message,
+                message_type=message_type,
+            )
+        except Exception as e:
+            print(f"❌ Save message error: {e}")
+            return None
+
 
