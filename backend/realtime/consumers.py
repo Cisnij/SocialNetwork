@@ -28,7 +28,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     # Đây là nơi xử lý khi nhận dữ liệu từ client từ sendMessage ở frontend và lưu(server)
     async def receive(self, text_data): #text data bắt buộc ghi đúng 
-        
         #nhận message từ client và lấy ra từ json
         try:
             data = json.loads(text_data)
@@ -63,6 +62,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'created_at': event['created_at'],
             }))
         
+    # seen message đồng bộ giữa các thiết bị
+    # async def seen_message(self, event): 
+    #     await self.send(text_data=json.dumps({
+    #         'type': 'seen_message',
+    #         'user_id': event['user_id'],
+    #         'last_message_id': event['last_message_id'],
+    #     }))
+        
 
     #làm việc với db phải dùng database_sync_to_async
     async def is_member(self):#kiểm tra xem có là thành viên
@@ -89,6 +96,16 @@ connect-> receive(server) -> send -> client"""
 -Frontend: User mở màn hình chat, front-end gọi new WebSocket và khởi tạo url với conversation_id,sau đó chạy open
 -Backend: chạy hàm connect và group add conversation_id đó sau đó chạy accept
 -Frontend: socket.send tin nhắn 
--Backend: Chạy receive và lưu db, sau đó chạy group_send, cuối cùng chạy chat_message để gửi về fe load ra
+-Backend: Chạy receive và lưu db, sau đó chạy group_send, cuối cùng chạy chat_message send để gửi về fe load ra
 -Frontend: Nhận tin nhắn và chạy onmessage
 """
+
+'''
+Máy A ->> [SER] ->> [Máy A]
+Máy B ->> [VER] ->> [Máy B]
+server nhận,lưu và gửi tín hiệu event các máy trong group, sau đó dùng chat_message để các máy nhận và load ra
+
+Mở rộng ra, cứ nghĩ cái backend là server chỉ nhận và truyền. Thì ng dùng nhập typing hay gì đó sẽ gọi type:'type" cho backend xử lý và trả lại json cho toàn bộ 
+group send và send luôn đi chung, 1 cái gửi tín hiệu và cái còn lại gửi dữ liệu json cho fe load ra
+'''
+

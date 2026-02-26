@@ -381,7 +381,7 @@ class SendFriendRequestView(generics.CreateAPIView): #tạo lời mời kết b�
             req = Friend.objects.add_friend(request.user, to_user, message="")
 
         serializer = self.get_serializer(req, context={"request": request})
-        return Response(serializer.data, status=201)
+        return Response(serializer.data, status=201) #response dạng serialier đó 
 
     
 class IncomingFriendRequestsView(generics.ListAPIView): #danh sách lời mời kết bạn đến
@@ -851,6 +851,20 @@ class SeenMessage(APIView): #đánh dấu đã xem tin nhắn, logic là khi m�
             conversation=conversation,
             user=request.user
         ).update(last_read_message=last_message)
+
+        # Gửi seen event qua WebSocket để đồng bộ các thiết bị khác, cách custome
+        # from channels.layers import get_channel_layer
+        # from asgiref.sync import async_to_sync
+        
+        # channel_layer = get_channel_layer()
+        # async_to_sync(channel_layer.group_send)(
+        #     f'chat_{convo_id}',
+        #     {
+        #         'type': 'seen_message',
+        #         'user_id': request.user.id,
+        #         'last_message_id': last_message.id,
+        #     }
+        # )
 
         return Response({
             "detail": "Conversation marked as seen",

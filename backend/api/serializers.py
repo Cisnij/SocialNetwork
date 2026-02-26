@@ -257,7 +257,7 @@ class MessageSerializer(serializers.ModelSerializer):
         return obj.conversation.id
 
 #==========================in-app noti ===============================
-class NotificationSerializer(serializers.Serializer):
+class NotificationSerializer(serializers.Serializer): #serializer tự custome
     id = serializers.SerializerMethodField()
     actor = serializers.SerializerMethodField()
     verb = serializers.SerializerMethodField()
@@ -299,3 +299,10 @@ class NotificationSerializer(serializers.Serializer):
 
     def get_created_at(self, obj):
         return getattr(obj, "created_at", getattr(obj, "created", None)) #get attr nếu có trả ra k là none
+ 
+ #====================================Email serializer=========================
+from allauth.account.models import EmailAddress
+class EmailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=EmailAddress
+        fields= ["id", "email", "primary", "verified"]

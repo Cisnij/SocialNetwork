@@ -20,7 +20,9 @@ from django.conf.urls.static import static
 from django.conf import settings 
 from api.google_login import *
 from api.views import *
+from api.view_v2 import *
 from api.reactions import PostViewSet
+from api.custome_authen import * 
 # from realtime.views import views
 #------------------------------------------
 #spectacular
@@ -40,7 +42,7 @@ urlpatterns = [
     path('supremacy/admin/', admin.site.urls),
     path('i18n/', include('django.conf.urls.i18n')),
     path('',include('api.urls')), # muốn tạo v1,v2 thì nên đem cái urls này vào api.urls, sau đó tạo app mới và include vào đây là v2.Ví dụ path('v1',include('api.urls')), path('v2',include('api2.urls'))
-    #url của dj-rest-auth và allauth và simplejwt  để authentication 
+    #url của dj-rest-auth và allauth và simplejwt  để authentication (allauth là cái logic, dj rest auth là cái dùng allauth tạo api để gọi)
     path('api/auth/registration/',CustomeRegisterView.as_view(), name='custom_register'),#có throttle
     path('api/auth/password/reset/',CustomePasswordResetView.as_view(), name='custom_password_reset'),#có throttle
     path('api/auth/',include('dj_rest_auth.urls')),
@@ -118,6 +120,14 @@ urlpatterns = [
     path("fcm-token/", SaveFCMTokenView.as_view()),
     #in-app notification
     path("api/notifications/", NotifiationListView.as_view(), name="notification-list"),
+    #thay đổi email 
+    path('api/user/email/',UserEmail.as_view(),name='user-email'),
+    path('api/email/add/',AddEmailView.as_view(),name='add-email'),
+    path('api/email/set/<int:pk>/',SetPrimaryEmailView.as_view(),name='add-email'),
+    path('api/email/add/<int:pk>/',DeleteEmailView.as_view(),name='add-email'),
+    #v2-test
+    path('api/user/post/create/v2/',CreateFullPostView.as_view(),name='post-create-v2')
+    
 ] + router.urls
 
 

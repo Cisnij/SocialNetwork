@@ -162,6 +162,7 @@ def create_comment_log(sender, instance, created, **kwargs):
     action.send(
         instance.user,
         verb=verb,
+        action_object=instance,
         target=instance.post,
         data={
             "user_id": instance.user.id,
@@ -179,6 +180,7 @@ def delete_comment_log(sender, instance, **kwargs):
     action.send(
         instance.user,
         verb="deleted comment",
+        action_object=instance,
         target=instance.post,
         data={
             "user_id": instance.user.id,
@@ -206,6 +208,7 @@ def reaction_activity(sender, instance, created, **kwargs):
     action.send(
         instance.user,
         verb=verb,
+        action_object=instance,
         target=target,
         data={
             "user_id": instance.user.id,
@@ -229,6 +232,7 @@ def reaction_removed(sender, instance, **kwargs):
     action.send(
         instance.user,
         verb=verb,
+        action_object=instance,
         target=target,
         data={
             "user_id": instance.user.id,
@@ -399,3 +403,68 @@ def push_from_activity(sender,verb,action_object=None,target=None,**kwargs):
         title="Có người tương tác",
         body=f"{actor.username} {verb} bài viết của bạn"
     )
+
+
+# @receiver(action)
+# def push_from_activity(sender, verb, action_object=None, target=None, **kwargs):
+#     actor = sender
+
+#     # ===== REACTION =====
+#     if isinstance(action_object, UserReaction):
+#         post = target
+#         if not hasattr(post, "user"):
+#             return
+#         if post.user_id == actor.id:  # không push cho chính mình
+#             return
+#         push_to_user(
+#             post.user,
+#             title="Có người tương tác",
+#             body=f"{actor.username} {verb} bài viết của bạn"
+#         )
+
+#     # ===== FRIEND REQUEST =====
+#     elif verb == "sent friend request":
+#         # target = người nhận lời mời
+#         if not hasattr(target, "id"):
+#             return
+#         push_to_user(
+#             target,
+#             title="Lời mời kết bạn",
+#             body=f"{actor.username} đã gửi lời mời kết bạn"
+#         )
+
+#     elif verb == "accepted friend request":
+#         # target = người gửi lời mời ban đầu
+#         if not hasattr(target, "id"):
+#             return
+#         push_to_user(
+#             target,
+#             title="Kết bạn thành công",
+#             body=f"{actor.username} đã chấp nhận lời mời kết bạn"
+#         )
+
+#     # ===== FOLLOW =====
+#     elif verb == "followed user":
+#         # target = người được follow
+#         if not hasattr(target, "id"):
+#             return
+#         if target.id == actor.id:  # không push cho chính mình
+#             return
+#         push_to_user(
+#             target,
+#             title="Người theo dõi mới",
+#             body=f"{actor.username} đã theo dõi bạn"
+#         )
+
+#     # ===== COMMENT =====
+#     elif verb in ("created comment", "updated comment"):
+#         # target = Post bị comment
+#         if not hasattr(target, "user"):
+#             return
+#         if target.user_id == actor.id:  # không push cho chính mình
+#             return
+#         push_to_user(
+#             target.user,
+#             title="Bình luận mới",
+#             body=f"{actor.username} đã bình luận bài viết của bạn"
+#         )
