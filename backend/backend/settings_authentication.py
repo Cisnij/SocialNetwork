@@ -194,7 +194,7 @@ CONTENT_SECURITY_POLICY = {
         "script-src": [SELF, "accounts.google.com", "apis.google.com"],  # ✅ Cho phép script nội bộ (cần nếu Swagger UI hoặc Django template)
         "style-src": [SELF,"accounts.google.com", "apis.google.com"],  # ✅ Cho phép CSS nội bộ
         "img-src": [SELF, "data:"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
-        "connect-src": [SELF,"wss://localhost:8000","accounts.google.com", "oauth2.googleapis.com",'http://localhost:8000', "apis.google.com",],  # ✅ Cho phép fetch/xhr từ chính server
+        "connect-src": [SELF,"wss://localhost:8000","accounts.google.com", "oauth2.googleapis.com",'http://localhost:8000', "apis.google.com",],  #  Cho phép fetch/xhr từ chính server
         "form-action": [SELF],  # ✅ Không cho gửi form ra ngoài
         "frame-ancestors": [SELF],  # ✅ Ngăn clickjacking
         "base-uri": [SELF],  # ✅ Giới hạn `<base>` tag

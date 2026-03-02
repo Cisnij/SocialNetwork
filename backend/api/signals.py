@@ -473,12 +473,11 @@ def push_from_activity(sender,verb,action_object=None,target=None,**kwargs):
 #         )
 
 #==============================================================================
-@receiver(email_confirmed)
+@receiver(email_confirmed) # khi 1 email đã xác nhận, xóa các email trùng tên chưa xác nhận khỏi db 
 def delete_unverified_email(sender, request, email_address, **kwargs):
-    user_email= request.user.email
-    email_unverified = EmailAddress.objects.filter(email=user_email,verified=False)
-    if email_unverified:
-        for i in email_unverified:
-            i.delete()
-        
+    # xóa tất cả bản ghi unverified của email này thuộc user khác
+    EmailAddress.objects.filter(
+        email=email_address.email,  # email vừa verified
+        verified=False,             # chưa verified
+    ).exclude(user=email_address.user).delete()  # trừ user vừa verify
     

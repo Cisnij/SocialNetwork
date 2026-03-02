@@ -7,15 +7,15 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 @database_sync_to_async
-def get_user_from_token(token_key):
+def get_user_from_token(token_key): # hàm nhận vào token 
     try:
-        token = AccessToken(token_key)
-        return User.objects.get(id=token['user_id'])
+        token = AccessToken(token_key) # xác minh token 
+        return User.objects.get(id=token['user_id']) # lấy user qua token 
     except Exception:
-        return AnonymousUser()
+        return AnonymousUser() # không thì là anon 
 
 
-class JwtOrSessionMiddleware:
+class JwtOrSessionMiddleware: #api websocket cho cả web và mobile, web thì dùng cookie để biết user, mobile thì dùng token truyền vào url biết user 
     def __init__(self, inner):
         self.inner = inner
 
@@ -23,7 +23,7 @@ class JwtOrSessionMiddleware:
         query = parse_qs(scope["query_string"].decode()) #giải mã từ url 
         token = query.get("token", [None])[0] #lấy ra sau token
 
-        # Nếu có token → dùng JWT
+        # Nếu có token → dùng JWT cho mobile
         if token:
             scope["user"] = await get_user_from_token(token) #lấy ra user 
 
