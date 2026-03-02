@@ -5,6 +5,7 @@ from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log
 from reaction.models import UserReaction
 from allauth.account.signals import email_confirmed, user_logged_in
 from django.contrib.auth import get_user_model
+from allauth.account.models import EmailAddress
 import json
 from django.dispatch import Signal
 #django activity stream
@@ -470,3 +471,14 @@ def push_from_activity(sender,verb,action_object=None,target=None,**kwargs):
 #             title="Bình luận mới",
 #             body=f"{actor.username} đã bình luận bài viết của bạn"
 #         )
+
+#==============================================================================
+@receiver(email_confirmed)
+def delete_unverified_email(sender, request, email_address, **kwargs):
+    user_email= request.user.email
+    email_unverified = EmailAddress.objects.filter(email=user_email,verified=False)
+    if email_unverified:
+        for i in email_unverified:
+            i.delete()
+        
+    

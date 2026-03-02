@@ -44,3 +44,5 @@ request.META          # thông tin server, IP client...
 # verb: hành động 
 # target object là đối tượng bị tác động đến ví dụ post
 # action object là hành động hiện tại hướng đến đối tượng đó ví dụ like của post
+
+# cái Isauthenticated sẽ check cookie/token nên đùng đc kể cả mobile hay web, và sau đó request.user cũng sẽ lấy ra đc vì biết token, nếu là anonymus thì k có vẫn có user nhma là anno

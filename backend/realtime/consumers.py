@@ -174,6 +174,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'id': msg.id,
                 'message': message,
                 'sender': self.user.username,
+                'sender_id':self.user.id,
                 'message_type': message_type,
                 'created_at': msg.created_at.isoformat(),
             }
@@ -186,6 +187,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'id': event['id'],
             'message': event['message'],
             'sender': event['sender'],
+            'sender_id':event['sender_id'],
             'message_type': event.get('message_type', 'text'),
             'created_at': event['created_at'],
         }))

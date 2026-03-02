@@ -23,7 +23,7 @@ from realtime.middleware import *
 application = ProtocolTypeRouter({
             "http": get_asgi_application(), # Xử lý các yêu cầu HTTP thông thường
             "websocket": AllowedHostsOriginValidator( # Bảo vệ các kết nối WebSocket từ các nguồn không được phép
-                JwtOrSessionMiddleware(                                
+                JwtOrSessionMiddleware( #custome xử lý cho cả mobile và web                       
                     AuthMiddlewareStack( # Xử lý xác thực người dùng cho WebSocket, chỉ dùng cho web vì nó đọc cookie xác thực
                         URLRouter(
                             wsPattern  # Lấy ra từ routing

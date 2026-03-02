@@ -36,11 +36,11 @@ from rest_framework.routers import DefaultRouter
 
 #url cho reactions
 router=DefaultRouter()
-router.register(r'posts',PostViewSet,basename='reactions')
+router.register(r'posts',PostViewSet,basename='reactions') #thả react 
 
 urlpatterns = [
-    path('supremacy/admin/', admin.site.urls),
-    path('i18n/', include('django.conf.urls.i18n')),
+     path('i18n/', include('django.conf.urls.i18n')), path('supremacy/admin/', admin.site.urls), # dịch ngôn ngữ
+  
     path('',include('api.urls')), # muốn tạo v1,v2 thì nên đem cái urls này vào api.urls, sau đó tạo app mới và include vào đây là v2.Ví dụ path('v1',include('api.urls')), path('v2',include('api2.urls'))
     #url của dj-rest-auth và allauth và simplejwt  để authentication (allauth là cái logic, dj rest auth là cái dùng allauth tạo api để gọi)
     path('api/auth/registration/',CustomeRegisterView.as_view(), name='custom_register'),#có throttle
@@ -64,7 +64,6 @@ urlpatterns = [
     path('api/auth/web/google/login/', CookieGoogleLoginView.as_view(), name='cookie_google_login'),#gg login cho cookie
     #URL ACTIVITY STREAM ĐỂ GHI LOG
     path('api/activity/', include('actstream.urls')),
-
     #url cho xử lý người dùng
     path('api/user/profile/<int:pk>/',ProfileModify.as_view(),name='profile-modify'), #lấy ra infor ng dùng thêm sửa xóa
     path('api/user/profile/',ProfileList.as_view(), name='profile-list'), #lấy tất cả user
@@ -124,7 +123,7 @@ urlpatterns = [
     path('api/user/email/',UserEmail.as_view(),name='user-email'),
     path('api/email/add/',AddEmailView.as_view(),name='add-email'),
     path('api/email/set/<int:pk>/',SetPrimaryEmailView.as_view(),name='add-email'),
-    path('api/email/add/<int:pk>/',DeleteEmailView.as_view(),name='add-email'),
+    path('api/email/delete/<int:pk>/',DeleteEmailView.as_view(),name='delete-email'),
     #v2-test full chức năng tạo post va ảnh trong 1 api
     path('api/user/post/create/v2/',CreateFullPostView.as_view(),name='post-create-v2')
     

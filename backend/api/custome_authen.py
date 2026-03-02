@@ -58,7 +58,7 @@ class CustomeLoginSerializer(LoginSerializer): #Sửa chức năng login nên Lo
         attrs['user'] = user
         return attrs
 
-# Thêm tính năng chỉnh sửa email
+#====================================== Thêm tính năng chỉnh sửa email====================================
 class AddEmailView(APIView): #Thêm 1 email khác vào tài khoản
     permission_classes=[IsAuthenticated]
     def post(self,request):
@@ -130,9 +130,24 @@ class DeleteEmailView(APIView):
 
         email_obj.delete()
         return Response({"detail": "Email deleted successfully"})
+    
 class UserEmail(generics.ListAPIView):
     permission_classes=[IsAuthenticated]
     serializer_class=EmailSerializer
     def get_queryset(self): 
         user= self.request.user
         return EmailAddress.objects.filter(user=user,verified=True)
+    
+'''
+- xóa email bắt nhập lại mk
+- thêm signal khi 1 cái verified thì xóa hết 
+'''
+
+class CheckPassword(APIView):
+    permission_classes=[IsAuthenticated]
+    def post(self,request):
+        password=request.data.get("password")
+        user= authenticate(username=request.user.username,password=password)
+        if user:
+            return Response({'valid':'True'})
+        return Response({'valid':'False'})

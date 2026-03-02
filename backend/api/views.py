@@ -200,8 +200,7 @@ class PostUser(generics.ListAPIView):#List tất cả post của user
 
     def get_queryset(self):
         profile_id = self.kwargs.get("user")  
-        profile = get_object_or_404(Profile, id=profile_id)
-        return Post.objects.filter(user=profile.user).order_by('-created_at')
+        return Post.objects.filter(user__profile__id=profile_id).order_by('-created_at')
 
 class PostCreate(generics.CreateAPIView):
     permission_classes=[IsAuthenticated]
@@ -800,7 +799,7 @@ class ConversationMessage(generics.ListAPIView): #xem tin nhắn cuộc trò chu
         convo_id = self.kwargs.get("pk")
 
         if self.request.user.is_superuser or self.request.user.is_staff:
-            return Message.objects.filter(conversation_id=convo_id).select_related("sender__profile").prefetch_related("attachments").order_by("created_at")
+            return Message.objects.filter(conversation_id=convo_id).select_related("sender__profile").prefetch_related("attachments").order_by("-created_at")
             
         if not ConversationMember.objects.filter(
             conversation_id=convo_id,
@@ -813,7 +812,7 @@ class ConversationMessage(generics.ListAPIView): #xem tin nhắn cuộc trò chu
             .filter(conversation_id=convo_id) # lọc theo cuộc trò chuyên 
             .select_related("sender__profile") #lấy ra profile của sender để hiển thị thông tin người gửi đồng thời với message(1-1 với sender)
             .prefetch_related("attachments") #lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments 1-n)
-            .order_by("created_at")
+            .order_by("-created_at")
         )
 
 

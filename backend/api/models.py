@@ -136,6 +136,7 @@ class Conversation(models.Model):
     is_group=models.BooleanField(default=False) 
     created_at=models.DateTimeField(auto_now_add=True)
     status=models.CharField(max_length=20,choices=(('pending', 'Pending'), ('accept', 'Accept')),default='pending')
+    updated_at= models.DateTimeField(auto_now=True)
     def __str__(self):
         return f"Conversation {self.id}"
     

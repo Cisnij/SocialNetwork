@@ -214,6 +214,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "created_at",
             "members",
             "last_message",
+            'updated_at'
         ]
     def get_last_message(self, obj):
         msg = (
