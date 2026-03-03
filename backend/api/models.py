@@ -60,6 +60,10 @@ class Post(SafeDeleteModel):
     reactions=GenericRelation(Reaction)
     def __str__(self):
         return f"{self.user}-{self.title[:10]}"
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+        ]
 
 class PostPhoto(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
@@ -90,6 +94,11 @@ class Comment(SafeDeleteModel):
     reactions=GenericRelation(Reaction)
     def __str__(self):
         return f"{self.user.username} commented on {self.post.title}"
+    class Meta:
+        indexes = [
+            models.Index(fields=['post', '-created_at']),
+            models.Index(fields=['user']),
+        ]
 
 class Setting(models.Model):
     darkmode=models.BooleanField(default=False)
@@ -139,6 +148,7 @@ class Conversation(models.Model):
     updated_at= models.DateTimeField(auto_now=True)
     def __str__(self):
         return f"Conversation {self.id}"
+
     
 class ConversationMember(models.Model):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
@@ -149,7 +159,10 @@ class ConversationMember(models.Model):
         return f"{self.user.username} in Conversation {self.conversation.id}"
     class Meta:
         unique_together = ('conversation', 'user') # đảm bảo mỗi user chỉ tham gia 1 lần trong 1 conversation
-
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['conversation']),
+        ]
 class Message(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
     conversation=models.ForeignKey(Conversation, on_delete=models.CASCADE)
@@ -163,6 +176,8 @@ class Message(SafeDeleteModel):
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"Message {self.content} in Conversation {self.conversation.id} by {self.sender.username}"
+    class Meta:
+        indexes=[models.Index(fields=['conversation','-created_at'])]
 
 class MessageAttachment(models.Model): #phục vụ gửi file, hình ảnh trong chat
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='attachments')
@@ -176,3 +191,30 @@ class FCMToken(models.Model): #đại diện cho 1 app, 1 thiết bị, 1 lần 
     token = models.CharField(max_length=255, unique=True) # token nào
     device = models.CharField(max_length=20, default="android") # thiết bị nào
     updated_at = models.DateTimeField(auto_now=True)
+
+#==========================Notification=============================
+class Notification(models.Model):
+    TYPE_CHOICES = [
+        ('comment', 'Comment'),
+        ('reaction', 'Reaction'),
+        ('friend_request', 'Friend Request'),
+        ('follow', 'Follow'),
+    ]
+    reciever = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    message = models.TextField(blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.message} to {self.reciever}"
+    
+    class Meta: #Meta là cách thiết lập model hoạt động , kiểu setting mặc định 
+        ordering = ['-created_at']
+        
+        indexes = [ # giống mục lục sách, thay vì tìm từng dòng thì nhảy thẳng đến, giúp truy vấn mấy cái hay tìm dễ hơn ví dụ theo ngày...
+            models.Index(fields=['reciever', '-created_at']),
+            models.Index(fields=['is_read']),
+        ]

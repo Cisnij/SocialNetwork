@@ -258,48 +258,26 @@ class MessageSerializer(serializers.ModelSerializer):
         return obj.conversation.id
 
 #==========================in-app noti ===============================
-class NotificationSerializer(serializers.Serializer): #serializer tự custome
-    id = serializers.SerializerMethodField()
+
+#     def get_actor(self, obj):
+#         if isinstance(obj, Comment): #isinstance là kiểm tra đối tượng có phải là của 1 lớp nào
+#             return f'{obj.user.first_name} {obj.user.last_name}' #lấy ra email của user thực hiện hành động, cả comment và react sau lọc đều có trường user
+#         if isinstance(obj, UserReaction):
+#             return f'{obj.user.first_name} {obj.user.last_name}'
+#         if isinstance(obj, FriendshipRequest):
+#             return f'{obj.from_user.first_name} {obj.from_user.last_name}'
+#         if isinstance(obj, Follow):
+#             return f'{obj.follower.first_name} {obj.follower.last_name}' 
+        
+class NotificationSerializer(serializers.ModelSerializer):
     actor = serializers.SerializerMethodField()
-    verb = serializers.SerializerMethodField()
-    post_id = serializers.SerializerMethodField()
-    created_at = serializers.SerializerMethodField()
-    #sau khi đã có các comment và react trên post mình thì thực hiện phân loại
-    
-    def get_id(self, obj):
-        return obj.pk #lấy ra id của object đang được serializer
+
+    class Meta:
+        model = Notification
+        fields = ["id", "actor", "type", "object_id", "created_at"]
 
     def get_actor(self, obj):
-        if isinstance(obj, Comment):
-            return f'{obj.user.first_name} {obj.user.last_name}' #lấy ra email của user thực hiện hành động, cả comment và react sau lọc đều có trường user
-        if isinstance(obj, UserReaction):
-            return f'{obj.user.first_name} {obj.user.last_name}'
-        if isinstance(obj, FriendshipRequest):
-            return f'{obj.from_user.first_name} {obj.from_user.last_name}'
-        if isinstance(obj, Follow):
-            return f'{obj.follower.first_name} {obj.follower.last_name}' 
-        
-    def get_verb(self, obj):
-        if isinstance(obj, Comment): # nếu obj là của comment , isinstance là kiểm tra đối tượng có phải là của 1 lớp nào
-            return "commented"
-        if isinstance(obj, UserReaction): #nếu obj là của react
-            return "reacted"
-        if isinstance(obj, FriendshipRequest):
-            if Friend.objects.are_friends(obj.from_user, obj.to_user): #nếu đã là bạn bè thì return accept
-                return 'accepted'
-            return "requested" # nếu chưa thì request
-        if isinstance(obj, Follow):
-            return "followed"
-
-    def get_post_id(self, obj): #post chắc chắn có vì cả 2 là sự kiện post
-        if isinstance(obj, Comment):
-            return obj.post.post_id
-        if isinstance(obj, UserReaction):
-            return obj.reaction.object_id
-        return None
-
-    def get_created_at(self, obj):
-        return getattr(obj, "created_at", getattr(obj, "created", None)) #get attr nếu có trả ra k là none
+        return f"{obj.actor.profile.first_name} {obj.actor.profile.last_name}"
  
  #====================================Email serializer=========================
 from allauth.account.models import EmailAddress

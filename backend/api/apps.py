@@ -23,7 +23,8 @@ class ApiConfig(AppConfig):
         registry.register(Profile, Post, PostArticle, Comment, UserReaction, Friend, FriendshipRequest, Follow, Block)
         
         #import firebase
-        import api.firebase #file firebase.py đã tạo 
+        from api.firebase import init_firebase#file firebase.py đã tạo 
+        init_firebase()
     
 
 

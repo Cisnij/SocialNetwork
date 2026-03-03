@@ -811,7 +811,7 @@ class ConversationMessage(generics.ListAPIView): #xem tin nhắn cuộc trò chu
             Message.objects
             .filter(conversation_id=convo_id) # lọc theo cuộc trò chuyên 
             .select_related("sender__profile") #lấy ra profile của sender để hiển thị thông tin người gửi đồng thời với message(1-1 với sender)
-            .prefetch_related("attachments") #lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments 1-n)
+            .prefetch_related("attachments") #lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments n-n)
             .order_by("-created_at")
         )
 
@@ -907,35 +907,15 @@ class ProfileRelationship(APIView):
         return Response({"status": "none"})
 #===============================Thông báo in-app==========================================
 
-class NotifiationListView(generics.ListAPIView):
-    permission_classes= [IsAuthenticated]
-    serializer_class= NotificationSerializer
-    pagination_class =LargePagePagination
-    
+class NotificationListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = NotificationSerializer
+    pagination_class = LargePagePagination
+
     def get_queryset(self):
-        user = self.request.user
-        post_ct= ContentType.objects.get_for_model(Post) # lấy ra content type cho post
-        
-        comments= ( #lọc ra tất cả comment trên post mình
-            Comment.objects
-            .filter(post__user=user)   # comment trên post của mình
-            .exclude(user=user)        # không lấy comment của chính mình
-            .select_related("user", "post") # lấy luôn thông tin user và post
-            .order_by("-created_at")
-        )
-        reactions = UserReaction.objects.filter( #lọc ra reaction trên post mình
-            reaction__content_type=post_ct, # lọc ra model post
-            reaction__object_id__in=Post.objects.filter(user=user).values_list("post_id", flat=True) # đem vào list các id của user
-        ).exclude(user=user)
-        fr_requests= FriendshipRequest.objects.filter(to_user=user)
-        follow_requests= Follow.objects.filter(followee=user)
-        
-        from itertools import chain
-        return sorted( #sắp xếp 
-            chain(comments, reactions, fr_requests, follow_requests), #chain để gộp 2 list thành 1 list
-            key=lambda x: x.created_at if hasattr(x, "created_at") else x.created, #nếu có field created_at thì lấy ra và sắp xếp
-            reverse=True # sắp xếp giảm dần
-        )
+        return Notification.objects.filter(
+            reciever =self.request.user
+        ).select_related('actor__profile')
         
 
 #===========================Firebase=======================================
@@ -952,3 +932,10 @@ class SaveFCMTokenView(APIView):
             defaults={"user": request.user}
         )
         return Response({"ok": True})
+
+'''
+1-1	select_related
+N-1 (FK)	select_related
+1-N (reverse)	prefetch_related
+N-N	prefetch_related
+'''

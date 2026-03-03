@@ -1,11 +1,12 @@
 from django.db.models.signals import post_save, post_delete, pre_delete #post save là ngay khi tạo user thì trigger tạo profile
 from django.dispatch import receiver
 from django.contrib.auth.models import User
-from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log
+from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log,Notification,Message,ConversationMember
 from reaction.models import UserReaction
 from allauth.account.signals import email_confirmed, user_logged_in
 from django.contrib.auth import get_user_model
 from allauth.account.models import EmailAddress
+from django.contrib.contenttypes.models import ContentType
 import json
 from django.dispatch import Signal
 #django activity stream
@@ -387,26 +388,33 @@ def log_block_deleted(sender, instance, **kwargs):
         }
     )
     
-#Notification
-@receiver(action) # bắt tín hiệu action của activity stream 
-def push_from_activity(sender,verb,action_object=None,target=None,**kwargs):
-    actor = sender
-    # chỉ quan tâm reaction, những thứ post các thứ không quan tâm
-    if not isinstance(action_object, UserReaction):
-        return
-    post = target  # target = Post
-    # vareturn, nếu k có thuộc tính user trong post thì return ngay
-    if not hasattr(post, "user"):
-        return
-    # không push cho chính mình
-    if post.user_id == actor.id:
-        return
-    push_to_user(
-        post.user,
-        title="Có người tương tác",
-        body=f"{actor.username} {verb} bài viết của bạn"
-    )
-
+#===================================Notification========================================
+#gừi qua firebase
+@receiver(post_save,sender=Notification) # bắt tín hiệu action của activity stream 
+def push_from_activity(sender,instance,created,**kwargs):
+    if created:
+        push_to_user(
+            instance.reciever,
+            title=instance.type,
+            body=instance.message 
+        )
+        
+@receiver(post_save,sender=Message)  
+def push_message(sender,instance,created,**kwargs):
+    if created:
+        conv=instance.conversation
+        if not conv:
+            return
+        member=ConversationMember.objects.filter(conversation=conv).select_related('user')
+        for m in member:
+            if m.user_id == instance.sender_id:
+                continue
+            push_to_user(
+                m.user,
+                title=f'{instance.sender} gửi tin nhắn',
+                body=instance.content
+            )
+        
 
 # @receiver(action)
 # def push_from_activity(sender, verb, action_object=None, target=None, **kwargs):
@@ -472,6 +480,51 @@ def push_from_activity(sender,verb,action_object=None,target=None,**kwargs):
 #             body=f"{actor.username} đã bình luận bài viết của bạn"
 #         )
 
+#in-app notification 
+@receiver(post_save, sender=Comment)
+def notify_comment(sender, instance, created, **kwargs):
+    if created and instance.user != instance.post.user:
+        Notification.objects.create(
+            reciever=instance.post.user,
+            actor=instance.user,
+            type='comment',
+            object_id=instance.post.post_id,
+            message=f'{instance.user.username} commented on your post'
+        )
+@receiver(post_save, sender=UserReaction)
+def notify_reaction(sender,instance,created,**kwargs):
+    if not created:
+        return
+    if created:
+        reaction=getattr(instance,'reaction',None)
+        target = getattr(reaction,'content_object',None)
+        if hasattr(target, "user") and target.user != instance.user:
+            Notification.objects.create( #content_type nó không là 1 model cố định nó chỉ là instance, ví dụ react vào post thì sẽ là post và lấy đc user
+                reciever=target.user,
+                actor=instance.user,
+                type="reaction",
+                object_id=reaction.object_id,
+                message=f"{instance.user.username} reacted to your post"
+            )
+@receiver(post_save, sender=Follow)
+def notify_follow(sender, instance, created, **kwargs):
+    if created:
+        Notification.objects.create(
+            reciever=instance.followee,
+            actor=instance.follower,
+            type='follow',
+            message=f'{instance.follower.username} followed you'
+        )
+
+@receiver(post_save, sender=FriendshipRequest)
+def notify_friend_request(sender, instance, created, **kwargs):
+    if created:
+        Notification.objects.create(
+            reciever =instance.to_user,
+            actor=instance.from_user,
+            type='friend_request',
+            message=f'{instance.from_user.username} sent you a friend request'
+        )
 #==============================================================================
 @receiver(email_confirmed) # khi 1 email đã xác nhận, xóa các email trùng tên chưa xác nhận khỏi db 
 def delete_unverified_email(sender, request, email_address, **kwargs):
