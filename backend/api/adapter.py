@@ -27,3 +27,15 @@ class MySocialAccountAdapter(DefaultSocialAccountAdapter): #chỉnh sủa login 
 
         except User.DoesNotExist:
             pass
+
+    # đồng bộ tên email là tên ng dùng khi đăng nhập google
+    def populate_user(self, request, sociallogin, data): #user lần đầu đăng nhập 
+
+        user = super().populate_user(request, sociallogin, data) # tạo thông tin user 
+
+        email = data.get("email") #lấy ra email từ thông tin tạo 
+
+        if email:
+            user.username = email  #gán user thành email đó 
+
+        return user

@@ -249,6 +249,101 @@ def reaction_removed(sender, instance, **kwargs):
         }
     )
 
+@receiver(post_save, sender=Message) #log thêm sửa tin nhắn 
+def message_log(sender, instance, created, **kwargs):
+    if created:
+        action.send(
+            instance.sender,
+            verb="send message",
+            action_object=instance,
+            target=instance.conversation,
+            data={
+                "user_id": instance.sender.id,
+                "username": instance.sender.username,
+                "action_object_type": "Message",
+                "action_object_id": instance.pk,
+                "target_type": "Conversation",
+                "conversation_id": instance.conversation_id,
+                "content": instance.content[:50],
+                "action": "send message",
+            }
+        )
+    else:
+        verb = "edited message"
+        action.send(
+            instance.sender,
+            verb=verb,
+            action_object=instance,
+            target=instance.conversation,
+            data={
+                "user_id": instance.sender.id,
+                "username": instance.sender.username,
+                "action_object_type": "Message",
+                "action_object_id": instance.pk,
+                "target_type": "Conversation",
+                "conversation_id": instance.conversation_id,
+                "content": instance.content[:50],
+                "action": verb,
+            }
+        )
+from safedelete.signals import post_softdelete, post_undelete
+@receiver(post_softdelete, sender=Message) # log xóa message 
+def message_soft_delete_log(sender, instance, **kwargs):
+    action.send(
+        instance.sender,
+        verb="deleted message",
+        action_object=instance,
+        target=instance.conversation,
+        data={
+            "user_id": instance.sender.id,
+            "username": instance.sender.username,
+            "action_object_type": "Message",
+            "action_object_id": instance.pk,
+            "target_type": "Conversation",
+            "conversation_id": instance.conversation_id,
+            "content": instance.content[:50],
+            "action": "deleted message",
+        }
+    )
+#=======================================Log cho logout login===============================
+from django.contrib.auth.signals import user_logged_in, user_logged_out
+from django.dispatch import receiver
+from ipware import get_client_ip
+from actstream import action
+@receiver(user_logged_in)
+def log_login(sender, request, user, **kwargs):
+    ip, is_routable = get_client_ip(request) # lấy ip dùng ipware 
+    user_agent = request.META.get("HTTP_USER_AGENT", "") #có sẵn trong request
+    action.send(
+        user,
+        verb="logged in",
+        data={
+            "user_id": user.id,
+            "username": user.username,
+            "ip": ip,
+            "device": user_agent,
+            "login_type": (
+                "google" if user.socialaccount_set.filter(provider="google").exists() # nếu login bằng google thì allauth sẽ tạo bảng nên nó biết đc 
+                else "password"
+            ),
+        }
+    )
+@receiver(user_logged_out)
+def log_logout(sender, request, user, **kwargs):
+    ip, is_routable = get_client_ip(request)
+    user_agent = request.META.get("HTTP_USER_AGENT", "")
+    if user:
+        action.send(
+            user,
+            verb="logged out",
+            data={
+                "user_id": user.id,
+                "username": user.username,
+                "ip": ip,
+                "device": user_agent,
+            }
+        )
+#=================================copy log=============================================
 @receiver(post_save, sender=Action)
 def copy_to_log(sender, instance, created, **kwargs):
     if created:
