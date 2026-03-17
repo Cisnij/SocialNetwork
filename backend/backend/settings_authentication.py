@@ -21,7 +21,7 @@ REST_FRAMEWORK={ #Cấu hình token
         # 'rest_framework.throttling.UserRateThrottle', # Chống quét cho user đã login
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'register':'5/hour', # giới hạn đăng kí là 5 lần/giờ
+        'register':'20/hour', # giới hạn đăng kí là 5 lần/giờ
         'cookie_refresh': '30/minute', # giới hạn làm mới cookie là 30 lần/phút
         'reset_password': '3/hour',  # giới hạn yêu cầu đặt lại mật khẩu là 3 lần/giờ
         'google_login': '10/minute', # giới hạn đăng nhập bằng google là 10 lần/phút

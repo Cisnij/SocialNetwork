@@ -390,7 +390,7 @@ def log_block_deleted(sender, instance, **kwargs):
     
 #===================================Notification========================================
 #gừi qua firebase
-@receiver(post_save,sender=Notification) # bắt tín hiệu action của activity stream 
+@receiver(post_save,sender=Notification) 
 def push_from_activity(sender,instance,created,**kwargs):
     if created:
         push_to_user(
@@ -399,21 +399,21 @@ def push_from_activity(sender,instance,created,**kwargs):
             body=instance.message 
         )
         
-@receiver(post_save,sender=Message)  
-def push_message(sender,instance,created,**kwargs):
-    if created:
-        conv=instance.conversation
-        if not conv:
-            return
-        member=ConversationMember.objects.filter(conversation=conv).select_related('user')
-        for m in member:
-            if m.user_id == instance.sender_id:
-                continue
-            push_to_user(
-                m.user,
-                title=f'{instance.sender} gửi tin nhắn',
-                body=instance.content
-            )
+# @receiver(post_save,sender=Message)  
+# def push_message(sender,instance,created,**kwargs):
+#     if created:
+#         conv=instance.conversation
+#         if not conv:
+#             return
+#         member=ConversationMember.objects.filter(conversation=conv).select_related('user')
+#         for m in member:
+#             if m.user_id == instance.sender_id:
+#                 continue
+#             push_to_user(
+#                 m.user,
+#                 title=f'{instance.sender} gửi tin nhắn',
+#                 body=instance.content
+#             )
         
 
 # @receiver(action)

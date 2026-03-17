@@ -246,16 +246,34 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return True, None
 
     @database_sync_to_async
-    def save_message(self, message, message_type='text'): # lưu tin nhắn vào db
+    def save_message(self, message, message_type='text'): #gọi lưu và push noti 
         try:
-            return Message.objects.create(
+            from api.firebase import push_to_user
+            from api.models import ConversationMember
+
+            msg = Message.objects.create(
                 conversation_id=self.conversation_id,
                 sender=self.user,
                 content=message,
                 message_type=message_type,
             )
+
+            # push notification cho các member khác
+            members = ConversationMember.objects.filter(
+                conversation_id=self.conversation_id
+            ).select_related('user')
+
+            for m in members:
+                if m.user_id == self.user.id:
+                    continue
+                push_to_user( # gọi 
+                    m.user,
+                    title=f'{self.user.username} gửi tin nhắn',
+                    body=message
+                )
+
+            return msg
         except Exception as e:
             print(f"❌ Save message error: {e}")
             return None
-
 

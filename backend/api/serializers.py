@@ -60,7 +60,7 @@ class PostSerializer(serializers.ModelSerializer):
         return f"http://localhost:8000/api/user/post/{obj.post_id}/"   
     
     def get_reactions(self, obj): #phải trùng tên với cái ở trên khai báo reactions
-        content_type = ContentType.objects.get_for_model(obj) #lấy ra contenttype của post 
+        content_type = ContentType.objects.get_for_model(Post) #lấy ra contenttype của post 
         reactions = (
             Reaction.objects.filter(content_type=content_type, object_id=obj.pk)
             .values("settings__name")          # group by theo tên reaction like, wow...
@@ -74,7 +74,7 @@ class PostSerializer(serializers.ModelSerializer):
             return False
         qs = UserReaction.objects.filter(
             user=user,
-            reaction__content_type=ContentType.objects.get_for_model(obj),
+            reaction__content_type=ContentType.objects.get_for_model(Post),
             reaction__object_id=obj.pk
         ).first()
         if qs: 
@@ -188,7 +188,7 @@ class BlockSerializer(serializers.ModelSerializer):
 
 class ConversationMemberSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source="user.profile", read_only=True)
-    last_read_message= serializers.SerializerMethodField
+    last_read_message= serializers.SerializerMethodField()
     class Meta:
         model = ConversationMember
         fields = [
@@ -206,6 +206,7 @@ class ConversationSerializer(serializers.ModelSerializer):
         read_only=True
     )
     last_message = serializers.SerializerMethodField()
+    unread_count=serializers.SerializerMethodField()
     class Meta:
         model = Conversation
         fields = [
@@ -214,7 +215,8 @@ class ConversationSerializer(serializers.ModelSerializer):
             "created_at",
             "members",
             "last_message",
-            'updated_at'
+            'updated_at',
+            'unread_count'
         ]
     def get_last_message(self, obj):
         msg = (
@@ -224,6 +226,18 @@ class ConversationSerializer(serializers.ModelSerializer):
             .first()
         )
         return MessageSerializer(msg).data if msg else None #return theo kiểu serializer của message nếu có msg, k thì trả về None
+    def get_unread_count(self,obj):
+        user=self.context['request'].user # lấy user trong cái request
+        member = next( #đang ở object conversation thì thì lấy ra user có trong đoạn chat đó k, next dùng lấy phần tử đầu tiên và tìm trong ram sau khi đã có lần load đầu sql
+            (m for m in obj.conversationmember_set.all() if m.user_id == user.id),
+            None
+        )  
+        if not member:
+            return 0
+        if member.last_read_message is None:
+            return Message.objects.filter(conversation=obj).count()
+        return Message.objects.filter(conversation=obj,created_at__gt=member.last_read_message.created_at).count()
+        
     
 class MessageAttachmentSerializer(serializers.ModelSerializer):
     class Meta:

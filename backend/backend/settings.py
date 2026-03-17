@@ -25,7 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'api',
     'realtime',
-    # 'cacheops' # lưu các truy vấn đã truy vấn và trả về luôn, save tài nguyên
+    'cacheops', # lưu các truy vấn đã truy vấn và trả về luôn, save tài nguyên
     'django_extensions',# công cụ tiện ích 
     'debug_toolbar',#hiển thị các tiến trình
     'silk', #theo dõi sâu
@@ -66,8 +66,9 @@ INSTALLED_APPS = [
 
 
 ]
-
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage' #whitenoise 
 MIDDLEWARE = [
+    'whitenoise.middleware.WhiteNoiseMiddleware', #whitenoise
     "csp.middleware.CSPMiddleware",#csp
     'corsheaders.middleware.CorsMiddleware',# corsheader
 
@@ -116,6 +117,7 @@ DATABASES = {
         "OPTIONS": {
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'",
         },
+        'CONN_MAX_AGE': 60, #dùng kết nối cũ để query, sẽ tự đóng trong n thời gian 
     }
 }
 
@@ -157,19 +159,33 @@ MEDIA_ROOT=os.path.join(BASE_DIR,'media') #basedir là tìm trong thư mục g�
 MEDIA_URL='/media/'
 
 #=====================================================================================================================================================================================
+#cacheops
+CACHEOPS_REDIS={
+    'host':'localhost',
+    'port': 6379,
+    'db':1,
+    'socket_timeout':3,
+}
 
-#cấu hình cacheops
-# CACHEOPS_REDIS={
-#     'host':'localhost',
-#     'port':'6379',
-#     'db':1,
-#     'socket_timeout':3,
-# }
+CACHEOPS={
+    # ở tất cả bảng, cache(lưu vào bộ nhớ phụ và reuse) ví dụ get,filter,count...trong 15p.
+    '''ví dụ ng dùng gọi api lần 1 nó lưu vào cache, nó phát hiện có bài đăng mới nó sẽ tự gọi lại và lưu cache mà k cần đợi timeout'''
+    'auth.user':{'ops':('get','filter'),'timeout':60*60}, # cache user từ auth, ví dụ cache khi lấy ra user, lọc user
+    'api.Profile':          {'ops': 'all', 'timeout': 60*30}, #ops là cache querry gì kiểu get,count,filter...timeout là bao lâu thì xóa
+    'api.PendingProfile':   {'ops': 'all', 'timeout': 60*30},
+    'api.Setting':          {'ops': 'all', 'timeout': 60*60},
 
-# CACHEOPS={
-#     'socialnework.*':{'ops':'all', 'timeout':60*15},# ở tất cả bảng, cache(lưu vào bộ nhớ phụ và reuse) ví dụ get,filter,count...trong 15p. Muốn 1 bảng cố định thì 'socialnetwork.tên bảng'
-#     'auth.user':{'ops':('get','filter'),'timeout':60*60} # cache user từ auth, ví dụ cache khi lấy ra user, lọc user
-# }
+    # ✅ Cache vừa — thay đổi vừa
+    'api.Post':             {'ops': 'all', 'timeout': 60*10},
+    'api.PostArticle':      {'ops': 'all', 'timeout': 60*10},
+    'api.PostPhoto':        {'ops': 'all', 'timeout': 60*10},
+    'api.Comment':          {'ops': 'all', 'timeout': 60*10},
+    'api.Notification':     {'ops': 'all', 'timeout': 60*5},
+    'api.SearchHistory':    {'ops': 'all', 'timeout': 60*5},
+    # ⚠️ Cache ngắn — realtime
+    'api.Conversation':     {'ops': 'all', 'timeout': 60*2},
+    'api.ConversationMember': {'ops': 'all', 'timeout': 60*2},
+}
 
 #==========================================================================================================================================================================================================
 
@@ -182,30 +198,45 @@ from .settings_admin import *
 from .settings_backend import *
 #==========================================================================================================================================================================================================
 #Channels
-ASGI_APPLICATION = "backend.asgi.application"
+ASGI_APPLICATION  = "backend.asgi.application" # setting để runserver có thể chạy asgi 
 #redis chạy channels 
 # dùng daphne để chạy cả http + websocket 
-if DEBUG:
-    CHANNEL_LAYERS = {
-        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
-    }
-else:
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {'hosts': [('127.0.0.1', 6379)]},
-        }
-    }
-    
-#============================================================================================
-# lưu query vào cache  tránh gọi trong db
-# CACHES = { 
-#     "default": {
-#         "BACKEND": "django_redis.cache.RedisCache",
-#         "LOCATION": "redis://127.0.0.1:6379/1",
-#         "OPTIONS": {
-#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+
+# if DEBUG:
+#     CHANNEL_LAYERS = {
+#         "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+#     }
+# else:
+#     CHANNEL_LAYERS = {
+#         'default': {
+#             'BACKEND': 'channels_redis.core.RedisChannelLayer',
+#             'CONFIG': {'hosts': [('127.0.0.1', 6379)]},
 #         }
 #     }
-# }
-
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
+#============================================================================================
+# lưu query vào cache  tránh gọi trong db
+CACHES = {  #xài redis
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/2",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+# Channels  → DB 0
+# Caches    → DB 2  
+# Cacheops  → DB 1 
+#============================================================================================
+#django-extensions
+REST_FRAMEWORK_EXTENSIONS = {
+    'DEFAULT_CACHE_RESPONSE_TIMEOUT': 60*15,  # 15 phút mặc định
+}

@@ -31,3 +31,41 @@ class JwtOrSessionMiddleware: #api websocket cho cả web và mobile, web thì d
         # để AuthMiddlewareStack xử lý session cookie
 
         return await self.inner(scope, receive, send)
+    
+
+class MobileAllowedOriginValidator: # mobile thì k gửi origin nên bỏ qua
+    """ 
+    Giống AllowedHostsOriginValidator nhưng cho phép mobile
+    (mobile thường không gửi Origin header)
+    """
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "websocket":
+            headers = dict(scope.get("headers", []))
+            origin = headers.get(b"origin", None)
+
+            # mobile không gửi origin → cho qua
+            if origin is None:
+                return await self.inner(scope, receive, send)
+
+            # có origin → kiểm tra như AllowedHostsOriginValidator
+            from django.conf import settings
+            origin_str = origin.decode("utf-8")
+            allowed = [
+                f"http://{host}" for host in settings.ALLOWED_HOSTS
+            ] + [
+                f"https://{host}" for host in settings.ALLOWED_HOSTS
+            ]
+
+            if "*" in settings.ALLOWED_HOSTS or any(
+                origin_str.startswith(a) for a in allowed
+            ):
+                return await self.inner(scope, receive, send)
+
+            # origin không hợp lệ → đóng kết nối
+            await send({"type": "websocket.close", "code": 4403})
+            return
+
+        return await self.inner(scope, receive, send)

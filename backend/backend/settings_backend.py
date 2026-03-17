@@ -1,5 +1,5 @@
 #=======================================SILK=============================================================================
-SILKY_PYTHON_PROFILER = True            # Bật profiling cho Python code
+SILKY_PYTHON_PROFILER = False            # Bật profiling cho Python code
 SILKY_PYTHON_PROFILER_BINARY = True     # Lưu profile ở dạng binary (có thể dùng với tools như SnakeViz)
 SILKY_MAX_REQUEST_BODY_SIZE = -1        # Lưu toàn bộ body request (mặc định là 100kb)
 SILKY_MAX_RESPONSE_BODY_SIZE = -1       # Lưu toàn bộ body response

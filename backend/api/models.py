@@ -37,6 +37,11 @@ class Profile(SafeDeleteModel):
         choices=(('local', 'Local'), ('google', 'Google')),
         default='local'
     )
+    class Meta:
+        indexes = [
+            models.Index(fields=['user']),         # filter user
+            models.Index(fields=['-created_at']),  # order by
+        ]
     def __str__(self):
         return f"{self.user.username} - {self.is_completed}"
 
@@ -148,6 +153,11 @@ class Conversation(models.Model):
     updated_at= models.DateTimeField(auto_now=True)
     def __str__(self):
         return f"Conversation {self.id}"
+    class Meta:
+        indexes = [
+            models.Index(fields=['-updated_at']),  # order by updated_at
+            models.Index(fields=['status']),        # filter status
+        ]
 
     
 class ConversationMember(models.Model):
@@ -177,7 +187,9 @@ class Message(SafeDeleteModel):
     def __str__(self):
         return f"Message {self.content} in Conversation {self.conversation.id} by {self.sender.username}"
     class Meta:
-        indexes=[models.Index(fields=['conversation','-created_at'])]
+        indexes=[models.Index(fields=['conversation','-created_at']),
+                models.Index(fields=['sender']),
+        ]
 
 class MessageAttachment(models.Model): #phục vụ gửi file, hình ảnh trong chat
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='attachments')
@@ -212,9 +224,20 @@ class Notification(models.Model):
         return f"{self.message} to {self.reciever}"
     
     class Meta: #Meta là cách thiết lập model hoạt động , kiểu setting mặc định 
-        ordering = ['-created_at']
+        ordering = ['-created_at'] #auto sắp xếp giảm dần 
         
-        indexes = [ # giống mục lục sách, thay vì tìm từng dòng thì nhảy thẳng đến, giúp truy vấn mấy cái hay tìm dễ hơn ví dụ theo ngày...
+        indexes = [ # giống mục lục sách, thay vì tìm từng dòng thì nhảy thẳng đến, giúp truy vấn mấy cái hay tìm dễ hơn ví dụ theo ngày..., dùng tăng tốc filter, order_by , tăng bộ nhớ ram nhưng nhanh
             models.Index(fields=['reciever', '-created_at']),
             models.Index(fields=['is_read']),
-        ]
+            models.Index(fields=['actor']),
+        ]#ví dụ nó sẽ lưu vào user là 5 trong db index và mốt nó truy vấn chỉ cần vào đó tìm user 5 sẽ ra row 1000
+
+class SearchHistory(models.Model):
+    user= models.ForeignKey(User,on_delete=models.CASCADE)
+    content=models.CharField(max_length=250)
+    created_at=models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering=['-created_at']
+        indexes=models.Index(fields=['user','-created_at']),
+    def __str__(self):
+        return f"{self.user} search {self.content}"

@@ -32,7 +32,12 @@ class CustomRegisterSerializer(RegisterSerializer): # Sửa chức năng registe
         pending_profile, created = PendingProfile.objects.get_or_create(user=user)
         pending_profile.first_name=self.validated_data.get('firstname','')
         pending_profile.last_name=self.validated_data.get('lastname','')
-        pending_profile.phone_number = self.validated_data.get('phone_number', '')
+        phone = self.validated_data.get('phone_number', '')
+        if phone.startswith('0'):
+            phone = '+84' + phone[1:]  # 0937... -> +84937...
+        elif not phone.startswith('+84'):
+            phone = '+84' + phone      # 937... -> +84937...
+        pending_profile.phone_number = phone
         pending_profile.date_of_birth = self.validated_data.get('birthday')
         pending_profile.save() 
         return user
@@ -145,10 +150,7 @@ class UserEmail(generics.ListAPIView):
         user= self.request.user
         return EmailAddress.objects.filter(user=user,verified=True)
     
-'''
-- xóa email bắt nhập lại mk
-- thêm signal khi 1 cái verified thì xóa hết 
-'''
+
 
 # class CheckPassword(APIView):
 #     permission_classes=[IsAuthenticated]
