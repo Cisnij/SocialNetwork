@@ -238,7 +238,39 @@ class ConversationSerializer(serializers.ModelSerializer):
             return Message.objects.filter(conversation=obj).count()
         return Message.objects.filter(conversation=obj,created_at__gt=member.last_read_message.created_at).count()
         
-    
+    # def get_last_message(self, obj):
+    # # đọc từ prefetched_messages trong RAM, không query DB
+    # # getattr để tránh crash nếu chưa prefetch (trả về None thay vì lỗi)
+    # msgs = getattr(obj, 'prefetched_messages', None)
+    # if msgs:
+    #     return MessageSerializer(msgs[0]).data  # msgs[0] = tin mới nhất vì đã order_by('-created_at')
+    # return None
+
+    # def get_unread_count(self, obj):
+    #     user = self.context['request'].user # lấy user trong request
+
+    #     #  conversationmember_set đã prefetch sẵn → không query DB
+    #     member = next(
+    #         (m for m in obj.conversationmember_set.all() if m.user_id == user.id),
+    #         None
+    #     )
+
+    #     if not member:
+    #         return 0
+
+    #     #  đếm từ prefetched_messages trong RAM, không query DB
+    #     msgs = getattr(obj, 'prefetched_messages', [])
+
+    #     if member.last_read_message is None:
+    #         # chưa đọc lần nào → đếm tất cả tin của người khác
+    #         return sum(1 for m in msgs if m.sender_id != user.id)
+
+    #     # đếm tin của người khác sau lần đọc cuối
+    #     return sum(
+    #         1 for m in msgs
+    #         if m.created_at > member.last_read_message.created_at  # sau lần đọc cuối
+    #         and m.sender_id != user.id                             #  không đếm tin của mình
+    #     )
 class MessageAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = MessageAttachment
