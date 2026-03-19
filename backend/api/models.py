@@ -111,15 +111,7 @@ class Setting(models.Model):
     def __str__(self):
         return f"Setting of {self.user.username}"
 
-# class AddFriendRequest(models.Model):
-#     sender=models.ForeignKey(User,on_delete=models.CASCADE,related_name="sender")
-#     receiver=models.ForeignKey(User, on_delete=models.CASCADE, related_name="receiver")
-#     created_at=models.DateTimeField(auto_now_add=True)
-#     status=models.BooleanField(default=False)
-#     def __str__(self):
-#         return f"{self.sender} send request to {self.receiver}"
     
-
 class Log(SafeDeleteModel): #sau này dùng django-activity-stream 
     _safedelete_policy = SOFT_DELETE
     metadata_json = models.TextField(

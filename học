@@ -1,0 +1,760 @@
+#Django 
+#REST Framework py install djangorestframework, sau đó import vào settings
+# GIống như channels cần redis thì REST cần cài cors nếu muốn dùng cho truy cập các trang khác ngoài localhost, còn nếu render trong views django thì k cần
+pip install django-cors-headers
+
+1. Serializers.py cách dùng y chang forms.py nhưng forms.py là tạo form trực tiếp lên csdl thì serializers.py chuyển dữ liệu python sang json và gửi trục tiếp đến client
+    -> chỉ dùng khi dung rest api 
+    #minh họa lường seriailzer
+        serializer có 2 chiều
+        1 là từ frontend nhận dữ liệu lên(POST)-> qua serializer-> yêu cầu tất cả dữ liệu đã khai báo trong fields và validate dữ liệu đó trước khi lưu vào csdl
+        2 là từ frontend yêu cầu dữ liệu(READ)-> qua serializer-> chuyển các fields đó sang json và response 
+        => đôi khi sẽ cần tạo 2 serializer cho 1 model 1 cái để lấy dữ liệu theo fields,1 cái để lấy ra data và lấy ra nhiều fields hơn
+    # Cách lấy ra data 
+    VD1 data=tên hàm trong serializers(instance).data -> Response(data) 
+    VD2 items=Item.object.all() -> serializers =ItemSerializer(items,many=True) -> Response(serializers.data)
+    # Cách tạo data
+    serializer =ItemSerializer(data=request.data) -> if serializer.is_valid() -> serializer.save() -> return Response(serializer.data) 
+    # cách update data
+    serializer=ItemSerializer(instance, data=request.data) -> if serializer.is_valid() -> serializer.save() -> return Response(serializer.data)
+    from rest_framework import serializers
+    from .models import Profile
+    class ProfileSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Profile
+            fields = '__all__'   # Chỉ định các trường bạn muốn chuyển sang JSON từ body của front end gửi lên
+
+    +Create và update trong serializers: Dùng để tạo mới hoặc cập nhật dữ liệu trong cơ sở dữ liệu thông qua serializers, nếu k có instance thì tạo mới, có thì update
+        def create(self, validated_data): # thường dùng để xử lý đăc biệt thêm trước khi tạo mới(ví dụ gán tác giả vào)
+            return Book.objects.create(**validated_data)
+
+        def update(self, instance, validated_data): #dùng để cập nhật dữ liệu cụ thể, ở dưới là title và author, các trường khác sẽ giữ nguyên
+            instance.title = validated_data.get('title', instance.title)
+            instance.author = validated_data.get('author', instance.author)
+            instance.save()
+            return instance 
+
+    +Custome validation: có thể tạo hàm validate riêng để kiểm tra dữ liệu trước khi lưu vào cơ sở dữ liệu, tốt hơn nên tạo validators.py riêng thay vì trong serializers.py
+        def validate_title(self, value): #tên hàm validate phải là validate_tên_trường
+            if len(value) < 5:
+                raise serializers.ValidationError("Title must be at least 5 characters long.")
+            return value           
+            #nếu dùng file validators riêng thì sẽ import vào serializers.py và dùng hàm validate_title trong validators.py ví dụ title=Serializers.CharField(validators.validate_title])
+2. api_view 
+    from rest_framework.decorators import api_view
+    from rest_framework.response import Response
+    @view_api(["GET"]) hay @view_api(["POST", "PUT", "DELETE"])
+    -> Nó giới hạn các phương thức được xử lý, nếu đầu function mà không có @view_api thì nó sẽ tự động nhận tất cả các phương thức, còn nếu có @view_api 
+    ví dụ là GET thì nó sẽ chỉ cho trả về dữ liệu dưới dạng json để xem , ví dụ là post thì chỉ cho gửi lên, delete thì chỉ cho xóa, put thì chỉ cho cập nhật dữ liệu
+
+3. hàm chuyển tự động sang json == serializers 
+    from django.forms.model  import model_to_dict
+    abc=model_to_dict(dữ liệu)
+
+3.1 Signal 
+    Django signal dùng để tạo user tự động thay vì thủ công ở tùng dòng code, hoặc dùng để gửi email tự động, gửi thông báo, nchung liên quan tự động
+    Ví dụ: khi tạo user thì tự động gửi email cho user đó, hoặc khi tạo user thì tự động tạo profile cho user đó
+    # Ví dụ tạo user tự động
+    from django.db.models.signals import post_save
+    from django.dispatch import receiver
+    from django.contrib.auth.models import User
+    from .models import Profile
+    @receiver(post_save, sender=User)
+    def create_profile(sender, instance, created, **kwargs):
+        if created:
+            Profile.objects.create(user=instance)
+
+    pre_save: Trước khi lưu sẽ chạy
+    post_save: sau khi lưu sẽ chạy 
+    pre_delete:	Trước khi instance bị xóa 
+    post_delete: sau khi bị xóa
+    request_started: Khi request bắt đầu
+    request_finished: Khi request kết thúc
+    m2m_changed: Khi có thay đổi trong mối quan hệ nhiều-nhiều
+    pre_migrate: Trước khi migrate
+    post_migrate: Sau khi migrate
+    user_logged_in:	Sau khi user login thành công.
+    user_logged_out:	Sau khi user logout.
+    user_login_failed: Khi đăng nhập thất bại.
+
+3.2 Forms 
+    Django form dùng để tạo form thao tác trực tiếp với csdl    
+3.3 Fetch 
+    Cách dùng fetch
+    body=json stringtyfy dùng để chuyển đổi sang json
+    then=>>response dùng để đưa dữ liệu tới view.py và trả lại
+    then=>>data dùng để xử lý dữ liểu ra html từ view vềvề
+3.4 Trang admin :có thể tạo group để add user vào và cấp quyền cho group đó và tất cả user nhân được quyền của group đó mà k cần phải cấp quyền từng người
+3.5 cách tạo post lên bằng code 
+    import requests
+    endpoint = 'http://localhost:8000/books/'
+    data = {
+        'title': 'Django REST',
+        'author': 'You',
+        'published_date': '2024-06-01'
+    }
+
+    response = requests.post(endpoint, json=data)# request.get 
+
+    print(response.status_code)
+    print(response.json())
+3.6 JsonRespose và Response
+    JsonResponse trả về dữ liệu dạng json trong html
+    Response trả về dữ liệu theo trang dạng rest_framework
+4.CRUD là gì
+    Create,Read,Update,Delete
+    Tương ứng với POST, GET, PUT, DELETE
+    endpoint là gì
+    -> endpoint là địa chỉ url mà người dùng khai báo để truy cập lấy dữ liệu từ server về, urls.py chứa các endpoint này để load trang web trả dữ liệu đã xử lý từ views.py 
+    về ng dùng
+    ví dụ endpoint="https://1234..." -> data= request.get(endpoint) -> print(data.text hoặc json)
+
+5.Truy vấn trong django
+    --Tên csdl muốn lấy.objects.all() -> lấy hết ra
+    --.objects.filter(id =giá trị) -> lọc theo giá trị 
+                (name__icontains='tên cần tìm') -> lọc theo tên
+                (name__startswith='tên cần tìm') -> lọc theo tên bắt đầu bằng
+                (name__endswith='tên cần tìm') -> lọc theo tên kết thúc bằng              
+                    (age_gte=18) -> tuổi lớn hơn hoạc bằng 18 ,lưu ý age là tên đặt trong csdl, _gte là câu truy vấn 
+                    (age__lt=18) -> tuổi nhỏ hơn 18,
+                    (age__lte=18) -> tuổi nhỏ hơn hoặc bằng 18,
+                    (age__gt=18) -> tuổi lớn hơn 18,
+                    (created_at__year=2023) -> lọc theo năm tạo ra, nếu muốn lọc theo tháng thì dùng month, ngày thì dùng day
+                
+    --.objects.get(id=giá trị) -> lấy ra 1 đối tượng duy nhất, nếu có nhiều hơn 1 thì sẽ báo lỗi
+    --.objects.create(name='tên',age=18) -> tạo mới 1 đối tượng trong csdl, nếu có trường nào không có thì sẽ báo lỗi
+    -- filter().update(name='tên mới',age=20) -> cập nhật đối tượng trong csdl, nếu không có đối tượng nào thì sẽ báo lỗi
+    --.filter().delete() -> xóa đối tượng trong csdl, nếu không có đối tượng nào thì sẽ báo lỗi
+    --.objects.exclude(name='tên') -> loại bỏ đối tượng nếu thỏa mãn điều kiện, ở đây là name 
+    --.objects.get_or_create(name='tên',age=18) -> lấy ra đối tượng nếu có, nếu không có thì sẽ tạo mới đối tượng với tên và tuổi đã cho
+    --.objects.order_by('name') -> sắp xếp theo tên, nếu muốn sắp xếp ngược lại thì dùng '-name' hoặc ('created_at')
+    --.objects.values('name','age') -> lấy ra các trường name và age của đối tượng, nếu muốn lấy hết thì dùng .values()
+    --.objects.filter(Q(name__icontains='a') | Q(age__lt=30)) -> truy vấn or , trả về nếu có 1 trong 2 hoặc cả 2 
+    --.objects.filter(name='abc').exists() -> kiểm tra xem đối tượng có tồn tại không, trả về True hoặc False
+    --.count() -> đếm 
+    --.objects.aggregate(Sum('price')) -> tính tổng 
+
+6. Generics 
+    Để tạo khung trong rest framework và get, post trên web thì
+    -GenericApiView khác APIView là Generic API view có sẵn tiện ích như queryset, serializer_class, filter_backends, search_fields, ordering_fields, với phải custome CRUD còn APIView thì k có chỉ có permission. Nếu là hành động action ví dụ đánh dấu thay vì crud thì nên dùng APIView 
+    cách 1:
+          @api_view(['POST'])
+            def create_book(request):
+                serializer = BookSerializer(data=request.data)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    cách 2: dùng generics -> from rest_framework import generics
+            class BookListCreateAPIView(generics.ListCreateAPIView):
+                queryset = Book.objects.all() #lất ra tất cả 
+                serializer_class = BookSerializer
+                filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+                filterset_fields = ['status', 'role']
+                search_fields = ['user__username']
+                ordering_fields = ['created_at']
+
+    +generics có kiểu CreateApiView, ListApiView, RetrieveApiView, UpdateApiView, DestroyApiView   
+     -CreateAPIView: Tạo mới 1 object (POST)
+     -ListAPIView : lấy ra danh sách các object (GET)
+     -RetrieveAPIView: Lấy ra 1 object duy nhất  theo primary key(GET)         
+     -UpdateAPIView: Cập nhật 1 object theo primary key (PUT)
+     -DestroyAPIView: Xóa 1 object theo primary key (DELETE)
+     -ListCreateAPIView: Kết hợp ListAPIView và CreateAPIView, cho phép lấy danh sách và tạo mới (GET, POST)
+     -RetrieveUpdateDestroyAPIView: đầy đủ CRUD 
+     ->> cách dùng y chang cách 2 dùng generics, chỉ thay đổi caí truyền vào trong class là CreateAPIView, ListAPIView, RetrieveAPIView, UpdateAPIView, DestroyAPIView
+    +Giải thích:
+    Đầu tiên tạo cơ sở dữ liệu, sau đó tạo serializer để chuyển định dạng sang json cũng như validate dữ liệu, sau đó mới tạo views trong views.py và dùng
+    các hàm như trên, ví dụ retrieve, sau khi viết hàm retreive thì tạo url có chứa pk của đối tượng cần lấy ra, sau khi được gọi url thì sẽ lấy ra dữ liệu có pk đó 
+
+7. Mixins
+    VIEWSET THÌ TÍCH HỢP HẾT CRUD, GENERICS THÌ TỰ TỐI ƯU ĐƯỢC, MIXINS VỪA TỰ TỐI ƯU VỪA TÍCH HỢP HẾT THEO Ý 
+    dùng để tái sử dụng code và kết hợp nhiều chức năng CRUD trong một class duy nhất ví dụ get post put delete
+    thay vì 1 đối tượng phải tạo CreateAPIView và ListAPIView thì chỉ cần viết 1 class , có thể dùng để set permission theo dạng tối ưu code mà k cần viết lại từng dòng 
+    #ví dụ: 
+    CreateModelMixin	post()	Tạo mới object
+    ListModelMixin	    get()	Lấy danh sách object
+    RetrieveModelMixin	get()	Lấy 1 object theo pk
+    UpdateModelMixin	put(), patch()	Cập nhật object
+    DestroyModelMixin	delete()	Xóa object
+
+    class MyModelView(CreateModelMixin, ListModelMixin, GenericAPIView):
+    queryset = MyModel.objects.all()
+    serializer_class = MyModelSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)  # từ ListModelMixin
+
+    def post(self, request, *args, **kwargs): # nhận tín hiệu post từ fe và xử lý
+        return self.create(request, *args, **kwargs)  # từ CreateModelMixin
+        #lookup_view ='pk' # nếu muốn lấy theo pk thì thêm dòng này, nhưng phải bỏ <int:pk> trong urls.py, bởi vì 2 cái này là trùng nhau
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)  # từ UpdateModelMixin
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)  # từ DestroyModelMixin     
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user) # gán user vào khi tạo đối tượng để biết ai tạo 
+
+8. Permission và Authentication
+    Django Permission: xác định quyền mà bạn có thể truy câp lấy dữ liệu về 
+    +Authentication	Xác thực xem bạn là ai (ví dụ: đăng nhập bằng token, session...)
+    -> Cài simple jwt nhanh gọn lẹ không cần code chỉ cần cài  
+    +Permission	Xác định xem bạn có được phép làm gì sau khi đã xác thực
+    -> ví dụ vào nhà hàng bạn là ai? là vip(authentication) thì được ngồi chỗ vip(permission) 
+
+    AllowAny	    Cho phép tất cả mọi người (kể cả chưa login)
+    IsAuthenticated	Chỉ cho user đã login
+    IsAdminUser	    Chỉ cho user có is_staff=True
+    IsAuthenticatedOrReadOnly	Cho phép ai cũng GET, nhưng POST/PUT/DELETE thì phải login
+
+    # ví dụ:
+    from rest_framework.permissions import IsAuthenticated, AllowAny
+     class BookListView(generics.ListAPIView):
+        queryset = Book.objects.all()
+        serializer_class = BookSerializer
+        permission_classes = [IsAuthenticated]   # chỉ đăng nhập mới được lấy hoặc truy cập dữ liệu
+
+    #setting.py 
+        REST_FRAMEWORK = {
+        'DEFAULT_PERMISSION_CLASSES': [
+            'rest_framework.permissions.IsAuthenticated',...
+        ]
+    } 
+    Pemisson custome là gì?
+    -> Là tạo quyền cụ thể  riêng cho từng user ví dụ add delete update...mà k cần cấp toàn quyền trong admin django, sau đó vào admin và thêm quyền 
+
+9.Token authentication
+    Token là một chuỗi mã hóa để xác thực và giữ phiên đăng nhập trong 1 khoảng thgian. Ví dụ login 1 web và out máy ra 5p thì vẫn duy trì đăng nhập, sau 1h thì logout
+     
+    
+    # Ví dụ sử dụng Token Authentication:
+     
+
+    class BookListView(generics.ListAPIView):
+        queryset = Book.objects.all()
+        serializer_class = BookSerializer
+        authentication_classes = [TokenAuthentication]
+        permission_classes = [IsAuthenticated]
+
+10. Viewset và router
+    -Thay vì viết mixin dài dòng thì chỉ cần tạo ra viewset. Viewset tích hợp sẵn list, create, retrieve, update, destroy và nhanh gọn hơn mixin, cách dùng y chang generics 
+    -router dùng để đăng kí url cho các viewset giống urls.py 
+
+    #ví dụ: tạo viewset.py
+    from rest_framework.viewsets import ModelViewSet
+    from .models import Book
+    from .serializers import BookSerializer
+
+    class BookViewSet(ModelViewSet):
+        queryset = Book.objects.all() #truy vấn từ đâu
+        serializer_class = BookSerializer
+
+        def get_queryset(self):# dùng để trả về dữ liệu của user hiện tại, tức là chỉ lấy dữ liệu của user đã đăng nhập mà k hiện của ngkhac
+            return self.queryset.filter(author=self.request.user)  
+            
+    #sau đó tạo router.py
+    from rest_framework.routers import DefaultRouter
+    from .views import BookViewSet
+
+    router = DefaultRouter()
+    router.register(r'books', BookViewSet)
+
+    #trong urls.py from django.urls import path, include
+    from .router import router
+
+    urlpatterns = [
+        path('', include(router.urls)),
+    ]
+
+    -> cách dùng, truy cập các endpoint ví dụ muốn get tất cả list từ viewset thì request.get(http://localhost:8000/books/) , muốn retreive cụ thể thì request.get(http://localhost:8000/books/1/)
+    -> phải tạo ra create.py,delete.py, update.py, retrieve.py, list.py và import vào viewset để sử dụng các hàm đó, nếu không thì sẽ báo lỗi không 
+    có hàm nào để xử lý, ví dụ request.delete(http://localhost:8000/books/1/) thì sẽ gọi hàm delete trong viewset
+
+11.Pagination
+    Phân trang dùng để chia nhỏ dữ liệu thành dữ liệu nhỏ hơn để trả về tiết kiệm tài nguyên,ví dụ có 100 bản ghi thì trả về 10 bản ghi mỗi lần chia thành 10 lần
+    # settings.py
+    REST_FRAMEWORK = {
+        'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+        'PAGE_SIZE': 10,
+    }
+    
+    pagination_class=PageNumerPagination
+    -> limit là số bản ghi tối đa lấy ra
+    -> offset là vị trí bắt đầu lấy dữ liệu, ví dụ offset=0 thì lấy từ bản ghi đầu tiên, offset=10 thì lấy từ bản ghi thứ 11
+
+
+12. Hàm tên mặc định
+| Tên hàm                              | Khi nào được gọi                       | Dùng để làm gì                                                            |
+| ------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------- |
+| `perform_create(self, serializer)`   | Khi gọi `POST` (tạo mới)               | Gán user, xử lý logic sau khi validate thành công                         |
+| `perform_update(self, serializer)`   | Khi gọi `PUT` / `PATCH` (cập nhật)     | Can thiệp vào quá trình cập nhật (gán user sửa, cập nhật thời gian, v.v.) |
+| `perform_destroy(self, instance)`    | Khi gọi `DELETE`                       | Xử lý logic trước khi xóa (ví dụ: logging, soft delete thay vì xóa thật)  |
+| `get_queryset(self)`                 | Trước khi truy vấn dữ liệu             | Lọc dữ liệu theo người dùng, quyền hạn...mỗi khi get                                  |
+| `get_serializer_class(self)`         | Khi chọn serializer                    | Dùng serializer khác nhau cho create / update / list                      |
+| `get_serializer_context(self)`       | Tùy biến context truyền vào serializer | Dùng `request.user`, `view`, v.v. trong serializer                        |
+| `get_permissions(self)`              | Trả về danh sách permission class      | Tùy chỉnh quyền động theo từng action hoặc user                           |
+| `get_authenticators(self)`           | Tùy chỉnh authentication class         | Dùng các cơ chế xác thực khác nhau theo yêu cầu                           |
+| `get_object(self)`                   | Trả về object cụ thể (cho detail view) | Có thể custom logic lấy object                                            |
+| `get_paginated_response(self, data)` | Tùy biến format của pagination         | Custom cấu trúc JSON khi dùng pagination                                  |
+
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#==============================================================================================================================================================================
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#Django Channels và Websocket
+1. Tạo Django Channels
+    --b1. cài python 
+        pip install -U 'channels[daphne]'
+
+    --b2.settings.py
+        INSTALLED_APPS = (
+            'channels',
+            # các app khác
+        )
+
+    --b3 routing.py # giống urls.py để định nghĩa cho Consumer.py
+        from django.urls import re_path
+        from . import consumers 
+        websocket_urlpatterns = [
+            re_path(r'^ws/message/(?P<room_name>[\w\-]+)/$', consumers.MyConsumer.as_asgi()), #Chỗ này phải trùng với routing 
+        ]   
+
+    --b4. tạo asgi.py (asgi để websocket và channels làm việc cùng nhau)
+
+        import os
+        from channels.routing import ProtocolTypeRouter, URLRouter
+        from django.core.asgi import get_asgi_application
+        from channels.auth import AuthMiddlewareStack
+        from channels.security.websocket import AllowedHostsOriginValidator
+        
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'your_proect.settings')
+        application = ProtocolTypeRouter({
+            "http": get_asgi_application(),# Xử lý các yêu cầu HTTP thông thường
+            "websocket": AllowedHostsOriginValidator(# Bảo vệ các kết nối WebSocket từ các nguồn không được phép
+                AuthMiddlewareStack(# Xử lý xác thực người dùng cho WebSocket
+                    URLROUTER(
+                        websocket_urlpatterns  # Đây là danh sách các đường dẫn WebSocket đã định nghĩa trong routing.py
+                    )
+                )
+            ),     
+
+
+        })
+
+    --b5. setting.py ASGI_APPLICATION = "myproject.asgi.application"
+    --b6 vào setting
+      CHANNEL_LAYERS = { # setting này chuẩn cho production
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [('127.0.0.1', 6379)],
+            },
+        },
+    }
+
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": "redis://127:6379/1",
+        }
+    }
+
+    
+
+
+2. Consumer.py
+    Consumer, giống như views.py, dùng để xử lý giao tiếp giữa client và server, có thể hiểu là nơi nhận và gửi dữ liệu giữa client và server
+    | Sự kiện        | Ý nghĩa                                                                    |
+    | -------------- | -------------------------------------------------------------------------- |
+    | `connect()`    | Khi client mở kết nối WebSocket với server.                                |
+    | `disconnect()` | Khi client đóng kết nối WebSocket.                                         |
+    | `receive()`    | Khi server nhận tin nhắn từu người dùng qua web socket                     |
+    | `send()`       | Gửi tin nhắn từ server tới client. (được gọi trong code, không phải event) |
+    |  close()       | Đóng kết nối WebSocket từ phía server.                                     |
+    client-> websocket -> server
+    #bắt buộc cài channels-redis để sử dụng redis làm backend cho channels, nếu k cài sẽ tự chat với chính mình pip install channels_redis
+    # Ví dụ consumer.py
+    from channels.generic.websocket import AsyncWebsocketConsumer
+    import json
+    from channels.db import database_sync_to_async
+    from .models import Room, Message
+    class MyConsumer(AsyncWebsocketConsumer):
+        async def connect(self):
+            self.room_name = self.scope['url_route']['kwargs']['room_name']
+            self.room_group_name = f'chat_{self.room_name}'
+
+            # Join room group
+            await self.channel_layer.group_add(
+                self.room_group_name,
+                self.channel_name
+            )
+
+            await self.accept() # Chấp nhận kết nối WebSocket
+
+        async def disconnect(self, close_code):
+            # Leave room group
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
+
+        #Nhận dữ liêu 
+        async def receive(self, text_data):
+            text_data_json = json.loads(text_data)
+            message = text_data_json['message']
+            username= text_data_json.get['username']
+            await self.save_message(message, username,self.room_name) # Lưu tin nhắn vào cơ sở dữ liệu 
+            # Gửi tin nhắn 
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'chat_message',
+                    'message': message
+                    'username': username 
+                }
+            )
+
+        # hàm này chạy khi 'type' của receive chạy
+        async def chat_message(self, event):
+            await self.send(text_data=json.dumps({
+                'message' = event['message'] #event['message'] lấy ra message từ async def receive(self, text_data) ở trên trong group send
+                'username': event['username']
+            }))
+
+        @database_sync_to_async # cách để lưu dữ liệu vào cơ sở dữ liệu 
+        async def save_message(self,message,username, room_name):
+            user= User.objects.get(username=username) 
+            return Message.objects.create(User=user,room_name=room_name,message=message)
+            
+            
+            
+3. Kết nối HTML và websocket
+
+    <script>
+        const roomName = "{{my_room}}"; // Tên phòng chat
+
+        const chatSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/chat/' + roomName + '/' # ví dụ ws://localhost:8000/ws/chat/ChiNGhi/
+            # Nếu sử dụng HTTPS, hãy thay đổi ws:// thành wss://
+        );
+
+        chatSocket.onopen = function(e) { # Khi kết nối thành công
+            console.log('Chat socket connected');
+            # có thể thêm userabc joined vào phòng chat, vì nó sẽ tự động gửi khi kết nối 
+        };
+
+        chatSocket.onerror = function(e) { # Khi có lỗi xảy ra
+            console.error('Chat socket error:', e);
+        };
+
+        chatSocket.onclose = function(e) { # Khi kết nối bị đóng
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        function sendMessage() { # Gửi tin nhắn từ frontend tới backend, hay từ client tới server-- phải dùng onclick="sendMessage()
+            const messageInputDom = document.getElementById('chat-message-input'); # lấy ra ô input 
+            const message = messageInputDom.value; # lấy ra giá trị trong ô input
+            chatSocket.send(JSON.stringify({ # chuyển đổi sang json để gửi qua backend theo dạng dictionary 
+                'message': message
+                'username': '{{ user.username }}'
+                #room_name: {roomName} 
+            }));
+        }
+        chatSocket.onmessage = function(e) { # trả về tin nhắn từ server
+            const data = JSON.parse(e.data);
+            document.getElementById('chat-log').value += (data.message + '\n');
+        };
+
+
+        #dùng gán phím enter để gửi tin nhắn
+            document.querySelector('#chat-message-input').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+});
+    </script>
+    #Tổng quan: frontend -> consumers.py( nơi giao tiếp giữa client và server) -> chạy hàm gửi đi
+    logic: -flow từ back tới front end
+        -Frontend: User mở màn hình chat, front-end gọi new WebSocket và khởi tạo url với conversation_id,sau đó chạy open
+        -Backend: chạy hàm connect và group add conversation_id đó sau đó chạy accept
+        -Frontend: socket.send tin nhắn 
+        -Backend: Chạy receive và lưu db, sau đó chạy group_send, cuối cùng chạy chat_message để gửi về fe load ra
+        -Frontend: Nhận tin nhắn và chạy onmessage
+        - tất cả như seen hay send hay update mess đều đi qua 1 luồng là fe gửi về backend thao tác db, sau đó gửi tín hiệu và gửi json cho các nhóm
+
+
+12. Các hàm thông dụng sẵn
+        @login_required : yêu cầu người dùng đăng nhập mà k cần viết user.is_authenticated 
+        @staff_member_required : yêu cầu người dùng là staff mà k cần viết user.is_staff    
+
+#=========================================================================================================================================
+
+#CI-CD: 
+    thay vì mỗi lần code xong thử nghiệm xong upload server trong nhiều lần nhiều ngày thì nó sẽ tự động hóa cho chúng ta
+	-pip freeze > requirements.txt d để tự động thêm các thư viện
+    vào actions và tìm django, setup file đúng phiên bản, sau khi push lên nó tự check
+    chạy câu lệnh gỉt add. -> git commit -m "..." -> git push lên nhánh phụ, sau đó vào git và check push compare để đẩy từ nhánh phụ lên nhánh chính(để đảm bảo nhánh main luôn đúng)
+    Trình tự -> push lên nhánh phụ -> CI actions kiểm tra trước khi merge vào nhánh chính -> deploy CD
+
+#===========================================================================================================================================
+
+
+
+
+
+#các thư viện
+    {
+        Gói api:
+        #+django-restframework: REST API
+        #pip install django-filter : dùng lọc dữ liệu cho REST
+        #+pip install drf-spectacular[sidecar]: Tự động tạo tài liệu cho api, ví dụ khi tạo api và muốn ngta truy cập vào /books/version/get thì phải cho ngta biết, nó sẽ tự sinh ra tài liệu để ngta biết truy cập
+        #+pip install django-cors-headers: bắt buộc dùng nếu muốn gọi api từ django
+        +pip install django-guardian: phân quyền chi tiết đối tượng, ví dụ chỉ user A thấy bài viết A
+        #  pip install -U 'channels[daphne]' chat realtime
+        django-channels-presence: theo dỗi hoạt động onl/off real time
+        #pip install channels-redis: bắt buộc nếu dùng channels
+        #+pip install django-environ: tạo file .env để dấu secretkey hay db k cho push đi
+        # pip install redis: kết nối với db của redis và phân phối hàng đợi cho celery
+        +django-el-pagination: phân trang infinite scroll cho mvc
+        
+    }    
+      
+    {
+        Đăng nhập: 
+        #+pip install django-axes[ipware]: giới hạn số lần đăng nhập sai và khóa theo id 
+        #+pip install django-allauth: hỗ trợ đăng nhập facebook/google, gửi mail xác nhận
+        #pip install "django-allauth[socialaccount]": gói của allauth
+        #+pip install dj_rest_auth: dùng login logout token api và dễ dùng hơn jwt  
+        #pip install 'dj-rest-auth[with-social]': gói mở rộng dj rest 
+        #pip install djangorestframework-simple jwt : token
+        #django-ratelimit: chống spam nâng cao, chỉ dùng cho mvc, api thì có throttle
+        #+pip install  django-csp: chống mã độc
+        dj_rest_auth_mfa : xác minh 2 lớp , tạo mã code khôi phục như bitcoin
+        #pip install django-pwned-passwords:check mật khẩu rò rỉ
+        pip install pyyaml ua-parser user-agents: track user đăng nhập từ đâu, thiết bị gì để thông báo
+        pip install django-honeypot  # bẫy bot spam form
+    }
+    {
+        Thông báo, sự kiện:
+        +pip install django-celery: :xử lý tác vụ nền (ví dụ gửi email,thông báo mà ít ảnh hưởng hiệu năng)
+        +pip install django-scheduler: để tạo các lịch hẹn, các event lặp lại
+        +pip install django-notification-hq: tạo thông báo, có hệ thống đọc/chưa đọc sẵn, có thể tích hợp channels
+        # django.core.mail : thư viện gửi export_email
+         django-anymail: gửi mail
+        # +pip install django-activity-stream: ghi log lại các hành động ng dùng
+    }
+     
+    {
+        Cải thiện database:
+        #+pip install django-phonenumber-field[phonenumbers]: field để check phone number
+        #+snowflake-id: tạo id ngắn
+        # pip install django-cacheops: tự tối ưu db, sẽ lưu truy vấn nếu cần lấy lại và tiết kiệm
+        #+pip install django-autoslug: tự tạo slug
+        #django-cleanup: xóa những db bị xóa ở ổ tạm(tiết kiệm tài nguyên)
+        #+django-safedelete: dùng để lưu trạng thái xóa mềm thay vì xóa thật và tạo chức năng khôi phục, pip install django-safedelete-admin: cho admin
+        #whitenoise: xử lý nhanh static file
+    }
+    
+    
+    {
+        Gói mở rộng:
+        #+django-silk: Theo dõi sâu hiệu năng(xem api nào đc gọi nhiều nhất, cái nào tốn nhiều thgian nhất), phân tích code 
+        #+pip install django-jazzmin : tạo giao diện admin đẹp hơn
+        +pip install django-admin-chart: tạo chart trong admin(doanh thu...)
+        #+pip install django-debug-toolbar: công cụ giúp debug, xem sql nào đang chạy, file html nào đang chạy, và chạy mất bao lâu
+        #+pip install django-extensions : tích hợp nhiều tính năng mở rộng cho django như chạy server lỗi đẹp hơn... {tất cả dùng với manage.py, runserver_plus:chạy server tốt hơn hiện lỗi chi tiết, show_urls:hiển thị tất cả url bao gồm url ẩn, graph_models:vẽ mô hình erd, sqldiff: hỗ trợ check lỗi sql, export_emails: xuất email ... dùng, check: check lỗi, manage.py --help xem thêm }
+        +django-ckeditor5: tạo imput nhập đẹp có font google, có thẻ tích hợp vào html 
+        +django-vote: like đislike
+        +django star-ratings: đánh giá star 1-5 sao 
+        #+django-reaction-system: thả reaction cười, buồn như facebook
+        +django-friendship: để follow
+        django-comments-xtd: comment bài viết, có like dislike cho comment
+        +django-markdownx: tạo highlights
+        +django-elasticsearch-dsl django-elasticsearch-dsl-drf: search nâng cao
+        +django-taggit: tạo tag bài viết
+        +pip install django-modeltranslation: hỗ trợ dịch
+        +pip install django-invoices: tạo hóa đơn , gửi email, xuất pdf
+        +pip install django-payments: thanh toán qua paypal...
+        +pip install django-formtools: tạo form thanh toán từng bước(có lưu session)
+        +pip install django-imagekit dùng để tự động resize ảnh, tạo thumbnail
+        +django-import-export: xuất file
+        +django-meta:chia sẻ link
+        +django-structlog:theo dõi log của server(ip,lỗi)
+        
+    }
+    Storage & Media:{
+            pip install django-storages  # lưu file lên S3, Google Cloud, Azure thay vì server
+            pip install Pillow            # xử lý ảnh, bắt buộc nếu dùng ImageField
+            pip install python-magic      # validate đúng loại file upload (tránh upload file độc)
+    }
+
+    {
+        Testing:
+        # coverage: xem độ bao phủ
+        # py-test django: viết câu lệnh test k lưu vào db
+        # factory_boy : dùng tạo dữ liệu giả test
+        
+    }
+
+    {
+        API bên thứ 3: 
+        +cloudfare : chống ddos
+        +chat bot: open ai
+        +thanh toán:vnpay
+        +dịch: google cloud/ translate vision
+        +bản đồ: map
+    }
+
+
+#lỗi sql thì vào init.py 
+    import pymysql
+    pymysql.install_as_MySQLdb() 
+    pip install pymysql
+    pip install mysqlclient
+#cách thêm ảnh và setting, cũng như setting file static
+    pip install pillow
+    STATIC_URL = 'static/'
+    STATICFILES_DIRS = [
+        os.path.join(BASE_DIR, 'static')
+    ]
+    MEDIA_ROOT=os.path.join(BASE_DIR,'tênapp/static/images')
+    MEDIA_URL='/images/'
+
+    urls.py
+    from django.conf.urls.static import static
+    from django.conf import settings 
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# filter
+    from django_filters.rest_framework import DjangoFilterBackend
+    from rest_framework.filters import SearchFilter,OrderingFilter
+    filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
+    filterset_fields=['phone_number','first_name','last_name']
+    search_fields=['first_name','last_name']
+    ordering_fields=['id']
+    #custome filter
+    from django_filters import rest_framework as filters
+    from reaction.models import UserReaction
+    class UserReactionFilter(filters.FilterSet):
+        slug=filters.CharFilter(field_name='react__slug',lookup_expr='iexact') #lây ra dữ liệu con của FK
+        class Meta:
+            model = UserReaction
+            fields =['user']
+
+# Experience when build a api model project
+   - credentials include để gửi cookie 
+   - args và kwargs(arguments) để khai báo function nhận nhiều tham số k biết trước, args nhận vào và sắp xếp theo thứ tự, kwargs nhận giá trị key value hoặc chuỗi
+   - await là 1 promise tức là thực thi xong hết mới đc tới bước tiếp theo để đồng bộ code, thay cho .then res và data
+        ví dụ
+        async function getData() {
+            const res = await fetch("https://jsonplaceholder.typicode.com/posts/1");
+            const data = await res.json();
+            console.log(data);
+        } 
+        function getData() {
+            fetch("https://jsonplaceholder.typicode.com/posts/1")
+                .then(res => res.json())
+                .then(data => console.log(data));
+        }
+   - Trong Django REST Framework (DRF), @action là một decorator dùng trong ViewSet để tạo custom endpoint ngoài các action mặc định (list, create, retrieve, update, destroy). 
+   - contenttype để model có thể liên kết với các model khác
+   - ViewSet khác modelViewSet là nó không cung cấp sẵn crud mà mình tự định nghĩa qua @action
+   - nextPageUrl =data.next để lấy trang 2 tức là vì trang 1 trả về next có chưa url trang 2 nên chỉ cần lấy ra next
+   - symmetrical=True (mặc định): Nếu A là bạn B → B tự động là bạn A, di voi self, self là quan hệ đi với profile vì là manytomany
+   - công thức lấy ra tọa độ để load phân trang : window.innerHeight + window.scrollY >= document.body.offsetHeight - 200 #nếu scroll còn cách đáy 200px thì load ra thêm
+   - group by dùng .values
+   - trong js abc ? ... : ... là if abc thì ... else ":" thì ...
+   - nếu muốn gán cho foreign key như này UserReaction.objects.filter(reaction__object_id=obj.pk) Ví dụ gán model reaction có trường object_id cho model UserReaction
+   - khi dùng filter(), exclude(), get(), annotate() thì khi muốn lấy foreign ke phải dùng __ , còn , dùng truy cập thẳng k phải lấy ra,
+    annotate() → trả về thêm một field tính toán cho từng record (ví dụ: mỗi bài viết có thêm cột tổng số like).
+   - trình tự xử lý: api gọi, views.py xử lý theo chức năng crud trước, sau đó chạy serializer parse json và thực thi tới perform create.. mấy thứ ghi trong view sau đó thêm/lọc vào db
+   -form data trong js để dùng cho file gửi key value
+   -out standing token là chứa token còn và hết hạn, blacklisst token chứa token bị thu hồi vì đăng xuất
+   - Generic FK khác FK là nó liên kết với nhiều model hơn mà bảng chính không cần chứa nhiều dữ liệu. Ví dụ 1 bảng liên kết với nhiều bảng khác thì phải cần nhiều FK thì giờ chỉ cần chứa 2 field 
+        1 là contentType và 2 là object_id. ContentType sẽ chứa model theo dạng hàm băm ví dụ 1 là bảng User, 2 là bảng Post, 3 là bảng Comment...object_id sẽ chứa id của bảng đó
+   -Các loại status:
+        Status	Ý nghĩa	Khi dùng
+        200 OK	Thành công	GET, PUT, PATCH
+        201 Created	Đã tạo tài nguyên mới	POST tạo user, product
+        202 Accepted	Đã nhận nhưng xử lý sau	Queue, xử lý async
+        204 No Content	Thành công nhưng không trả body	DELETE, hoặc update không trả về data
+        400 Bad Request	Request sai format	Body lỗi, thiếu params
+        401 Unauthorized	Chưa đăng nhập / token sai	Dùng token sai, không gửi token
+        403 Forbidden	Không đủ quyền	Không có role phù hợp
+        404 Not Found	Không tìm thấy tài nguyên	ID sai, URL sai
+        405 Method Not Allowed	Sai phương thức	GET vào endpoint chỉ cho POST
+        406 Not Acceptable	Format không phù hợp	Client yêu cầu format server không có
+        408 Request Timeout	Hết thời gian	request chậm
+        409 Conflict	Conflict dữ liệu	Email đã tồn tại
+        410 Gone	Tài nguyên đã xóa vĩnh viễn	Ít dùng
+        413 Payload Too Large	File quá lớn	Upload file vượt giới hạn
+        415 Unsupported Media Type	Gửi sai content-type	Không phải JSON
+        429 Too Many Requests	Rate limit vượt quá	Quá nhiều request → dùng trong throttling
+        Lỗi server 500, 502, 503, 504
+        
+    -bulk create là tạo nhiều bảng cùng 1 lúc thay vì 2 lênh riêng biệt gây nhiều truy vấn
+
+    - ORM Django tối ưu:  select_related và prefetch_related:
+        --select_related: dùng cho quan hệ ForeignKey và OneToOneField, nó sẽ tạo ra một truy vấn JOIN để lấy dữ liệu liên quan trong một lần truy vấn duy nhất.
+        Ví dụ: thay vì thực hiện hai truy vấn 1 là lấy message và lấy user gửi (lấy user của từng message) thì có thể gom lại cho 1 truy vấn
+            messages = Message.objects.filter(conversation=convo)
+            for msg in messages:
+                print(msg.sender.profile.first_name)
+        Thì có thể lấy ra Message đồng thời lấy profile sender
+        messages = (Message.objects.filter(conversation=convo).select_related("sender__profile"))
+        
+        --prefetch_related: dùng cho quan hệ ManyToManyField và reverse ForeignKey (một đối tượng có nhiều đối tượng liên quan). 
+        Ví dụ: Thay vì thực hiện nhiều truy vấn thì bây giờ có thể gom lại cho 1 đối tượng có nhiều đối tượng liên quan
+            Conversation → ConversationMember → User → Profile
+            Ví dụ ở đây là phải lấy ra tất cả conversation, sau đó lặp qua từng conversation để lấy ra member, lặp qua từng member lấy ra profile
+                convos = Conversation.objects.all()
+                for convo in convos:
+                    members = convo.conversationmember_set.all()
+                    for m in members:
+                        print(m.user.profile.username)
+            Thì có thể dùng prefetch_related để lấy cùng lúc profile của member và member trong conversation
+                convos = (Conversation.objects.prefetch_related("conversationmember_set__user__profile"))
+                            '''
+                1-1	select_related
+                N-1 (FK)	select_related
+                1-N (reverse)	prefetch_related
+                N-N	prefetch_related
+                select related là join nhiều bảng 1-1 hoặc n-1
+                prefetch related là In, truy vấn nhiều query ví dụ lấy ra conv, từ conv lấy ra mem IN con, từ mem lấy profile IN mem
+                prefetch khác prefetch related là nó vẫn lấy ra nhiều querry cùng 1 truy vấn nhưng có thể sắp xếp, lấy thêm thtin 
+                Ví dụ khi dùng prefetch_related thì chỉ lấy đc cùng lúc là conv và conv member profile, thì prefetch giúp lấy conv và conv member có thể oderby và filter và tất cả lưu vào ram
+                '''
+    - cách quay lại migrate cũ 
+        python manage.py showmigrations app_name
+        python manage.py migrate app_name 0002_initial
+    - CRUD(tức thao tác trên db) nên dùng generics, action hoặc query nhiều bảng thì nên dùng APIView. Khi dùng APIView thì k cần viết serializer hay khai báo, vì nó chỉ là hành động trong db , không giống như CRUD phải cần serializer để parse json và validate theo fields
+    -self.kwargs['pk'] để lấy khóa truyền vào trong url, còn request.data['pk'] để lấy khóa truyền vào trong body của frontend
+    - nếu k có related name thì conversation.conversationmember_set.all() để lấy ra tất cả, nếu có thì conversation.members.all() (conversation là model cha, conversationmember là model con)
+    -ORM nâng cao
+        - transaction.atomic() : dùng để thực hiện các câu lệnh truy vấn db theo thứ tự, hoặc là thành công hết, nếu 1 cái lỗi thì roll back, .select_for_update() dùng trong atomic để lock bản ghi cho tới khi thực hiện update xong tránh trường hợp bug 2 ng thực hiện cùng lúc
+        -Conversation.objects.only("id", "status").get(id=conv_id) : thay vì lấy hết object ra thì chỉ lấy các field cần 
+        -ConversationMember.objects.filter(conversation=conv).values_list("user_id", flat=True) : values list để lấy ra tuple của field cần thiết ví dụ ở đây là user_id [1,2,4]
+            còn values sẽ trả về dict {'username':'an'}
+        -@cached_property dùng cho hàm thuộc tính trong model là property, thay vì ví dụ lấy ra conv.last_message 3 lần thì nó sẽ truy vấn 3 lần, dùng thì sẽ chỉ truy vấn 1 lần và lấy ra dùng lại
+        -class Meta: #Meta là cách thiết lập model hoạt động , kiểu setting mặc định 
+            ordering = ['-created_at'] #auto sắp xếp giảm dần 
+            
+            indexes = [ # giống mục lục sách, thay vì tìm từng dòng thì nhảy thẳng đến, giúp truy vấn mấy cái hay tìm dễ hơn ví dụ theo ngày..., dùng tăng tốc filter, order_by , tăng bộ nhớ ram nhưng nhanh
+                models.Index(fields=['reciever', '-created_at']),
+                models.Index(fields=['is_read']),
+                models.Index(fields=['actor']),
+            ]#ví dụ nó sẽ lưu vào user là 5 trong db index và mốt nó truy vấn chỉ cần vào đó tìm user 5 sẽ ra row 1000
+        -cache page: dùng cho các api trả ra k cần query và công khai, nó gọi view và nếu có trong view thì response, khác cache ops là ops nó gọi query trong db và nếu có lưu cache thì trả luôn(k dùng khi filter theo user vì nó là private dễ lấy info user b cho user a)
+    -Model nâng cao
+        Trong model có 2 cách dùng hàm tiện ích một là @property : nhưng property sẽ không nhận tham số truyền vào và chỉ nhận self
+        cách 2 là method, viết def như bth bên trong đó mà k dùng @property: truyền đc tham số để check các thứ
+        request là gì : là toàn bộ HTTP request object 
+        request.user          # người đang đăng nhập (lấy từ token JWT)
+        request.data          # body của request (JSON, form data)
+        request.FILES         # file upload (ảnh, video...)
+        request.method        # GET, POST, PUT, DELETE
+        request.headers       # Authorization, Content-Type...
+        request.META          # thông tin server, IP client...
+    - ModelSerializer khác serializer là model serializer ánh xạ từ model ra và validate check theo model , còn serializer k phụ thuộc model nên tự định nghĩa từng field, sau đó viết hàm validate từng field và hàm save

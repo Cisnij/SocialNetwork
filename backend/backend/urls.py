@@ -33,7 +33,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView,Spe
 from api.http_only import *
 from api.throttle import *
 from rest_framework.routers import DefaultRouter
-
+#api custome_authen
+from api.custome_authen import CheckPassword,DeleteAccount
 #url cho reactions
 router=DefaultRouter()
 router.register(r'posts',PostViewSet,basename='reactions') #thả react 
@@ -52,6 +53,8 @@ urlpatterns = [
     path('api/auth/google/connect/',GoogleConnect.as_view(), name='google_connect'),
     path("api/auth/google/disconnect/", GoogleDisconnect.as_view(), name="google_disconnect"),
     path("password/reset/confirm/<uidb64>/<token>/",auth_views.PasswordResetConfirmView.as_view(),name="password_reset_confirm",),
+    path('api/auth/check-email/',CheckPassword.as_view(),name='check-password'),
+    path('api/auth/delete-account/',DeleteAccount.as_view(),name='delete-account'),
     path('api/auth/google/login/', GoogleLogin.as_view(), name='google_login'),
     #url spectacular
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
@@ -72,7 +75,7 @@ urlpatterns = [
     path('api/user/pending-profile/',PendingProfileList.as_view(), name='pending-profile-list'), #lấy ra tất cả pending profile
     path('api/user/post-photo/<int:post_id>/',PostPhotoListCreate.as_view(),name='post-photo'), #thêm lấy ra ảnh của post cụ thể \
     path('api/user/delete-photo/<int:pk>/',PostPhotoDelete.as_view(),name='post-photo-delete'), #xóa ảnh cụ thể phục vụ chức năng chỉnh sửa post 
-    path('api/user/post/<int:pk>/',PostModify.as_view(), name='post-modify'), #thêm sửa xóa post cụ thể
+    path('api/user/post/<int:pk>/',PostModify.as_view(), name='post-modify'), #sửa xóa post cụ thể
     path('api/user/post/show', PostFriend.as_view(), name='post-friend'), #Láy ra post của bạn bè
     path('api/user/post/userpage/<int:user>/', PostUser.as_view(), name='post-user'),#lấy ra tất cả post của chính user đó
     path('api/user/post/create/',PostCreate.as_view(),name='post-create'), #tạo post để gán ảnh
@@ -126,8 +129,13 @@ urlpatterns = [
     path('api/email/add/',AddEmailView.as_view(),name='add-email'),
     path('api/email/set/<int:pk>/',SetPrimaryEmailView.as_view(),name='add-email'),
     path('api/email/delete/<int:pk>/',DeleteEmailView.as_view(),name='delete-email'),
+    #search
+    path('api/user/search/',SearchHistoryView.as_view(),name='search-history'),
+    #friendsuggest
+    path('api/user/friend-suggest/',FriendSuggestion.as_view(),name='friend-suggest'),
     #v2-test full chức năng tạo post va ảnh trong 1 api
     path('api/user/post/create/v2/',CreateFullPostView.as_view(),name='post-create-v2')
+    
     
 ] + router.urls
 

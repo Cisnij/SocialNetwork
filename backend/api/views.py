@@ -9,7 +9,7 @@ from rest_framework import viewsets
 from .pagination import *
 from .signals import unfriended_log
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from .permissions import IsConversationMember
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
@@ -215,8 +215,8 @@ class PostCreate(generics.CreateAPIView):
 
 @method_decorator(cache_page(60 * 5), name='dispatch')
 class PostListAll(generics.ListAPIView):
-    # permission_classes=[IsAdminUser]
-    permissions_classes =[IsAuthenticated]
+    permission_classes=[IsAdminUser]
+    # permissions_classes =[IsAuthenticated]
     serializer_class=PostSerializer
     filter_backends=[DjangoFilterBackend,OrderingFilter,SearchFilter]
     filter_fields=['title','created_at']
@@ -382,9 +382,9 @@ class SendFriendRequestView(generics.CreateAPIView): #tạo lời mời kết b�
         
         # Tạo request
         with transaction.atomic():
-            req = Friend.objects.add_friend(request.user, to_user, message="")
+            req = Friend.objects.add_friend(request.user, to_user, message="") #tạo lời mời kb
 
-        serializer = self.get_serializer(req, context={"request": request})
+        serializer = self.get_serializer(req, context={"request": request}) # get_serializer của hàm và truyền vào object vừa tạo ở trên chuyển sang json
         return Response(serializer.data, status=201) #response dạng serialier đó 
 
     
@@ -678,7 +678,7 @@ class StartConversationAPIView(generics.GenericAPIView): #bấm chat với ai đ
             )
 
         convo = (
-            Conversation.objects.filter(
+            Conversation.objects.filter( #lọc ra đoạn chat có mình trước, sau đó từ những đoạn chat có mình thì có target user k 
                 is_group=False,
                 conversationmember__user=current_user
             ) #lọc ra đoạn chat 1-1 đã có giữa cả 2, và lọc ra xem member trong đó có mình và ng đó k, nếu có thì true, không thì chưa tạo. Chỉ áp dụng cho đoạn chat 1-1, vì group thì cần thêm member chứ k ấn chat được như 1-1
@@ -784,13 +784,30 @@ class ConversationListAPIView(generics.ListAPIView): #mở app chat lên sẽ lo
     permission_classes = [IsAuthenticated]
     filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
     
-
     def get_queryset(self):
         return Conversation.objects.filter(
             conversationmember__user=self.request.user
-        ).distinct().prefetch_related("conversationmember_set__user__profile").order_by('-updated_at') # khi lấy conversation thì lấy luôn user và profile của member
-     #distinct để tránh trùng lặp, vì 1 conversation có nhiều member nên conversation sẽ bị lặp nhiều lần(ví dụ conv 1 user 1, conv 1 user 2). 
-    
+        ).distinct().prefetch_related(
+            # load members + user + profile + last_read_message trong 2 query
+            # (1 query IN lấy members, JOIN thêm user/profile/last_read_message)
+            Prefetch(
+                'conversationmember_set',  # conversationmember có FK với conversation nên phải lấy tham chiếu là set
+                queryset=ConversationMember.objects.select_related( #tùy chỉnh thêm field muốn lấy 
+                    'user__profile',       # JOIN user và profile (1-1)
+                    'last_read_message'    # JOIN last_read_message (1-1)
+                )
+            ),
+            # load messages mới nhất trong 1 query IN riêng
+            # kèm JOIN sender+profile để get_last_message không query thêm
+            Prefetch(
+                'message_set',             # relation 1-nhiều: 1 conv có nhiều messages
+                queryset=Message.objects.select_related(
+                    'sender__profile'      # JOIN sender và profile luôn (1-1)
+                ).order_by('-created_at'), # sắp xếp mới nhất trước, prefetch related thì k thêm đc
+                to_attr='prefetched_messages'  # lưu vào obj.prefetched_messages( vào ram )
+            ),
+        ).order_by('-updated_at')
+
 class ConversationMessage(generics.ListAPIView): #xem tin nhắn cuộc trò chuyện
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
@@ -819,7 +836,6 @@ class ConversationMessage(generics.ListAPIView): #xem tin nhắn cuộc trò chu
             .prefetch_related("attachments") #lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments n-n)
             .order_by("-created_at")
         )
-
 
 class MemberOfConversation(generics.ListAPIView): #danh sách thành viên trong cuộc trò chuyện
     permission_classes = [IsAuthenticated, IsConversationMember]
@@ -959,4 +975,64 @@ class SaveFCMTokenView(APIView):
 N-1 (FK)	select_related
 1-N (reverse)	prefetch_related
 N-N	prefetch_related
+select related là join nhiều bảng 1-1 hoặc n-1
+prefetch related là In, truy vấn nhiều query ví dụ lấy ra conv, từ conv lấy ra mem IN con, từ mem lấy profile IN mem
+prefetch khác prefetch related là nó vẫn lấy ra nhiều querry cùng 1 truy vấn nhưng có thể sắp xếp, lấy thêm thtin 
+Ví dụ khi dùng prefetch_related thì chỉ lấy đc cùng lúc là conv và conv member profile, thì prefetch giúp lấy conv và conv member có thể oderby và filter và tất cả lưu vào ram
 '''
+
+#======================Search history=====================
+
+class SearchHistoryView(generics.ListCreateAPIView):
+    permission_classes=[IsAuthenticated]
+    pagination_class=SmallPagePagination
+    serializer_class=SearchSerializer
+    filter_backends=[SearchFilter]
+    search_fields=['content']
+    
+    def perform_create(self,serializer):
+        serializer.save(user=self.request.user)
+    def get_queryset(self):
+        return SearchHistory.objects.filter(user=self.request.user)
+#=========================Friend Suggest===========================================   
+class FriendSuggestion(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = FriendSuggestionSerializer
+    pagination_class = SmallPagePagination
+    
+    def get_queryset(self):
+        user = self.request.user
+
+        # lọc ra bạn
+        friend_ids = Friend.objects.filter(from_user=user).values_list('to_user_id', flat=True)
+
+
+        # loại trừ
+        sent_ids = [r.to_user_id for r in Friend.objects.sent_requests(user)]
+        received_ids = [r.from_user_id for r in Friend.objects.unread_requests(user=user)]
+        blocked_ids = [u.id for u in Block.objects.blocked(user)]
+        blocking_ids = [u.id for u in Block.objects.blocking(user)]
+        
+        excluded_user_ids = (
+            set(friend_ids) | set(sent_ids) | set(received_ids) |
+            set(blocked_ids) | set(blocking_ids) | {user.id}
+        ) #gộp các set lại, set để k trùng 
+
+        # lọc các profile có id trong id danh sách bạn bè của bạn mình
+        return (
+            Profile.objects.filter( 
+                user__id__in=Friend.objects.filter( #profile có id trong friend_ids
+                    from_user_id__in=friend_ids
+                ).values_list('to_user_id', flat=True)
+            )
+            .exclude(user__id__in=excluded_user_ids) #loại trừ những ng này
+            .annotate(
+                mutual_count=Count(
+                    'user__friends',
+                    filter=Q(user__friends__from_user_id__in=friend_ids)
+                )
+            ) # đếm số bạn chung
+            .select_related('user') #join với user
+            .order_by('-mutual_count') #lọc ra số bạn chung nhiều nhất
+        )
+        

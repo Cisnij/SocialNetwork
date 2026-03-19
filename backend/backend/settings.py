@@ -175,14 +175,14 @@ CACHEOPS={
     'api.PendingProfile':   {'ops': 'all', 'timeout': 60*30},
     'api.Setting':          {'ops': 'all', 'timeout': 60*60},
 
-    # ✅ Cache vừa — thay đổi vừa
+    #  Cache vừa — thay đổi vừa
     'api.Post':             {'ops': 'all', 'timeout': 60*10},
     'api.PostArticle':      {'ops': 'all', 'timeout': 60*10},
     'api.PostPhoto':        {'ops': 'all', 'timeout': 60*10},
     'api.Comment':          {'ops': 'all', 'timeout': 60*10},
     'api.Notification':     {'ops': 'all', 'timeout': 60*5},
     'api.SearchHistory':    {'ops': 'all', 'timeout': 60*5},
-    # ⚠️ Cache ngắn — realtime
+    #  Cache ngắn — realtime
     'api.Conversation':     {'ops': 'all', 'timeout': 60*2},
     'api.ConversationMember': {'ops': 'all', 'timeout': 60*2},
 }

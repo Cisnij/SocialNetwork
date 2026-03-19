@@ -219,58 +219,34 @@ class ConversationSerializer(serializers.ModelSerializer):
             'unread_count'
         ]
     def get_last_message(self, obj):
-        msg = (
-            Message.objects
-            .filter(conversation=obj)
-            .order_by("-created_at")
-            .first()
-        )
-        return MessageSerializer(msg).data if msg else None #return theo kiểu serializer của message nếu có msg, k thì trả về None
-    def get_unread_count(self,obj):
-        user=self.context['request'].user # lấy user trong cái request
-        member = next( #đang ở object conversation thì thì lấy ra user có trong đoạn chat đó k, next dùng lấy phần tử đầu tiên và tìm trong ram sau khi đã có lần load đầu sql
-            (m for m in obj.conversationmember_set.all() if m.user_id == user.id),
+        # đọc từ prefetched_messages trong RAM, không query DB
+        # getattr để tránh crash nếu chưa prefetch (trả về None thay vì lỗi)
+        msgs = getattr(obj, 'prefetched_messages', None) 
+        if msgs:
+            return MessageSerializer(msgs[0]).data  # msgs[0] = tin mới nhất vì đã order_by('-created_at')
+        return None
+
+    def get_unread_count(self, obj):
+        user = self.context['request'].user # lấy user trong request
+        #  conversationmember_set đã prefetch sẵn → không query DB
+        member = next(
+            (m for m in obj.conversationmember_set.all() if m.user_id == user.id), #lấy tất cả thành viên trong đoạn chat trừ mình đừa vào list
             None
-        )  
-        if not member:
+        )
+
+        if not member: # ko có ai trả về 0
             return 0
-        if member.last_read_message is None:
-            return Message.objects.filter(conversation=obj).count()
-        return Message.objects.filter(conversation=obj,created_at__gt=member.last_read_message.created_at).count()
-        
-    # def get_last_message(self, obj):
-    # # đọc từ prefetched_messages trong RAM, không query DB
-    # # getattr để tránh crash nếu chưa prefetch (trả về None thay vì lỗi)
-    # msgs = getattr(obj, 'prefetched_messages', None)
-    # if msgs:
-    #     return MessageSerializer(msgs[0]).data  # msgs[0] = tin mới nhất vì đã order_by('-created_at')
-    # return None
+        #  đếm từ prefetched_messages trong RAM, không query DB
+        msgs = getattr(obj, 'prefetched_messages', [])
 
-    # def get_unread_count(self, obj):
-    #     user = self.context['request'].user # lấy user trong request
-
-    #     #  conversationmember_set đã prefetch sẵn → không query DB
-    #     member = next(
-    #         (m for m in obj.conversationmember_set.all() if m.user_id == user.id),
-    #         None
-    #     )
-
-    #     if not member:
-    #         return 0
-
-    #     #  đếm từ prefetched_messages trong RAM, không query DB
-    #     msgs = getattr(obj, 'prefetched_messages', [])
-
-    #     if member.last_read_message is None:
-    #         # chưa đọc lần nào → đếm tất cả tin của người khác
-    #         return sum(1 for m in msgs if m.sender_id != user.id)
-
-    #     # đếm tin của người khác sau lần đọc cuối
-    #     return sum(
-    #         1 for m in msgs
-    #         if m.created_at > member.last_read_message.created_at  # sau lần đọc cuối
-    #         and m.sender_id != user.id                             #  không đếm tin của mình
-    #     )
+        if member.last_read_message is None:# chưa đọc lần nào → đếm tất cả tin của người khác
+            return sum(1 for m in msgs if m.sender_id != user.id)
+        # đếm tin của người khác sau lần đọc cuối
+        return sum(
+            1 for m in msgs
+            if m.created_at > member.last_read_message.created_at  # đếm tin sau lần đọc cuối
+            and m.sender_id != user.id                             #  không đếm tin của mình
+        )
 class MessageAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = MessageAttachment
@@ -305,7 +281,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
 #==========================in-app noti ===============================
 
-#     def get_actor(self, obj):
+#     def get_actor(self, obj): ví dụ 
 #         if isinstance(obj, Comment): #isinstance là kiểm tra đối tượng có phải là của 1 lớp nào
 #             return f'{obj.user.first_name} {obj.user.last_name}' #lấy ra email của user thực hiện hành động, cả comment và react sau lọc đều có trường user
 #         if isinstance(obj, UserReaction):
@@ -331,3 +307,22 @@ class EmailSerializer(serializers.ModelSerializer):
     class Meta:
         model=EmailAddress
         fields= ["id", "email", "primary", "verified"]
+        
+#======================================Search serializer=========================
+
+class SearchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=SearchHistory
+        fields=['id','content','created_at']
+
+#=================================Friend suggest===============================
+class FriendSuggestionSerializer(serializers.ModelSerializer):
+    mutual_count = serializers.IntegerField(read_only=True)
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Profile
+        fields = ['id', 'full_name', 'picture', 'mutual_count']
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name or ''} {obj.last_name or ''}".strip()

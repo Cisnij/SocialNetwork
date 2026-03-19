@@ -1,0 +1,17 @@
+
+chưa xong
+-sửa lại js phần bạn
+- mở rộng thêm nhiều cái như đếm số reject.. vào model gốc xem có bao tính năng
+- thêm vào reaction cho message, thêm vào setting cho chat, thêm reply bằng mqh phản thân trong model message, có role các kiểu bên trong model conversationmember, thêm boolean delete vào conversationmember để xem user xóa vĩnh viễn chưa
+
+
+
+
+
+
+
+
+
+
+
+

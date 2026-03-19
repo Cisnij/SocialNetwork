@@ -9,6 +9,7 @@ from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from .serializers import EmailSerializer
+from allauth.socialaccount.models import SocialAccount
 class CustomRegisterSerializer(RegisterSerializer): # Sửa chức năng register nên RegisterSerializer
     username=None #Bỏ username đi
     firstname=serializers.CharField(required=True, allow_blank=False) #thêm first name
@@ -151,13 +152,19 @@ class UserEmail(generics.ListAPIView):
         return EmailAddress.objects.filter(user=user,verified=True)
     
 
-
-# class CheckPassword(APIView):
-#     permission_classes=[IsAuthenticated]
-#     def post(self,request):
-#         password=request.data.get("password")
-#         user= authenticate(username=request.user.username,password=password)
-#         if user:
-#             return Response({'valid':'True'})
-#         return Response({'valid':'False'})
+class CheckPassword(APIView): #kiểm tra password khi thay đổi email mặc định
+    permission_classes=[IsAuthenticated]
+    def post(self,request):
+        password=request.data.get("password")
+        user= authenticate(username=request.user.username,password=password)
+        if user:
+            return Response({'valid':True},status=200)
+        return Response({'valid':False},status =400)
     
+class DeleteAccount(APIView):
+    permission_classes=[IsAuthenticated]
+    def delete(self,request):
+        user=request.user
+        SocialAccount.objects.filter(user=user).delete()
+        user.delete()
+        return Response({"detail":"success"},status=204)

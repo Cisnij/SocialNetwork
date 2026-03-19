@@ -1,0 +1,143 @@
+docker, redis, git actions, aws, render(ưu tiên trước aws)
+
+
+tích hợp đăng post,post article, chat realtime, ecommerce, video web
+
+
+---
+
+
+1. **Đăng nhập & Xác thực**
+
+✅ Đăng nhập, đăng xuất 
+✅Quên mật khẩu
+✅Đặt lại mật khẩu
+✅ Xác thực Gmail / Google / Facebook
+✅ Xác thực email
+✅ Kết nối tài khoản xã hội
+✅ Giới hạn đăng nhập (chống spam, brute force)
+✅chống spam, chống đăng nhập nhiều lần, lưu token
+* CAPTCHA
+* Cloudflare bảo vệ
+✅ Đăng ký có xác minh email
+
+✅ Xác nhận email → tạo profile
+
+✅ Đăng nhập (username/password)
+
+✅ Đăng nhập bằng Google OAuth
+
+✅ Quên mật khẩu / reset password qua email
+
+✅ Access + Refresh token (JWT)
+
+✅ Refresh tự động và lưu localStorage
+
+#### 2. **Bài viết (Post)**
+
+✅Tạo bài viết có upload nhiều ảnh
+✅ Hiển thị đẹp trên trang chủ
+✅Pagination + infinite scroll
+✅ Phân quyền chỉnh sửa bài viết
+✅ Cập nhật bài viết (nếu có quyền)
+* Chế độ công khai / riêng tư
+* Lưu bài viết
+* khôi phục bài viết
+
+#### 3. **Bài viết học thuật (Post Article)**
+
+* Bài viết dài \~2000 chữ
+* Có thể chèn nhiều ảnh minh họa
+* Giao diện đẹp (tách ra file HTML dùng Bootstrap5 nếu nhiều ảnh)
+* Xuất PDF
+
+#### 4. **Chat Realtime**
+
+✅Tin nhắn thời gian thực (WebSocket)
+✅ Read/Unread
+* Chat nhóm
+* Gửi ảnh trong chat
+
+#### 5. **Kết bạn**
+
+✅Gửi lời mời kết bạn
+* Gợi ý bạn bè
+✅Tạo kết nối WebSocket cho bạn bè
+
+#### 6. **Thông báo**
+
+✅ Gửi thông báo realtime
+
+#### 7. **Tối ưu hệ thống**
+
+✅ Tối ưu truy vấn DB
+✅ Ghi lại lịch sử hoạt động (like, comment, view, ...)
+
+#### 8. **Dịch nội dung**
+
+* Áp dụng API dịch (ví dụ Google Translate API)
+
+#### 9. **Like & Bình luận**
+
+✅ Like và bình luận realtime
+* Bình luận đa tầng (nested comment)
+
+#### 10. **Xử lý ảnh**
+
+* Thumbnail ảnh, crop, resize nâng cao
+
+#### 11. **Cài đặt giao diện & tài khoản**
+
+* Chuyển sáng/tối
+✅ Xem lịch sử hoạt động (like, comment,…)
+✅ Xoá tài khoản
+
+#### 12. **Trang cá nhân**
+
+✅Hiển thị các bài viết của người dùng
+
+#### 13. **API backend**
+
+✅ Xây dựng API hoàn chỉnh
+
+#### 14. **Triển khai**
+
+* Deploy lên Render
+
+#### 15. **Chatbot**
+
+* Tích hợp API chatbot
+
+#### 16. **Thống kê**
+
+✅ Đếm lượt view, like, truy cập
+* Dashboard hiển thị dữ liệu
+
+#### 17. **Tìm kiếm**
+
+* Tìm bài viết
+✅ Tìm bạn bè
+
+#### 18. **Báo cáo bài viết**
+
+* Gửi report bài viết sai phạm
+
+#### 19. **Lên lịch đăng bài**
+
+* Đặt lịch cho bài viết
+
+#### 20. **Chống mã độc**
+
+✅Ngăn mã độc/chèn script độc hại
+
+#### 21. **Thanh toán**
+
+* Tích hợp thanh toán
+
+#### 22. **Phát triển Mobile**
+
+* Học Node.js và triển khai cho mobile (tương lai)
+
+
+
+
