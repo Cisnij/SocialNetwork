@@ -305,7 +305,7 @@ def message_soft_delete_log(sender, instance, **kwargs):
             "action": "deleted message",
         }
     )
-#=======================================Log cho logout login===============================
+#=======================================Log cho logout login dùng ipware===============================
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.dispatch import receiver
 from ipware import get_client_ip
@@ -628,4 +628,4 @@ def delete_unverified_email(sender, request, email_address, **kwargs):
         email=email_address.email,  # email vừa verified
         verified=False,             # chưa verified
     ).exclude(user=email_address.user).delete()  # trừ user vừa verify
-    
+

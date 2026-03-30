@@ -1,5 +1,7 @@
+
 from rest_framework import serializers
 from .models import *
+from django.core.cache import cache
 # reaction
 from django.db.models import Count # dùng để đếm số reaction
 from django.contrib.contenttypes.models import ContentType
@@ -9,6 +11,7 @@ from actstream.models import Action
 #friendship
 from friendship.models import Friend, FriendshipRequest, Follow, Block
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model=User
@@ -16,10 +19,15 @@ class UserSerializer(serializers.ModelSerializer):
 
 class ProfileSerializer(serializers.ModelSerializer):
     #friends = serializers.PrimaryKeyRelatedField(many=True, read_only=True) #cách tạo serializer của many to many field
+    is_online=serializers.SerializerMethodField()
     class Meta:
         model=Profile
         fields='__all__'
         extra_kwargs = {"user": {"read_only": True}} # loại trừ trường user là read only 
+        
+    def get_is_online(self,obj):
+        return cache.get(f"online_user:{obj.user_id}") is not None
+        
     
 class PendingProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -188,17 +196,21 @@ class BlockSerializer(serializers.ModelSerializer):
 
 class ConversationMemberSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source="user.profile", read_only=True)
+    is_online = serializers.SerializerMethodField()
     last_read_message= serializers.SerializerMethodField()
     class Meta:
         model = ConversationMember
         fields = [
             "user",
+            "is_online",
             "joined_at",
             "last_read_message",
         ]
     def get_last_read_message(self, obj):
         return obj.last_read_message.id if obj.last_read_message else None # là lấy ra cái id của tin nhắn cuối, vì last_read_message là foreign key nên lấy ra id, obj chính là member 
-
+    def get_is_online(self,obj):
+        return cache.get(f'online_user:{obj.user_id}') is not None
+        
 class ConversationSerializer(serializers.ModelSerializer):
     members = ConversationMemberSerializer( # vì là serializer này lấy ra model conversation,mà conversationmember là FK, nên đoạn conversation sẽ là obj khi được gọi, gọi ra member thì chỉ cần set
         source="conversationmember_set",

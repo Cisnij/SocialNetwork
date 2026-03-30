@@ -1,17 +1,22 @@
 
 chưa xong
 -sửa lại js phần bạn
-- mở rộng thêm nhiều cái như đếm số reject.. vào model gốc xem có bao tính năng
-- thêm vào reaction cho message, thêm vào setting cho chat, thêm reply bằng mqh phản thân trong model message, có role các kiểu bên trong model conversationmember, thêm boolean delete vào conversationmember để xem user xóa vĩnh viễn chưa
 
+- tạo group
+- thêm vào reaction cho message, thêm vào setting cho chat, thêm reply bằng mqh phản thân trong model message, có role các kiểu bên trong model conversationmember,
+- thêm boolean delete vào conversationmember để xem user xóa vĩnh viễn chưa
+- thêm vào gửi file
+- sửa lại duplicate broadcast, thử xóa response ở middlware của websocket
+- api tạo group, api thêm member
+- thêm quyền vào db conversationmember is_admin=true, tạo api thêm quyền cho user trong đoạn chat...
+- thêm avatar, group name vào db conversation
+- xây gửi file, ảnh, video trong message dùng pip install python-magic
 
-
-
-
-
-
-
-
-
+- xây lại comment dùng thư viện, sửa lại signal, serializer, view và xóa model, sửa notification view
+- xây thêm các chức năng in app như đã đọc, liên kết tới post nào và thêm các trường follow... vào luôn
+- xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
+- xây chức năng search nâng cao api
+- thay db đổi lưu ảnh vào media/photo và file chat sẽ vào chat/file/ sau này thêm chat/photo/
+- thay db đổi lưu ảnh của post vào theo tên user ví dụ media/user1
 
 

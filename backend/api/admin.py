@@ -141,3 +141,88 @@ class PostPhotoAdmin(SafeDeleteAdmin):
         self.message_user(request, f"⚠️ Đã xóa cứng {count} ảnh.")
     
 admin.site.register([Conversation,ConversationMember,Message,MessageAttachment,FCMToken,Notification,SearchHistory])
+
+#==========================CHART====================================================
+
+
+from django.contrib.auth.models import User
+from django.db.models import Count
+from django.utils import timezone
+from datetime import timedelta
+import json
+
+def get_daily_counts(queryset, date_field, days=30):
+    labels, data = [], []
+    today = timezone.now().date()
+    for i in range(days - 1, -1, -1):
+        day = today - timedelta(days=i)
+        count = queryset.filter(**{f'{date_field}__date': day}).count()
+        labels.append(day.strftime('%d/%m'))
+        data.append(count)
+    return labels, data
+
+class CustomAdminSite(admin.AdminSite):
+    def index(self, request, extra_context=None):
+        extra_context = extra_context or {}
+
+        # Stats cards
+        extra_context['stats'] = {
+            'total_users':          User.objects.count(),
+            'active_users':         User.objects.filter(is_active=True).count(),
+            'total_posts':          Post.objects.count(),
+            'total_articles':       PostArticle.objects.count(),
+            'total_comments':       Comment.objects.count(),
+            'total_messages':       Message.objects.count(),
+            'total_conversations':  Conversation.objects.count(),
+            'unread_notifications': Notification.objects.filter(is_read=False).count(),
+            'pending_profiles':     PendingProfile.objects.count(),
+        }
+
+        # Charts 30 ngày
+        labels, user_data    = get_daily_counts(User.objects,    'date_joined', 30)
+        _,      post_data    = get_daily_counts(Post.objects,    'created_at',  30)
+        _,      comment_data = get_daily_counts(Comment.objects, 'created_at',  30)
+        _,      message_data = get_daily_counts(Message.objects, 'created_at',  30)
+
+        extra_context['chart_users']    = json.dumps({'labels': labels, 'data': user_data})
+        extra_context['chart_posts']    = json.dumps({'labels': labels, 'data': post_data})
+        extra_context['chart_comments'] = json.dumps({'labels': labels, 'data': comment_data})
+        extra_context['chart_messages'] = json.dumps({'labels': labels, 'data': message_data})
+        extra_context['stats']['total_conversations'] = Conversation.objects.count()
+        extra_context['stats']['total_searches']      = SearchHistory.objects.count()
+
+        _, conv_data   = get_daily_counts(Conversation.objects,  'created_at', 90)
+        _, search_data = get_daily_counts(SearchHistory.objects, 'created_at', 90)
+
+        # đổi tất cả days=30 thành days=90 để nút 90 ngày hoạt động
+        labels, user_data    = get_daily_counts(User.objects,    'date_joined', 90)
+        _,      post_data    = get_daily_counts(Post.objects,    'created_at',  90)
+        _,      comment_data = get_daily_counts(Comment.objects, 'created_at',  90)
+        _,      message_data = get_daily_counts(Message.objects, 'created_at',  90)
+
+        extra_context['chart_conversations'] = json.dumps({'labels': labels, 'data': conv_data})
+        extra_context['chart_searches']      = json.dumps({'labels': labels, 'data': search_data})
+
+        # Devices pie chart
+        devices = FCMToken.objects.values('device').annotate(count=Count('device'))
+        extra_context['chart_devices'] = json.dumps({
+            'labels': [d['device'] for d in devices],
+            'data':   [d['count'] for d in devices],
+        })
+        # Pie charts
+        notif_types = Notification.objects.values('type').annotate(count=Count('type'))
+        extra_context['chart_notifications'] = json.dumps({
+            'labels': [n['type'] for n in notif_types],
+            'data':   [n['count'] for n in notif_types],
+        })
+
+        msg_types = Message.objects.values('message_type').annotate(count=Count('message_type'))
+        extra_context['chart_message_types'] = json.dumps({
+            'labels': [m['message_type'] for m in msg_types],
+            'data':   [m['count'] for m in msg_types],
+        })
+
+        return super().index(request, extra_context)
+
+# Override admin.site mặc định
+admin.site.__class__ = CustomAdminSite

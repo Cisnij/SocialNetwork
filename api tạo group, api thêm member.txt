@@ -1,41 +1,9 @@
-api tạo group, api thêm member
-thêm quyền vào db conversationmember is_admin=true
-tạo api thêm quyền cho user trong đoạn chat...
-thêm avatar, group name vào db conversation
-giữ lại view api startconversation
-tạo view api tạo group
+
+định nghĩa trước:
 
 logic: khi kết bạn nhất chat sẽ tạo conversation, gọi api startconversation, không gán tên, không gán avatar, is_group=false
 	khi nhấn tạo chat, gọi api creategroup, gán tên(bắt buộc) và avatar(thêm default là ảnh), is_group=true, thêm thành viên
 	frontend khi thấy conversation là is_group=false thì sẽ gán tên của đối phương cho nhau, gán href id vào và khi nhán vào mở đoạn chat
 	khi ấn ok ở request sẽ tạo conversation
 
-tạo conversation is group=true
-tạo conversation member
-
-================================================
-send ok
-unsend ok
-list conversation ok
-seen ok
-update ok
-conv members ok
-message conv ok
-
-
-start 
-accept 
-reject:
-
-
-================================================
-add_friend
-follow_user
-block_user
-
-
-
-tạo thêm api truyền id ng dùng vào endpoint trả về status đã are friend, not friend, request
-tạo thêm api truyền id vào trả về status đã follow chưa
-tạo thêm api truyền id vào trả về status đã block chưa, nếu rồi thì chặn k cho vào trang ng đó 
 

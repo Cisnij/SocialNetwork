@@ -504,6 +504,8 @@ pip install django-cors-headers
 
 
 
+redis: lưu vào ram các tác vụ nặng cache
+celery: phân phối hàng đợi mà k làm chậm user và hệ thống 
 
 #các thư viện
     {
@@ -512,13 +514,13 @@ pip install django-cors-headers
         #pip install django-filter : dùng lọc dữ liệu cho REST
         #+pip install drf-spectacular[sidecar]: Tự động tạo tài liệu cho api, ví dụ khi tạo api và muốn ngta truy cập vào /books/version/get thì phải cho ngta biết, nó sẽ tự sinh ra tài liệu để ngta biết truy cập
         #+pip install django-cors-headers: bắt buộc dùng nếu muốn gọi api từ django
-        +pip install django-guardian: phân quyền chi tiết đối tượng, ví dụ chỉ user A thấy bài viết A
+        +pip install django-guardian || Django-rules || Django-role-permissions: phân quyền chi tiết đối tượng, ví dụ chỉ user A thấy bài viết A
         #  pip install -U 'channels[daphne]' chat realtime
-        django-channels-presence: theo dỗi hoạt động onl/off real time
+        #django-channels-presence: theo dỗi hoạt động onl/off real time
         #pip install channels-redis: bắt buộc nếu dùng channels
         #+pip install django-environ: tạo file .env để dấu secretkey hay db k cho push đi
         # pip install redis: kết nối với db của redis và phân phối hàng đợi cho celery
-        +django-el-pagination: phân trang infinite scroll cho mvc
+        #+django-el-pagination: phân trang infinite scroll cho mvc
         
     }    
       
@@ -534,8 +536,8 @@ pip install django-cors-headers
         #+pip install  django-csp: chống mã độc
         dj_rest_auth_mfa : xác minh 2 lớp , tạo mã code khôi phục như bitcoin
         #pip install django-pwned-passwords:check mật khẩu rò rỉ
-        pip install pyyaml ua-parser user-agents: track user đăng nhập từ đâu, thiết bị gì để thông báo
-        pip install django-honeypot  # bẫy bot spam form
+        #pip install pyyaml ua-parser user-agents: track user đăng nhập từ đâu, thiết bị gì để thông báo
+        #pip install django-honeypot  # bẫy bot spam form dùng cho MVT
     }
     {
         Thông báo, sự kiện:
@@ -553,24 +555,23 @@ pip install django-cors-headers
         #+snowflake-id: tạo id ngắn
         # pip install django-cacheops: tự tối ưu db, sẽ lưu truy vấn nếu cần lấy lại và tiết kiệm
         #+pip install django-autoslug: tự tạo slug
-        #django-cleanup: xóa những db bị xóa ở ổ tạm(tiết kiệm tài nguyên)
+        #django-cleanup: xóa những db bị xóa ở ổ tạm(tiết kiệm tài nguyên), ví dụ khi xóa profile thì sẽ xóa ảnh
         #+django-safedelete: dùng để lưu trạng thái xóa mềm thay vì xóa thật và tạo chức năng khôi phục, pip install django-safedelete-admin: cho admin
         #whitenoise: xử lý nhanh static file
     }
     
     
     {
-        Gói mở rộng:
+        Gói chức năng mở rộng:
         #+django-silk: Theo dõi sâu hiệu năng(xem api nào đc gọi nhiều nhất, cái nào tốn nhiều thgian nhất), phân tích code 
         #+pip install django-jazzmin : tạo giao diện admin đẹp hơn
-        +pip install django-admin-chart: tạo chart trong admin(doanh thu...)
         #+pip install django-debug-toolbar: công cụ giúp debug, xem sql nào đang chạy, file html nào đang chạy, và chạy mất bao lâu
         #+pip install django-extensions : tích hợp nhiều tính năng mở rộng cho django như chạy server lỗi đẹp hơn... {tất cả dùng với manage.py, runserver_plus:chạy server tốt hơn hiện lỗi chi tiết, show_urls:hiển thị tất cả url bao gồm url ẩn, graph_models:vẽ mô hình erd, sqldiff: hỗ trợ check lỗi sql, export_emails: xuất email ... dùng, check: check lỗi, manage.py --help xem thêm }
         +django-ckeditor5: tạo imput nhập đẹp có font google, có thẻ tích hợp vào html 
         +django-vote: like đislike
         +django star-ratings: đánh giá star 1-5 sao 
         #+django-reaction-system: thả reaction cười, buồn như facebook
-        +django-friendship: để follow
+        # django-friendship: để follow
         django-comments-xtd: comment bài viết, có like dislike cho comment
         +django-markdownx: tạo highlights
         +django-elasticsearch-dsl django-elasticsearch-dsl-drf: search nâng cao
@@ -581,13 +582,13 @@ pip install django-cors-headers
         +pip install django-formtools: tạo form thanh toán từng bước(có lưu session)
         +pip install django-imagekit dùng để tự động resize ảnh, tạo thumbnail
         +django-import-export: xuất file
-        +django-meta:chia sẻ link
+        +django-meta:chia sẻ link, dùng cho fe 
         +django-structlog:theo dõi log của server(ip,lỗi)
         
     }
-    Storage & Media:{
+        Storage & Media:{
             pip install django-storages  # lưu file lên S3, Google Cloud, Azure thay vì server
-            pip install Pillow            # xử lý ảnh, bắt buộc nếu dùng ImageField
+            # pip install Pillow            # xử lý ảnh, bắt buộc nếu dùng ImageField
             pip install python-magic      # validate đúng loại file upload (tránh upload file độc)
     }
 
@@ -695,7 +696,14 @@ pip install django-cors-headers
         Lỗi server 500, 502, 503, 504
         
     -bulk create là tạo nhiều bảng cùng 1 lúc thay vì 2 lênh riêng biệt gây nhiều truy vấn
-
+    -# generic relation dùng để kết nối nhiều model thay vì chỉ 1 như FK cố định. Ví dụ Fk là cần phải có trường đó để tạo FK thì cái này có thể gắn bất kì model nào mà k cần trường chung
+        ví dụ chỉ gắn với post mà k gắn đc với cái khác, hoặc nếu có thì phải gắn cả 2
+            class Comment(models.Model):
+                post = models.ForeignKey(Post, on_delete=models.CASCADE)
+            class Comment(models.Model):
+                content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE) # gắn được với nhièu model vì dùng content-type
+                object_id = models.PositiveIntegerField()
+                content_object = GenericForeignKey('content_type', 'object_id')
     - ORM Django tối ưu:  select_related và prefetch_related:
         --select_related: dùng cho quan hệ ForeignKey và OneToOneField, nó sẽ tạo ra một truy vấn JOIN để lấy dữ liệu liên quan trong một lần truy vấn duy nhất.
         Ví dụ: thay vì thực hiện hai truy vấn 1 là lấy message và lấy user gửi (lấy user của từng message) thì có thể gom lại cho 1 truy vấn

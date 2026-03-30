@@ -1,0 +1,318 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  /* ── Hard reset Jazzmin layout ── */
+  #content-main { width: 100% !important; float: none !important; }
+  #content { padding: 16px !important; }
+  .col-12, .container-fluid { padding: 0 !important; }
+
+  .db { font-family: 'Courier New', monospace; color: #cdd; }
+
+  /* ── Header ── */
+  .db-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0,212,255,0.2);
+  }
+  .db-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #00d4ff;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(0,212,255,0.5);
+    margin: 0;
+  }
+  .db-live {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #00ff9d;
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+  }
+  .db-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #00ff9d;
+    animation: blink 1.5s infinite;
+  }
+  @keyframes blink {
+    0%,100% { opacity:1; } 50% { opacity:0.3; }
+  }
+
+  /* ── Stat Cards — FLEXBOX instead of grid ── */
+  .db-stats {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    margin-bottom: 20px !important;
+    width: 100% !important;
+  }
+  .db-stat {
+    flex: 1 1 140px !important;
+    background: linear-gradient(135deg,rgba(13,27,42,.95),rgba(6,11,20,.95)) !important;
+    border: 1px solid rgba(0,212,255,.18) !important;
+    border-top: 2px solid var(--ac) !important;
+    border-radius: 8px !important;
+    padding: 14px 10px !important;
+    text-align: center !important;
+    transition: all .25s !important;
+    min-width: 120px !important;
+    max-width: 180px !important;
+  }
+  .db-stat:hover {
+    border-color: var(--ac) !important;
+    box-shadow: 0 0 16px color-mix(in srgb, var(--ac) 30%, transparent) !important;
+    transform: translateY(-2px) !important;
+  }
+  .db-stat .si { font-size:1.2rem; margin-bottom:5px; }
+  .db-stat .sn {
+    font-size: 1.7rem !important;
+    font-weight: 700 !important;
+    color: var(--ac) !important;
+    line-height: 1 !important;
+    margin-bottom: 4px !important;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--ac) 50%, transparent) !important;
+  }
+  .db-stat .sl {
+    font-size: .6rem !important;
+    color: #556 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.5px !important;
+  }
+
+  /* ── Time Filter ── */
+  .db-filter {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-bottom: 18px !important;
+  }
+  .df-label { color:#445; font-size:.65rem; letter-spacing:2px; text-transform:uppercase; }
+  .df-btn {
+    padding: 5px 15px !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(0,212,255,.2) !important;
+    background: transparent !important;
+    color: #667 !important;
+    cursor: pointer !important;
+    font-size: .72rem !important;
+    font-family: 'Courier New', monospace !important;
+    transition: all .2s !important;
+  }
+  .df-btn:hover, .df-btn.on {
+    background: #00d4ff !important;
+    border-color: #00d4ff !important;
+    color: #000 !important;
+    box-shadow: 0 0 10px rgba(0,212,255,.35) !important;
+  }
+
+  /* ── Chart rows — FLEXBOX ── */
+  .db-row {
+    display: flex !important;
+    gap: 14px !important;
+    margin-bottom: 14px !important;
+    width: 100% !important;
+  }
+  .db-row .cc { flex: 1 !important; min-width: 0 !important; }
+  .db-row .cc-wide { flex: 2 !important; min-width: 0 !important; }
+
+  .cc {
+    background: linear-gradient(135deg,rgba(13,27,42,.95),rgba(6,11,20,.95)) !important;
+    border: 1px solid rgba(0,212,255,.1) !important;
+    border-radius: 8px !important;
+    padding: 14px !important;
+  }
+  .cc h3 {
+    color: #00d4ff !important;
+    font-size: .65rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 2px !important;
+    margin: 0 0 10px 0 !important;
+    padding-bottom: 7px !important;
+    border-bottom: 1px solid rgba(0,212,255,.08) !important;
+    font-family: 'Courier New', monospace !important;
+  }
+
+  @media(max-width:900px) {
+    .db-row { flex-direction: column !important; }
+    .db-stat { max-width: 100% !important; }
+  }
+</style>
+
+<div class="db">
+
+  <!-- Header -->
+  <div class="db-header">
+    <div class="db-title">⚡ Dashboard</div>
+    <div class="db-live"><div class="db-dot"></div>LIVE</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="db-stats">
+    <div class="db-stat" style="--ac:#00d4ff"><div class="si">👤</div><div class="sn">{{ stats.total_users }}</div><div class="sl">Total Users</div></div>
+    <div class="db-stat" style="--ac:#00ff9d"><div class="si">✅</div><div class="sn">{{ stats.active_users }}</div><div class="sl">Active Users</div></div>
+    <div class="db-stat" style="--ac:#b000ff"><div class="si">📝</div><div class="sn">{{ stats.total_posts }}</div><div class="sl">Posts</div></div>
+    <div class="db-stat" style="--ac:#ffd700"><div class="si">📰</div><div class="sn">{{ stats.total_articles }}</div><div class="sl">Articles</div></div>
+    <div class="db-stat" style="--ac:#ff6b35"><div class="si">💬</div><div class="sn">{{ stats.total_comments }}</div><div class="sl">Comments</div></div>
+    <div class="db-stat" style="--ac:#00d4ff"><div class="si">✉️</div><div class="sn">{{ stats.total_messages }}</div><div class="sl">Messages</div></div>
+    <div class="db-stat" style="--ac:#00ff9d"><div class="si">🗨️</div><div class="sn">{{ stats.total_conversations }}</div><div class="sl">Conversations</div></div>
+    <div class="db-stat" style="--ac:#ff3d7f"><div class="si">🔔</div><div class="sn">{{ stats.unread_notifications }}</div><div class="sl">Unread Notifs</div></div>
+    <div class="db-stat" style="--ac:#ffd700"><div class="si">⏳</div><div class="sn">{{ stats.pending_profiles }}</div><div class="sl">Pending</div></div>
+    <div class="db-stat" style="--ac:#b000ff"><div class="si">🔍</div><div class="sn">{{ stats.total_searches }}</div><div class="sl">Searches</div></div>
+  </div>
+
+  <!-- Time Filter -->
+  <div class="db-filter">
+    <span class="df-label">Range:</span>
+    <button class="df-btn on" onclick="setRange(7,this)">7 Days</button>
+    <button class="df-btn" onclick="setRange(30,this)">30 Days</button>
+    <button class="df-btn" onclick="setRange(90,this)">90 Days</button>
+  </div>
+
+  <!-- Row 1: Users + Posts -->
+  <div class="db-row">
+    <div class="cc">
+      <h3>👤 New Users</h3>
+      <canvas id="cUsers" height="100"></canvas>
+    </div>
+    <div class="cc">
+      <h3>📝 Posts</h3>
+      <canvas id="cPosts" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 2: Comments + Messages -->
+  <div class="db-row">
+    <div class="cc">
+      <h3>💬 Comments</h3>
+      <canvas id="cComments" height="100"></canvas>
+    </div>
+    <div class="cc">
+      <h3>✉️ Messages</h3>
+      <canvas id="cMessages" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 3: Conversations + Searches -->
+  <div class="db-row">
+    <div class="cc">
+      <h3>🗨️ Conversations</h3>
+      <canvas id="cConversations" height="100"></canvas>
+    </div>
+    <div class="cc">
+      <h3>🔍 Searches</h3>
+      <canvas id="cSearches" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 4: Pie charts -->
+  <div class="db-row">
+    <div class="cc">
+      <h3>🔔 Notifications by Type</h3>
+      <canvas id="cNotifs" height="140"></canvas>
+    </div>
+    <div class="cc">
+      <h3>✉️ Message Types</h3>
+      <canvas id="cMsgTypes" height="140"></canvas>
+    </div>
+    <div class="cc">
+      <h3>📱 FCM Devices</h3>
+      <canvas id="cDevices" height="140"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  Chart.defaults.color = '#445566';
+  Chart.defaults.borderColor = 'rgba(0,212,255,0.06)';
+
+  const NC = ['#00d4ff','#b000ff','#00ff9d','#ff6b35','#ffd700','#ff3d7f'];
+
+  const RAW = {
+    users:         {{ chart_users|safe }},
+    posts:         {{ chart_posts|safe }},
+    comments:      {{ chart_comments|safe }},
+    messages:      {{ chart_messages|safe }},
+    conversations: {{ chart_conversations|safe }},
+    searches:      {{ chart_searches|safe }},
+  };
+
+  function line(id, color) {
+    return new Chart(document.getElementById(id), {
+      type: 'line',
+      data: { labels:[], datasets:[{
+        data:[], borderColor:color, backgroundColor:color+'12',
+        borderWidth:2, pointBackgroundColor:color,
+        pointBorderColor:'transparent', pointRadius:3,
+        pointHoverRadius:5, tension:0.4, fill:true
+      }]},
+      options:{
+        responsive:true, maintainAspectRatio:true,
+        animation:{ duration:400 },
+        plugins:{ legend:{ display:false } },
+        scales:{
+          x:{ ticks:{ maxTicksLimit:8, font:{size:9} }, grid:{ color:'rgba(0,212,255,0.04)' } },
+          y:{ beginAtZero:true, ticks:{ font:{size:9} }, grid:{ color:'rgba(0,212,255,0.04)' } }
+        }
+      }
+    });
+  }
+
+  function pie(id, d) {
+    new Chart(document.getElementById(id), {
+      type:'doughnut',
+      data:{
+        labels: d.labels.length ? d.labels : ['No data'],
+        datasets:[{
+          data: d.data.length ? d.data : [1],
+          backgroundColor: d.data.length ? NC : ['#223'],
+          borderColor:'#060b14', borderWidth:2, hoverOffset:5
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:true,
+        plugins:{ legend:{ position:'bottom', labels:{ color:'#667788', padding:10, font:{size:9} } } }
+      }
+    });
+  }
+
+  const CL = {
+    users:         line('cUsers',         '#00d4ff'),
+    posts:         line('cPosts',         '#00ff9d'),
+    comments:      line('cComments',      '#b000ff'),
+    messages:      line('cMessages',      '#ffd700'),
+    conversations: line('cConversations', '#ff6b35'),
+    searches:      line('cSearches',      '#ff3d7f'),
+  };
+
+  pie('cNotifs',   {{ chart_notifications|safe }});
+  pie('cMsgTypes', {{ chart_message_types|safe }});
+  pie('cDevices',  {{ chart_devices|safe }});
+
+  function upd(chart, raw, days) {
+    const s = Math.max(0, raw.labels.length - days);
+    chart.data.labels           = raw.labels.slice(s);
+    chart.data.datasets[0].data = raw.data.slice(s);
+    chart.update('none');
+  }
+
+  function setRange(days, btn) {
+    document.querySelectorAll('.df-btn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    Object.keys(CL).forEach(k => upd(CL[k], RAW[k], days));
+  }
+
+  setRange(7, document.querySelector('.df-btn.on'));
+</script>
+
+{% endblock %}

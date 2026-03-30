@@ -60,8 +60,9 @@ INSTALLED_APPS = [
     'actstream',
     #django-friendship để xây dựng follow
     'friendship',
-    #django-channels
+    #django-channels 
     'channels',
+
     
 
 
@@ -78,7 +79,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',# CSRF chống giả mạo request
     'django.contrib.auth.middleware.AuthenticationMiddleware', #Xác thực user
     
-    
+    'realtime.middleware.OnlineStatusMiddleware', # middleware tự custome cho đánh dấu online
     'django.contrib.messages.middleware.MessageMiddleware',# Hệ thống message Django
     'django.middleware.clickjacking.XFrameOptionsMiddleware', #bảo vệ web khỏi bị nhúng iframe
     'axes.middleware.AxesMiddleware',#axes
@@ -92,7 +93,7 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR/'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -149,12 +150,14 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = False
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
+#lưu ảnh
 MEDIA_ROOT=os.path.join(BASE_DIR,'media') #basedir là tìm trong thư mục gốc có media
 MEDIA_URL='/media/'
 
@@ -163,13 +166,14 @@ MEDIA_URL='/media/'
 CACHEOPS_REDIS={
     'host':'localhost',
     'port': 6379,
-    'db':1,
+    'db':1, #db 1
     'socket_timeout':3,
 }
 
 CACHEOPS={
     # ở tất cả bảng, cache(lưu vào bộ nhớ phụ và reuse) ví dụ get,filter,count...trong 15p.
     '''ví dụ ng dùng gọi api lần 1 nó lưu vào cache, nó phát hiện có bài đăng mới nó sẽ tự gọi lại và lưu cache mà k cần đợi timeout'''
+    
     'auth.user':{'ops':('get','filter'),'timeout':60*60}, # cache user từ auth, ví dụ cache khi lấy ra user, lọc user
     'api.Profile':          {'ops': 'all', 'timeout': 60*30}, #ops là cache querry gì kiểu get,count,filter...timeout là bao lâu thì xóa
     'api.PendingProfile':   {'ops': 'all', 'timeout': 60*30},
@@ -202,38 +206,28 @@ ASGI_APPLICATION  = "backend.asgi.application" # setting để runserver có th�
 #redis chạy channels 
 # dùng daphne để chạy cả http + websocket 
 
-# if DEBUG:
-#     CHANNEL_LAYERS = {
-#         "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
-#     }
-# else:
-#     CHANNEL_LAYERS = {
-#         'default': {
-#             'BACKEND': 'channels_redis.core.RedisChannelLayer',
-#             'CONFIG': {'hosts': [('127.0.0.1', 6379)]},
-#         }
-#     }
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [("127.0.0.1", 6379)], #db 0
         },
     },
 }
+
 #============================================================================================
 # lưu query vào cache  tránh gọi trong db
-CACHES = {  #xài redis
+CACHES = {  #xài redis, set cache default là redis db 2
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/2",
+        "LOCATION": "redis://127.0.0.1:6379/2", 
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
     }
 }
 # Channels  → DB 0
-# Caches    → DB 2  
+# Caches redis  → DB 2  
 # Cacheops  → DB 1 
 #============================================================================================
 #django-extensions

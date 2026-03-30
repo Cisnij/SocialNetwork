@@ -23,12 +23,9 @@ from rest_framework.response import Response
 from friendship.models import Friend
 #django-extension tối ưu, lưu cache
 from rest_framework_extensions.cache.mixins import CacheResponseMixin
-#cache_page giúp trả cache nhanh từ tầng view
-from django.views.decorators.cache import cache_page
-from django.utils.decorators import method_decorator
-#adrf thực hiện bất đồng bộ gọi db mà k cần chờ các db trc thực hiện xong
-import asyncio
-from asgiref.sync import sync_to_async
+# broadcast channels 
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 
 #===========================================================================================================================================================================================
@@ -37,7 +34,67 @@ class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa prof
     serializer_class=ProfileSerializer
     throttle_classes=[ScopedRateThrottle]
     throttle_scope='profile'
-    
+    #def perform_update(self, serializer): # dùng để resize và cắt ảnh avatar
+    #     picture = self.request.FILES.get('picture')
+        
+    #     if picture:
+    #         # lấy thông số crop/resize từ request
+    #         crop_x = self.request.data.get('crop_x')
+    #         crop_y = self.request.data.get('crop_y')
+    #         crop_width = self.request.data.get('crop_width')
+    #         crop_height = self.request.data.get('crop_height')
+    #         out_width = self.request.data.get('width', 500)    # mặc định 500
+    #         out_height = self.request.data.get('height', 500)  # mặc định 500
+
+    #         picture = self._process_avatar(
+    #             picture,
+    #             crop_x, crop_y, crop_width, crop_height,
+    #             int(out_width), int(out_height)
+    #         )
+    #         serializer.save(user=self.request.user, picture=picture)
+    #     else:
+    #         serializer.save(user=self.request.user)
+
+    # def _process_avatar(self, image_file, crop_x, crop_y, crop_width, crop_height, out_width, out_height):
+    #     from PIL import Image
+    #     from io import BytesIO
+    #     from django.core.files.uploadedfile import InMemoryUploadedFile
+    #     import sys
+
+    #     img = Image.open(image_file)
+
+    #     if img.mode != 'RGB':
+    #         img = img.convert('RGB')
+
+    #     # crop nếu có truyền thông số
+    #     if all([crop_x, crop_y, crop_width, crop_height]):
+    #         crop_x = int(float(crop_x))
+    #         crop_y = int(float(crop_y))
+    #         crop_width = int(float(crop_width))
+    #         crop_height = int(float(crop_height))
+
+    #         # (left, upper, right, lower)
+    #         img = img.crop((
+    #             crop_x,
+    #             crop_y,
+    #             crop_x + crop_width,
+    #             crop_y + crop_height
+    #         ))
+
+    #     # resize về kích thước output
+    #     img = img.resize((out_width, out_height), Image.LANCZOS)
+
+    #     output = BytesIO()
+    #     img.save(output, format='JPEG', quality=85)
+    #     output.seek(0)
+
+    #     return InMemoryUploadedFile(
+    #         output, 'ImageField',
+    #         f"{image_file.name.split('.')[0]}.jpg",
+    #         'image/jpeg',
+    #         sys.getsizeof(output),
+    #         None
+    #     )
     def perform_update(self, serializer): # gán user khi update
         serializer.save(user=self.request.user)  # Lưu các thay đổi được thực hiện trên đối tượng Profile
 
@@ -68,7 +125,6 @@ class ProfileList(generics.ListAPIView):#List tất cả profile
         # return Profile.objects.filter(user=user)
         return Profile.objects.all().select_related('user').order_by('id')
     
-@method_decorator(cache_page(60 * 5), name='dispatch')
 class ProfileUser(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ProfileSerializer
@@ -213,7 +269,6 @@ class PostCreate(generics.CreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-@method_decorator(cache_page(60 * 5), name='dispatch')
 class PostListAll(generics.ListAPIView):
     permission_classes=[IsAdminUser]
     # permissions_classes =[IsAuthenticated]
@@ -339,7 +394,6 @@ class UserActivity(generics.ListAPIView): # lấy ra danh sách các hoạt đ�
             return Action.objects.all().order_by('-timestamp')
         return Action.objects.filter(data__user_id=user.id).order_by('-timestamp')
 
-@method_decorator(cache_page(60 * 10), name='dispatch')
 class LogList(generics.ListAPIView): #Danh sách log hoạt động
     serializer_class=LogSerializer
     permission_classes=[IsAdminUser]
@@ -628,7 +682,7 @@ class SendMessageAPIView(APIView): #gửi tin nhắn tới cuộc trò chuyện,
     
     def post(self,request,pk):
         conv=get_object_or_404(Conversation, id=pk)
-        self.check_object_permissions(request, conv) #kiểm tra permission custom vì dùng APIView nên k tự kiểm tra được khác với generics là tự động kiểm tra permission object
+        self.check_object_permissions(request, conv) #kiểm tra permission custom vì dùng APIView nên k tự kiểm tra được khác với generics là tự động kiểm tra permission object, phải truyền vào conv để biết làm việc với obj nào 
 
         if conv.status == 'pending': # dành cho message request khi chưa là bạn thì phải check, nếu là người nhận đc request thì phải accept mới được gửi tin nhắn
             first_message = Message.objects.filter(conversation=conv).order_by('created_at').first()
@@ -644,14 +698,28 @@ class SendMessageAPIView(APIView): #gửi tin nhắn tới cuộc trò chuyện,
     
 
 class UnsendMessageAPIView(APIView): #action xóa message
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsConversationMember]
 
     def delete(self, request, pk):
         message = get_object_or_404(Message, pk=pk)
         if message.sender != request.user:
             raise PermissionDenied("You can only unsend your own message")
-
+        self.check_object_permissions(request, message.conversation)
+        # lưu lại trước khi xóa
+        conversation_id = message.conversation_id
+        message_id = message.id
         message.delete()
+        #Broadcast realtime tin nhắn bị xóa
+        
+        channel_layer=get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'chat_{conversation_id}',
+            {
+                'type':'chat_message_deleted',
+                'id':message_id,
+            }
+            
+        )
         return Response({"detail": "Message unsent"}) 
 
 
@@ -752,6 +820,7 @@ class AcceptMessageRequest(APIView):
         )
 
 class RejectMessageRequest(APIView):
+    permission_classes=[IsAuthenticated]
     def post(self,request,conv_id):
         conv=get_object_or_404(Conversation,pk=conv_id)
         if conv.is_group:
@@ -810,7 +879,7 @@ class ConversationListAPIView(generics.ListAPIView): #mở app chat lên sẽ lo
 
 class ConversationMessage(generics.ListAPIView): #xem tin nhắn cuộc trò chuyện
     serializer_class = MessageSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,IsConversationMember]
     pagination_class = LargePagePagination
     filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
     search_fields=['content'] #tìm kiếm trong nội dung tin nhắn
@@ -819,7 +888,8 @@ class ConversationMessage(generics.ListAPIView): #xem tin nhắn cuộc trò chu
 
     def get_queryset(self):
         convo_id = self.kwargs.get("pk")
-
+        conv = get_object_or_404(Conversation, id=convo_id)
+        self.check_object_permissions(self.request, conv) # phải dùng cho get querryset, chỉ có get object mới k cần dùng còn lại dùng hết
         if self.request.user.is_superuser or self.request.user.is_staff:
             return Message.objects.filter(conversation_id=convo_id).select_related("sender__profile").prefetch_related("attachments").order_by("-created_at")
             
@@ -863,6 +933,7 @@ class SeenMessage(APIView): #đánh dấu đã xem tin nhắn, logic là khi m�
         convo_id = self.kwargs.get("pk")
 
         conversation = get_object_or_404(Conversation, id=convo_id)
+        self.check_object_permissions(request, conversation)
         last_message = (Message.objects.filter(conversation=conversation).select_related('sender').order_by("-created_at").first()) #lấy ra tin nhắn mới nhất trong cuộc trò chuyện
         if not last_message:
             return Response({"detail": "No messages"}, status=200)
@@ -873,18 +944,16 @@ class SeenMessage(APIView): #đánh dấu đã xem tin nhắn, logic là khi m�
         ).update(last_read_message=last_message)
 
         # Gửi seen event qua WebSocket để đồng bộ các thiết bị khác, cách custome
-        # from channels.layers import get_channel_layer
-        # from asgiref.sync import async_to_sync
         
-        # channel_layer = get_channel_layer()
-        # async_to_sync(channel_layer.group_send)(
-        #     f'chat_{convo_id}',
-        #     {
-        #         'type': 'seen_message',
-        #         'user_id': request.user.id,
-        #         'last_message_id': last_message.id,
-        #     }
-        # )
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'chat_{convo_id}',
+            {
+                'type': 'seen_message',
+                'user_id': request.user.id,
+                'last_message_id': last_message.id,
+            }
+        )
 
         return Response({
             "detail": "Conversation marked as seen",
@@ -892,33 +961,33 @@ class SeenMessage(APIView): #đánh dấu đã xem tin nhắn, logic là khi m�
         })
     
 class UpdateMessage(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,IsConversationMember]
     def patch(self, request, pk): #patch vì partial là true 
         message = get_object_or_404(Message, pk=pk)
+        self.check_object_permissions(request, message.conversation)
         if message.sender != request.user:
             raise PermissionDenied("You can only edit your own message")
         new_content= request.data.get('new_content')
+        if not new_content or not new_content.strip():  # check k truyền thì k lưu vào db
+            return Response({"detail": "new_content is required"}, status=400)
         serializer= MessageSerializer(message, data={'content':new_content}, partial=True)# vì là update nên phải truyền instance là message đầu tiên, còn create thì k cần truyền instance, partial true để chỉ cập nhật 1 số trường, nếu k có nó sẽ yêu cầu truyền đủ field để cập nhật
         serializer.is_valid(raise_exception=True)
         serializer.save()
         
-        # # broadcast update qua WebSocket
-        # from channels.layers import get_channel_layer
-        # from asgiref.sync import async_to_sync
+        # broadcast update qua WebSocket
 
-        # channel_layer = get_channel_layer()
-        # async_to_sync(channel_layer.group_send)(
-        #     f'chat_{message.conversation_id}',
-        #     {
-        #         'type': 'chat_message_updated',  # maps tới hàm trong consumer
-        #         'id': message.id,
-        #         'content': new_content,
-        #         'edited': True,
-        #     }
-        # )
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'chat_{message.conversation_id}',
+            {
+                'type': 'chat_message_updated',  # maps tới hàm trong consumer
+                'id': message.id,
+                'content': new_content,
+                'edited': True,
+            }
+        )
         return Response(serializer.data)
 
- 
 #=============================================================================
 class ProfileRelationship(APIView):
     permission_classes = [IsAuthenticated]
@@ -1035,4 +1104,7 @@ class FriendSuggestion(generics.ListAPIView):
             .select_related('user') #join với user
             .order_by('-mutual_count') #lọc ra số bạn chung nhiều nhất
         )
-        
+
+
+
+

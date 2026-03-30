@@ -29,6 +29,7 @@ class CreateFullPostView(APIView):
                 "error": "Có lỗi xảy ra",
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
             
 '''
 request là gì : là toàn bộ HTTP request object 

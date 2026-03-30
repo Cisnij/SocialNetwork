@@ -93,7 +93,7 @@ connect-> receive(server) -> send -> client"""
 
 """
 -flow từ back tới front end
--Frontend: User mở màn hình chat, front-end gọi new WebSocket và khởi tạo url với conversation_id,sau đó chạy open
+-Frontend: User gọi tất cả đoạn chat và gán id cho từng cái đó, front-end gọi new WebSocket và khởi tạo url với conversation_id đó khi click tương ứng,sau đó chạy open
 -Backend: chạy hàm connect và group add conversation_id đó sau đó chạy accept
 -Frontend: socket.send tin nhắn 
 -Backend: Chạy receive và lưu db, sau đó chạy group_send, cuối cùng chạy chat_message send để gửi về fe load ra
@@ -115,14 +115,14 @@ from channels.db import database_sync_to_async
 from api.models import ConversationMember, Message, Conversation
 from friendship.models import Block
 from django.contrib.auth.models import User
-
+from api.firebase import push_to_user
 
 class ChatConsumer(AsyncWebsocketConsumer):
 
     # ===== CONNECT =====
     async def connect(self):
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id'] # lấy conversation_id từ url
-        self.user = self.scope['user'] # lấy user từ middleware (JWT đã xác thực)
+        self.user = self.scope['user'] # lấy user từ middleware (JWT đã xác thực ở middleware) 
         self.room_name = f'chat_{self.conversation_id}' # tên phòng để group_send
         # check đăng nhập, middleware JWT không hợp lệ sẽ bị đây
         if self.user.is_anonymous:
@@ -155,7 +155,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         # check các điều kiện trước khi lưu (block, pending status...)
-        allowed, reason = await self.can_send()
+        allowed, reason = await self.can_send() # reason là trả về lỗi khi cái await sai 
         if not allowed:
             await self.send(text_data=json.dumps({'error': reason})) # báo lỗi về client
             return
@@ -174,11 +174,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'id': msg.id,
                 'message': message,
                 'sender': self.user.username,
-                'sender_id':self.user.id,
+                'sender_id': self.user.id,
                 'message_type': message_type,
                 'created_at': msg.created_at.isoformat(),
             }
         )
+
+        # push notification sau cùng, tách hoàn toàn, lỗi firebase không ảnh hưởng message đã lưu và đã broadcast
+        await self.push_notifications(message)
 
     # ===== CHAT_MESSAGE - gửi tin nhắn tới từng client trong group =====
     # hàm này chạy sau group_send, bắt buộc tên phải giống type trong group_send
@@ -187,22 +190,34 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'id': event['id'],
             'message': event['message'],
             'sender': event['sender'],
-            'sender_id':event['sender_id'],
+            'sender_id': event['sender_id'],
             'message_type': event.get('message_type', 'text'),
             'created_at': event['created_at'],
         }))
 
     # ===== SEEN MESSAGE - đồng bộ trạng thái đã xem giữa các thiết bị =====
-    # uncomment khi cần đồng bộ seen realtime qua WebSocket
-    # async def seen_message(self, event):
-    #     await self.send(text_data=json.dumps({
-    #         'type': 'seen_message',
-    #         'user_id': event['user_id'],
-    #         'last_message_id': event['last_message_id'],
-    #     }))
-
-    # ===== DB HELPERS =====
-
+    async def seen_message(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'seen_message',
+            'user_id': event['user_id'],
+            'last_message_id': event['last_message_id'],
+        }))
+    # ===== UPDATE MESSAGE - thêm mới =====
+    async def chat_message_updated(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'message_updated',
+            'id': event['id'],
+            'content': event['content'],
+            'edited': event['edited'],
+        }))
+    #=======DELETE MESSAGE================
+    async def chat_message_deleted(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'message_deleted',
+            'id': event['id'],
+        }))
+        
+    # ===== CHECK =====
     @database_sync_to_async
     def is_member(self): # check có phải thành viên conversation không
         return ConversationMember.objects.filter(
@@ -224,13 +239,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             .exclude(user=self.user)
             .values_list('user_id', flat=True)
         )
-        for uid in other_ids:
-            try:
-                other = User.objects.get(id=uid)
-                if Block.objects.is_blocked(self.user, other): # nếu bị block thì không gửi được
-                    return False, "Bạn đã bị chặn bởi người dùng này"
-            except User.DoesNotExist:
-                pass
+
+        is_blocked = Block.objects.filter(
+            # chiều 1: người khác block mình
+            blocker_id__in=other_ids, blocked=self.user
+        ).exists() or Block.objects.filter(
+            # chiều 2: mình block người khác
+            blocker=self.user, blocked_id__in=other_ids
+        ).exists()
+
+        if is_blocked: # nếu bị block thì không gửi được
+            return False, "Bạn đã bị chặn bởi người dùng này"
 
         # nếu conversation đang pending thì người nhận phải accept trước mới reply được
         if conv.status == 'pending':
@@ -246,18 +265,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return True, None
 
     @database_sync_to_async
-    def save_message(self, message, message_type='text'): #gọi lưu và push noti 
+    def save_message(self, message, message_type='text'): # chỉ lưu DB, không làm gì khác
         try:
-            from api.firebase import push_to_user
-            from api.models import ConversationMember
-
-            msg = Message.objects.create(
+            return Message.objects.create(
                 conversation_id=self.conversation_id,
                 sender=self.user,
                 content=message,
                 message_type=message_type,
             )
+        except Exception as e:
+            print(f"❌ Save message error: {e}")
+            return None
 
+    @database_sync_to_async
+    def push_notifications(self, message): # tách riêng, lỗi ở đây không ảnh hưởng gì cả
+        try:
             # push notification cho các member khác
             members = ConversationMember.objects.filter(
                 conversation_id=self.conversation_id
@@ -266,14 +288,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             for m in members:
                 if m.user_id == self.user.id:
                     continue
-                push_to_user( # gọi 
+                push_to_user( # gọi firebase push
                     m.user,
                     title=f'{self.user.username} gửi tin nhắn',
                     body=message
                 )
-
-            return msg
         except Exception as e:
-            print(f"❌ Save message error: {e}")
-            return None
-
+            print(f"❌ Push notification error: {e}")

@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from autoslug import AutoSlugField  #pip install django-autoslug
 from django.utils.text import slugify
 from django.utils import timezone
+from django.core.validators import FileExtensionValidator # validator ảnh để k cho gửi các file khác
 import json
 # Create your models here.
 import uuid
@@ -62,7 +63,7 @@ class Post(SafeDeleteModel):
     user=models.ForeignKey(User,on_delete=models.CASCADE)
     title=models.CharField(max_length=200, null=False)
     created_at=models.DateTimeField(auto_now_add=True)
-    reactions=GenericRelation(Reaction)
+    reactions=GenericRelation(Reaction)# generic relation dùng để kết nối nhiều model thay vì chỉ 1 như FK cố định. Ví dụ Fk là cần phải có trường đó để tạo FK thì cái này có thể gắn bất kì model nào mà k cần trường chung
     def __str__(self):
         return f"{self.user}-{self.title[:10]}"
     class Meta:
@@ -73,7 +74,7 @@ class Post(SafeDeleteModel):
 class PostPhoto(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
     post=models.ForeignKey(Post, on_delete=models.CASCADE, related_name="photos") # related name là mối quan hệ ngược do foreign key, dùng post.photos.all để querry thay vì post.postphoto_setall
-    photo=models.ImageField(null=True, blank=True) # sẽ dùng media_root để lưu
+    photo=models.ImageField(null=True, blank=True,validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])]) # sẽ dùng media_root để lưu
     def __str__(self):
         return f"{self.post.title[:10]}"
     
@@ -82,13 +83,13 @@ class PostArticle(SafeDeleteModel):
     postA_id=models.BigAutoField(primary_key=True, editable=False)
     user=models.ForeignKey(User, on_delete=models.CASCADE)
     title=models.CharField(max_length=5000, null=False)
-    content=models.CharField(max_length=5000, null=False, default="No content")
+    content = models.TextField()
     created_at=models.DateTimeField(auto_now_add=True)
-    slug= AutoSlugField(populate_from='title', unique=True,slugify=vi_slugify)
-    reactions=GenericRelation(Reaction) # generic relation dùng để kết nối nhiều model thay vì chỉ 1 
+    slug= AutoSlugField(populate_from='title', unique=False,slugify=vi_slugify)
+    reactions=GenericRelation(Reaction)
     def __str__(self):
         return f"{self.user}-{self.title[:10]}"
-
+    #sau này tạo url /<slug:slug>-<id:id>/ làm url, view chỉ lấy id và tìm để tạo sharelink
     
 class Comment(SafeDeleteModel): 
     _safedelete_policy = SOFT_DELETE_CASCADE # để khôi phục khi post khôi phục
@@ -188,7 +189,7 @@ class MessageAttachment(models.Model): #phục vụ gửi file, hình ảnh tron
     file = models.FileField(upload_to='chat/')
     file_type = models.CharField(max_length=20) 
 
-#Firebase Token 
+#===================================Firebase Token==================================
 
 class FCMToken(models.Model): #đại diện cho 1 app, 1 thiết bị, 1 lần cài 
     user = models.ForeignKey(User,on_delete=models.CASCADE) #user là ai
@@ -230,6 +231,7 @@ class SearchHistory(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
     class Meta:
         ordering=['-created_at']
-        indexes=models.Index(fields=['user','-created_at']),
+        indexes=[models.Index(fields=['user','-created_at']),]
     def __str__(self):
         return f"{self.user} search {self.content}"
+

@@ -2,9 +2,9 @@ JAZZMIN_SETTINGS = {
     "site_title": "Social Network Admin",
     "site_header": "Social Network",
     "site_brand": "SocialNetwork",
-    "site_logo": "images/logo-white.png",
-    "login_logo": "images/logo-white.png",
-    "login_logo_dark": "images/logo-white.png",
+    "site_logo": "images/logo.png",
+    "login_logo": "images/logo.png",
+    "login_logo_dark": "images/logo.png",
     "site_logo_classes": "img-circle",
     "site_icon": "images/favicon.png",
     "welcome_sign": "Welcome back 👋",
@@ -124,12 +124,12 @@ JAZZMIN_SETTINGS = {
         ]
     },
 
-    "show_ui_builder": False,
-    "language_chooser": False,
+    "show_ui_builder": True,
+    "language_chooser": True,
 }
 
 JAZZMIN_UI_TWEAKS = {
-    "theme": "darkly",
+    "theme": "sandstone",
     "accent": "accent-teal",
 
     "navbar": "navbar-dark bg-dark",

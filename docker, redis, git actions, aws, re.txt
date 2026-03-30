@@ -53,11 +53,11 @@ tích hợp đăng post,post article, chat realtime, ecommerce, video web
 
 #### 4. **Chat Realtime**
 
-✅Tin nhắn thời gian thực (WebSocket)
+✅ Tin nhắn thời gian thực (WebSocket)
 ✅ Read/Unread
 * Chat nhóm
 * Gửi ảnh trong chat
-
+✅ Online/offline
 #### 5. **Kết bạn**
 
 ✅Gửi lời mời kết bạn
@@ -139,5 +139,398 @@ tích hợp đăng post,post article, chat realtime, ecommerce, video web
 * Học Node.js và triển khai cho mobile (tương lai)
 
 
+=======================================================================================================================================
+Bạn đang muốn làm giống kiểu link share của Facebook (ví dụ `/share/p/...`) thay vì dùng URL kiểu `/post/3/` đúng không? Mình giải thích và gợi ý cách làm chuẩn cho Django REST nhé.
 
+---
 
+## 🔎 Vấn đề của bạn
+
+Hiện tại bạn đang dùng:
+
+```python
+class PostModify(generics.RetrieveUpdateDestroyAPIView)
+```
+
+→ View này phục vụ:
+
+* GET (xem chi tiết)
+* PUT/PATCH (sửa)
+* DELETE (xóa)
+
+Nhưng:
+
+* URL của bạn đang dựa vào `post_id`
+* Bạn muốn tạo **link share public kiểu Facebook**, ví dụ:
+
+  ```
+  /share/p/<code>/
+  ```
+
+---
+
+## 💡 Cách Facebook làm
+
+Link như:
+
+```
+https://www.facebook.com/share/p/18PatL9S3R/
+```
+
+👉 Thực chất:
+
+* `18PatL9S3R` là **mã encode (không phải ID thật)**
+* Nó map tới 1 post trong DB
+* View này thường là **public read-only**
+
+---
+
+## ✅ Cách làm đúng trong Django
+
+### 1. Thêm field `share_code` cho Post
+
+```python
+import uuid
+
+class Post(models.Model):
+    post_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+
+    share_code = models.CharField(max_length=20, unique=True, default=uuid.uuid4)
+```
+
+👉 Hoặc bạn có thể custom code ngắn hơn (base62)
+
+---
+
+### 2. Tạo view riêng cho share (QUAN TRỌNG)
+
+Không dùng lại `PostModify`
+
+```python
+class PostShareView(generics.RetrieveAPIView):
+    serializer_class = PostSerializer
+    permission_classes = [AllowAny]  # public
+
+    def get_object(self):
+        share_code = self.kwargs.get('code')
+        return get_object_or_404(Post, share_code=share_code)
+```
+
+---
+
+### 3. URL riêng
+
+```python
+urlpatterns = [
+    path('share/p/<str:code>/', PostShareView.as_view()),
+]
+```
+
+---
+
+### 4. Kết quả
+
+Giờ bạn có:
+
+* `/post/3/` → dùng cho owner/admin (modify)
+* `/share/p/abc123/` → public giống Facebook
+
+---
+
+## 🚨 Lưu ý quan trọng
+
+* ❌ Không dùng chung `PostModify` cho share link
+* ❌ Không expose `post_id` ra ngoài public nếu muốn giống Facebook
+* ✅ Share view nên:
+
+  * `AllowAny`
+  * chỉ `GET`
+  * không cho edit/delete
+
+---
+
+## 🔥 Bonus (nâng cấp giống Facebook hơn)
+
+Bạn có thể:
+
+* Encode ID → base62 (giống FB)
+* Thêm slug:
+
+  ```
+  /share/p/abc123/my-post-title/
+  ```
+* Track view count
+
+---
+
+## 🎯 Tóm lại
+
+Bạn cần:
+
+* ✔ Tạo **view riêng (RetrieveAPIView)**
+* ✔ Dùng `share_code` thay vì `post_id`
+* ✔ Public permission
+* ✔ URL riêng `/share/p/...`
+
+---
+
+Nếu bạn muốn mình viết luôn **hàm generate code giống Facebook (ngắn + đẹp)** hoặc làm kiểu **JWT share link / hết hạn link** mình làm tiếp cho bạn 👍
+
+=====================================================================================================================================
+logic tạo group và phân quyền chỉnh sửa bài viết trong group
+
+group > user
+group > post, trường is_accept=False, tạo api khi nhấn đồng ý thì truyền vào id bài và accept=True và 1 api hủy để delete
+
+ ví dụ group 1 có user a và user b
+ ví dụ group 1 có 2 bài post a và b
+thì groupuser có field is_admin
+và khi list all thì sẽ liệt kê user có trong group đó không, user có phải là admin không nếu không thì chỉ return, nếu có thì liệt kê ra hết, serializer có field là is_admin để fe hiểu là đc chỉnh sửa 
+tạo view cho list all post cho user riêng dùng generics List
+tạo view cho list và sửa cho admin dùng generic retrieveupdatedestroy và list của cái trên, nếu user là chủ bài viết cũng k đc chỉnh sửa
+
+==================================================================================================================================
+Chức năng phân quyền ai được xem và không
+---
+
+### Bước 1: Cấu hình Model & Database
+Thêm trường `privacy` để lưu trạng thái bài viết.
+
+```python
+# models.py
+class Post(models.Model):
+    PRIVACY_CHOICES = [
+        ('public', 'Công khai'),
+        ('friends', 'Bạn bè'),
+        ('private', 'Chỉ mình tôi'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
+    content = models.TextField()
+    privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='public')
+    # Cho tương lai: group = models.ForeignKey(Group, null=True, blank=True...)
+```
+
+---
+
+### Bước 2: Định nghĩa Logic bằng `django-rules`
+Đây là "trái tim" của hệ thống. Bạn tách rời điều kiện kiểm tra ra khỏi View.
+
+```python
+# rules.py (Tạo file này trong app của bạn)
+import rules
+from friendship.models import Friend
+
+@rules.predicate
+def is_post_author(user, post):
+    return post.user == user
+
+@rules.predicate
+def is_friend(user, post):
+    if user.is_anonymous or not post: return False
+    return Friend.objects.are_friends(user, post.user)
+
+@rules.predicate
+def is_public_post(user, post):
+    return post.privacy == 'public'
+
+# RULE: Ai được xem bài? (Tác giả HOẶC Public HOẶC (Bạn bè + post để mode Friends))
+can_view_post = is_post_author | is_public_post | (is_friend & rules.predicate(lambda u, p: p.privacy == 'friends'))
+
+# RULE: Ai được sửa/xóa/đổi quyền? (Chỉ tác giả hoặc Staff)
+# Sau này thêm Group Admin chỉ cần: is_post_author | is_group_admin | rules.is_staff
+can_edit_post = is_post_author | rules.is_staff
+
+rules.add_perm('posts.view_post', can_view_post)
+rules.add_perm('posts.change_post', can_edit_post)
+```
+
+---
+
+### Bước 3: Tạo Permission Class cho DRF
+Để kết nối `django-rules` vào các API View của bạn một cách tự động.
+
+```python
+# permissions.py
+from rest_framework import permissions
+
+class RulesBasedPermission(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        # Nếu là các method xem (GET, HEAD, OPTIONS)
+        if request.method in permissions.SAFE_METHODS:
+            return request.user.has_perm('posts.view_post', obj)
+        # Nếu là các method thay đổi (PUT, PATCH, DELETE)
+        return request.user.has_perm('posts.change_post', obj)
+```
+
+---
+
+### Bước 4: Tối ưu QuerySet (Lọc dữ liệu hàng loạt)
+`django-rules` kiểm tra từng object, nhưng để trang Newsfeed chạy nhanh, bạn cần lọc ngay ở câu lệnh SQL.
+
+View Trang Feed
+
+class PostFriend(generics.ListAPIView):
+    serializer_class = PostSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        friend_ids = Friend.objects.friends(user)
+
+        return Post.objects.filter(
+            Q(user=user) | # Bài của chính mình
+            Q(user__in=friend_ids, privacy__in=[Post.PUBLIC, Post.FRIENDS]) # Bài bạn bè (Public/Friends)
+        ).distinct().order_by("-created_at")
+
+View Trang cá nhân
+class PostUser(generics.ListAPIView):
+    serializer_class = PostSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        target_profile_id = self.kwargs.get("user") # Lấy ID profile từ URL
+        target_user = get_object_or_404(User, profile__id=target_profile_id)
+        request_user = self.request.user
+
+        # 1. Nếu xem tường nhà mình: Hiện tất cả
+        if request_user == target_user:
+            return Post.objects.filter(user=target_user)
+
+        # 2. Nếu xem tường người khác:
+        is_friend = Friend.objects.are_friends(request_user, target_user)
+        
+        if is_friend:
+            # Nếu là bạn: Xem được Public + Friends
+            return Post.objects.filter(user=target_user, privacy__in=[Post.PUBLIC, Post.FRIENDS])
+        else:
+            # Nếu người lạ: Chỉ xem được bài Public
+            return Post.objects.filter(user=target_user, privacy=Post.PUBLIC)
+
+### Bước 5: API Chỉnh sửa quyền (Step-by-step cho User)
+Khi User bấm đổi quyền trên giao diện, Frontend sẽ gửi request `PATCH`.
+
+```python
+# views.py
+class PostModify(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated, RulesBasedPermission]
+    serializer_class = PostSerializer
+    queryset = Post.objects.all()
+
+    def get_object(self):
+        obj = get_object_or_404(Post, pk=self.kwargs.get('pk'))
+        # Kích hoạt kiểm tra has_object_permission ở Bước 3
+        self.check_object_permissions(self.request, obj)
+        return obj
+```
+
+sửa model post thành có các type như friends_only, user_only, public
+
+tạo api cập nhật cho bài post, truyền vào id bài post và check có phải chủ sở hữu bài post nếu có cho chuyển
+
+view trang feed là 
+sau đó sửa lại view xem bài viết chỉ filter ra bài viết mà của mình mọi loại type, bài viết trong id của bạn bè mà type là công khai hoặc friends 
+
+view user page thì 
+nếu là request.user = (id trang cá nhân truyền vào) đó thì filter ra bài viết của chính họ tất cả, còn check user.request mà khác id truyền vào thì chỉ filter ra các bài viết công khai, còn nếu là bạn bè thì filter ra bài viết của họ mà công khai và bạn bè
+
+===========================================================================================================================
+Xóa đoạn chat
+
+thêm trường is_del_conv=models.BooleanField(default=False)
+
+class DeleteConversation(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated,IsConversationMember]
+    serializer_class = ConversationMemberSerializer
+    def put(self,request, *args, **kwargs):
+        conv_id=request.data.get('conv_id')
+        conv=Conversation.objects.get(id=conv_id).first()
+        user=request.user
+        self.check_object_permissions(request, conv)
+        if not conv:
+            return Response({'error': 'No conversation'},status=400)
+        conv_del= ConversationMember.objects.filter(conversation=conv, user=user).first()
+        if not conv_del:
+            return Response({'error': 'Not a member'}, status=400)
+        conv_del.is_del_conv=True
+        conv_del.save()
+        return Response({'message': 'Deleted successfully'}, status=200)
+
+=======================================================================================================
+xây group và sửa lại tất cả có liên quan
+Facebook check theo thứ tự:Có file không? → có → cho qua dù text rỗng
+             → không → có text không? → có → cho qua
+                                      → không → chặn
+
+logic tạo group
+
+APi tạo group bao gồm tạo conver và đặt is group =True, sau đó thêm thành viên vào conv_member và đặt người tạo request.user là is_admin luôn
+
+class Conversation(models.Model):
+    TYPE_CHOICES = (
+        ('direct', 'Direct'),
+        ('group', 'Group'),
+    )
+
+    id = models.BigAutoField(primary_key=True, editable=False)
+    type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+
+    name = models.CharField(max_length=255, null=True, blank=True)  # group dùng
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    status = models.CharField(
+        max_length=20,
+        choices=(('pending', 'Pending'), ('accept', 'Accept')),
+        default='pending'
+    )
+
+    def __str__(self):
+        return f"Conversation {self.id}"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['-updated_at']),
+            models.Index(fields=['status']),
+        ]
+class ConversationMember(models.Model):
+    ROLE_CHOICES = (
+        ('admin', 'Admin'),
+        ('moderator', 'Moderator'),
+        ('member', 'Member'),
+    )
+
+    conversation = models.ForeignKey(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name='members'
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default='member'
+    )
+
+    last_read_message = models.ForeignKey(
+        "Message",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} in Conversation {self.conversation.id}"
+
+    class Meta:
+        unique_together = ('conversation', 'user')
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['conversation']),
+            models.Index(fields=['conversation', 'role']),  # 🔥 quan trọng
+        ]
