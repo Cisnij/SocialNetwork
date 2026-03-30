@@ -196,20 +196,16 @@ class BlockSerializer(serializers.ModelSerializer):
 
 class ConversationMemberSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source="user.profile", read_only=True)
-    is_online = serializers.SerializerMethodField()
     last_read_message= serializers.SerializerMethodField()
     class Meta:
         model = ConversationMember
         fields = [
             "user",
-            "is_online",
             "joined_at",
             "last_read_message",
         ]
     def get_last_read_message(self, obj):
-        return obj.last_read_message.id if obj.last_read_message else None # là lấy ra cái id của tin nhắn cuối, vì last_read_message là foreign key nên lấy ra id, obj chính là member 
-    def get_is_online(self,obj):
-        return cache.get(f'online_user:{obj.user_id}') is not None
+        return obj.last_read_message.id if obj.last_read_message else None # là lấy ra cái id của tin nhắn cuối, vì last_read_message là foreign key nên lấy ra id, obj chính là member
         
 class ConversationSerializer(serializers.ModelSerializer):
     members = ConversationMemberSerializer( # vì là serializer này lấy ra model conversation,mà conversationmember là FK, nên đoạn conversation sẽ là obj khi được gọi, gọi ra member thì chỉ cần set
@@ -312,7 +308,32 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     def get_actor(self, obj):
         return f"{obj.actor.profile.first_name} {obj.actor.profile.last_name}"
- 
+#class NotificationSerializer(serializers.ModelSerializer):
+#     target = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = Notification
+#         fields = "__all__"
+
+#     def get_target(self, obj):
+#         target = obj.content_object
+
+#         if isinstance(target, Comment):
+#             return {
+#                 "type": "comment",
+#                 "id": target.id,
+#                 "content": target.content,
+#                 "post_id": target.post_id
+#             }
+
+#         if isinstance(target, Post):
+#             return {
+#                 "type": "post",
+#                 "id": target.post_id,
+#                 "title": target.title
+#             }
+
+#         return None
  #====================================Email serializer=========================
 from allauth.account.models import EmailAddress
 class EmailSerializer(serializers.ModelSerializer):

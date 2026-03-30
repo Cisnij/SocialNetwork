@@ -458,7 +458,7 @@ class DeleteConversation(generics.UpdateAPIView):
         return Response({'message': 'Deleted successfully'}, status=200)
 
 =======================================================================================================
-xây group và sửa lại tất cả có liên quan
+xây group chat và sửa lại tất cả có liên quan
 Facebook check theo thứ tự:Có file không? → có → cho qua dù text rỗng
              → không → có text không? → có → cho qua
                                       → không → chặn
@@ -534,3 +534,14 @@ class ConversationMember(models.Model):
             models.Index(fields=['conversation']),
             models.Index(fields=['conversation', 'role']),  # 🔥 quan trọng
         ]
+#==================================================================================================
+phản hồi tin nhắn reply
+luồng là user nhấn reply to ai đó và thêm content thì sẽ gọi tạo chat kèm theo cái reply to= id cái đó, sau đó chạy vào consumer receive và save message cùng với cái reply đó, sau đó group send có field reply và sau đó chạy send thêm reply to vào
+
+    reply_to = models.ForeignKey(  # thêm field này
+        'self',                    # tự tham chiếu về chính Message
+        on_delete=models.SET_NULL, # tin gốc bị xóa → reply vẫn còn
+        null=True,
+        blank=True,
+        related_name='replies'     # msg.replies.all()
+    )

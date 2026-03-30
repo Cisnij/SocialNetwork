@@ -159,7 +159,7 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #lưu ảnh
 MEDIA_ROOT=os.path.join(BASE_DIR,'media') #basedir là tìm trong thư mục gốc có media
-MEDIA_URL='/media/'
+MEDIA_URL='/media/' #ví dụ media/abc.jpg
 
 #=====================================================================================================================================================================================
 #cacheops

@@ -8,10 +8,11 @@ import json
 # Create your models here.
 import uuid
 from phonenumber_field.modelfields import PhoneNumberField
+from pyasn1_modules.rfc5126 import ContentType
 from unidecode  import unidecode 
 #reactions
 from reaction.models import Reaction
-from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
 #Soft delete
 from safedelete.models import SafeDeleteModel # thay thế models.model để có thể kế thừa khi xóa mềm
 from safedelete.models import SOFT_DELETE_CASCADE, SOFT_DELETE # delete cascade tức là khi xóa cha thì con cũng bị xóa mềm theo, còn soft delete là chỉ xóa mềm model đó thôi không ảnh hưởng đến các model liên quan
@@ -113,7 +114,7 @@ class Setting(models.Model):
         return f"Setting of {self.user.username}"
 
     
-class Log(SafeDeleteModel): #sau này dùng django-activity-stream 
+class Log(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE
     metadata_json = models.TextField(
         help_text="Lưu trữ metadata (dictionary) từ activity stream dưới dạng chuỗi JSON đã serialize.",
@@ -225,6 +226,23 @@ class Notification(models.Model):
             models.Index(fields=['actor']),
         ]#ví dụ nó sẽ lưu vào user là 5 trong db index và mốt nó truy vấn chỉ cần vào đó tìm user 5 sẽ ra row 1000
 
+# class Notification(models.Model):
+#     content_type= models.ForeignKey(ContentType,on_delete=models.CASCADE)
+#     object_id= models.PositiveIntegerField()
+#     content_object=GenericForeignKey('content_type','object_id') # dùng để tham chiếu thẳng tới object trong model đó, cách để đem model gắn vào nhiều th model khác dùng GenericRelation(Notification) và Reaction.objects.create(content_object=post, ...) và post.reactions.all()
+#         TYPE_CHOICES = [
+    #     ('comment', 'Comment'),
+    #     ('reaction', 'Reaction'),
+    #     ('friend_request', 'Friend Request'),
+    #     ('follow', 'Follow'),
+    # ]
+    # reciever = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    # actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
+    # type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+#     message = models.TextField(blank=True)
+#     is_read = models.BooleanField(default=False)
+#     created_at = models.DateTimeField(auto_now_add=True)
+# # ======================================================================
 class SearchHistory(models.Model):
     user= models.ForeignKey(User,on_delete=models.CASCADE)
     content=models.CharField(max_length=250)

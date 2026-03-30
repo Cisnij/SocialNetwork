@@ -955,6 +955,7 @@ class SeenMessage(APIView): #đánh dấu đã xem tin nhắn, logic là khi m�
             }
         )
 
+
         return Response({
             "detail": "Conversation marked as seen",
             "last_read_message_id": last_message.id

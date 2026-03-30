@@ -96,7 +96,7 @@ connect-> receive(server) -> send -> client"""
 -Frontend: User gọi tất cả đoạn chat và gán id cho từng cái đó, front-end gọi new WebSocket và khởi tạo url với conversation_id đó khi click tương ứng,sau đó chạy open
 -Backend: chạy hàm connect và group add conversation_id đó sau đó chạy accept
 -Frontend: socket.send tin nhắn 
--Backend: Chạy receive và lưu db, sau đó chạy group_send, cuối cùng chạy chat_message send để gửi về fe load ra
+-Backend: Chạy receive nhận data từ fe dưới dạng json và lưu db, sau đó chạy group_send lấy từ db vừa save, chuẩn bị data và gửi tín hiệu, cuối cùng chạy chat_message send load data từ groupsend để gửi về fe load ra
 -Frontend: Nhận tin nhắn và chạy onmessage
 """
 
@@ -136,6 +136,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.channel_layer.group_add(self.room_name, self.channel_name) # thêm vào group phòng chat
         await self.accept() # chấp nhận kết nối WebSocket
+        print("CONNECT:", self.channel_name)
 
     # ===== DISCONNECT =====
     async def disconnect(self, close_code):
@@ -155,7 +156,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         # check các điều kiện trước khi lưu (block, pending status...)
-        allowed, reason = await self.can_send() # reason là trả về lỗi khi cái await sai 
+        allowed, reason = await self.can_send() # reason là trả về lỗi khi cái await sai
         if not allowed:
             await self.send(text_data=json.dumps({'error': reason})) # báo lỗi về client
             return
@@ -184,7 +185,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.push_notifications(message)
 
     # ===== CHAT_MESSAGE - gửi tin nhắn tới từng client trong group =====
-    # hàm này chạy sau group_send, bắt buộc tên phải giống type trong group_send
+    # hàm này chạy sau group_send, bắt buộc tên phải giống type trong group_send, lấy ra từ db và gửi đi
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
             'id': event['id'],

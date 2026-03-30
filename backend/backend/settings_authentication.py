@@ -165,19 +165,19 @@ from corsheaders.defaults import default_headers
 CORS_ALLOW_HEADERS=list(default_headers)+['content-type','authorization','X-CSRFToken'] #thêm csrf token và bearer vào cho phép truy cập
 
 
-if not DEBUG:
+if not DEBUG: # chỉ chạy nếu debug là false tức chạy product
      SECURE_CONTENT_TYPE_NOSNIFF = True # không cho đoán định dạng file 
      SECURE_BROWSER_XSS_FILTER = True # bộ lọc tránh xss truyền sscript
      SECURE_PROXY_SSL_HEADER=('HTTP_X_FORWARDED_PROTO','https')
      SECURE_HSTS_SECONDS = 31536000  # nếu dùng HTTPS, nếu ng dùng dùng http vẫn redirect về http trong 1 năm tới 
      SECURE_HSTS_INCLUDE_SUBDOMAINS = True # áp dụng cho tất cả domain kể cả sub domain 
      SECURE_HSTS_PRELOAD = True
-     SECURE_SSL_REDIRECT = True #chuyển hướng http-> https(sau này deploy bật)
+     SECURE_SSL_REDIRECT = True #chuyển hướng http-> https(sau này deploy bật), http khác https và https có mã hóa
      #mới 
      SESSION_COOKIE_SECURE = True # chỉ cho gửi cookie nếu là https 
      CSRF_COOKIE_SECURE = True #csrf cho https
      SESSION_COOKIE_HTTPONLY = True # Đảm bảo JS không đọc được Session Cookie
-     SESSION_COOKIE_SAMESITE = 'Lax'
+     SESSION_COOKIE_SAMESITE = 'Lax' # cho phép gửi cookie trong 1 số liên trang và cấm phương thức post
      CSRF_COOKIE_SAMESITE = 'Lax'
      
 

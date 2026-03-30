@@ -110,4 +110,3 @@ class OnlineStatusMiddleware: #middleware đánh dấu onl/off dùng redis
             user= request.user
             if user is not None:
                 cache.set(f"online_user:{user.id}",True,timeout=300) # cặp key_value là: 'online_user:5' và 'True'
-        return self.get_response(request)

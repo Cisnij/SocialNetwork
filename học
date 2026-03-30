@@ -567,7 +567,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         #+pip install django-jazzmin : tạo giao diện admin đẹp hơn
         #+pip install django-debug-toolbar: công cụ giúp debug, xem sql nào đang chạy, file html nào đang chạy, và chạy mất bao lâu
         #+pip install django-extensions : tích hợp nhiều tính năng mở rộng cho django như chạy server lỗi đẹp hơn... {tất cả dùng với manage.py, runserver_plus:chạy server tốt hơn hiện lỗi chi tiết, show_urls:hiển thị tất cả url bao gồm url ẩn, graph_models:vẽ mô hình erd, sqldiff: hỗ trợ check lỗi sql, export_emails: xuất email ... dùng, check: check lỗi, manage.py --help xem thêm }
-        +django-ckeditor5: tạo imput nhập đẹp có font google, có thẻ tích hợp vào html 
+        #+django-ckeditor5: tạo imput nhập đẹp có font google, có thẻ tích hợp vào html
         +django-vote: like đislike
         +django star-ratings: đánh giá star 1-5 sao 
         #+django-reaction-system: thả reaction cười, buồn như facebook
@@ -579,7 +579,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         +pip install django-modeltranslation: hỗ trợ dịch
         +pip install django-invoices: tạo hóa đơn , gửi email, xuất pdf
         +pip install django-payments: thanh toán qua paypal...
-        +pip install django-formtools: tạo form thanh toán từng bước(có lưu session)
+        #+pip install django-formtools: tạo form thanh toán từng bước(có lưu session)
         +pip install django-imagekit dùng để tự động resize ảnh, tạo thumbnail
         +django-import-export: xuất file
         +django-meta:chia sẻ link, dùng cho fe 
@@ -615,7 +615,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
     pymysql.install_as_MySQLdb() 
     pip install pymysql
     pip install mysqlclient
-#cách thêm ảnh và setting, cũng như setting file static
+#cách thêm ảnh vào setting, cũng như setting file static
     pip install pillow
     STATIC_URL = 'static/'
     STATICFILES_DIRS = [
@@ -703,7 +703,19 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
             class Comment(models.Model):
                 content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE) # gắn được với nhièu model vì dùng content-type
                 object_id = models.PositiveIntegerField()
-                content_object = GenericForeignKey('content_type', 'object_id')
+                content_object = GenericForeignKey('content_type', 'object_id') # nối từ cái model sang cái object luôn thông qua target để có thể truy cập ví dụ từ post lấy ra bài post 1, cách dùng chỉ cần gắn vào model muốn GenericRelation(model chính)
+     # abstract model
+        Base model dùng chung, không tạo bảng trong DB
+        class TimeStampModel(models.Model):
+            created_at = models.DateTimeField(auto_now_add=True)
+            updated_at = models.DateTimeField(auto_now=True)
+
+            class Meta:
+                abstract = True  # không tạo bảng
+        # Kế thừa lại
+        class Post(TimeStampModel):  # tự có created_at, updated_at
+            title = models.CharField(max_length=200)
+
     - ORM Django tối ưu:  select_related và prefetch_related:
         --select_related: dùng cho quan hệ ForeignKey và OneToOneField, nó sẽ tạo ra một truy vấn JOIN để lấy dữ liệu liên quan trong một lần truy vấn duy nhất.
         Ví dụ: thay vì thực hiện hai truy vấn 1 là lấy message và lấy user gửi (lấy user của từng message) thì có thể gom lại cho 1 truy vấn
