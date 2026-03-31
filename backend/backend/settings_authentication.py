@@ -1,6 +1,5 @@
 #Setting Xác thực với dj-rest-auth và allauth và axes[ipware], corsheaders
-
-from .settings import *
+from .env_config import env,SECRET_KEY,DEBUG
 SITE_ID = 2
 REST_FRAMEWORK={ #Cấu hình token
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  #Spectacular

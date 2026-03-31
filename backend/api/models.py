@@ -21,13 +21,25 @@ from safedelete.models import SOFT_DELETE_CASCADE, SOFT_DELETE # delete cascade 
 def vi_slugify(value): #chuyển slug thành tiếng việt 
     return slugify(unidecode(value))
 
+def profile_upload_path(instance, filename):# Ảnh profile → media/avatars/user_1/picture.png
+    ext = filename.split('.')[-1].lower() # lấy phần đuôi ví dụ.PNG làm nhỏ lại tránh lỗi
+    return f'avatars/user_{instance.user.id}_{instance.user}/{uuid.uuid4()}.{ext}'
+
+def post_photo_upload_path(instance, filename):# Ảnh post → media/posts/user_1/post_1/picture.png
+    ext = filename.split('.')[-1].lower()
+    return f'posts/user_{instance.post.user.id}_{instance.post.user}/post_{instance.post.post_id}/{uuid.uuid4()}.{ext}'
+
+def chat_upload_path(instance, filename):# Ảnh chat → media/chat/conv_1/picture.png
+    ext = filename.split('.')[-1].lower()
+    return f'chat/conv_{instance.message.conversation.id}/{uuid.uuid4()}.{ext}'
+
 class Profile(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE #khi xóa profile thì chỉ xóa mềm profile thôi k ảnh hưởng đến user
     id=models.BigAutoField(primary_key=True, editable=False)
     user=models.OneToOneField(User,on_delete=models.CASCADE)
     first_name=models.CharField(max_length=50,null=True)
     last_name=models.CharField(max_length=50,null=True)
-    picture=models.ImageField(null=True, default="default.jpg")
+    picture=models.ImageField(upload_to=profile_upload_path,null=True, default="default.jpg",validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])])
     date_of_birth=models.DateField(null=True)
     phone_number=PhoneNumberField(null=True,blank=True) #,unique=True)
     bio=models.CharField(max_length=50,null=True,blank=True)
@@ -75,7 +87,7 @@ class Post(SafeDeleteModel):
 class PostPhoto(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
     post=models.ForeignKey(Post, on_delete=models.CASCADE, related_name="photos") # related name là mối quan hệ ngược do foreign key, dùng post.photos.all để querry thay vì post.postphoto_setall
-    photo=models.ImageField(null=True, blank=True,validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])]) # sẽ dùng media_root để lưu
+    photo=models.ImageField(upload_to=post_photo_upload_path,null=True, blank=True,validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])]) # sẽ dùng media_root để lưu
     def __str__(self):
         return f"{self.post.title[:10]}"
     
@@ -187,7 +199,7 @@ class Message(SafeDeleteModel):
 
 class MessageAttachment(models.Model): #phục vụ gửi file, hình ảnh trong chat
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='attachments')
-    file = models.FileField(upload_to='chat/')
+    file = models.FileField(upload_to=chat_upload_path)
     file_type = models.CharField(max_length=20) 
 
 #===================================Firebase Token==================================

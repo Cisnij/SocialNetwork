@@ -1,28 +1,19 @@
 
 from pathlib import Path
+from .env_config import env
 import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 #===========================================================================================================================
-#Biến môi trường env 
-import environ
-
-env=environ.Env(DEBUG=(bool,False))
-environ.Env.read_env(BASE_DIR/".env")
-#==================================================================================================================================
-
-SECRET_KEY = env("SECRET_KEY")
-DEBUG = env.bool("DEBUG",default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
 
 INSTALLED_APPS = [
-    'jazzmin',  #giao diện admin 
+    'jazzmin',  #giao diện admin
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
     'api',
     'realtime',
     'cacheops', # lưu các truy vấn đã truy vấn và trả về luôn, save tài nguyên
@@ -62,12 +53,14 @@ INSTALLED_APPS = [
     'friendship',
     #django-channels 
     'channels',
+    #cloud lưu ảnh, video và file
+    'cloudinary_storage',
+    'django.contrib.staticfiles',
+    'cloudinary',
 
-    
 
 
 ]
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage' #whitenoise 
 MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware', #whitenoise
     "csp.middleware.CSPMiddleware",#csp
@@ -158,79 +151,10 @@ STATICFILES_DIRS = [
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #lưu ảnh
-MEDIA_ROOT=os.path.join(BASE_DIR,'media') #basedir là tìm trong thư mục gốc có media
+# MEDIA_ROOT=os.path.join(BASE_DIR,'media') #basedir là tìm trong thư mục gốc có media
 MEDIA_URL='/media/' #ví dụ media/abc.jpg
 
-#=====================================================================================================================================================================================
-#cacheops
-CACHEOPS_REDIS={
-    'host':'localhost',
-    'port': 6379,
-    'db':1, #db 1
-    'socket_timeout':3,
-}
-
-CACHEOPS={
-    # ở tất cả bảng, cache(lưu vào bộ nhớ phụ và reuse) ví dụ get,filter,count...trong 15p.
-    '''ví dụ ng dùng gọi api lần 1 nó lưu vào cache, nó phát hiện có bài đăng mới nó sẽ tự gọi lại và lưu cache mà k cần đợi timeout'''
-    
-    'auth.user':{'ops':('get','filter'),'timeout':60*60}, # cache user từ auth, ví dụ cache khi lấy ra user, lọc user
-    'api.Profile':          {'ops': 'all', 'timeout': 60*30}, #ops là cache querry gì kiểu get,count,filter...timeout là bao lâu thì xóa
-    'api.PendingProfile':   {'ops': 'all', 'timeout': 60*30},
-    'api.Setting':          {'ops': 'all', 'timeout': 60*60},
-
-    #  Cache vừa — thay đổi vừa
-    'api.Post':             {'ops': 'all', 'timeout': 60*10},
-    'api.PostArticle':      {'ops': 'all', 'timeout': 60*10},
-    'api.PostPhoto':        {'ops': 'all', 'timeout': 60*10},
-    'api.Comment':          {'ops': 'all', 'timeout': 60*10},
-    'api.Notification':     {'ops': 'all', 'timeout': 60*5},
-    'api.SearchHistory':    {'ops': 'all', 'timeout': 60*5},
-    #  Cache ngắn — realtime
-    'api.Conversation':     {'ops': 'all', 'timeout': 60*2},
-    'api.ConversationMember': {'ops': 'all', 'timeout': 60*2},
-}
-
-#==========================================================================================================================================================================================================
-
-INTERNAL_IPS = [ # xem ip nào đc xem toolbar 
-    "127.0.0.1",
-]
-#cấu hình các file setting nhỏ phụ thuộc
+# cấu hình các file setting nhỏ phụ thuộc
 from .settings_authentication import *
 from .settings_admin import *
 from .settings_backend import *
-#==========================================================================================================================================================================================================
-#Channels
-ASGI_APPLICATION  = "backend.asgi.application" # setting để runserver có thể chạy asgi 
-#redis chạy channels 
-# dùng daphne để chạy cả http + websocket 
-
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)], #db 0
-        },
-    },
-}
-
-#============================================================================================
-# lưu query vào cache  tránh gọi trong db
-CACHES = {  #xài redis, set cache default là redis db 2
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/2", 
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
-    }
-}
-# Channels  → DB 0
-# Caches redis  → DB 2  
-# Cacheops  → DB 1 
-#============================================================================================
-#django-extensions
-REST_FRAMEWORK_EXTENSIONS = {
-    'DEFAULT_CACHE_RESPONSE_TIMEOUT': 60*15,  # 15 phút mặc định
-}

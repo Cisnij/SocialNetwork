@@ -36,7 +36,7 @@ work flows
 24. Xây middleware cho chức năng khi đăng nhập hiện onl. Flow là ng dùng gọi api sẽ qua middleware, middleware custome cho Online logic khi ng dùng onl thì set cache redis thời hạn 5p và nếu gọi liên tục thì refresh lại thgian. Sau đó khi gọi api liên quan đến conversation sẽ thêm is_online lấy ra từ redis cache
 25. Thêm friend suggest và search history và thêm log đăng nhạpa đăng xuất dùng ipware
 26. Xây update và seen real time và thêm chart admin
-
+27. thay đổi địa chỉ lưu ảnh thành cloud cloudinary
 
 
 -thiếu phần đăng nhập:, xác thực otp khi bật 2 bước, xóa tài khoản
