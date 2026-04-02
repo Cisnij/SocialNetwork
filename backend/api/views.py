@@ -1,3 +1,6 @@
+from factory import fuzzy
+from oauthlib.uri_validate import query
+
 from .serializers import *
 from rest_framework import generics,permissions
 from rest_framework.permissions import *
@@ -26,8 +29,9 @@ from rest_framework_extensions.cache.mixins import CacheResponseMixin
 # broadcast channels 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-
-
+# elastic
+from .documents import PostDocument,ProfileDocument
+from elasticsearch_dsl.query import MultiMatch
 #===========================================================================================================================================================================================
 class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa profile 
     permission_classes=[IsAuthenticated]
@@ -1064,6 +1068,65 @@ class SearchHistoryView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
     def get_queryset(self):
         return SearchHistory.objects.filter(user=self.request.user)
+
+class SearchAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        keyword = request.query_params.get('q', '').strip() # láy từ url
+        if not keyword:
+            return Response({'posts': [], 'profiles': []}) # tra về rỗng nếu k có
+
+        user = request.user
+
+        # Lấy danh sách user bị block và block mình
+        blocked_ids = [u.id for u in Block.objects.blocked(user)]
+        blocking_ids = [u.id for u in Block.objects.blocking(user)]
+        excluded_user_ids = set(blocked_ids) | set(blocking_ids)
+
+        # Search Post
+        # post_search = PostDocument.search().query( #lọc ra những bài post có title trùng với keyword lấy gần đúng và đúng
+        #     MultiMatch(query=keyword, fields=['title'], fuzziness='AUTO') #fuzziness là tự sửa lỗi chính tả
+        # )
+        post_search = PostDocument.search().query(
+            "bool",
+            should=[
+                MultiMatch(query=keyword, fields=['title'], fuzziness='AUTO'),
+                {"match_phrase_prefix": {"title": keyword}}
+            ]
+        )
+        post_ids = [hit.meta.id for hit in post_search]  #lấy id của các bài post sau lọc
+        posts = Post.objects.filter( # tìm id trong post mà chưa delete
+            post_id__in=post_ids,
+            deleted__isnull=True
+        ).exclude(
+            user_id__in=excluded_user_ids  # loại bài post của người bị block
+        ).select_related('user__profile').prefetch_related('photos')
+
+        # Search Profile
+        # profile_search = ProfileDocument.search().query( # lọc ra profile trùng với firstname và last name
+        #     MultiMatch(query=keyword, fields=['first_name', 'last_name'], fuzziness='AUTO')
+        # )
+        profile_search = ProfileDocument.search().query(
+            "bool",
+            should=[
+                MultiMatch(query=keyword, fields=['first_name', 'last_name'], fuzziness='AUTO'),
+                {"match_phrase_prefix": {"first_name": keyword}}
+            ]
+        )
+        profile_ids = [hit.meta.id for hit in profile_search] #lấy các id từ kết quả lọc
+        profiles = Profile.objects.filter(
+            id__in=profile_ids,
+            deleted__isnull=True
+        ).exclude(
+            user_id__in=excluded_user_ids  # loại profile của người bị block
+        ).select_related('user')
+
+        return Response({ # trả về serializer của 1 trong 2
+            'posts': PostSerializer(posts, many=True, context={'request': request}).data,# vì serializer cần lấy request để lấy user ở trường get user is reaction nên cần truyền
+            'profiles': ProfileSerializer(profiles, many=True).data,
+        })
+
 #=========================Friend Suggest===========================================   
 class FriendSuggestion(generics.ListAPIView):
     permission_classes = [IsAuthenticated]

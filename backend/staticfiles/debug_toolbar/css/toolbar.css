@@ -541,7 +541,7 @@
 /*
 Styles for pygments HTMLFormatter
 
-- This should match debug_toolbar/panels/templates/views.py::template_source
+- This should match debug_toolbar/panels/templates/es_client.py::template_source
 - Each line needs to be prefixed with #djDebug .highlight as well.
 - The .w definition needs to include:
     white-space: pre-wrap

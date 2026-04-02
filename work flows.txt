@@ -37,7 +37,9 @@ work flows
 25. Thêm friend suggest và search history và thêm log đăng nhạpa đăng xuất dùng ipware
 26. Xây update và seen real time và thêm chart admin
 27. thay đổi địa chỉ lưu ảnh thành cloud cloudinary
-
+28. xây api search dùng elastic, nhớ dùng
+    python manage.py search_index --rebuild
+29. chuyển sang db percona trên docker
 
 -thiếu phần đăng nhập:, xác thực otp khi bật 2 bước, xóa tài khoản
 

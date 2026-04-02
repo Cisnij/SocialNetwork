@@ -23,6 +23,16 @@ pip install django-cors-headers
         class Meta:
             model = Profile
             fields = '__all__'   # Chỉ định các trường bạn muốn chuyển sang JSON từ body của front end gửi lên
+    #flatten serializer thay cho nested serializer
+        -ví dụ nested
+            class ProfileSerializer...
+            class PostSerialier...
+                user= ProfileSerializer()
+        - ví dụ flatten
+            class PostSerializer
+                user_id=serializers.IntegerField(source='profile.id')
+                ... tất cả trường trong profile
+        khác nhau ở chỗ nested dùng cho nhiều tầng đa dụng mà k cần khai báo nhưng latency hơn, còn flatten thì cần khai báo nhiều
 
     +Create và update trong serializers: Dùng để tạo mới hoặc cập nhật dữ liệu trong cơ sở dữ liệu thông qua serializers, nếu k có instance thì tạo mới, có thì update
         def create(self, validated_data): # thường dùng để xử lý đăc biệt thêm trước khi tạo mới(ví dụ gán tác giả vào)
@@ -574,7 +584,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         # django-friendship: để follow
         django-comments-xtd: comment bài viết, có like dislike cho comment
         +django-markdownx: tạo highlights
-        +django-elasticsearch-dsl django-elasticsearch-dsl-drf: search nâng cao
+        +django-elasticsearch-dsl : search nâng cao
         +django-taggit: tạo tag bài viết
         +pip install django-modeltranslation: hỗ trợ dịch
         +pip install django-invoices: tạo hóa đơn , gửi email, xuất pdf

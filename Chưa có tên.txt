@@ -14,7 +14,12 @@ chưa xong
 - xây lại comment dùng thư viện, sửa lại signal, serializer, view và xóa model, sửa notification view
 - xây thêm các chức năng in app như đã đọc is read, liên kết tới post nào và thêm các trường follow... vào luôn
 - xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
-- xây chức năng search nâng cao api
-
+- sửa lại search elastic vẫn còn search cùi, tạo thêm 1 cái tìm post riêng và profile riêng
+- cài uvicorn tối ưu db
+- cài pip ínstall djangi-db-geventpool
+- cài pypy chạy trình biên dịch python nhanh hơn
+    pypy3 -m uvicorn backend.asgi:application --workers 4 --host 0.0.0.0 --port 8000 --loop uvloop
+- track latency và sửa api,serializer cho tối ưu + viết fake data
+    dùng django auditlof, django-simple-history
 
 

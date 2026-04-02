@@ -57,6 +57,9 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'django.contrib.staticfiles',
     'cloudinary',
+    #elastic search
+    'django_elasticsearch_dsl',
+
 
 
 
@@ -107,11 +110,27 @@ DATABASES = {
         "NAME": env("DB_NAME"),
         "USER": env("DB_USER"),
         "PASSWORD": env('DB_PASSWORD'),
-        "HOST": env('DB_HOST'),   
+        "HOST": env('DB_HOST'),
+        "PORT": env('DB_PORT', default='3306'),
+
+        # Performance
+        "CONN_MAX_AGE": 300,  # tái sử dụng cổng đã mở, tái sử dụng connection lâu hơn
+        "CONN_HEALTH_CHECKS": True,  # kiểm tra connection còn sống không trước khi dùng
+
         "OPTIONS": {
-            "init_command": "SET sql_mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'",
+            # SQL mode chuẩn production
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'",
+
+            "charset": "utf8mb4",  # support emoji, ký tự đặc biệt
+
+            # Giảm latency kết nối
+            "connect_timeout": 5,
+
+            # SSL — bật nếu DB ở server khác giúp mã hóa dữ liệu truyền qua mạng
+            # "ssl": {
+            #     "ca": "/path/to/ca-cert.pem",
+            # },
         },
-        'CONN_MAX_AGE': 60, #dùng kết nối cũ để query, sẽ tự đóng trong n thời gian 
     }
 }
 

@@ -130,7 +130,8 @@ urlpatterns = [
     path('api/email/set/<int:pk>/',SetPrimaryEmailView.as_view(),name='add-email'), #set làm email mặc đinh
     path('api/email/delete/<int:pk>/',DeleteEmailView.as_view(),name='delete-email'),
     #search
-    path('api/user/search/',SearchHistoryView.as_view(),name='search-history'), #lịch sủ tìm kiếm
+    path('api/search/', SearchAPIView.as_view(),name='search'),
+    path('api/user/search-history/',SearchHistoryView.as_view(),name='search-history'), #lịch sủ tìm kiếm
     #friendsuggest
     path('api/user/friend-suggest/',FriendSuggestion.as_view(),name='friend-suggest'), # gợi ý bạn bè
     #v2-test full chức năng tạo post va ảnh trong 1 api

@@ -3,6 +3,13 @@ docker, redis, git actions, aws, render(ưu tiên trước aws)
 
 tích hợp đăng post,post article, chat realtime, ecommerce, video web
 
+deploy tất cả đều cùng 1 server :
+FE: socialnetwork.com (server public)
+BE api.socialnetwork.com (server public)
+"redis://127.0.0.1:6379" (server private) 127.0.0.1 là tại đó, nếu là máy bạn thì là local, nếu là server thì là server
+elastic: "http://127.0.0.1:9200" (server private)
+
+1 server có nhiều worker để khi worker chạy hết thì chuyển sang worker khác gọi là multi worker,tăng rq/s nhưng tăng ram, nếu full tất cả worker thì nhảy qua server khác gọi là load balancer
 
 ---
 
