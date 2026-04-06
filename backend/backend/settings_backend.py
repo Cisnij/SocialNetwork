@@ -22,16 +22,17 @@ ACTSTREAM_SETTINGS = {
 
 # =====================================================================================================================================================================================
 # cacheops
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+SESSION_CACHE_ALIAS = "default"
 CACHEOPS_REDIS = {
     'host': 'localhost',
     'port': 6379,
     'db': 1,  # db 1
     'socket_timeout': 3,
 }
-
 CACHEOPS = {
     # ở tất cả bảng, cache(lưu vào bộ nhớ phụ và reuse) ví dụ get,filter,count...trong 15p.
-    '''ví dụ ng dùng gọi api lần 1 nó lưu vào cache, nó phát hiện có bài đăng mới nó sẽ tự gọi lại và lưu cache mà k cần đợi timeout'''
+    #ví dụ ng dùng gọi api lần 1 nó lưu vào cache, nó phát hiện có bài đăng mới nó sẽ tự gọi lại và lưu cache mà k cần đợi timeout
 
     'auth.user': {'ops': ('get', 'filter'), 'timeout': 60 * 60},
     # cache user từ auth, ví dụ cache khi lấy ra user, lọc user
@@ -54,9 +55,6 @@ CACHEOPS = {
 
 # ==========================================================================================================================================================================================================
 
-INTERNAL_IPS = [  # xem ip nào đc xem toolbar
-    "127.0.0.1",
-]
 
 # ==========================================================================================================================================================================================================
 # Channels
@@ -82,8 +80,9 @@ CACHES = {  # xài redis, set cache default là redis db 2
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
+        }
     }
-}
+
 # Channels  → DB 0
 # Caches redis  → DB 2
 # Cacheops  → DB 1

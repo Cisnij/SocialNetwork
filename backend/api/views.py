@@ -126,8 +126,7 @@ class ProfileList(generics.ListAPIView):#List tất cả profile
         user=self.request.user
         if user.is_superuser or user.is_staff:
             return Profile.objects.all().select_related('user').order_by('id')
-        # return Profile.objects.filter(user=user)
-        return Profile.objects.all().select_related('user').order_by('id')
+        return Profile.objects.filter(user=user).select_related('user').order_by('id')
     
 class ProfileUser(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
@@ -142,8 +141,10 @@ class ProfileView(generics.RetrieveAPIView):
     serializer_class = ProfileSerializer
 
     def get_object(self):
-        user=self.request.user
-        return get_object_or_404(Profile, user=user)
+        try:
+            return Profile.objects.select_related('user').get(user=self.request.user)
+        except Profile.DoesNotExist:
+            raise NotFound("Không tìm thấy Profile cho người dùng này.")
 
 class PendingProfileList(generics.ListAPIView):#List profile chờ duyệt
     permission_classes=[IsAdminUser]
@@ -211,27 +212,23 @@ class PostFriend(generics.ListAPIView):#List tất cả post của bạn bè
 
     def get_queryset(self):
         user = self.request.user
-
-        friends_qs = Friend.objects.friends(user)
-        following_qs = Follow.objects.following(user)
-        blocked_qs = Block.objects.blocked(user)
-        blocked_by_qs = Block.objects.blocking(user)
-
+        #lấy ra tất cả id và chỉ id 
+        friend_ids = [u.id for u in Friend.objects.friends(user)]
+        following_ids = [u.id for u in Follow.objects.following(user)]
+        blocked_ids = [u.id for u in Block.objects.blocked(user)]
+        blocked_by_ids = [u.id for u in Block.objects.blocking(user)]
+        
+        target_user_ids = set(friend_ids + following_ids + [user.id]) # lấy ra id của bạn bè, người đang follow và chính user để lấy post của họ
+        all_blocked_ids = set(blocked_ids + blocked_by_ids) # lấy ra id của người bị block và người block mình
+        final_ids = target_user_ids - all_blocked_ids # loại bỏ những người bị block khỏi danh sách mục tiêu
         return (
-            Post.objects
-            .filter(
-                Q(user__in=friends_qs) | #user là friend hoặc đang follow hoặc là user thì lấy ra hết 
-                Q(user__in=following_qs) |
-                Q(user=user)
-            )
-            .exclude(
-                Q(user__in=blocked_qs) | #trừ bị block và mình block 
-                Q(user__in=blocked_by_qs)
-            )
-            .select_related("user", "user__profile") # lấy ra cùng user và profile 
-            .prefetch_related('photos')
-            .order_by("-created_at")
-        )
+                    Post.objects
+                    .filter(user_id__in=final_ids) # Dùng user_id__in thay vì user__in để tránh JOIN bảng User vô ích
+                    .select_related("user", "user__profile")
+                    .prefetch_related('photos')
+                    .order_by("-created_at")
+                    .distinct() # Đảm bảo không trùng bài viết nếu logic friend/follow giao nhau
+                )
 
         
 class PostModify(generics.RetrieveUpdateDestroyAPIView):#Xem sửa xóa post

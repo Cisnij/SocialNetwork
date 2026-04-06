@@ -107,22 +107,22 @@ JAZZMIN_SETTINGS = {
         "socialnetwork.conversation":  "horizontal_tabs",
     },
 
-    "custom_links": {
-        "socialnetwork": [
-            {
-                "name": "Post Analytics",
-                "url": "/admin/socialnetwork/post/",
-                "icon": "fas fa-chart-bar",
-                "permissions": ["socialnetwork.view_post"],
-            },
-            {
-                "name": "Active Users",
-                "url": "/admin/auth/user/?is_active__exact=1",
-                "icon": "fas fa-user-check",
-                "permissions": ["auth.view_user"],
-            },
-        ]
-    },
+    # "custom_links": { # tùy biến thêm vào thanh nav
+    #     "socialnetwork": [
+    #         {
+    #             "name": "Post Analytics",
+    #             "url": "/admin/socialnetwork/post/",
+    #             "icon": "fas fa-chart-bar",
+    #             "permissions": ["socialnetwork.view_post"],
+    #         },
+    #         {
+    #             "name": "Active Users",
+    #             "url": "/admin/auth/user/?is_active__exact=1",
+    #             "icon": "fas fa-user-check",
+    #             "permissions": ["auth.view_user"],
+    #         },
+    #     ]
+    # },
 
     "show_ui_builder": True,
     "language_chooser": True,

@@ -79,8 +79,9 @@ class MobileAllowedOriginValidator: # mobile thì k gửi origin nên bỏ qua
 class OnlineStatusMiddleware: #middleware đánh dấu onl/off dùng redis
     """
         Middleware theo dõi trạng thái online của user.
-        Mỗi request có JWT hợp lệ → đánh dấu online trong Redis 5 phút.
+        Mỗi request có JWT hợp lệ → đánh dấu online trong Redis 5 phút và throttle 1p
         Không gọi API 5 phút → Redis tự xóa → offline.
+        Nếu hoạt động và hêt throttle, sẽ gọi tăng throttle và online lại
         Hoạt động cho cả web lẫn mobile vì đều dùng JWT header.
     """
     def __init__(self, get_response):
@@ -97,10 +98,14 @@ class OnlineStatusMiddleware: #middleware đánh dấu onl/off dùng redis
             jwt_auth = JWTAuthentication()
             result = jwt_auth.authenticate(request) # lấy token ở header khi gửi request và tự decode xác thực lấy ra user 
             if result is not None:
+
                 jwt_user, _ = result # result trả ra user và token, k cần token nên k lấy user,_ thay vì user,token =
                 # set online — timeout 300s (5 phút)
                 # mỗi lần gọi API sẽ reset lại 300s
-                cache.set(f'online_user:{jwt_user.id}', True, timeout=300) # dùng cache set của django, mà django khai báo CACHES của redis là mặc định nên vẫn là dùng redis lưu vào ram
+                throttle_key = f'online_throttle:{jwt_user.id}'
+                if not cache.get(throttle_key):
+                    cache.set(f'online_user:{jwt_user.id}', True, timeout=300) # dùng cache set của django, mà django khai báo CACHES của redis là mặc định nên vẫn là dùng redis lưu vào ram
+                    cache.set(throttle_key, True, timeout=60)
         except (AuthenticationFailed, Exception):
             pass  # token lỗi hoặc không có token → bỏ qua, không raise
         
@@ -108,5 +113,8 @@ class OnlineStatusMiddleware: #middleware đánh dấu onl/off dùng redis
         # k phải mobile thì là web 
         if hasattr(request, 'user') and request.user.is_authenticated: # nếu k có header token mà dùng session thì dùng, tìm trong request từ cookie có user k
             user= request.user
+            throttle_key = f'online_throttle:{user.id}'
             if user is not None:
-                cache.set(f"online_user:{user.id}",True,timeout=300) # cặp key_value là: 'online_user:5' và 'True'
+                if not cache.get(throttle_key):
+                    cache.set(f"online_user:{user.id}",True,timeout=300) # cặp key_value là: 'online_user:5' và 'True'
+                    cache.set(throttle_key, True, timeout=60)

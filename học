@@ -531,6 +531,15 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         #+pip install django-environ: tạo file .env để dấu secretkey hay db k cho push đi
         # pip install redis: kết nối với db của redis và phân phối hàng đợi cho celery
         #+django-el-pagination: phân trang infinite scroll cho mvc
+        #pip install gunicorn uvicorn: dùng để chạy server nhanh hơn với multiworker tối ưu latency và rq/s
+        #pip install orjson drf-orjson-renderer  : dùng thay json parser truyền thống nhanh hơn
+        #django-db-connection-pool: dùng tối ưu db( giữ kết nối lâu hơn và tái sử dụng)
+        #django-auditlog dùng ghi log hệ thống
+        #django httptools: giúp tối ưu đọc header http header nhanh hơn
+        #django lotusts: test latency ms, request/s, số ng dùng cao nhất có thể
+        #pip install hiredis: tối ưu kết nối với Redis
+        #django-auto-prefetch: tự động prefetch cho dự án
+        #pip install granian: nhanh hơn uvicorn
         
     }    
       

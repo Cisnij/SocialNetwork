@@ -4,12 +4,12 @@ SITE_ID = 2
 REST_FRAMEWORK={ #Cấu hình token
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  #Spectacular
     'DEFAULT_RENDERER_CLASSES': (
-        'rest_framework.renderers.JSONRenderer',
+        'drf_orjson_renderer.renderers.ORJSONRenderer',# dùng orjson để response serializer nhanh hơn vì viết bằng rust
         'rest_framework.renderers.BrowsableAPIRenderer',  # Để debug trực tiếp bằng trình duyệt bằng spectacular, production nên tắt 
     ),
     'DEFAULT_AUTHENTICATION_CLASSES':[
         'rest_framework_simplejwt.authentication.JWTAuthentication',#xác thực jwt
-        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.SessionAuthentication', #xác thực cho web
         
     ],
     'DEFAULT_THROTTLE_CLASSES': [ #Chống spam và bruteforce của rest framework
@@ -192,14 +192,14 @@ CONTENT_SECURITY_POLICY = {
         "default-src": [SELF],  #  Mặc định chỉ cho phép tải tài nguyên từ chính server
         "script-src": [SELF, "accounts.google.com", "apis.google.com"],  # ✅ Cho phép script nội bộ (cần nếu Swagger UI hoặc Django template)
         "style-src": [SELF,"accounts.google.com", "apis.google.com"],  # ✅ Cho phép CSS nội bộ
-        "img-src": [SELF, "data:"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
+        "img-src": [SELF, "data:","res.cloudinary.com"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
         "connect-src": [SELF,"wss://localhost:8000","accounts.google.com", "oauth2.googleapis.com",'http://localhost:8000', "apis.google.com",],  #  Cho phép fetch/xhr từ chính server
         "form-action": [SELF],  # ✅ Không cho gửi form ra ngoài
         "frame-ancestors": [SELF],  # ✅ Ngăn clickjacking
         "base-uri": [SELF],  # ✅ Giới hạn `<base>` tag
         "object-src": [NONE],  # ✅ Ngăn Flash, PDF embeds
         "font-src": [SELF, "fonts.gstatic.com"],# Cho phép nhúng font nếu dùng Google Font hoặc font local       
-        "media-src": [SELF],  # Cho phép nhúng audio/video bạn host, nếu video/ảnh hosted trên server
+        "media-src": [SELF, "res.cloudinary.com"],  # Cho phép nhúng audio/video bạn host, nếu video/ảnh hosted trên server
         "frame-src": ["https://www.youtube.com", "https://player.vimeo.com", "accounts.google.com"]
     }
 }   

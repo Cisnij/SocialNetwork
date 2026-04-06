@@ -20,9 +20,10 @@ class UserSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     #friends = serializers.PrimaryKeyRelatedField(many=True, read_only=True) #cách tạo serializer của many to many field
     is_online=serializers.SerializerMethodField()
+    user = serializers.IntegerField(source='user.id', read_only=True)
     class Meta:
         model=Profile
-        fields='__all__'
+        fields=['id', 'user', 'first_name', 'last_name', 'picture','date_of_birth','phone_number','bio','is_completed','created_at','auth_provider', 'is_online']
         extra_kwargs = {"user": {"read_only": True}} # loại trừ trường user là read only 
         
     def get_is_online(self,obj):
@@ -37,7 +38,7 @@ class PendingProfileSerializer(serializers.ModelSerializer):
 class PostPhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model=PostPhoto
-        fields='__all__'
+        fields=['id','post','photo']
         extra_kwargs = {"post": {"read_only": True}} #để k bị lỗi khi post ảnh lên vì post là foreign key bắt buộc phải có giá trị nhưng khi post ảnh thì chưa có post_id nên để read only, read only là chỉ để đọc mà k cần nạp data từ fe gửi
 
 class PostSerializer(serializers.ModelSerializer):
@@ -53,17 +54,6 @@ class PostSerializer(serializers.ModelSerializer):
         model=Post
         fields='__all__'
 
-    def to_representation(self, instance): #cách custome để loại bỏ các trường trả về json theo ý(ở đây xóa deleted hiện trong json)
-        data = super().to_representation(instance)
-        # Xóa các key bạn không muốn xuất hiện
-        data.pop('deleted', None) # cần truyền vào giá trị pop, muốn pop hết thì để None
-        data.pop('deleted_by_cascade', None)
-        # Nếu muốn xóa trong nested object (user) tức là các trường liên quan
-        if 'user' in data:
-            data['user'].pop('deleted', None)
-            data['user'].pop('deleted_by_cascade', None)
-        return data
-    
     def get_url(self,obj):
         return f"http://localhost:8000/api/user/post/{obj.post_id}/"   
     

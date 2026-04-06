@@ -25,6 +25,9 @@ class ApiConfig(AppConfig):
         #import firebase
         from api.firebase import init_firebase#file firebase.py đã tạo 
         init_firebase()
+        #auditlog
+        import api.auditlog
+        
     
 
 

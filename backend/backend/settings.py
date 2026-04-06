@@ -17,8 +17,7 @@ INSTALLED_APPS = [
     'api',
     'realtime',
     'cacheops', # lưu các truy vấn đã truy vấn và trả về luôn, save tài nguyên
-    'django_extensions',# công cụ tiện ích 
-    'debug_toolbar',#hiển thị các tiến trình
+    'django_extensions',# công cụ tiện ích
     'silk', #theo dõi sâu
     'corsheaders',#corsheader 
     # Phần bảo mật
@@ -51,7 +50,7 @@ INSTALLED_APPS = [
     'actstream',
     #django-friendship để xây dựng follow
     'friendship',
-    #django-channels 
+    #django-channels ỏ
     'channels',
     #cloud lưu ảnh, video và file
     'cloudinary_storage',
@@ -59,29 +58,33 @@ INSTALLED_APPS = [
     'cloudinary',
     #elastic search
     'django_elasticsearch_dsl',
+    #auditlog dùng để track log debug,ai dùng ,lỗi hệ thống
+    'auditlog',
+    #auto prefetch
+    # 'auto_prefetch',
+
 
 
 
 
 ]
 MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware', # các header bảo mật
     'whitenoise.middleware.WhiteNoiseMiddleware', #whitenoise
     "csp.middleware.CSPMiddleware",#csp
     'corsheaders.middleware.CorsMiddleware',# corsheader
-
-    'django.middleware.security.SecurityMiddleware', # các header bảo mật
     'django.contrib.sessions.middleware.SessionMiddleware', #Quản lý session
     'django.middleware.common.CommonMiddleware', # Xử lý các request thông thường
     'django.middleware.csrf.CsrfViewMiddleware',# CSRF chống giả mạo request
     'django.contrib.auth.middleware.AuthenticationMiddleware', #Xác thực user
-    
+    # "auto_prefetch.middleware.prefetch_middleware", #django-auto-prefetch
     'realtime.middleware.OnlineStatusMiddleware', # middleware tự custome cho đánh dấu online
     'django.contrib.messages.middleware.MessageMiddleware',# Hệ thống message Django
     'django.middleware.clickjacking.XFrameOptionsMiddleware', #bảo vệ web khỏi bị nhúng iframe
     'axes.middleware.AxesMiddleware',#axes
-    "silk.middleware.SilkyMiddleware",#silk
-    'debug_toolbar.middleware.DebugToolbarMiddleware',#debug tool bar
+    "silk.middleware.SilkyMiddleware",#silk, nên tắt khi lên production
     'allauth.account.middleware.AccountMiddleware',#allauth
+    'auditlog.middleware.AuditlogMiddleware', #audit log, tắt cho production
     
 ]
 
@@ -106,7 +109,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.mysql",
+        "ENGINE": "dj_db_conn_pool.backends.mysql", #dùng engine của connection pool
         "NAME": env("DB_NAME"),
         "USER": env("DB_USER"),
         "PASSWORD": env('DB_PASSWORD'),
@@ -116,6 +119,14 @@ DATABASES = {
         # Performance
         "CONN_MAX_AGE": 300,  # tái sử dụng cổng đã mở, tái sử dụng connection lâu hơn
         "CONN_HEALTH_CHECKS": True,  # kiểm tra connection còn sống không trước khi dùng
+
+        # Connection pool dùng để tái sử dụng các connection mà k cần tạo mới mỗi request
+        "POOL_OPTIONS": {
+            "POOL_SIZE": 20,  # số connection pool
+            "MAX_OVERFLOW": 30,  # connection thêm khi pool đầy
+            "RECYCLE": 300,  # recycle connection sau 5 phút
+            "TIMEOUT": 30,  # chờ tối đa 30s lấy connection từ pool
+        },
 
         "OPTIONS": {
             # SQL mode chuẩn production

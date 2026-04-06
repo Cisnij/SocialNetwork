@@ -143,9 +143,7 @@ urlpatterns = [
 
 #debug toolbar và silk 
 if settings.DEBUG:
-    import debug_toolbar
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    urlpatterns += [path('__debug__/', include(debug_toolbar.urls))] #toolbars
     urlpatterns += [path('silk/', include('silk.urls', namespace='silk'))] #silk , Nhớ migrate
     from django.contrib.staticfiles.urls import staticfiles_urlpatterns
     urlpatterns += staticfiles_urlpatterns() #static file để gom các js, css của các thư viện vào 1 chỗ, dùng cho nginx và daphne để production 

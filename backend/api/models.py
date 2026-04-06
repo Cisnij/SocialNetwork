@@ -13,10 +13,9 @@ from unidecode  import unidecode
 #reactions
 from reaction.models import Reaction
 from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
-#Soft delete
+#Soft delete 
 from safedelete.models import SafeDeleteModel # thay thế models.model để có thể kế thừa khi xóa mềm
 from safedelete.models import SOFT_DELETE_CASCADE, SOFT_DELETE # delete cascade tức là khi xóa cha thì con cũng bị xóa mềm theo, còn soft delete là chỉ xóa mềm model đó thôi không ảnh hưởng đến các model liên quan
-
 
 def vi_slugify(value): #chuyển slug thành tiếng việt 
     return slugify(unidecode(value))
@@ -32,6 +31,7 @@ def post_photo_upload_path(instance, filename):# Ảnh post → media/posts/user
 def chat_upload_path(instance, filename):# Ảnh chat → media/chat/conv_1/picture.png
     ext = filename.split('.')[-1].lower()
     return f'chat/conv_{instance.message.conversation.id}/{uuid.uuid4()}.{ext}'
+
 
 class Profile(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE #khi xóa profile thì chỉ xóa mềm profile thôi k ảnh hưởng đến user
@@ -82,6 +82,7 @@ class Post(SafeDeleteModel):
     class Meta:
         indexes = [
             models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['title']),
         ]
 
 class PostPhoto(SafeDeleteModel):
@@ -261,7 +262,9 @@ class SearchHistory(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
     class Meta:
         ordering=['-created_at']
-        indexes=[models.Index(fields=['user','-created_at']),]
+        indexes=[models.Index(fields=['user','-created_at']),
+                 models.Index(fields=['content']),]
+        
     def __str__(self):
         return f"{self.user} search {self.content}"
 

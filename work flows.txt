@@ -40,7 +40,7 @@ work flows
 28. xây api search dùng elastic, nhớ dùng
     python manage.py search_index --rebuild
 29. chuyển sang db percona trên docker
-
+30. dùng uvicorn, auditlog ghi log server, dùng orson tối ưu serializer, dùng connection pool
 -thiếu phần đăng nhập:, xác thực otp khi bật 2 bước, xóa tài khoản
 
 
