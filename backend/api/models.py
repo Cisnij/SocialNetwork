@@ -70,6 +70,7 @@ class PendingProfile(models.Model):
     def __str__(self):
         return f"{self.user.username}- Pending"
 
+
 class Post(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE #khi xóa post thì các comment, photo liên quan cũng bị xóa mềm theo
     post_id= models.BigAutoField(primary_key=True, editable=False)
@@ -91,6 +92,10 @@ class PostPhoto(SafeDeleteModel):
     photo=models.ImageField(upload_to=post_photo_upload_path,null=True, blank=True,validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])]) # sẽ dùng media_root để lưu
     def __str__(self):
         return f"{self.post.title[:10]}"
+    class Meta:
+        indexes=[
+            models.Index(fields=['post']),
+        ]
     
 class PostArticle(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
@@ -103,6 +108,11 @@ class PostArticle(SafeDeleteModel):
     reactions=GenericRelation(Reaction)
     def __str__(self):
         return f"{self.user}-{self.title[:10]}"
+    class Meta:
+        indexes=[
+            models.Index(fields=['user']),
+            models.Index(fields=['title']),
+        ]
     #sau này tạo url /<slug:slug>-<id:id>/ làm url, view chỉ lấy id và tìm để tạo sharelink
     
 class Comment(SafeDeleteModel): 
@@ -125,7 +135,6 @@ class Setting(models.Model):
     user=models.OneToOneField(User, on_delete=models.CASCADE)
     def __str__(self):
         return f"Setting of {self.user.username}"
-
     
 class Log(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE
@@ -164,6 +173,7 @@ class Conversation(models.Model):
         indexes = [
             models.Index(fields=['-updated_at']),  # order by updated_at
             models.Index(fields=['status']),        # filter status
+            models.Index(fields=['is_group'])
         ]
 
     
@@ -201,7 +211,9 @@ class Message(SafeDeleteModel):
 class MessageAttachment(models.Model): #phục vụ gửi file, hình ảnh trong chat
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='attachments')
     file = models.FileField(upload_to=chat_upload_path)
-    file_type = models.CharField(max_length=20) 
+    file_type = models.CharField(max_length=20)
+    class Meta:
+        indexes=[models.Index(fields=['message']),]
 
 #===================================Firebase Token==================================
 
@@ -210,6 +222,8 @@ class FCMToken(models.Model): #đại diện cho 1 app, 1 thiết bị, 1 lần 
     token = models.CharField(max_length=255, unique=True) # token nào
     device = models.CharField(max_length=20, default="android") # thiết bị nào
     updated_at = models.DateTimeField(auto_now=True)
+    class Meta:
+        indexes=[models.Index(fields=['user'])]
 
 #==========================Notification=============================
 class Notification(models.Model):
@@ -262,9 +276,11 @@ class SearchHistory(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
     class Meta:
         ordering=['-created_at']
-        indexes=[models.Index(fields=['user','-created_at']),
-                 models.Index(fields=['content']),]
+        indexes=[
+            models.Index(fields=['user','-created_at'])
+        ]
         
     def __str__(self):
         return f"{self.user} search {self.content}"
+
 

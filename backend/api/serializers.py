@@ -12,6 +12,7 @@ from actstream.models import Action
 from friendship.models import Friend, FriendshipRequest, Follow, Block
 
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model=User
@@ -20,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     #friends = serializers.PrimaryKeyRelatedField(many=True, read_only=True) #cách tạo serializer của many to many field
     is_online=serializers.SerializerMethodField()
-    user = serializers.IntegerField(source='user.id', read_only=True)
+    user = serializers.IntegerField(source='user_id', read_only=True)
     class Meta:
         model=Profile
         fields=['id', 'user', 'first_name', 'last_name', 'picture','date_of_birth','phone_number','bio','is_completed','created_at','auth_provider', 'is_online']

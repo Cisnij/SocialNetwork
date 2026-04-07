@@ -23,7 +23,7 @@ fake = Faker('vi_VN')
 print("🌱 Tạo data giả...")
 
 users = []
-for i in range(50):
+for i in range(100):
     user = User.objects.create_user(
         username=f"user_{i}", email=f"user{i}@test.com", password="123456"
     )
@@ -31,22 +31,22 @@ for i in range(50):
     Setting.objects.create(user=user)
     users.append(user)
 
-Post.objects.bulk_create([Post(user=random.choice(users), title=fake.sentence()) for _ in range(50)])
+Post.objects.bulk_create([Post(user=random.choice(users), title=fake.sentence()) for _ in range(100)])
 posts = list(Post.objects.all())
 
 Comment.objects.bulk_create([
     Comment(user=random.choice(users), post=random.choice(posts), content=fake.sentence())
-    for _ in range(50)
+    for _ in range(100)
 ])
 
-for _ in range(50):
+for _ in range(100):
     u1, u2 = random.sample(users, 2)
     try:
         if not Friend.objects.are_friends(u1, u2):
             Friend.objects.add_friend(u1, u2).accept()
     except: pass
 
-for _ in range(50):
+for _ in range(100):
     u1, u2 = random.sample(users, 2)
     conv = Conversation.objects.create(is_group=False, status='accept')
     ConversationMember.objects.bulk_create([
@@ -55,13 +55,13 @@ for _ in range(50):
     ])
     Message.objects.bulk_create([
         Message(conversation=conv, sender=random.choice([u1, u2]), content=fake.sentence(), message_type='text')
-        for _ in range(50)
+        for _ in range(100)
     ])
 
 Notification.objects.bulk_create([
     Notification(reciever=random.choice(users), actor=random.choice(users),
                  type=random.choice(['follow', 'comment', 'reaction']), message=fake.sentence())
-    for _ in range(50)
+    for _ in range(100)
 ])
 
 print(f"✅ Data xong: {len(users)} users | {Post.objects.count()} posts | {Message.objects.count()} messages\n")

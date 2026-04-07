@@ -70,6 +70,7 @@ INSTALLED_APPS = [
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware', # các header bảo mật
+    'django.middleware.gzip.GZipMiddleware', # nén file truyền qua internet để nhẹ
     'whitenoise.middleware.WhiteNoiseMiddleware', #whitenoise
     "csp.middleware.CSPMiddleware",#csp
     'corsheaders.middleware.CorsMiddleware',# corsheader

@@ -30,27 +30,35 @@ CACHEOPS_REDIS = {
     'db': 1,  # db 1
     'socket_timeout': 3,
 }
+CACHEOPS_DEFAULTS = {
+    'timeout': 60*15,
+    'local_get': True,#lưu và lấy từ RAM máy trước, không thấy mới hỏi Redis
+}
 CACHEOPS = {
     # ở tất cả bảng, cache(lưu vào bộ nhớ phụ và reuse) ví dụ get,filter,count...trong 15p.
     #ví dụ ng dùng gọi api lần 1 nó lưu vào cache, nó phát hiện có bài đăng mới nó sẽ tự gọi lại và lưu cache mà k cần đợi timeout
 
-    'auth.user': {'ops': ('get', 'filter'), 'timeout': 60 * 60},
+    'auth.user': {'ops': ('get', 'filter'), 'timeout': 60*60*24}, #24h
     # cache user từ auth, ví dụ cache khi lấy ra user, lọc user
-    'api.Profile': {'ops': 'all', 'timeout': 60 * 30},
+    'api.Profile': {'ops': 'all', 'timeout': 60*60*24},
     # ops là cache querry gì kiểu get,count,filter...timeout là bao lâu thì xóa
-    'api.PendingProfile': {'ops': 'all', 'timeout': 60 * 30},
-    'api.Setting': {'ops': 'all', 'timeout': 60 * 60},
+    'api.PendingProfile': {'ops': 'all', 'timeout': 60*60*24},
+    'api.Setting': {'ops': 'all', 'timeout': 60*60*24},
 
     #  Cache vừa — thay đổi vừa
-    'api.Post': {'ops': 'all', 'timeout': 60 * 10},
-    'api.PostArticle': {'ops': 'all', 'timeout': 60 * 10},
-    'api.PostPhoto': {'ops': 'all', 'timeout': 60 * 10},
+    'api.Post': {'ops': 'all', 'timeout': 60 * 20},
+    'api.PostArticle': {'ops': 'all', 'timeout': 60 * 20},
+    'api.PostPhoto': {'ops': 'all', 'timeout': 60 * 20},
     'api.Comment': {'ops': 'all', 'timeout': 60 * 10},
     'api.Notification': {'ops': 'all', 'timeout': 60 * 5},
     'api.SearchHistory': {'ops': 'all', 'timeout': 60 * 5},
     #  Cache ngắn — realtime
     'api.Conversation': {'ops': 'all', 'timeout': 60 * 2},
     'api.ConversationMember': {'ops': 'all', 'timeout': 60 * 2},
+    # thư viện
+    'friendship.*': {'ops': 'all', 'timeout': 60 * 60},
+    'actstream.Action': {'ops': 'all', 'timeout': 60 * 5},
+    'reaction.*': {'ops': 'all', 'timeout': 60 * 15},
 }
 
 # ==========================================================================================================================================================================================================
@@ -67,6 +75,10 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
             "hosts": [("127.0.0.1", 6379)],  # db 0
+            "capacity": 1500,  # Giới hạn hàng đợi tin nhắn
+            "expiry": 30,     # Tin nhắn chờ trong 30s nếu ko ai nhận thì hủy
+            "symmetric_encryption_keys": [env('SECRET_KEY')], # bảo mật dữ liệu
+            "on_host_is_down": "raise", # dọn các kết nối lỗi
         },
     },
 }
@@ -79,7 +91,17 @@ CACHES = {  # xài redis, set cache default là redis db 2
         "LOCATION": "redis://127.0.0.1:6379/2",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+            "IGNORE_EXCEPTIONS": True, #  Redis sập web vẫn sống
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 100, #giữ kết nối redis
+                "retry_on_timeout": True,#và tự kết nối lại
+                "health_check_interval": 30,  #  Kiểm tra sức khỏe kết nối
+                "socket_connect_timeout": 5,  # Không bắt User đợi lâu khi treo
+                "socket_keepalive": True,     # Giữ kết nối luôn sẵn sàng
+            },
+            "PICKLE_VERSION": -1, #chọn bảng cao nhất hỗ trợ để nhanh hơn
+        },
+        "TIMEOUT": 300, # xóa dữ liệu sau 5p
         }
     }
 

@@ -1,5 +1,3 @@
-from factory import fuzzy
-from oauthlib.uri_validate import query
 
 from .serializers import *
 from rest_framework import generics,permissions
@@ -8,7 +6,6 @@ from django.shortcuts import get_object_or_404
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound,PermissionDenied
-from rest_framework import viewsets
 from .pagination import *
 from .signals import unfriended_log
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
@@ -19,19 +16,17 @@ from rest_framework import status
 #filter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter,OrderingFilter
-from django.contrib.auth.models import User
 from .filters import UserReactionFilter
 from rest_framework.response import Response
 #friendship xay dựng hệ thống follow bạn bè
 from friendship.models import Friend
-#django-extension tối ưu, lưu cache
-from rest_framework_extensions.cache.mixins import CacheResponseMixin
 # broadcast channels 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 # elastic
 from .documents import PostDocument,ProfileDocument
 from elasticsearch_dsl.query import MultiMatch
+
 #===========================================================================================================================================================================================
 class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa profile 
     permission_classes=[IsAuthenticated]
@@ -109,7 +104,7 @@ class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa prof
         if user.is_superuser or user.is_staff:
             if not profile_id:
                 raise NotFound("Admin cần truyền ID profile để truy cập.")
-            return get_object_or_404(Profile, id=profile_id)
+            return get_object_or_404(Profile.objects.select_related('user','user__profile'), id=profile_id)
             
         return get_object_or_404(Profile, user=user)
 
@@ -158,7 +153,7 @@ class PendingProfileList(generics.ListAPIView):#List profile chờ duyệt
     def get_queryset(self):
         user=self.request.user
         if user.is_superuser or user.is_staff:
-            return PendingProfile.objects.all()
+            return PendingProfile.objects.all().select_related('user')
         raise PermissionDenied("Không có quyền truy cập")
 
         
@@ -169,7 +164,7 @@ class PostPhotoListCreate(generics.ListCreateAPIView):
     #trình tự xử lý: api gọi, view xử lý theo chức năng crud trước, sau đó chạy serializer parse json và thực thi tới perform create.. mấy thứ ghi trong view sau đó thêm vào model
     def get_queryset(self):
         post_id = self.kwargs.get("post_id")
-        return PostPhoto.objects.filter(post_id=post_id)
+        return PostPhoto.objects.filter(post_id=post_id).select_related('post')
 
     def perform_create(self, serializer): #trước khi lưu ảnh vào postphoto thì gán post id vào cùng
         post_id = self.kwargs.get("post_id")
@@ -212,12 +207,12 @@ class PostFriend(generics.ListAPIView):#List tất cả post của bạn bè
 
     def get_queryset(self):
         user = self.request.user
-        #lấy ra tất cả id và chỉ id 
+        #lấy ra tất cả id và chỉ id
         friend_ids = [u.id for u in Friend.objects.friends(user)]
         following_ids = [u.id for u in Follow.objects.following(user)]
         blocked_ids = [u.id for u in Block.objects.blocked(user)]
         blocked_by_ids = [u.id for u in Block.objects.blocking(user)]
-        
+
         target_user_ids = set(friend_ids + following_ids + [user.id]) # lấy ra id của bạn bè, người đang follow và chính user để lấy post của họ
         all_blocked_ids = set(blocked_ids + blocked_by_ids) # lấy ra id của người bị block và người block mình
         final_ids = target_user_ids - all_blocked_ids # loại bỏ những người bị block khỏi danh sách mục tiêu
@@ -332,7 +327,7 @@ class CommentListCreate(generics.ListCreateAPIView): #thêm list comment
             raise NotFound("Cần truyền ID post để truy cập.")
         # if user.is_superuser or user.is_staff:
         #     return Comment.objects.all()
-        return Comment.objects.filter(post_id=post_id).select_related('user__profile')
+        return Comment.objects.filter(post_id=post_id).select_related('user__profile','post').prefetch_related('post__photos')
     
     def perform_create(self, serializer): #gán user và post_id khi tạo comment
         post_id = self.kwargs.get('post_id')
@@ -1024,7 +1019,7 @@ class NotificationListView(generics.ListAPIView):
         return Notification.objects.filter(
             reciever =self.request.user
         ).select_related('actor__profile')
-        
+
 
 #===========================Firebase=======================================
 class SaveFCMTokenView(APIView):

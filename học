@@ -521,6 +521,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
     {
         Gói api:
         #+django-restframework: REST API
+        # adrf: rest api async
         #pip install django-filter : dùng lọc dữ liệu cho REST
         #+pip install drf-spectacular[sidecar]: Tự động tạo tài liệu cho api, ví dụ khi tạo api và muốn ngta truy cập vào /books/version/get thì phải cho ngta biết, nó sẽ tự sinh ra tài liệu để ngta biết truy cập
         #+pip install django-cors-headers: bắt buộc dùng nếu muốn gọi api từ django
@@ -688,7 +689,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
    - trong js abc ? ... : ... là if abc thì ... else ":" thì ...
    - nếu muốn gán cho foreign key như này UserReaction.objects.filter(reaction__object_id=obj.pk) Ví dụ gán model reaction có trường object_id cho model UserReaction
    - khi dùng filter(), exclude(), get(), annotate() thì khi muốn lấy foreign ke phải dùng __ , còn , dùng truy cập thẳng k phải lấy ra,
-    annotate() → trả về thêm một field tính toán cho từng record (ví dụ: mỗi bài viết có thêm cột tổng số like).
+    annotate() → trả về thêm một field tính toán cho từng record (ví dụ: mỗi bài viết có thêm cột tổng số like) và thực thi ở tầng db thay vì thực hiện ở python sẽ làm chậm
    - trình tự xử lý: api gọi, views.py xử lý theo chức năng crud trước, sau đó chạy serializer parse json và thực thi tới perform create.. mấy thứ ghi trong view sau đó thêm/lọc vào db
    -form data trong js để dùng cho file gửi key value
    -out standing token là chứa token còn và hết hạn, blacklisst token chứa token bị thu hồi vì đăng xuất
