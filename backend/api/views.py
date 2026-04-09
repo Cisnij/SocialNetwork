@@ -13,6 +13,7 @@ from django.db.models import Q, Prefetch
 from .permissions import IsConversationMember
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
+from .utils import get_reactions_context
 #filter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter,OrderingFilter
@@ -26,6 +27,12 @@ from asgiref.sync import async_to_sync
 # elastic
 from .documents import PostDocument,ProfileDocument
 from elasticsearch_dsl.query import MultiMatch
+
+
+def get_online_set(queryset):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
+    ids = queryset.values_list('user_id',flat=True)  # lấy các user id trong queryset của serializer đưa vào list với 1 fields
+    hits = cache.get_many([f"online_user:{uid}" for uid in ids])  # lấy 1 lúc hết các id onl trong query set trong redis thay vì gọi get 20 lần trong redis
+    return {uid for uid in ids if f"online_user:{uid}" in hits}  # nếu các user online đang lưu trong redís nằm trong queryset thì trả ra các user đó
 
 #===========================================================================================================================================================================================
 class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa profile 
@@ -99,7 +106,7 @@ class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa prof
 
     def get_object(self): #nên dùng get object thay vì get querry vì ở đây cần lấy chỉ 1 đối tượng, get querryset thường dùng trả nhiều đối tượng 
         user = self.request.user 
-        profile_id= self.kwargs.get('pk') #cách lấy ra từ urlS
+        profile_id= self.kwargs.get('pk') #cách lấy ra từ urlS dược định nghĩa trong url
 
         if user.is_superuser or user.is_staff:
             if not profile_id:
@@ -122,6 +129,11 @@ class ProfileList(generics.ListAPIView):#List tất cả profile
         if user.is_superuser or user.is_staff:
             return Profile.objects.all().select_related('user').order_by('id')
         return Profile.objects.filter(user=user).select_related('user').order_by('id')
+
+    def get_serializer_context(self): #gọi hàm custome ở trên
+        context = super().get_serializer_context()
+        context['online_set'] = get_online_set(self.get_queryset())
+        return context
     
 class ProfileUser(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
@@ -129,7 +141,7 @@ class ProfileUser(generics.RetrieveAPIView):
 
     def get_object(self):
         user_id = self.kwargs.get("user")  # lấy từ URL
-        return get_object_or_404(Profile, id=user_id) #lấy ra user id trong profile, user__id là vì onetoonefield với profile à user là object tức user chứ nhiều thứ bên trong nữa nên lấy ra id từ bên trong đó
+        return get_object_or_404(Profile.objects.select_related('user'), id=user_id) #lấy ra user id trong profile, user__id là vì onetoonefield với profile à user là object tức user chứ nhiều thứ bên trong nữa nên lấy ra id từ bên trong đó
 
 class ProfileView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
@@ -206,25 +218,31 @@ class PostFriend(generics.ListAPIView):#List tất cả post của bạn bè
     ordering_fields=['post_id','created_at']
 
     def get_queryset(self):
-        user = self.request.user
-        #lấy ra tất cả id và chỉ id
-        friend_ids = [u.id for u in Friend.objects.friends(user)]
-        following_ids = [u.id for u in Follow.objects.following(user)]
-        blocked_ids = [u.id for u in Block.objects.blocked(user)]
-        blocked_by_ids = [u.id for u in Block.objects.blocking(user)]
+        if not hasattr(self, '_qs'): # vì get_serializer_context gọi lại get_queryset nên nó sẽ query lần nữa nên thêm, chạy lần đầu thì get, lần 2 nếu có r thì k filter mà dùng luôn
+            user = self.request.user
+            #lấy ra tất cả id và chỉ id
+            friend_ids = [u.id for u in Friend.objects.friends(user)]
+            following_ids = [u.id for u in Follow.objects.following(user)]
+            blocked_ids = [u.id for u in Block.objects.blocked(user)]
+            blocked_by_ids = [u.id for u in Block.objects.blocking(user)]
 
-        target_user_ids = set(friend_ids + following_ids + [user.id]) # lấy ra id của bạn bè, người đang follow và chính user để lấy post của họ
-        all_blocked_ids = set(blocked_ids + blocked_by_ids) # lấy ra id của người bị block và người block mình
-        final_ids = target_user_ids - all_blocked_ids # loại bỏ những người bị block khỏi danh sách mục tiêu
-        return (
-                    Post.objects
-                    .filter(user_id__in=final_ids) # Dùng user_id__in thay vì user__in để tránh JOIN bảng User vô ích
-                    .select_related("user", "user__profile")
-                    .prefetch_related('photos')
-                    .order_by("-created_at")
-                    .distinct() # Đảm bảo không trùng bài viết nếu logic friend/follow giao nhau
-                )
-
+            target_user_ids = set(friend_ids + following_ids + [user.id]) # lấy ra id của bạn bè, người đang follow và chính user để lấy post của họ
+            all_blocked_ids = set(blocked_ids + blocked_by_ids) # lấy ra id của người bị block và người block mình
+            final_ids = target_user_ids - all_blocked_ids # loại bỏ những người bị block khỏi danh sách mục tiêu
+            self._qs=  ( #gán giá trị đã có
+                        Post.objects
+                        .filter(user_id__in=final_ids) # Dùng user_id__in thay vì user__in để tránh JOIN bảng User vô ích
+                        .select_related("user", "user__profile")
+                        .prefetch_related('photos')
+                        .order_by("-created_at")
+                        .distinct() # Đảm bảo không trùng bài viết nếu logic friend/follow giao nhau
+            )
+        return self._qs
+    def get_serializer_context(self): # gọi xử lý liệt kê reaction từng post và user reaction chỉ 1 lần thay vì nhiều trong serializer
+        context = super().get_serializer_context()
+        qs = self.get_queryset() # lấy query set là những thằng lọc để list ra của hàm trên
+        context.update(get_reactions_context(qs, self.request.user)) #update context theo cái return utils
+        return context
         
 class PostModify(generics.RetrieveUpdateDestroyAPIView):#Xem sửa xóa post
     permission_classes=[IsAuthenticated]
@@ -251,11 +269,17 @@ class PostUser(generics.ListAPIView):#List tất cả post của user
     filterset_fields=['title','created_at']
     search_fields=['title']
     ordering_fields=['post_id','created_at']
-
+    '''chạy check quyền trước tới check method, sau đó chạy def lọc ra query set và phân trang sau đó mới vào serializer render theo fields của từng data'''
     def get_queryset(self):
-        profile_id = self.kwargs.get("user")  
-        return Post.objects.filter(user__profile__id=profile_id).select_related('user__profile').prefetch_related('photos').order_by('-created_at')
-
+        if not hasattr(self, '_qs'):
+            profile_id = self.kwargs.get("user")
+            self._qs = Post.objects.filter(user__profile__id=profile_id).select_related('user__profile').prefetch_related('photos').order_by('-created_at')
+        return self._qs
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        qs = self.get_queryset()
+        context.update(get_reactions_context(qs, self.request.user))
+        return context
 class PostCreate(generics.CreateAPIView):
     permission_classes=[IsAuthenticated]
     throttle_classes =[ScopedRateThrottle]
@@ -276,8 +300,14 @@ class PostListAll(generics.ListAPIView):
     pagination_class=LargePagePagination
     
     def get_queryset(self):
-        return Post.objects.all().select_related('user__profile').prefetch_related('photos').order_by('-created_at')
-
+        if not hasattr(self, '_qs'):
+            self._qs=  Post.objects.all().select_related('user__profile').prefetch_related('photos').order_by('-created_at')
+        return self._qs
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        qs = self.get_queryset()
+        context.update(get_reactions_context(qs, self.request.user))
+        return context
 class PostArticleListCreate(generics.ListCreateAPIView):#List tất cả post
     permission_classes=[IsAuthenticated]
     serializer_class=PostArticalSerializer
@@ -327,7 +357,7 @@ class CommentListCreate(generics.ListCreateAPIView): #thêm list comment
             raise NotFound("Cần truyền ID post để truy cập.")
         # if user.is_superuser or user.is_staff:
         #     return Comment.objects.all()
-        return Comment.objects.filter(post_id=post_id).select_related('user__profile','post').prefetch_related('post__photos')
+        return Comment.objects.filter(post_id=post_id).select_related('user__profile','post', 'post__user__profile')
     
     def perform_create(self, serializer): #gán user và post_id khi tạo comment
         post_id = self.kwargs.get('post_id')
@@ -377,7 +407,7 @@ class UserReactionList(generics.ListAPIView): #Danh sách reaction của user tr
 
     def get_queryset(self):
         post_id=self.kwargs.get('post_id')
-        return UserReaction.objects.filter(reaction__object_id=post_id).select_related('user__profile')
+        return UserReaction.objects.filter(reaction__object_id=post_id).select_related('user__profile', 'reaction__settings', 'react')
 
 class UserActivity(generics.ListAPIView): # lấy ra danh sách các hoạt động. Để tạo chức năng ví dụ hoạt động của user, hoạt động trên post 
     serializer_class=ActionSerializer
@@ -853,8 +883,8 @@ class ConversationListAPIView(generics.ListAPIView): #mở app chat lên sẽ lo
         return Conversation.objects.filter(
             conversationmember__user=self.request.user
         ).distinct().prefetch_related(
-            # load members + user + profile + last_read_message trong 2 query
-            # (1 query IN lấy members, JOIN thêm user/profile/last_read_message)
+            # load members + user + profile + last_read_message trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
+            # (1 query join conv với message có trong conv, 1 query join user trong conv
             Prefetch(
                 'conversationmember_set',  # conversationmember có FK với conversation nên phải lấy tham chiếu là set
                 queryset=ConversationMember.objects.select_related( #tùy chỉnh thêm field muốn lấy 
@@ -888,12 +918,6 @@ class ConversationMessage(generics.ListAPIView): #xem tin nhắn cuộc trò chu
         self.check_object_permissions(self.request, conv) # phải dùng cho get querryset, chỉ có get object mới k cần dùng còn lại dùng hết
         if self.request.user.is_superuser or self.request.user.is_staff:
             return Message.objects.filter(conversation_id=convo_id).select_related("sender__profile").prefetch_related("attachments").order_by("-created_at")
-            
-        if not ConversationMember.objects.filter(
-            conversation_id=convo_id,
-            user=self.request.user
-        ).exists():
-            raise PermissionDenied("You are not a member of this conversation.")
 
         return (
             Message.objects
@@ -1065,7 +1089,7 @@ class SearchAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        keyword = request.query_params.get('q', '').strip() # láy từ url
+        keyword = request.query_params.get('q', '').strip() # láy từ url sau dấu ? mà k cần khai báo trong url
         if not keyword:
             return Response({'posts': [], 'profiles': []}) # tra về rỗng nếu k có
 
@@ -1116,7 +1140,7 @@ class SearchAPIView(APIView):
 
         return Response({ # trả về serializer của 1 trong 2
             'posts': PostSerializer(posts, many=True, context={'request': request}).data,# vì serializer cần lấy request để lấy user ở trường get user is reaction nên cần truyền
-            'profiles': ProfileSerializer(profiles, many=True).data,
+            'profiles': ProfileSerializer(profiles, many=True,context={'request': request,'online_set': get_online_set(profiles)}).data,
         })
 
 #=========================Friend Suggest===========================================   
@@ -1148,7 +1172,7 @@ class FriendSuggestion(generics.ListAPIView):
             Profile.objects.filter( 
                 user__id__in=Friend.objects.filter( #profile có id trong friend_ids
                     from_user_id__in=friend_ids
-                ).values_list('to_user_id', flat=True)
+                ).values_list('to_user_id', flat=True) #flat=True để lấy 1 field duy nhất là id
             )
             .exclude(user__id__in=excluded_user_ids) #loại trừ những ng này
             .annotate(

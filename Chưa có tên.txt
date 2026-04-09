@@ -17,6 +17,6 @@ chưa xong
 - sửa lại search elastic vẫn còn search cùi, tạo thêm 1 cái tìm post riêng và profile riêng
 
 - track latency và sửa api,serializer cho tối ưu + viết fake data, sửa lại tất cả field thay vì dùng all trong serializer
-
+-lỗi migrate
 
 -review lại các thư viện chưa ghi vào học

@@ -99,7 +99,7 @@ CACHES = {  # xài redis, set cache default là redis db 2
                 "socket_connect_timeout": 5,  # Không bắt User đợi lâu khi treo
                 "socket_keepalive": True,     # Giữ kết nối luôn sẵn sàng
             },
-            "PICKLE_VERSION": -1, #chọn bảng cao nhất hỗ trợ để nhanh hơn
+            "PICKLE_VERSION": -1, #chọn bảng cao nhất hỗ trợ để nhanh hơn dùng nén dữ liệu lưu vào redis
         },
         "TIMEOUT": 300, # xóa dữ liệu sau 5p
         }

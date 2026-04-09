@@ -226,3 +226,30 @@ class CustomAdminSite(admin.AdminSite):
 
 # Override admin.site mặc định
 admin.site.__class__ = CustomAdminSite
+#============================================================================
+#Trang check thay đổi của admin
+from django.contrib import admin
+from django.contrib.admin.models import LogEntry
+
+@admin.register(LogEntry)
+class LogEntryAdmin(admin.ModelAdmin):
+    # Khai báo các cột muốn hiển thị
+    list_display = ['action_time', 'user', 'content_type', 'object_repr', 'get_action', 'change_message']
+    list_filter = ['action_flag', 'user', 'content_type']
+    search_fields = ['user__email', 'change_message', 'object_repr']
+    
+    # Chỉ cho đọc, cấm thằng Admin nào vào đây xoá log để phi tang chứng cứ
+    def has_add_permission(self, request):
+        return False
+    def has_change_permission(self, request, obj=None):
+        return False
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    # Hàm phụ để hiển thị chữ Thêm/Sửa/Xoá thay vì số 1,2,3
+    @admin.display(description='Hành động')
+    def get_action(self, obj):
+        if obj.action_flag == 1: return "🟢 THÊM"
+        if obj.action_flag == 2: return "🟡 SỬA"
+        if obj.action_flag == 3: return "🔴 XOÁ"
+        return "KHÁC"

@@ -4,7 +4,7 @@ SITE_ID = 2
 REST_FRAMEWORK={ #Cấu hình token
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  #Spectacular
     'DEFAULT_RENDERER_CLASSES': (
-        'drf_orjson_renderer.renderers.ORJSONRenderer',# dùng orjson để response serializer nhanh hơn vì viết bằng rust
+        'drf_orjson_renderer.renderers.ORJSONRenderer',# dùng orjson để response nhanh hơn vì viết bằng rust
         'rest_framework.renderers.BrowsableAPIRenderer',  # Để debug trực tiếp bằng trình duyệt bằng spectacular, production nên tắt 
     ),
     'DEFAULT_AUTHENTICATION_CLASSES':[
@@ -36,6 +36,7 @@ REST_FRAMEWORK={ #Cấu hình token
         'block_user': '50/minute'
     },
     "DEFAULT_PARSER_CLASSES": [ #dùng cho phép nhận nhiều định dạng dữ liệu khác nhau 
+        'drf_orjson_renderer.parsers.ORJSONParser', #dungg orjson để chuyển qua json qua python nhanh hơn khi input
         "rest_framework.parsers.JSONParser",
         "rest_framework.parsers.FormParser",
         "rest_framework.parsers.MultiPartParser",

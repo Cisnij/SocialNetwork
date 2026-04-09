@@ -101,7 +101,7 @@ class PostArticle(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
     postA_id=models.BigAutoField(primary_key=True, editable=False)
     user=models.ForeignKey(User, on_delete=models.CASCADE)
-    title=models.CharField(max_length=5000, null=False)
+    title=models.CharField(max_length=50, null=False)
     content = models.TextField()
     created_at=models.DateTimeField(auto_now_add=True)
     slug= AutoSlugField(populate_from='title', unique=False,slugify=vi_slugify)

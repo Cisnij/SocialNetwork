@@ -28,6 +28,9 @@ class ProfileSerializer(serializers.ModelSerializer):
         extra_kwargs = {"user": {"read_only": True}} # loại trừ trường user là read only 
         
     def get_is_online(self,obj):
+        online_set=self.context.get('online_set') # nhận context truyền thủ công từ view vào để custome cái list profile tránh gọi cache mỗi 1 user làm tràn ram, còn cái gọi 1 object thì bth dùng get
+        if online_set is not None:
+            return obj.user_id in online_set # trả về user id trong
         return cache.get(f"online_user:{obj.user_id}") is not None
         
     
@@ -56,19 +59,25 @@ class PostSerializer(serializers.ModelSerializer):
         fields='__all__'
 
     def get_url(self,obj):
-        return f"http://localhost:8000/api/user/post/{obj.post_id}/"   
-    
-    def get_reactions(self, obj): #phải trùng tên với cái ở trên khai báo reactions
-        content_type = ContentType.objects.get_for_model(Post) #lấy ra contenttype của post 
-        reactions = (
+        return f"http://localhost:8000/api/user/post/{obj.post_id}/"
+
+    def get_reactions(self, obj):
+        reactions_map = self.context.get('reactions_map') # cái context truyền vào bên utils.py
+        if reactions_map is not None:
+            return reactions_map.get(obj.post_id, [])  # đọc từ RAM nếu có
+        # fallback — nếu k có thì chạy logic bth nhưng latency vì quert liên tục
+        content_type = ContentType.objects.get_for_model(Post)
+        return (
             Reaction.objects.filter(content_type=content_type, object_id=obj.pk)
-            .values("settings__name")          # group by theo tên reaction like, wow...
-            .annotate(total=Count("reactions"))  # đếm số user reaction, annotate là để thêm 1 field tính toán vào kết quả querry, total là tên field hiển thị ra json
+            .values("settings__name")
+            .annotate(total=Count("reactions"))
         )
-        return reactions
-    
-    def get_user_is_reaction(self,obj):
-        user=self.context.get('request').user #lấy ra user đã react, self.context.get(request) là lấy request truyền vào theo dạng json serializer và sau đó lấy ra .user
+    def get_user_is_reaction(self, obj):
+        user_reactions_map = self.context.get('user_reactions_map')
+        if user_reactions_map is not None:
+            return user_reactions_map.get(obj.post_id)  # đọc từ RAM nếu có
+        # fallback — nếu k có thì chạy logic bth nhưng latency vì quert liên tục
+        user = self.context.get('request').user
         if not user.is_authenticated:
             return False
         qs = UserReaction.objects.filter(
@@ -76,9 +85,7 @@ class PostSerializer(serializers.ModelSerializer):
             reaction__content_type=ContentType.objects.get_for_model(Post),
             reaction__object_id=obj.pk
         ).first()
-        if qs: 
-            return qs.reaction.settings.name #lấy ra cái cảm xúc ng dùng đã thả
-        return None
+        return qs.reaction.settings.name if qs else None
     
 class PostArticalSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source="user.profile", read_only=True)
@@ -118,7 +125,7 @@ class UserReactionSerializer(serializers.ModelSerializer):
 
 class ReactionSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source='user.profile', read_only=True)
-    slug =serializers.CharField(source='react.slug',read_only=True)# Cách để thêm foreign key từ model có liên quan ,vì slug k có trong trường UserReactioon nên để slug để k thay đổi đc
+    slug =serializers.CharField(source='react.slug',read_only=True)# Cách để thêm foreign key từ model có liên quan ở instance này,vì slug k có trong trường UserReactioon nên để slug để k thay đổi đc
     class Meta:
         model = UserReaction
         fields = ['user', 'slug']
@@ -227,7 +234,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     def get_unread_count(self, obj):
         user = self.context['request'].user # lấy user trong request
-        #  conversationmember_set đã prefetch sẵn → không query DB
+        #  conversationmember_set đã prefetch sẵn → không query DB mà lấy trong ram khi gọi api có liên quan đến conv
         member = next(
             (m for m in obj.conversationmember_set.all() if m.user_id == user.id), #lấy tất cả thành viên trong đoạn chat trừ mình đừa vào list
             None
@@ -238,7 +245,7 @@ class ConversationSerializer(serializers.ModelSerializer):
         #  đếm từ prefetched_messages trong RAM, không query DB
         msgs = getattr(obj, 'prefetched_messages', [])
 
-        if member.last_read_message is None:# chưa đọc lần nào → đếm tất cả tin của người khác
+        if member.last_read_message is None:# chưa đọc lần nào , đếm tất cả tin nhắn từ đầu
             return sum(1 for m in msgs if m.sender_id != user.id)
         # đếm tin của người khác sau lần đọc cuối
         return sum(

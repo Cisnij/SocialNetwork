@@ -691,6 +691,8 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
    - khi dùng filter(), exclude(), get(), annotate() thì khi muốn lấy foreign ke phải dùng __ , còn , dùng truy cập thẳng k phải lấy ra,
     annotate() → trả về thêm một field tính toán cho từng record (ví dụ: mỗi bài viết có thêm cột tổng số like) và thực thi ở tầng db thay vì thực hiện ở python sẽ làm chậm
    - trình tự xử lý: api gọi, views.py xử lý theo chức năng crud trước, sau đó chạy serializer parse json và thực thi tới perform create.. mấy thứ ghi trong view sau đó thêm/lọc vào db
+        -trình tự chi tiết, view gọi serializer get thì sẽ chạy sang từng fields, tới field nào tự custome thì thực thi logic custome
+        - trình tự post: api gọi thì serializer lấy dâta validate và thêm vào db, xong sau đó trả ra theo fields
    -form data trong js để dùng cho file gửi key value
    -out standing token là chứa token còn và hết hạn, blacklisst token chứa token bị thu hồi vì đăng xuất
    - Generic FK khác FK là nó liên kết với nhiều model hơn mà bảng chính không cần chứa nhiều dữ liệu. Ví dụ 1 bảng liên kết với nhiều bảng khác thì phải cần nhiều FK thì giờ chỉ cần chứa 2 field 
@@ -762,7 +764,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
                 1-N (reverse)	prefetch_related
                 N-N	prefetch_related
                 select related là join nhiều bảng 1-1 hoặc n-1
-                prefetch related là In, truy vấn nhiều query ví dụ lấy ra conv, từ conv lấy ra mem IN con, từ mem lấy profile IN mem
+                prefetch related là In, truy vấn nhiều query ví dụ lấy ra conv, từ conv lấy ra mem IN conv, từ mem lấy profile IN mem
                 prefetch khác prefetch related là nó vẫn lấy ra nhiều querry cùng 1 truy vấn nhưng có thể sắp xếp, lấy thêm thtin 
                 Ví dụ khi dùng prefetch_related thì chỉ lấy đc cùng lúc là conv và conv member profile, thì prefetch giúp lấy conv và conv member có thể oderby và filter và tất cả lưu vào ram
                 '''
@@ -775,7 +777,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
     -ORM nâng cao
         - transaction.atomic() : dùng để thực hiện các câu lệnh truy vấn db theo thứ tự, hoặc là thành công hết, nếu 1 cái lỗi thì roll back, .select_for_update() dùng trong atomic để lock bản ghi cho tới khi thực hiện update xong tránh trường hợp bug 2 ng thực hiện cùng lúc
         -Conversation.objects.only("id", "status").get(id=conv_id) : thay vì lấy hết object ra thì chỉ lấy các field cần 
-        -ConversationMember.objects.filter(conversation=conv).values_list("user_id", flat=True) : values list để lấy ra tuple của field cần thiết ví dụ ở đây là user_id [1,2,4]
+        -ConversationMember.objects.filter(conversation=conv).values_list("user_id", flat=True) : values list để lấy ra list của field cần thiết ví dụ ở đây là user_id [1,2,4]
             còn values sẽ trả về dict {'username':'an'}
         -@cached_property dùng cho hàm thuộc tính trong model là property, thay vì ví dụ lấy ra conv.last_message 3 lần thì nó sẽ truy vấn 3 lần, dùng thì sẽ chỉ truy vấn 1 lần và lấy ra dùng lại
         -class Meta: #Meta là cách thiết lập model hoạt động , kiểu setting mặc định 

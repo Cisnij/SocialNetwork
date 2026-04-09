@@ -14,7 +14,7 @@ from django.db.models import Count
 class PostViewSet(viewsets.ViewSet): #ViewSet khác modelViewSet là nó không cung cấp sẵn crud mà mình tự định nghĩa qua @action
     permission_classes = [IsAuthenticated]
 
-    @action(detail=True, methods=['post']) #tạo ra url riêng biệt cho post
+    @action(detail=True, methods=['post']) #tạo ra url riêng biệt cho post, detail= True để cho phép truyền tham số vào url
     def react(self, request, pk=None): #tên react sẽ tạo ra url có tên nó vì dùng @action,pk null tránh lỗi khi k truyền, có thì sẽ có giá trị
         reaction_type = request.data.get("reaction_type")
         if not reaction_type:
