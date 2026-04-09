@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.db.models.functions import TruncDate
+
 from .models import *
 # SAFE DELETE
 from safedelete.admin import SafeDeleteAdminFilter, SafeDeleteAdmin
@@ -16,6 +18,7 @@ class PostAdmin(SafeDeleteAdmin):
     inlines = [PostPhotoInline] #thêm trường hiển thị trong Post do khác bảng mà muốn gộp lại  
     list_display = ('post_id', 'user', 'title', 'created_at','deleted') #trường lấy ra sẵn 
     list_filter = (SafeDeleteAdminFilter,'user') #lọc theo trạng thái xóa mềm và user
+    list_select_related = ['user']# Join giảm thgian load trang thqua query, tự select related với chính model instance này là post
     actions = ['undelete_selected', 'hard_delete_selected']
 
     @admin.action(description="♻️ Khôi phục (undelete) bài viết đã xóa mềm")
@@ -35,12 +38,14 @@ class PendingProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'first_name', 'last_name', 'date_of_birth')
     search_fields = ('user__username', 'first_name', 'last_name')
     list_filter = ('date_of_birth',)
+    list_select_related = ['user']
 #==========================PROFILE========================================
 @admin.register(Profile)
 class ProfileAdmin(SafeDeleteAdmin):
     list_display = ('id','user', 'first_name', 'last_name', 'is_completed', 'phone_number','deleted')
     search_fields = ('user__username', 'first_name', 'last_name', 'phone_number')
     list_filter = (SafeDeleteAdminFilter,'is_completed',)
+    list_select_related = ['user']
     actions = ['undelete_selected', 'hard_delete_selected']
 
     @admin.action(description="♻️ Khôi phục (undelete) Profile đã xóa mềm")
@@ -60,6 +65,7 @@ class CommentAdmin(SafeDeleteAdmin):
     list_display = ('user', 'post', 'content', 'created_at','deleted')
     search_fields = ('user__username', 'content', 'post__title')
     list_filter = (SafeDeleteAdminFilter,'created_at',)
+    list_select_related = ['user', 'post']
     actions = ['undelete_selected', 'hard_delete_selected']
 
     @admin.action(description="♻️ Khôi phục (undelete) bình luận")
@@ -99,6 +105,7 @@ class LogAdmin(SafeDeleteAdmin):
 class SettingAdmin(admin.ModelAdmin):
     list_display = ('user', 'darkmode')
     search_fields = ('user__username',)
+    list_select_related = ['user']
 
 #===========================POST ARTICLE============================================
 @admin.register(PostArticle)
@@ -106,6 +113,7 @@ class PostArticleAdmin(SafeDeleteAdmin):
     list_display = ('user', 'title', 'slug', 'created_at','deleted')
     search_fields = ('user__username', 'title', 'content')
     list_filter = (SafeDeleteAdminFilter,'created_at',)
+    list_select_related = ['user']
     actions = ['undelete_selected', 'hard_delete_selected']
 
     @admin.action(description="♻️ Khôi phục (undelete) bài viết dạng Article")
@@ -126,6 +134,7 @@ class PostPhotoAdmin(SafeDeleteAdmin):
     list_display = ('id', 'post', 'photo', 'deleted')
     search_fields = ('post__title',)
     list_filter = (SafeDeleteAdminFilter,)
+    list_select_related = ['post']  # join post sẵn tránh N+1
     actions = ['undelete_selected', 'hard_delete_selected']
 
     @admin.action(description="♻️ Khôi phục (undelete) ảnh đã xóa mềm")
@@ -152,13 +161,28 @@ from datetime import timedelta
 import json
 
 def get_daily_counts(queryset, date_field, days=30):
-    labels, data = [], []
     today = timezone.now().date()
-    for i in range(days - 1, -1, -1):
-        day = today - timedelta(days=i)
-        count = queryset.filter(**{f'{date_field}__date': day}).count()
+    start = today - timedelta(days=days - 1)
+
+    # lấy tên primary key của model thay vì hardcode 'id'
+    pk_name = queryset.model._meta.pk.name
+
+    qs = (
+        queryset
+        .filter(**{f'{date_field}__date__gte': start})
+        .annotate(day=TruncDate(date_field))
+        .values('day')
+        .annotate(count=Count(pk_name))  # ← dùng pk_name thay vì 'id'
+        .order_by('day')
+    )
+    count_map = {row['day']: row['count'] for row in qs}
+
+    labels, data = [], []
+    for i in range(days):
+        day = start + timedelta(days=i)
         labels.append(day.strftime('%d/%m'))
-        data.append(count)
+        data.append(count_map.get(day, 0))
+
     return labels, data
 
 class CustomAdminSite(admin.AdminSite):

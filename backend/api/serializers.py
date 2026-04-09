@@ -94,7 +94,6 @@ class PostArticalSerializer(serializers.ModelSerializer):
         fields='__all__'
 
 class CommentSerializer(serializers.ModelSerializer):
-    post = PostSerializer(read_only=True) # để show ra post có tên gì... trong response
     user = ProfileSerializer(source="user.profile", read_only=True)
     class Meta:
         model=Comment
@@ -132,9 +131,8 @@ class ReactionSerializer(serializers.ModelSerializer):
 
 
 #===========================ActivitySteam=================================================================================
-class ActionSerializer(serializers.ModelSerializer): 
-    #actor = ProfileSerializer(source='actor.profile', read_only=True)
-    actor =serializers.StringRelatedField()
+class ActionSerializer(serializers.ModelSerializer):
+    actor =serializers.StringRelatedField() #string related là lấy cái __str__ return trng model
     target=serializers.StringRelatedField()
     action_object=serializers.StringRelatedField()
     class Meta:

@@ -202,7 +202,7 @@ class PostPhotoDelete(generics.DestroyAPIView): #xóa ảnh (chức năng của 
         photo_id = self.kwargs.get('pk')
         if not photo_id:
             raise NotFound("Cần truyền ID ảnh để xóa.")
-        photo = get_object_or_404(PostPhoto, id=photo_id)
+        photo = get_object_or_404(PostPhoto.objects.select_related('post__user'), id=photo_id)
         if photo.post.user != user and not (user.is_superuser or user.is_staff):
             raise PermissionDenied("Bạn không có quyền xóa ảnh này.")
         return photo
