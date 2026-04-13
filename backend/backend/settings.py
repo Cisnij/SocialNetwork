@@ -14,6 +14,8 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    #static files
+    'django.contrib.staticfiles',
     'api',
     'realtime',
     'cacheops', # lưu các truy vấn đã truy vấn và trả về luôn, save tài nguyên
@@ -38,8 +40,6 @@ INSTALLED_APPS = [
     #Phần dưới là spectacular sinh ra tài liệu 
     'drf_spectacular',
     'drf_spectacular_sidecar',
-    #django cleanup
-    "django_cleanup.apps.CleanupConfig",
     #Phần like và thả reaction post,comments
     'reaction.apps.ReactionConfig',
     #lọc filter cho restframework
@@ -54,7 +54,6 @@ INSTALLED_APPS = [
     'channels',
     #cloud lưu ảnh, video và file
     'cloudinary_storage',
-    'django.contrib.staticfiles',
     'cloudinary',
     #elastic search
     'django_elasticsearch_dsl',
@@ -63,13 +62,14 @@ INSTALLED_APPS = [
     #auto prefetch
     # 'auto_prefetch',
 
-
-
-
+    # django cleanup, cuối
+    "django_cleanup.apps.CleanupConfig",
 
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware', # các header bảo mật
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # whitenoise
+    "silk.middleware.SilkyMiddleware",#silk, nên tắt khi lên production
     'django.middleware.gzip.GZipMiddleware', # nén file truyền qua internet để nhẹ
     'whitenoise.middleware.WhiteNoiseMiddleware', #whitenoise
     "csp.middleware.CSPMiddleware",#csp
@@ -78,12 +78,11 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware', # Xử lý các request thông thường
     'django.middleware.csrf.CsrfViewMiddleware',# CSRF chống giả mạo request
     'django.contrib.auth.middleware.AuthenticationMiddleware', #Xác thực user
+    'axes.middleware.AxesMiddleware',  # axes
     # "auto_prefetch.middleware.prefetch_middleware", #django-auto-prefetch
     'realtime.middleware.OnlineStatusMiddleware', # middleware tự custome cho đánh dấu online
     'django.contrib.messages.middleware.MessageMiddleware',# Hệ thống message Django
     'django.middleware.clickjacking.XFrameOptionsMiddleware', #bảo vệ web khỏi bị nhúng iframe
-    'axes.middleware.AxesMiddleware',#axes
-    "silk.middleware.SilkyMiddleware",#silk, nên tắt khi lên production
     'allauth.account.middleware.AccountMiddleware',#allauth
     'auditlog.middleware.AuditlogMiddleware', #audit log, tắt cho production
     
@@ -169,10 +168,11 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'vi'
 
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
-
+# dịch ngôn ngữ
 USE_I18N = True
 USE_L10N = True
-USE_TZ = False
+
+USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

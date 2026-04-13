@@ -119,15 +119,17 @@ class Comment(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE # để khôi phục khi post khôi phục
     user= models.ForeignKey(User, on_delete=models.CASCADE)
     post=models.ForeignKey(Post,on_delete=models.CASCADE)
+    parent = models.ForeignKey('self',null=True,blank=True,on_delete=models.CASCADE,related_name='replies')
     content=models.CharField(max_length=200, null=False)
     created_at=models.DateTimeField(auto_now_add=True)
     reactions=GenericRelation(Reaction)
     def __str__(self):
-        return f"{self.user.username} commented on {self.post.title}"
+        return f"{self.id} {self.user.username} commented on {self.post.title}"
     class Meta:
         indexes = [
             models.Index(fields=['post', '-created_at']),
             models.Index(fields=['user']),
+            models.Index(fields=['parent']),
         ]
 
 class Setting(models.Model):

@@ -582,7 +582,7 @@ def notify_comment(sender, instance, created, **kwargs):
         Notification.objects.create(
             reciever=instance.post.user,
             actor=instance.user,
-            type='comment',
+            type='comment', #if instance.parent is null else 'reply',
             object_id=instance.post.post_id,
             message=f'{instance.user.username} commented on your post'
         )

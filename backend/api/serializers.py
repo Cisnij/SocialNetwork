@@ -95,6 +95,7 @@ class PostArticalSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source="user.profile", read_only=True)
+    reply_count = serializers.IntegerField(read_only=True)
     class Meta:
         model=Comment
         fields='__all__'
@@ -304,6 +305,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     def get_actor(self, obj):
         return f"{obj.actor.profile.first_name} {obj.actor.profile.last_name}"
+
 #class NotificationSerializer(serializers.ModelSerializer):
 #     target = serializers.SerializerMethodField()
 

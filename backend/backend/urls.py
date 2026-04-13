@@ -21,7 +21,7 @@ from django.conf import settings
 from api.google_login import *
 from api.views import *
 from api.view_v2 import *
-from api.reactions import PostViewSet
+from api.reactions import PostViewSet,CommentViewSet
 from api.custome_authen import * 
 # from realtime.views import views
 #------------------------------------------
@@ -37,8 +37,8 @@ from rest_framework.routers import DefaultRouter
 from api.custome_authen import CheckPassword,DeleteAccount
 #url cho reactions
 router=DefaultRouter()
-router.register(r'posts',PostViewSet,basename='reactions') #thả react 
-
+router.register(r'posts',PostViewSet,basename='post-reactions') #thả react
+router.register(r'comments',CommentViewSet,basename='comment-reactions')
 urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),  # dịch ngôn ngữ
     path('supremacy/admin/', admin.site.urls),
@@ -84,6 +84,7 @@ urlpatterns = [
     path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể
     path('api/user/comments/post/<int:post_id>',CommentListCreate.as_view(),name='comment-list'), #lấy Thêm comments từ post cụ thể
     path('api/user/comments/<int:pk>/',CommentModify.as_view(),name='comment-modify'), #lấy ra comment từ id
+    path('api/user/nested-comments/<int:pk>/',NestedCommentList.as_view(),name='nested-comment'),
     path('api/user/setting/<int:pk>/',SettingModify.as_view(), name='setting-modify'),
     #url xử lý bạn bè, follow
     path("api/friends/request/<int:pk>/", SendFriendRequestView.as_view(), name="send-friend-request"), #gửi lời mời kết bạn
@@ -104,7 +105,8 @@ urlpatterns = [
     path('api/block/touser',ListBlockedUser.as_view(),name='listblocktouser'), #danh sách người block user
     path('api/block/user',ListBlockedFromUser.as_view(),name='listblockfromuser'), #danh sách block của user
     #url lấy ra user đã react và activity
-    path('api/user/reaction/<int:post_id>',UserReactionList.as_view(),name='user-reaction'), #lấy ra tất cả user đã thẻ react post 
+    path('api/user/reaction/post/<int:post_id>',UserReactionPostList.as_view(),name='user-reaction-post'), #lấy ra tất cả user đã thẻ react post
+    path('api/user/reaction/comment/<int:comment_id>',UserReactionCommentList.as_view(),name='user-reaction-comment'), #lấy ra tất cả user đã thẻ react post
     path('api/user/activity/', UserActivity.as_view(), name='user-activity'), #lấy ra lịch sử hoạt động của user hoặc tất cả user
     path('api/admin/logs/', LogList.as_view(), name='log-list'), #lấy ra tất cả log cho admin
     # url cho chat
