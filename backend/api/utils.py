@@ -4,7 +4,7 @@ from api.models import Post
 from django.contrib.contenttypes.models import ContentType
 from reaction.models import Reaction, UserReaction
 from collections import defaultdict
-'''mục đích là để khi gọi view thì thực hiện query vài lần lấy luôn tất cả toal reaction và user reaction thay vì
+'''mục đích là để khi gọi view thì thực hiện query vài lần lấy luôn tất cả total reaction và user reaction thay vì
 gọi n lần liên tục tương ứng với n post'''
 def get_reactions_context(queryset, user):
     post_ids = queryset.values_list('post_id', flat=True)

@@ -594,7 +594,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         # django-friendship: để follow
         django-comments-xtd: comment bài viết, có like dislike cho comment
         +django-markdownx: tạo highlights
-        +django-elasticsearch-dsl : search nâng cao
+        +django-elasticsearch-dsl : search nâng cao, python manage.py search_index --rebuild
         +django-taggit: tạo tag bài viết
         +pip install django-modeltranslation: hỗ trợ dịch
         +pip install django-invoices: tạo hóa đơn , gửi email, xuất pdf
