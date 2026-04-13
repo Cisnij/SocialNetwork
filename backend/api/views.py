@@ -1087,66 +1087,68 @@ class SearchHistoryView(generics.ListCreateAPIView):
 
 class SearchAPIView(APIView):
     permission_classes = [IsAuthenticated]
-
+    pagination_class= LargePagePagination
     def get(self, request):
         keyword = request.query_params.get('q', '').strip() # láy từ url sau dấu ? mà k cần khai báo trong url
+        search_type = request.query_params.get('type', 'all')  # tìm kiếm theo mọi người/ post/all type ?q=nghi&type=all, all ở đây là giá trị mặc định khi k truyền
         if not keyword:
             return Response({'posts': [], 'profiles': []}) # tra về rỗng nếu k có
 
         user = request.user
-
+        posts = []
+        profiles = []
         # Lấy danh sách user bị block và block mình
         blocked_ids = [u.id for u in Block.objects.blocked(user)]
         blocking_ids = [u.id for u in Block.objects.blocking(user)]
         excluded_user_ids = set(blocked_ids) | set(blocking_ids)
+        if search_type in ('all', 'posts'):  # chỉ search post khi cần
+            post_search = PostDocument.search().query(
+                "bool",
+                should=[
+                    MultiMatch(query=keyword, fields=['title'], fuzziness='AUTO', boost=1.0), # fuzziness là tự sửa lỗi chính tả rồi tìm
+                    {"match_phrase_prefix": {"title": {"query": keyword, "boost": 2.0}}}, # ưu tiên prefix match hơn fuzzy ở boost 2.0 ví dụ tìm chữ hello sẽ cho ra kết quả hello trước và tự tìm được từ hell cho ra kết quả sau
+                ],
+                minimum_should_match = 1  # bắt buộc match ít nhất 1 điều kiện, tránh trả về kết quả rác
+            )[:50] # lấy tối đa 50 kết quả thay vì mặc định 10
 
-        post_search = PostDocument.search().query(
-            "bool",
-            should=[
-                MultiMatch(query=keyword, fields=['title'], fuzziness='AUTO', boost=1.0), # fuzziness là tự sửa lỗi chính tả rồi tìm
-                {"match_phrase_prefix": {"title": {"query": keyword, "boost": 2.0}}}, # ưu tiên prefix match hơn fuzzy ở boost 2.0 ví dụ tìm chữ hello sẽ cho ra kết quả hello trước và tự tìm được từ hell cho ra kết quả sau
-            ],
-            minimum_should_match = 1  # bắt buộc match ít nhất 1 điều kiện, tránh trả về kết quả rác
-        )[:50] # lấy tối đa 50 kết quả thay vì mặc định 10
-
-        # giữ thứ tự relevance từ Elasticsearch (score cao nhất lên đầu)
-        post_hits = list(post_search)
-        post_ids = [hit.meta.id for hit in post_hits]  #lấy id của các bài post sau lọc
-        posts_qs = Post.objects.filter( # tìm id trong post mà chưa delete
-            post_id__in=post_ids,
-            deleted__isnull=True
-        ).exclude(
-            user_id__in=excluded_user_ids  # loại bài post của người bị block
-        ).select_related('user__profile').prefetch_related('photos')
-        # sắp xếp lại theo thứ tự relevance của ES vì Django filter không giữ thứ tự
-        posts_dict = {str(p.post_id): p for p in posts_qs}
-        posts = [posts_dict[pid] for pid in post_ids if pid in posts_dict]
-
-        profile_search = ProfileDocument.search().query(
-            "bool",
-            should=[
-                MultiMatch(query=keyword, fields=['first_name', 'last_name'], fuzziness='AUTO'), # lọc ra profile trùng với firstname và last name
-                {"match_phrase_prefix": {"first_name": {"query": keyword, "boost": 2.0}}},  # ưu tiên prefix match
-                {"match_phrase_prefix": {"last_name": {"query": keyword, "boost": 2.0}}},
-            ],
-            minimum_should_match=1  # bắt buộc match ít nhất 1 điều kiện
-        )[:50]
-        # giữ thứ tự relevance từ Elasticsearch (score cao nhất lên đầu)
-        profile_hits = list(profile_search)
-        profile_ids = [hit.meta.id for hit in profile_hits] #lấy các id từ kết quả lọc
-        profiles_qs = Profile.objects.filter(
-            id__in=profile_ids,
-            deleted__isnull=True
-        ).exclude(
-            user_id__in=excluded_user_ids  # loại profile của người bị block
-        ).select_related('user')
-        # sắp xếp lại theo thứ tự relevance của ES vì Django filter không giữ thứ tự
-        profiles_dict = {str(p.id): p for p in profiles_qs}
-        profiles = [profiles_dict[pid] for pid in profile_ids if pid in profiles_dict]
+            # giữ thứ tự relevance từ Elasticsearch (score cao nhất lên đầu)
+            post_hits = list(post_search)
+            post_ids = [hit.meta.id for hit in post_hits]  #lấy id của các bài post sau lọc
+            posts_qs = Post.objects.filter( # tìm id trong post mà chưa delete
+                post_id__in=post_ids,
+                deleted__isnull=True
+            ).exclude(
+                user_id__in=excluded_user_ids  # loại bài post của người bị block
+            ).select_related('user__profile').prefetch_related('photos')
+            # sắp xếp lại theo thứ tự relevance của ES vì Django filter không giữ thứ tự
+            posts_dict = {str(p.post_id): p for p in posts_qs}
+            posts = [posts_dict[pid] for pid in post_ids if pid in posts_dict]
+        if search_type in ('all', 'profiles'):  # chỉ search profile khi cần
+            profile_search = ProfileDocument.search().query(
+                "bool",
+                should=[
+                    MultiMatch(query=keyword, fields=['first_name', 'last_name'], fuzziness='AUTO'), # lọc ra profile trùng với firstname và last name
+                    {"match_phrase_prefix": {"first_name": {"query": keyword, "boost": 2.0}}},  # ưu tiên prefix match
+                    {"match_phrase_prefix": {"last_name": {"query": keyword, "boost": 2.0}}},
+                ],
+                minimum_should_match=1  # bắt buộc match ít nhất 1 điều kiện
+            )[:50]
+            # giữ thứ tự relevance từ Elasticsearch (score cao nhất lên đầu)
+            profile_hits = list(profile_search)
+            profile_ids = [hit.meta.id for hit in profile_hits] #lấy các id từ kết quả lọc
+            profiles_qs = Profile.objects.filter(
+                id__in=profile_ids,
+                deleted__isnull=True
+            ).exclude(
+                user_id__in=excluded_user_ids  # loại profile của người bị block
+            ).select_related('user')
+            # sắp xếp lại theo thứ tự relevance của ES vì Django filter không giữ thứ tự
+            profiles_dict = {str(p.id): p for p in profiles_qs}
+            profiles = [profiles_dict[pid] for pid in profile_ids if pid in profiles_dict]
 
         return Response({ # trả về serializer của 1 trong 2
             'posts': PostSerializer(posts, many=True, context={'request': request}).data,# vì serializer cần lấy request để lấy user ở trường get user is reaction nên cần truyền
-            'profiles': ProfileSerializer(profiles, many=True,context={'request': request,'online_set': get_online_set(profiles_qs)}).data,
+            'profiles': ProfileSerializer(profiles, many=True, context={'request': request, 'online_set': get_online_set(profiles_qs) if profiles else set()}).data,
         })
 
 #=========================Friend Suggest===========================================   

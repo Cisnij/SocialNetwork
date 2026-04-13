@@ -14,9 +14,4 @@ chưa xong
 - xây lại comment dùng thư viện, sửa lại signal, serializer, view và xóa model, sửa notification view
 - xây thêm các chức năng in app như đã đọc is read, liên kết tới post nào và thêm các trường follow... vào luôn
 - xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
-- sửa lại search elastic vẫn còn search cùi, tạo thêm 1 cái tìm post riêng và profile riêng
-
-
--lỗi migrate
-
 -review lại các thư viện chưa ghi vào học
