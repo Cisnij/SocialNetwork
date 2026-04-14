@@ -5,7 +5,7 @@ from rest_framework.permissions import *
 from django.shortcuts import get_object_or_404
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-from rest_framework.exceptions import NotFound,PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from .pagination import *
 from .signals import unfriended_log
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
@@ -13,7 +13,7 @@ from django.db.models import Q, Prefetch
 from .permissions import IsConversationMember
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
-from .utils import get_reactions_context
+from .utils import get_reactions_post_context,get_reactions_comment_context
 #filter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter,OrderingFilter
@@ -247,12 +247,11 @@ class PostFriend(generics.ListAPIView):  # List tất cả post của bạn bè
             )
         return self._qs
 
-    def get_serializer_context(
-            self):  # gọi xử lý liệt kê reaction từng post và user reaction chỉ 1 lần thay vì nhiều trong serializer
-        context = super().get_serializer_context()
+    def get_serializer_context(self):  # gọi xử lý liệt kê reaction từng post và user reaction chỉ 1 lần thay vì nhiều trong serializer
+        context = super().get_serializer_context() #kế thừa
         qs = self.get_queryset()  # lấy query set là những thằng lọc để list ra của hàm trên
-        context.update(get_reactions_context(qs, self.request.user))  # update context theo cái return utils
-        return context
+        context.update(get_reactions_post_context(qs, self.request.user))  # update context theo cái return utils
+        return context #return về cho serializer xử lý
 
 
 class PostModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa post
@@ -293,7 +292,7 @@ class PostUser(generics.ListAPIView):  # List tất cả post của user
     def get_serializer_context(self):
         context = super().get_serializer_context()
         qs = self.get_queryset()
-        context.update(get_reactions_context(qs, self.request.user))
+        context.update(get_reactions_post_context(qs, self.request.user))
         return context
 
 
@@ -326,7 +325,7 @@ class PostListAll(generics.ListAPIView):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         qs = self.get_queryset()
-        context.update(get_reactions_context(qs, self.request.user))
+        context.update(get_reactions_post_context(qs, self.request.user))
         return context
 
 #===================POSTARTICLE===============================
@@ -375,22 +374,39 @@ class CommentListCreate(generics.ListCreateAPIView):  # thêm list comment
     ordering_fields = ['created_at']
     pagination_class = LargePagePagination
     def get_queryset(self):
-        post_id = self.kwargs.get('post_id')
-        user = self.request.user
-        blocked_ids = [u.id for u in Block.objects.blocked(user)]
-        blocking_ids = [u.id for u in Block.objects.blocking(user)]
-        excluded_user_ids = set(blocked_ids) | set(blocking_ids)
-        if not post_id:
-            raise NotFound("Cần truyền ID post để truy cập.")
-        # if user.is_superuser or user.is_staff:
-        #     return Comment.objects.all()
-        return Comment.objects.filter(post_id=post_id, parent__isnull=True).exclude(user_id__in=excluded_user_ids).select_related('user__profile').annotate(reply_count=Count('replies'))
+        if not hasattr(self, '_qs'):
+            post_id = self.kwargs.get('post_id')
+            user = self.request.user
+            blocked_ids = [u.id for u in Block.objects.blocked(user)]
+            blocking_ids = [u.id for u in Block.objects.blocking(user)]
+            excluded_user_ids = set(blocked_ids) | set(blocking_ids)
+            if not post_id:
+                raise NotFound("Cần truyền ID post để truy cập.")
+            # if user.is_superuser or user.is_staff:
+            #     return Comment.objects.all()
+            self._qs = Comment.objects.filter(post_id=post_id, parent__isnull=True).exclude(user_id__in=excluded_user_ids).select_related('user__profile').prefetch_related('tagged_users').annotate(reply_count=Count('replies')).order_by('-is_pinned')
+        return self._qs
 
-    def perform_create(self, serializer):  # gán user và post_id khi tạo comment
+    def get_serializer_context(self):
+        context=super().get_serializer_context()
+        qs=self.get_queryset()
+        context.update(get_reactions_comment_context(qs, self.request.user))
+        return context
+
+
+    def perform_create(self, serializer):  # gán user và post_id khi tạo comment, validate gán comment nested đúng post
         post_id = self.kwargs.get('post_id')
         if not post_id:
             raise NotFound("Cần truyền ID post để tạo comment.")
-        serializer.save(user=self.request.user, post_id=post_id)
+        parent_id = self.request.data.get('parent_id')
+        parent=None
+        if parent_id:
+            parent = Comment.objects.filter(id=parent_id, post_id=post_id).only('id', 'parent_id').first()
+            if parent is None:  # không tìm thấy hoặc đã bị xóa
+                raise ValidationError("Comment cha không khả dụng.")
+            if parent.parent_id is not None:
+                raise ValidationError("Cannot reply reply")
+        serializer.save(user=self.request.user, post_id=post_id, parent=parent)
 
 
 class CommentModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa comment
@@ -405,9 +421,9 @@ class CommentModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa co
         if user.is_superuser or user.is_staff:
             if not comment_id:
                 raise NotFound("Admin cần truyền ID comment để truy cập.")
-            return get_object_or_404(Comment, id=comment_id)
+            return get_object_or_404(Comment.objects.prefetch_related('tagged_users'), id=comment_id)
 
-        return get_object_or_404(Comment, user=user, id=comment_id)
+        return get_object_or_404(Comment.objects.prefetch_related('tagged_users'), user=user, id=comment_id)
 
     def destroy(self, request, *args, **kwargs):
         comment_id = self.kwargs.get('pk')
@@ -443,7 +459,35 @@ class NestedCommentList(generics.ListAPIView):
             parent=comment,
         ).exclude(
             user_id__in=excluded_user_ids
-        ).select_related('user__profile')
+        ).select_related('user__profile').prefetch_related('tagged_users')
+
+class PinCommentView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CommentSerializer
+    def get_object(self):
+        pin_id = self.kwargs.get('pin_id')
+        if not pin_id:
+            return Response({'error':'Pin id is required'}, status=400)
+        return get_object_or_404(Comment,pk=pin_id)
+
+    def update(self,request,*args,**kwargs):
+        pin_id=self.kwargs.get('pin_id')
+        if not pin_id:
+            return Response({'error':'Pin id is required'}, status=400)
+        comment= get_object_or_404(Comment.objects.select_related('post'),pk=pin_id)
+        if comment.post.user_id != self.request.user.id:
+            return Response({'error':'You are not post owner'},status=400)
+        if comment.is_pinned:
+            comment.is_pinned=False
+            comment.save()
+        else:
+            Comment.objects.filter(post_id=comment.post_id, is_pinned=True).update(is_pinned=False)#unpin cũ
+            comment.is_pinned=True
+            comment.save()
+        return Response({'is_pinned': comment.is_pinned}, status=200)
+
+
+
 
 class SettingModify(generics.RetrieveUpdateAPIView):  # Xem sửa setting
     permission_classes = [IsAuthenticated]

@@ -36,7 +36,7 @@ def chat_upload_path(instance, filename):# Ảnh chat → media/chat/conv_1/pict
 class Profile(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE #khi xóa profile thì chỉ xóa mềm profile thôi k ảnh hưởng đến user
     id=models.BigAutoField(primary_key=True, editable=False)
-    user=models.OneToOneField(User,on_delete=models.CASCADE)
+    user=models.OneToOneField(User,on_delete=models.CASCADE)# chỉ đc 1 profile-user k có 2
     first_name=models.CharField(max_length=50,null=True)
     last_name=models.CharField(max_length=50,null=True)
     picture=models.ImageField(upload_to=profile_upload_path,null=True, default="default.jpg",validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])])
@@ -57,7 +57,7 @@ class Profile(SafeDeleteModel):
             models.Index(fields=['-created_at']),  # order by
         ]
     def __str__(self):
-        return f"{self.user.username} - {self.is_completed}"
+        return f"Profile {self.id} | user_id={self.user_id} | {self.first_name} {self.last_name}"
 
 class PendingProfile(models.Model):
     id=models.BigAutoField(primary_key=True, editable=False)
@@ -79,7 +79,7 @@ class Post(SafeDeleteModel):
     created_at=models.DateTimeField(auto_now_add=True)
     reactions=GenericRelation(Reaction)# generic relation dùng để kết nối nhiều model thay vì chỉ 1 như FK cố định. Ví dụ Fk là cần phải có trường đó để tạo FK thì cái này có thể gắn bất kì model nào mà k cần trường chung
     def __str__(self):
-        return f"{self.user}-{self.title[:10]}"
+        return f"Post {self.post_id} | user_id={self.user_id} | {self.title[:30]}"
     class Meta:
         indexes = [
             models.Index(fields=['user', '-created_at']),
@@ -91,7 +91,7 @@ class PostPhoto(SafeDeleteModel):
     post=models.ForeignKey(Post, on_delete=models.CASCADE, related_name="photos") # related name là mối quan hệ ngược do foreign key, dùng post.photos.all để querry thay vì post.postphoto_setall
     photo=models.ImageField(upload_to=post_photo_upload_path,null=True, blank=True,validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])]) # sẽ dùng media_root để lưu
     def __str__(self):
-        return f"{self.post.title[:10]}"
+        return f"Photo {self.id} | post_id={self.post_id}"
     class Meta:
         indexes=[
             models.Index(fields=['post']),
@@ -107,7 +107,7 @@ class PostArticle(SafeDeleteModel):
     slug= AutoSlugField(populate_from='title', unique=False,slugify=vi_slugify)
     reactions=GenericRelation(Reaction)
     def __str__(self):
-        return f"{self.user}-{self.title[:10]}"
+        return f"Article {self.postA_id} | user_id={self.user_id} | {self.title[:30]}"
     class Meta:
         indexes=[
             models.Index(fields=['user']),
@@ -120,11 +120,13 @@ class Comment(SafeDeleteModel):
     user= models.ForeignKey(User, on_delete=models.CASCADE)
     post=models.ForeignKey(Post,on_delete=models.CASCADE)
     parent = models.ForeignKey('self',null=True,blank=True,on_delete=models.CASCADE,related_name='replies')
+    is_pinned=models.BooleanField(default=False)
+    tagged_users = models.ManyToManyField(User, blank=True, related_name='tagged_in_comments')  # thay vì FK chỉ có thể tag 1 user trong comment thì MnM Field cho tag 2 3 usser trong 1 comment
     content=models.CharField(max_length=200, null=False)
     created_at=models.DateTimeField(auto_now_add=True)
     reactions=GenericRelation(Reaction)
     def __str__(self):
-        return f"{self.id} {self.user.username} commented on {self.post.title}"
+        return f"Comment {self.id} | user_id={self.user_id} | post_id={self.post_id} | {self.content[:30]}"
     class Meta:
         indexes = [
             models.Index(fields=['post', '-created_at']),
@@ -170,7 +172,7 @@ class Conversation(models.Model):
     status=models.CharField(max_length=20,choices=(('pending', 'Pending'), ('accept', 'Accept')),default='pending')
     updated_at= models.DateTimeField(auto_now=True)
     def __str__(self):
-        return f"Conversation {self.id}"
+        return f"Conversation {self.id} | group={self.is_group} | {self.status}"
     class Meta:
         indexes = [
             models.Index(fields=['-updated_at']),  # order by updated_at
@@ -185,7 +187,7 @@ class ConversationMember(models.Model):
     last_read_message = models.ForeignKey("Message",null=True,blank=True,on_delete=models.SET_NULL) #ondelete set null để khi message bị xóa thì trường này sẽ null
     joined_at=models.DateTimeField(auto_now_add=True)
     def __str__(self):
-        return f"{self.user.username} in Conversation {self.conversation.id}"
+        return f"Member user_id={self.user_id} | conv_id={self.conversation_id}"
     class Meta:
         unique_together = ('conversation', 'user') # đảm bảo mỗi user chỉ tham gia 1 lần trong 1 conversation
         indexes = [
@@ -204,7 +206,7 @@ class Message(SafeDeleteModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
-        return f"Message {self.content} in Conversation {self.conversation.id} by {self.sender.username}"
+        return f"Message {self.id} | sender_id={self.sender_id} | conv_id={self.conversation_id} | {self.content[:30]}"
     class Meta:
         indexes=[models.Index(fields=['conversation','-created_at']),
                 models.Index(fields=['sender']),
@@ -224,6 +226,8 @@ class FCMToken(models.Model): #đại diện cho 1 app, 1 thiết bị, 1 lần 
     token = models.CharField(max_length=255, unique=True) # token nào
     device = models.CharField(max_length=20, default="android") # thiết bị nào
     updated_at = models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return f"FCMToken user_id={self.user_id} | {self.device}"
     class Meta:
         indexes=[models.Index(fields=['user'])]
 
@@ -244,7 +248,7 @@ class Notification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
-        return f"{self.message} to {self.reciever}"
+        return f"Notif {self.id} | {self.type} | receiver_id={self.reciever_id} | actor_id={self.actor_id}"
     
     class Meta: #Meta là cách thiết lập model hoạt động , kiểu setting mặc định 
         ordering = ['-created_at'] #auto sắp xếp giảm dần 
@@ -283,6 +287,6 @@ class SearchHistory(models.Model):
         ]
         
     def __str__(self):
-        return f"{self.user} search {self.content}"
+        return f"Search user_id={self.user_id} | {self.content[:30]}"
 
 

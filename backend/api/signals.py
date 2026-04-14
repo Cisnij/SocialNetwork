@@ -485,94 +485,13 @@ def log_block_deleted(sender, instance, **kwargs):
     
 #===================================Notification========================================
 #gừi qua firebase
-@receiver(post_save,sender=Notification) 
-def push_from_activity(sender,instance,created,**kwargs):
-    if created:
-        push_to_user(
-            instance.reciever,
-            title=instance.type,
-            body=instance.message 
-        )
-        
-# @receiver(post_save,sender=Message)  
-# def push_message(sender,instance,created,**kwargs):
+# @receiver(post_save,sender=Notification)
+# def push_from_activity(sender,instance,created,**kwargs):
 #     if created:
-#         conv=instance.conversation
-#         if not conv:
-#             return
-#         member=ConversationMember.objects.filter(conversation=conv).select_related('user')
-#         for m in member:
-#             if m.user_id == instance.sender_id:
-#                 continue
-#             push_to_user(
-#                 m.user,
-#                 title=f'{instance.sender} gửi tin nhắn',
-#                 body=instance.content
-#             )
-        
-
-# @receiver(action)
-# def push_from_activity(sender, verb, action_object=None, target=None, **kwargs):
-#     actor = sender
-
-#     # ===== REACTION =====
-#     if isinstance(action_object, UserReaction):
-#         post = target
-#         if not hasattr(post, "user"):
-#             return
-#         if post.user_id == actor.id:  # không push cho chính mình
-#             return
 #         push_to_user(
-#             post.user,
-#             title="Có người tương tác",
-#             body=f"{actor.username} {verb} bài viết của bạn"
-#         )
-
-#     # ===== FRIEND REQUEST =====
-#     elif verb == "sent friend request":
-#         # target = người nhận lời mời
-#         if not hasattr(target, "id"):
-#             return
-#         push_to_user(
-#             target,
-#             title="Lời mời kết bạn",
-#             body=f"{actor.username} đã gửi lời mời kết bạn"
-#         )
-
-#     elif verb == "accepted friend request":
-#         # target = người gửi lời mời ban đầu
-#         if not hasattr(target, "id"):
-#             return
-#         push_to_user(
-#             target,
-#             title="Kết bạn thành công",
-#             body=f"{actor.username} đã chấp nhận lời mời kết bạn"
-#         )
-
-#     # ===== FOLLOW =====
-#     elif verb == "followed user":
-#         # target = người được follow
-#         if not hasattr(target, "id"):
-#             return
-#         if target.id == actor.id:  # không push cho chính mình
-#             return
-#         push_to_user(
-#             target,
-#             title="Người theo dõi mới",
-#             body=f"{actor.username} đã theo dõi bạn"
-#         )
-
-#     # ===== COMMENT =====
-#     elif verb in ("created comment", "updated comment"):
-#         # target = Post bị comment
-#         if not hasattr(target, "user"):
-#             return
-#         if target.user_id == actor.id:  # không push cho chính mình
-#             return
-#         push_to_user(
-#             target.user,
-#             title="Bình luận mới",
-#             body=f"{actor.username} đã bình luận bài viết của bạn"
+#             instance.reciever,
+#             title=instance.type,
+#             body=instance.message
 #         )
 
 #in-app notification 
@@ -582,25 +501,40 @@ def notify_comment(sender, instance, created, **kwargs):
         Notification.objects.create(
             reciever=instance.post.user,
             actor=instance.user,
-            type='comment', #if instance.parent is null else 'reply',
+            type='comment',
             object_id=instance.post.post_id,
             message=f'{instance.user.username} commented on your post'
         )
+    if created and instance.user != instance.parent.user:
+        Notification.objects.create(
+            reciever=instance.parent.user,
+            actor=instance.user,
+            type='comment',
+            object_id=instance.id,
+            message=f'{instance.user.username} replied to your comment'
+        )
 @receiver(post_save, sender=UserReaction)
-def notify_reaction(sender,instance,created,**kwargs):
+def notify_reaction(sender, instance, created, **kwargs):
     if not created:
         return
-    if created:
-        reaction=getattr(instance,'reaction',None)
-        target = getattr(reaction,'content_object',None)
-        if hasattr(target, "user") and target.user != instance.user:
-            Notification.objects.create( #content_type nó không là 1 model cố định nó chỉ là instance, ví dụ react vào post thì sẽ là post và lấy đc user
-                reciever=target.user,
-                actor=instance.user,
-                type="reaction",
-                object_id=reaction.object_id,
-                message=f"{instance.user.username} reacted to your post"
-            )
+    reaction = getattr(instance, 'reaction', None)
+    target = getattr(reaction, 'content_object', None)
+    if not hasattr(target, 'user') or target.user == instance.user:
+        return
+
+    # phân biệt react vào post hay comment
+    if isinstance(target, Comment):
+        msg = f'{instance.user.username} reacted to your comment'
+    else:
+        msg = f'{instance.user.username} reacted to your post'
+
+    Notification.objects.create(
+        reciever=target.user,
+        actor=instance.user,
+        type='reaction',
+        object_id=reaction.object_id,
+        message=msg
+    )
 @receiver(post_save, sender=Follow)
 def notify_follow(sender, instance, created, **kwargs):
     if created:

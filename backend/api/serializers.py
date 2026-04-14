@@ -96,9 +96,39 @@ class PostArticalSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source="user.profile", read_only=True)
     reply_count = serializers.IntegerField(read_only=True)
+    reactions= serializers.SerializerMethodField()
+    user_is_reaction=serializers.SerializerMethodField()
+    tagged_users = serializers.SerializerMethodField()
     class Meta:
         model=Comment
         fields='__all__'
+    def get_reactions(self, obj):
+        reactions_map = self.context.get('reactions_map') # cái context truyền vào bên utils.py
+        if reactions_map is not None:
+            return reactions_map.get(obj.id, [])  # đọc từ RAM nếu có
+        # fallback — nếu k có thì chạy logic bth nhưng latency vì quert liên tục
+        content_type = ContentType.objects.get_for_model(Comment)
+        return (
+            Reaction.objects.filter(content_type=content_type, object_id=obj.pk)
+            .values("settings__name")
+            .annotate(total=Count("reactions"))
+        )
+    def get_user_is_reaction(self, obj):
+        user_reactions_map = self.context.get('user_reactions_map')
+        if user_reactions_map is not None:
+            return user_reactions_map.get(obj.id)  # đọc từ RAM nếu có
+        # fallback — nếu k có thì chạy logic bth nhưng latency vì quert liên tục
+        user = self.context.get('request').user
+        if not user.is_authenticated:
+            return False
+        qs = UserReaction.objects.filter(
+            user=user,
+            reaction__content_type=ContentType.objects.get_for_model(Comment),
+            reaction__object_id=obj.pk
+        ).first()
+        return qs.reaction.settings.name if qs else None
+    def get_tagged_users(self, obj):
+        return [{'id': u.id, 'username': u.username} for u in obj.tagged_users.all()] #trả về list dict kiểu [{},{}]
 
 class SettingSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source="user.profile", read_only=True)

@@ -84,6 +84,7 @@ urlpatterns = [
     path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể
     path('api/user/comments/post/<int:post_id>',CommentListCreate.as_view(),name='comment-list'), #lấy Thêm comments từ post cụ thể
     path('api/user/comments/<int:pk>/',CommentModify.as_view(),name='comment-modify'), #lấy ra comment từ id
+    path('api/user/comment/pin/<int:pin_id>/',PinCommentView.as_view(),name='pin-comment'),
     path('api/user/nested-comments/<int:pk>/',NestedCommentList.as_view(),name='nested-comment'),
     path('api/user/setting/<int:pk>/',SettingModify.as_view(), name='setting-modify'),
     #url xử lý bạn bè, follow

@@ -16,3 +16,8 @@ chưa xong
 thêm reaction vào, sửa lại serializer có reations và user is reation giống post, sửa lại notification là reply or comment
 
 check lại block các api, xem comment thiếu chức năng gì nữa
+
+Tag người trong comment
+Mention (@user) trong comment — parse và notify
+signal khi được tạo mà có tagged user thì push noti và notification
+
