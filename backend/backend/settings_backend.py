@@ -38,27 +38,29 @@ CACHEOPS = {
     # ở tất cả bảng, cache(lưu vào bộ nhớ phụ và reuse) ví dụ get,filter,count...trong 15p.
     #ví dụ ng dùng gọi api lần 1 nó lưu vào cache, nó phát hiện có bài đăng mới nó sẽ tự gọi lại và lưu cache mà k cần đợi timeout
 
-    'auth.user': {'ops': ('get', 'filter'), 'timeout': 60*60*24}, #24h
+    'auth.user': {'ops': 'all', 'timeout': 60*60*24}, #24h
     # cache user từ auth, ví dụ cache khi lấy ra user, lọc user
-    'api.Profile': {'ops': 'all', 'timeout': 60*60*24},
+    'api.profile': {'ops': 'all', 'timeout': 60*60*24},
     # ops là cache querry gì kiểu get,count,filter...timeout là bao lâu thì xóa
-    'api.PendingProfile': {'ops': 'all', 'timeout': 60*60*24},
-    'api.Setting': {'ops': 'all', 'timeout': 60*60*24},
+    'api.pendingProfile': {'ops': 'all', 'timeout': 60*60*24},
+    'api.setting': {'ops': 'all', 'timeout': 60*60*24},
+    'contenttypes.contenttype': {'ops': 'all', 'timeout': 60*60*24*30},
 
     #  Cache vừa — thay đổi vừa
-    'api.Post': {'ops': 'all', 'timeout': 60 * 20},
-    'api.PostArticle': {'ops': 'all', 'timeout': 60 * 20},
-    'api.PostPhoto': {'ops': 'all', 'timeout': 60 * 20},
-    'api.Comment': {'ops': 'all', 'timeout': 60 * 10},
-    'api.Notification': {'ops': 'all', 'timeout': 60 * 5},
-    'api.SearchHistory': {'ops': 'all', 'timeout': 60 * 5},
+    'api.post': {'ops': 'all', 'timeout': 60 * 20},
+    'api.postarticle': {'ops': 'all', 'timeout': 60 * 20},
+    'api.postphoto': {'ops': 'all', 'timeout': 60 * 20},
+    'api.comment': {'ops': 'all', 'timeout': 60 * 10},
+    'api.notification': {'ops': 'all', 'timeout': 60 * 5},
+    'api.searchHistory': {'ops': 'all', 'timeout': 60 * 5},
     #  Cache ngắn — realtime
-    'api.Conversation': {'ops': 'all', 'timeout': 60 * 2},
-    'api.ConversationMember': {'ops': 'all', 'timeout': 60 * 2},
+    'api.conversation': {'ops': 'all', 'timeout': 60 * 2},
+    'api.conversationMember': {'ops': 'all', 'timeout': 60 * 2},
     # thư viện
     'friendship.*': {'ops': 'all', 'timeout': 60 * 60},
-    'actstream.Action': {'ops': 'all', 'timeout': 60 * 5},
+    'actstream.action': {'ops': 'all', 'timeout': 60 * 5},
     'reaction.*': {'ops': 'all', 'timeout': 60 * 15},
+
 }
 # ==========================================================================================================================================================================================================
 

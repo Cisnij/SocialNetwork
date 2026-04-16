@@ -505,14 +505,15 @@ def notify_comment(sender, instance, created, **kwargs):
             object_id=instance.post.post_id,
             message=f'{instance.user.username} commented on your post'
         )
-    if created and instance.user != instance.parent.user:
-        Notification.objects.create(
-            reciever=instance.parent.user,
-            actor=instance.user,
-            type='comment',
-            object_id=instance.id,
-            message=f'{instance.user.username} replied to your comment'
-        )
+    if created and instance.parent: # nếu mới tạo và có parent
+        if instance.user != instance.parent.user: #parent khác user
+            Notification.objects.create(
+                reciever=instance.parent.user,
+                actor=instance.user,
+                type='comment',
+                object_id=instance.id,
+                message=f'{instance.user.username} replied to your comment'
+            )
 @receiver(post_save, sender=UserReaction)
 def notify_reaction(sender, instance, created, **kwargs):
     if not created:

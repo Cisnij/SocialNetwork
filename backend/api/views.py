@@ -9,7 +9,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from .pagination import *
 from .signals import unfriended_log
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
-from django.db.models import Q, Prefetch
+from django.db.models import Q, Prefetch, prefetch_related_objects
 from .permissions import IsConversationMember
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
@@ -132,7 +132,11 @@ class ProfileList(generics.ListAPIView):#List tất cả profile
 
     def get_serializer_context(self): #gọi hàm custome ở trên
         context = super().get_serializer_context()
-        context['online_set'] = get_online_set(self.get_queryset())
+        #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs=self.get_queryset()
+        context['online_set'] = get_online_set(objs)
         return context
     
 class ProfileUser(generics.RetrieveAPIView):
@@ -224,8 +228,8 @@ class PostFriend(generics.ListAPIView):  # List tất cả post của bạn bè
     ordering_fields = ['post_id', 'created_at']
 
     def get_queryset(self):
-        if not hasattr(self,
-                       '_qs'):  # vì get_serializer_context gọi lại get_queryset nên nó sẽ query lần nữa nên thêm, chạy lần đầu thì get, lần 2 nếu có r thì k filter mà dùng luôn
+        if not hasattr(self, '_qs'):  # vì get_serializer_context gọi lại get_queryset nên nó sẽ query lần nữa nên thêm, chạy lần đầu thì get, lần 2 nếu có r thì k filter mà dùng luôn
+            #self dùng để cho các def khác có thể lấy được, và cũng private trong class này
             user = self.request.user
             # lấy ra tất cả id và chỉ id
             friend_ids = [u.id for u in Friend.objects.friends(user)]
@@ -249,8 +253,11 @@ class PostFriend(generics.ListAPIView):  # List tất cả post của bạn bè
 
     def get_serializer_context(self):  # gọi xử lý liệt kê reaction từng post và user reaction chỉ 1 lần thay vì nhiều trong serializer
         context = super().get_serializer_context() #kế thừa
-        qs = self.get_queryset()  # lấy query set là những thằng lọc để list ra của hàm trên
-        context.update(get_reactions_post_context(qs, self.request.user))  # update context theo cái return utils
+        #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs=self.get_queryset() # lấy query set là những thằng lọc để list ra của hàm trên
+        context.update(get_reactions_post_context(objs, self.request.user))  # update context theo cái return utils
         return context #return về cho serializer xử lý
 
 
@@ -285,14 +292,21 @@ class PostUser(generics.ListAPIView):  # List tất cả post của user
     def get_queryset(self):
         if not hasattr(self, '_qs'):
             profile_id = self.kwargs.get("user")
-            self._qs = Post.objects.filter(user__profile__id=profile_id).select_related(
-                'user__profile').prefetch_related('photos').order_by('-created_at')
+            user = self.request.user
+            profile = get_object_or_404(Profile, id=profile_id)
+            target_user = profile.user
+            if Block.objects.is_blocked(user, target_user):
+                raise PermissionDenied("Cannot see posts of this user")
+            self._qs = Post.objects.filter(user__profile__id=profile_id).select_related('user__profile').prefetch_related('photos').order_by('-created_at')
         return self._qs
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        qs = self.get_queryset()
-        context.update(get_reactions_post_context(qs, self.request.user))
+        #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs=self.get_queryset()
+        context.update(get_reactions_post_context(objs, self.request.user))
         return context
 
 
@@ -324,8 +338,11 @@ class PostListAll(generics.ListAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        qs = self.get_queryset()
-        context.update(get_reactions_post_context(qs, self.request.user))
+        #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs=self.get_queryset()
+        context.update(get_reactions_post_context(objs, self.request.user))
         return context
 
 #===================POSTARTICLE===============================
@@ -384,17 +401,22 @@ class CommentListCreate(generics.ListCreateAPIView):  # thêm list comment
                 raise NotFound("Cần truyền ID post để truy cập.")
             # if user.is_superuser or user.is_staff:
             #     return Comment.objects.all()
-            self._qs = Comment.objects.filter(post_id=post_id, parent__isnull=True).exclude(user_id__in=excluded_user_ids).select_related('user__profile').prefetch_related('tagged_users').annotate(reply_count=Count('replies')).order_by('-is_pinned')
+            #lọc ra và count các replies con bên trong cmt cha parent is null=True
+            self._qs = Comment.objects.filter(post_id=post_id, parent__isnull=True).exclude(user_id__in=excluded_user_ids).select_related('user__profile','post').prefetch_related('tagged_users__profile').annotate(reply_count=Count('replies')).order_by('-is_pinned','-created_at')#count related fields của parent là replies
+            # ví dụ lấy ra comment c, join với comment r ON r.parent_id=c.id và count cái r.id
         return self._qs
 
+    '''quy trình là get_queryset lấy full data, sau đó filter , sau đó mới chạy phân trang chia ra n bản ghi trong n trang sau đó mới get_serializer_context'''
     def get_serializer_context(self):
         context=super().get_serializer_context()
-        qs=self.get_queryset()
-        context.update(get_reactions_comment_context(qs, self.request.user))
+        #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs=self.get_queryset()
+        context.update(get_reactions_comment_context(objs, self.request.user))
         return context
 
-
-    def perform_create(self, serializer):  # gán user và post_id khi tạo comment, validate gán comment nested đúng post
+    def perform_create(self, serializer):  # gán user và post_id khi tạo comment, validate gán comment nested đúng post đúng parent
         post_id = self.kwargs.get('post_id')
         if not post_id:
             raise NotFound("Cần truyền ID post để tạo comment.")
@@ -405,7 +427,7 @@ class CommentListCreate(generics.ListCreateAPIView):  # thêm list comment
             if parent is None:  # không tìm thấy hoặc đã bị xóa
                 raise ValidationError("Comment cha không khả dụng.")
             if parent.parent_id is not None:
-                raise ValidationError("Cannot reply reply")
+                raise ValidationError("Cannot reply reply") # check chỉ được reply 1 cấp , nếu parent đã có parent thì k cho
         serializer.save(user=self.request.user, post_id=post_id, parent=parent)
 
 
@@ -448,18 +470,29 @@ class NestedCommentList(generics.ListAPIView):
     pagination_class = SmallPagePagination
 
     def get_queryset(self):
-        user = self.request.user
-        comment_id = self.kwargs.get('pk')
-        comment = get_object_or_404(Comment, id=comment_id)
-        # lấy danh sách user bị block
-        blocked_ids = [u.id for u in Block.objects.blocked(user)]
-        blocking_ids = [u.id for u in Block.objects.blocking(user)]
-        excluded_user_ids = set(blocked_ids) | set(blocking_ids)
-        return Comment.objects.filter(
-            parent=comment,
-        ).exclude(
-            user_id__in=excluded_user_ids
-        ).select_related('user__profile').prefetch_related('tagged_users')
+        if not hasattr(self, '_qs'):
+            user = self.request.user
+            comment_id = self.kwargs.get('pk')
+            comment = get_object_or_404(Comment, id=comment_id)
+            # lấy danh sách user bị block
+            blocked_ids = [u.id for u in Block.objects.blocked(user)]
+            blocking_ids = [u.id for u in Block.objects.blocking(user)]
+            excluded_user_ids = set(blocked_ids) | set(blocking_ids)
+            self._qs= Comment.objects.filter(
+                parent=comment,
+            ).exclude(
+                user_id__in=excluded_user_ids
+            ).select_related('user__profile').prefetch_related('tagged_users')
+        return self._qs
+
+    def get_serializer_context(self):
+        context=super().get_serializer_context()
+        #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs=self.get_queryset()
+        context.update(get_reactions_comment_context(objs, self.request.user))
+        return context
 
 class PinCommentView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
@@ -498,9 +531,9 @@ class SettingModify(generics.RetrieveUpdateAPIView):  # Xem sửa setting
     def get_object(self):
         user = self.request.user
         id = self.kwargs.get('pk')
+        if not id:
+            raise NotFound("Admin cần truyền ID setting để truy cập.")
         if user.is_superuser or user.is_staff:
-            if not id:
-                raise NotFound("Admin cần truyền ID setting để truy cập.")
             return get_object_or_404(Setting, id=id)
         return get_object_or_404(Setting, user=user, id=id)
 
@@ -516,7 +549,11 @@ class UserReactionPostList(generics.ListAPIView):  # Danh sách reaction của u
     def get_queryset(self):
         post_id = self.kwargs.get('post_id')
         post_ct= ContentType.objects.get_for_model(Post)
-        return UserReaction.objects.filter(reaction__object_id=post_id,reaction__content_type=post_ct).select_related('user__profile','reaction__settings', 'react')
+        user = self.request.user
+        blocked_ids= [u.id for u in Block.objects.blocked(user)]
+        blocking_ids=[u.id for u in Block.objects.blocking(user)]
+        exclude_ids= set(blocked_ids) | set(blocking_ids)
+        return UserReaction.objects.filter(reaction__object_id=post_id,reaction__content_type=post_ct).exclude(user_id__in=exclude_ids).select_related('user__profile','reaction__settings', 'react')
 
 class UserReactionCommentList(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -529,7 +566,11 @@ class UserReactionCommentList(generics.ListAPIView):
     def get_queryset(self):
         comment_id = self.kwargs.get('comment_id')
         comment_ct=ContentType.objects.get_for_model(Comment)
-        return UserReaction.objects.filter(reaction__object_id=comment_id,reaction__content_type=comment_ct).select_related('user__profile','reaction__settings', 'react')
+        user = self.request.user
+        blocked_ids=[u.id for u in Block.objects.blocked(user)]
+        blocking_ids=[u.id for u in Block.objects.blocking(user)]
+        exclude_ids= set(blocked_ids) | set(blocking_ids) # dùng set để loại nhưng cái giống nhau
+        return UserReaction.objects.filter(reaction__object_id=comment_id,reaction__content_type=comment_ct).exclude(user_id__in=exclude_ids).select_related('user__profile','reaction__settings', 'react')
 
 
 #===============ACTIVITY==========================

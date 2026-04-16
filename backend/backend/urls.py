@@ -84,9 +84,9 @@ urlpatterns = [
     path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể
     path('api/user/comments/post/<int:post_id>',CommentListCreate.as_view(),name='comment-list'), #lấy Thêm comments từ post cụ thể
     path('api/user/comments/<int:pk>/',CommentModify.as_view(),name='comment-modify'), #lấy ra comment từ id
-    path('api/user/comment/pin/<int:pin_id>/',PinCommentView.as_view(),name='pin-comment'),
-    path('api/user/nested-comments/<int:pk>/',NestedCommentList.as_view(),name='nested-comment'),
-    path('api/user/setting/<int:pk>/',SettingModify.as_view(), name='setting-modify'),
+    path('api/user/comment/pin/<int:pin_id>/',PinCommentView.as_view(),name='pin-comment'), #pin comment
+    path('api/user/nested-comments/<int:pk>/',NestedCommentList.as_view(),name='nested-comment'), # list các nested từ comment cha
+    path('api/user/setting/<int:pk>/',SettingModify.as_view(), name='setting-modify'),# setting của user
     #url xử lý bạn bè, follow
     path("api/friends/request/<int:pk>/", SendFriendRequestView.as_view(), name="send-friend-request"), #gửi lời mời kết bạn
     path("api/friends/requests/incoming/", IncomingFriendRequestsView.as_view(), name="incoming-requests"), #lấy ra lời mời kết bạn đã nhận
@@ -122,23 +122,23 @@ urlpatterns = [
     path('api/chat/messages/seen/<int:pk>/', SeenMessage.as_view(), name='mark-message-seen'), #đánh dấu tin nhắn đã xem
     path('api/chat/messages/update/<int:pk>/', UpdateMessage.as_view(), name='update-message'), #cập nhật tin nhắn đã gửi
     #fire base notification
-    path("fcm-token/", SaveFCMTokenView.as_view()),
+    path("fcm-token/", SaveFCMTokenView.as_view()), # token cho thiết bị
     #in-app notification
-    path("api/notifications/", NotificationListView.as_view(), name="notification-list"),
+    path("api/notifications/", NotificationListView.as_view(), name="notification-list"), #thống báo user
     #check mqh
-    path('api/relationship/<int:profile_id>/',ProfileRelationship.as_view(),name='relationship'),
+    path('api/relationship/<int:profile_id>/',ProfileRelationship.as_view(),name='relationship'), # check mqh
     #thay đổi email 
     path('api/user/email/',UserEmail.as_view(),name='user-email'), #list các email
     path('api/email/add/',AddEmailView.as_view(),name='add-email'), #add email
     path('api/email/set/<int:pk>/',SetPrimaryEmailView.as_view(),name='add-email'), #set làm email mặc đinh
-    path('api/email/delete/<int:pk>/',DeleteEmailView.as_view(),name='delete-email'),
+    path('api/email/delete/<int:pk>/',DeleteEmailView.as_view(),name='delete-email'), #xóa email
     #search
     path('api/search/', SearchAPIView.as_view(),name='search'),# search api/search/?q=
     path('api/user/search-history/',SearchHistoryView.as_view(),name='search-history'), #lịch sủ tìm kiếm
     #friendsuggest
     path('api/user/friend-suggest/',FriendSuggestion.as_view(),name='friend-suggest'), # gợi ý bạn bè
     #v2-test full chức năng tạo post va ảnh trong 1 api
-    path('api/user/post/create/v2/',CreateFullPostView.as_view(),name='post-create-v2')
+    path('api/user/post/create/v2/',CreateFullPostView.as_view(),name='post-create-v2') #v2 của tạo post
     
     
 ] + router.urls

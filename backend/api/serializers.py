@@ -98,10 +98,13 @@ class CommentSerializer(serializers.ModelSerializer):
     reply_count = serializers.IntegerField(read_only=True)
     reactions= serializers.SerializerMethodField()
     user_is_reaction=serializers.SerializerMethodField()
-    tagged_users = serializers.SerializerMethodField()
+    tagged_users_info = serializers.SerializerMethodField()
+    tagged_users= serializers.PrimaryKeyRelatedField(many=True,queryset=User.objects.all(),write_only=True,required=False)# many=True để lấy nhiều giá trị (id) có liên quan object này ở đây tagged user trong model và override nó để lấy ra, sau đó queryset check các id trong Profile có id có k, chỉ input và k trả output và ko yêu cầu truyền
+    #Khi người dùng gửi list id, DRF sẽ loop từng id, kiểm tra id đó có tồn tại trong queryset không, rồi convert thành object đối tượng là many=True
     class Meta:
         model=Comment
         fields='__all__'
+        read_only_fields = ['post', 'user']
     def get_reactions(self, obj):
         reactions_map = self.context.get('reactions_map') # cái context truyền vào bên utils.py
         if reactions_map is not None:
@@ -127,8 +130,14 @@ class CommentSerializer(serializers.ModelSerializer):
             reaction__object_id=obj.pk
         ).first()
         return qs.reaction.settings.name if qs else None
-    def get_tagged_users(self, obj):
-        return [{'id': u.id, 'username': u.username} for u in obj.tagged_users.all()] #trả về list dict kiểu [{},{}]
+
+    def get_tagged_users_info(self, obj): #khi list thì sẽ truyền từng object lọc ra từ filter vào lấy ra profile, nếu create thì lấy id và tìm xem object có tồn tại ko, xong tới đây gọi ra obj.profile id và name
+        return [{
+            'id': u.profile.id,
+            'full_name': f"@{u.profile.first_name}{u.profile.last_name}"
+        }
+            for u in obj.tagged_users.all()
+        ] #trả về list dict kiểu [{},{}]
 
 class SettingSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source="user.profile", read_only=True)
@@ -291,7 +300,7 @@ class MessageSerializer(serializers.ModelSerializer):
     #khi người dùng post sẽ tạo content cho message, validate data rồi lấy ra cái attatchment có liên quan từ messageattachment đã validate rồi lưu vào message
     sender = ProfileSerializer(source="sender.profile", read_only=True)
     attachments = MessageAttachmentSerializer(many=True, read_only=True)
-    conversation = serializers.PrimaryKeyRelatedField(read_only=True) #láy ra khóa chính của model khác có liên quan đến object này, Ví dụ gửi message thì message đó thuộc về conversation nào thì lấy ra id của conversation đó
+    conversation = serializers.PrimaryKeyRelatedField(read_only=True) #láy ra/trả ra id có liên quan đến object ở đây là override cái conversation r , Ví dụ gửi message thì message đó thuộc về conversation nào thì lấy ra id của conversation đó
     
     class Meta:
         model = Message
