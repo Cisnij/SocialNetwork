@@ -591,7 +591,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         +django star-ratings: đánh giá star 1-5 sao 
         #+django-reaction-system: thả reaction cười, buồn như facebook
         # django-friendship: để follow
-        django-comments-xtd: comment bài viết, có like dislike cho comment
+        #django-comments-xtd: comment bài viết, có like dislike cho comment
         +django-markdownx: tạo highlights
         +django-elasticsearch-dsl : search nâng cao, python manage.py search_index --rebuild
         +django-taggit: tạo tag bài viết

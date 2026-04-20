@@ -975,11 +975,10 @@ class StartConversationAPIView(
                     is_group=False,
                     status=status_value
                 )
-                ConversationMember.objects.bulk_create(
-                    [  # bulk create là tạo nhiều bảng cùng 1 lúc thay vì 2 lênh riêng biệt gây nhiều truy vấn
+                ConversationMember.objects.bulk_create([  # bulk create là tạo nhiều bảng cùng 1 lúc thay vì 2 lênh riêng biệt gây nhiều truy vấn
                         ConversationMember(conversation=convo, user=current_user),
                         ConversationMember(conversation=convo, user=target_user),
-                    ])
+                ])
         return Response(
             self.get_serializer(convo).data,
             # get_serializer là hàm của GenericAPIView để lấy serializer đã khai báo ở trên

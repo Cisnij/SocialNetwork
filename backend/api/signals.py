@@ -1,4 +1,5 @@
-from django.db.models.signals import post_save, post_delete, pre_delete #post save là ngay khi tạo user thì trigger tạo profile
+from django.db.models.signals import post_save, post_delete, pre_delete, \
+    m2m_changed  # post save là ngay khi tạo user thì trigger tạo profile
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log,Notification,Message,ConversationMember
@@ -22,7 +23,8 @@ from friendship.signals import (
 )
 #firebase notification
 from .firebase import push_to_user
-
+#safe delete
+from safedelete.signals import post_softdelete, post_undelete
 
 # #xây tín hiệu tự động tạo pending profile khi tạo user
 # @receiver(post_save,sender=User)# có nghĩa là chạy sau khi sender là user gửi tín hiệu, đây là mặc định, post la sau khi tạo user
@@ -124,6 +126,21 @@ def delete_post_log(sender, instance, **kwargs):
         }
     )
 
+@receiver(post_undelete, sender=Post)
+def post_undelete_log(sender, instance, **kwargs):
+    action.send(
+        instance.user,
+        verb="restored post",
+        target=instance,
+        data={
+            "user_id": instance.user.id,
+            "username": instance.user.username,
+            "target_type": "Post",
+            "target_id": instance.pk,
+            "title": instance.title,
+            "action": "restored",
+        }
+    )
 @receiver(post_save, sender=PostArticle)
 def create_postarticle_log(sender, instance, created, **kwargs):
     verb = "created post article" if created else "updated post article"
@@ -158,6 +175,22 @@ def delete_postarticle_log(sender, instance, **kwargs):
         }
     )
 
+
+@receiver(post_undelete, sender=PostArticle)
+def postarticle_undelete_log(sender, instance, **kwargs):
+    action.send(
+        instance.user,
+        verb="restored post article",
+        target=instance,
+        data={
+            "user_id": instance.user.id,
+            "username": instance.user.username,
+            "target_type": "PostArticle",
+            "target_id": instance.pk,
+            "title": instance.title,
+            "action": "restored",
+        }
+    )
 @receiver(post_save, sender=Comment)
 def create_comment_log(sender, instance, created, **kwargs):
     verb = "created comment" if created else "updated comment"
@@ -286,7 +319,6 @@ def message_log(sender, instance, created, **kwargs):
                 "action": verb,
             }
         )
-from safedelete.signals import post_softdelete, post_undelete
 @receiver(post_softdelete, sender=Message) # log xóa message 
 def message_soft_delete_log(sender, instance, **kwargs):
     action.send(
@@ -370,13 +402,13 @@ def log_friend_request_created(sender, **kwargs):
 @receiver(friendship_request_canceled) #log hủy lời mời kb 
 def log_friend_request_canceled(sender, instance, **kwargs):
     action.send(
-        instance.from_user,
+        sender.from_user,
         verb='canceled',
-        target=instance.to_user,
+        target=sender.to_user,
         data={
-            "friendship_request_id": instance.pk,
-            "from_user_id": instance.from_user.id,
-            "to_user_id": instance.to_user.id,
+            "friendship_request_id": sender.pk,
+            "from_user_id": sender.from_user.id,
+            "to_user_id": sender.to_user.id,
             "status": "canceled friend request",
         }
     )
@@ -497,37 +529,59 @@ def log_block_deleted(sender, instance, **kwargs):
 #in-app notification 
 @receiver(post_save, sender=Comment)
 def notify_comment(sender, instance, created, **kwargs):
-    if created and instance.user != instance.post.user:
+    if not created: return
+    instance = Comment.objects.select_related(
+        'user__profile',
+        'post',
+        'parent__user__profile',
+    ).get(pk=instance.pk)
+    if instance.user != instance.post.user: # nếu ng comment vào post k phải chủ bài post thì mới thông báo
         Notification.objects.create(
-            reciever=instance.post.user,
+            reciever=instance.post.user, #thông báo cho chủ post
             actor=instance.user,
             type='comment',
             object_id=instance.post.post_id,
-            message=f'{instance.user.username} commented on your post'
+            message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} commented on your post {instance.post.title}'
         )
-    if created and instance.parent: # nếu mới tạo và có parent
-        if instance.user != instance.parent.user: #parent khác user
+    if instance.parent: # nếu mới tạo và có parent
+        if instance.user != instance.parent.user: #nếu user comment cha mà không phải là user hiện tại thì tạo
             Notification.objects.create(
-                reciever=instance.parent.user,
+                reciever=instance.parent.user, # thông báo cho comment gốc rằng có reply
                 actor=instance.user,
                 type='comment',
                 object_id=instance.id,
-                message=f'{instance.user.username} replied to your comment'
+                message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} replied to your comment'
             )
+
+@receiver(m2m_changed,sender=Comment.tagged_users.through) #nếu trong comment field tagged user mà many to many field change thì chạy
+def notify_tagged_users(sender,instance,action, pk_set,**kwargs):
+    if action == 'post_add' and pk_set: # post_add giống post save và nếu có field mới đc thêm vào many to many field, pk_set là các khóa ngoại trả về
+        instance = Comment.objects.select_related('user__profile', 'post').get(pk=instance.pk)
+        Notification.objects.bulk_create([
+            Notification(
+                reciever=user,
+                actor=instance.user,
+                type='comment',
+                object_id=instance.id,
+                message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} tagged you on post {instance.post.title}'
+            )
+            for user in User.objects.filter(pk__in=pk_set).select_related('profile').exclude(pk=instance.user.pk)
+        ])
+
 @receiver(post_save, sender=UserReaction)
 def notify_reaction(sender, instance, created, **kwargs):
     if not created:
         return
+    instance = UserReaction.objects.select_related('user__profile', 'reaction').get(pk=instance.pk)
     reaction = getattr(instance, 'reaction', None)
     target = getattr(reaction, 'content_object', None)
     if not hasattr(target, 'user') or target.user == instance.user:
         return
-
     # phân biệt react vào post hay comment
     if isinstance(target, Comment):
-        msg = f'{instance.user.username} reacted to your comment'
+        msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} reacted to your comment'
     else:
-        msg = f'{instance.user.username} reacted to your post'
+        msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} reacted to your post'
 
     Notification.objects.create(
         reciever=target.user,
@@ -539,21 +593,23 @@ def notify_reaction(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Follow)
 def notify_follow(sender, instance, created, **kwargs):
     if created:
+        instance = Follow.objects.select_related('follower__profile','followee',).get(pk=instance.pk)
         Notification.objects.create(
             reciever=instance.followee,
             actor=instance.follower,
             type='follow',
-            message=f'{instance.follower.username} followed you'
+            message=f'{instance.follower.profile.first_name} {instance.follower.profile.last_name} followed you'
         )
 
 @receiver(post_save, sender=FriendshipRequest)
 def notify_friend_request(sender, instance, created, **kwargs):
     if created:
+        instance = FriendshipRequest.objects.select_related('from_user__profile','to_user',).get(pk=instance.pk)
         Notification.objects.create(
             reciever =instance.to_user,
             actor=instance.from_user,
             type='friend_request',
-            message=f'{instance.from_user.username} sent you a friend request'
+            message=f'{instance.from_user.profile.first_name} {instance.from_user.profile.last_name} sent you a friend request'
         )
 #==============================================================================
 @receiver(email_confirmed) # khi 1 email đã xác nhận, xóa các email trùng tên chưa xác nhận khỏi db 

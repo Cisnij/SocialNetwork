@@ -13,11 +13,7 @@ chưa xong
 - xây thêm các chức năng in app như đã đọc is read, liên kết tới post nào và thêm các trường follow... vào luôn
 - xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
 
-thêm reaction vào, sửa lại serializer có reations và user is reation giống post, sửa lại notification là reply or comment
 
-check lại block các api, xem comment thiếu chức năng gì nữa
 
-Tag người trong comment
-Mention (@user) trong comment — parse và notify
-signal khi được tạo mà có tagged user thì push noti và notification
-
+chạy lại các api và đọc query
+sau này check block,follow,friend dùng filter hết và đẩy sang value list cho nhanh ở phần friendship manager

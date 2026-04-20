@@ -44,7 +44,8 @@ work flows
 31. Tối ưu lại, bỏ n+1 query trong serializer, thay vì gọi từng object thì query hết 1 lượt rồi gọi serializer  và cũng sửa gọi 1 lần get_online của profile
 32. Tối ưu trang admin
 33. thêm setting tối ưu
-34. Sửa lại comment thêm pin comment, tag tên người dùng, thêm nested
+34. Sửa lại comment thêm pin comment(sắp xếp comment list trong post theo pin trước và created sau, tạo api thêm pin và xóa pin chung 1 api) thêm nested
+35. Tag tên người dùng trong comment: khi người dùng nhấn @, fe thực hiện tìm kiếm với api gọi tất cả profile bạn bè api/friends/, sau đó nhấn chọn người nào sẽ láy id truyền vào cái tạo comment. Khi người dùng nhấn reply 1 reply con, reply con sẽ chứa data parent và data user id, khi gọi api sẽ truyền parent và tag user là user.id
 -thiếu phần đăng nhập:, xác thực otp khi bật 2 bước, xóa tài khoản
 
 

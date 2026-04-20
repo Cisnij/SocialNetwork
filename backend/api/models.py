@@ -21,7 +21,7 @@ def vi_slugify(value): #chuyển slug thành tiếng việt
     return slugify(unidecode(value))
 
 def profile_upload_path(instance, filename):# Ảnh profile → media/avatars/user_1/picture.png
-    ext = filename.split('.')[-1].lower() # lấy phần đuôi ví dụ.PNG làm nhỏ lại tránh lỗi
+    ext = filename.split('.')[-1].lower() # lấy phần đuôi ví dụ.PNG làm chuyển viết thường lại tránh lỗi, vị trí -1 là phần cuối tên file ví dụ.exe
     return f'avatars/user_{instance.user.id}_{instance.user}/{uuid.uuid4()}.{ext}'
 
 def post_photo_upload_path(instance, filename):# Ảnh post → media/posts/user_1/post_1/picture.png
@@ -39,7 +39,7 @@ class Profile(SafeDeleteModel):
     user=models.OneToOneField(User,on_delete=models.CASCADE)# chỉ đc 1 profile-user k có 2
     first_name=models.CharField(max_length=50,null=True)
     last_name=models.CharField(max_length=50,null=True)
-    picture=models.ImageField(upload_to=profile_upload_path,null=True, default="default.jpg",validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])])
+    picture=models.ImageField(upload_to=profile_upload_path,null=True, default="default.jpg",validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])])# ví dụ post ảnh 123.png lên, nó sẽ chạy hàm sửa tên lấy ra chữ png và đổi tên file lại user_1_abc_9349832.png
     date_of_birth=models.DateField(null=True)
     phone_number=PhoneNumberField(null=True,blank=True) #,unique=True)
     bio=models.CharField(max_length=50,null=True,blank=True)
