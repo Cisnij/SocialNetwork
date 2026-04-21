@@ -29,9 +29,9 @@ class ProfileSerializer(serializers.ModelSerializer):
         
     def get_is_online(self,obj):
         online_set=self.context.get('online_set') # nhận context truyền thủ công từ view vào để custome cái list profile tránh gọi cache mỗi 1 user làm tràn ram, còn cái gọi 1 object thì bth dùng get
-        if online_set is not None:
-            return obj.user_id in online_set # trả về user id trong
-        return cache.get(f"online_user:{obj.user_id}") is not None
+        if online_set is not None: 
+            return obj.user_id in online_set # trả về user id trong ram, có thì trả về luôn
+        return cache.get(f"online_user:{obj.user_id}") is not None # không có trong ram thì gọi get cache ram từng cái
         
     
 class PendingProfileSerializer(serializers.ModelSerializer):
@@ -46,8 +46,6 @@ class PostPhotoSerializer(serializers.ModelSerializer):
         extra_kwargs = {"post": {"read_only": True}} #để k bị lỗi khi post ảnh lên vì post là foreign key bắt buộc phải có giá trị nhưng khi post ảnh thì chưa có post_id nên để read only, read only là chỉ để đọc mà k cần nạp data từ fe gửi
 
 class PostSerializer(serializers.ModelSerializer):
-    url =serializers.SerializerMethodField() #thêm field vào json trả về 
-
     # vì là one to one field với user nên phải để thế mới lấy ra profile đc, nếu k có source thì nó bị lấy ra user 2 lần vì profileserializer cũng có user, hiểu là 2 trường user 1 là của post 2 là profile thì lấy ra của profile
     user = ProfileSerializer(source="user.profile", read_only=True) 
     photos = PostPhotoSerializer(many=True, read_only=True) #tự động lấy ra tất cả ảnh liên quan đến post nhờ related name ở model PostPhoto
@@ -57,9 +55,6 @@ class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model=Post
         fields='__all__'
-
-    def get_url(self,obj):
-        return f"http://localhost:8000/api/user/post/{obj.post_id}/"
 
     def get_reactions(self, obj):
         reactions_map = self.context.get('reactions_map') # cái context truyền vào bên utils.py
@@ -99,7 +94,7 @@ class CommentSerializer(serializers.ModelSerializer):
     reactions= serializers.SerializerMethodField()
     user_is_reaction=serializers.SerializerMethodField()
     tagged_users_info = serializers.SerializerMethodField()
-    tagged_users= serializers.PrimaryKeyRelatedField(many=True,queryset=User.objects.all(),write_only=True,required=False)# many=True để lấy nhiều giá trị (id) có liên quan object này ở đây tagged user trong model và override nó để lấy ra, sau đó queryset check các id trong Profile có id có k, chỉ input và k trả output và ko yêu cầu truyền
+    tagged_users= serializers.PrimaryKeyRelatedField(many=True,queryset=User.objects.all(),write_only=True,required=False)# many=True để lấy nhiều giá trị (id) có liên quan object này ở đây tagged user trong model và override nó để lấy ra, sau đó queryset check các id trong User có id có k, chỉ input và k trả output và ko yêu cầu truyền
     #Khi người dùng gửi list id, DRF sẽ loop từng id, kiểm tra id đó có tồn tại trong queryset không, rồi convert thành object đối tượng là many=True
     class Meta:
         model=Comment
@@ -131,7 +126,7 @@ class CommentSerializer(serializers.ModelSerializer):
         ).first()
         return qs.reaction.settings.name if qs else None
 
-    def get_tagged_users_info(self, obj): #khi list thì sẽ truyền từng object lọc ra từ filter vào lấy ra profile, nếu create thì lấy id và tìm xem object có tồn tại ko, xong tới đây gọi ra obj.profile id và name
+    def get_tagged_users_info(self, obj): #khi list thì sẽ truyền từng object lọc ra từ filter và lấy ra profile, chỉ output từ list và readonly
         return [{
             'id': u.profile.id,
             'full_name': f"@{u.profile.first_name}{u.profile.last_name}"
@@ -172,7 +167,7 @@ class ReactionSerializer(serializers.ModelSerializer):
 
 #===========================ActivitySteam=================================================================================
 class ActionSerializer(serializers.ModelSerializer):
-    actor =serializers.StringRelatedField() #string related là lấy cái __str__ return trng model
+    actor =serializers.StringRelatedField() #string related là lấy cái __str__ ví dụ str(actor) trong model, nó cũng sẽ lấy str của Fk có liên quan
     target=serializers.StringRelatedField()
     action_object=serializers.StringRelatedField()
     class Meta:
@@ -204,7 +199,7 @@ class FriendShipRequestSerializer(serializers.ModelSerializer):
             return 'pending'
 
 class FriendSerializer(serializers.ModelSerializer): #danh sách bạn bè, vì friendship sẽ tạo bản ghi 2 chiều
-    user = ProfileSerializer(source='to_user.profile', read_only=True)
+    user = ProfileSerializer(source='to_user.profile', read_only=True)#profile và user 1-1 nên sẽ truy vấn được và lấy ra các field theo profile
     friend_since = serializers.DateTimeField(source='created', read_only=True)
     class Meta:
         model = Friend
@@ -232,7 +227,11 @@ class BlockSerializer(serializers.ModelSerializer):
 
 class ConversationMemberSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source="user.profile", read_only=True)
-    last_read_message= serializers.SerializerMethodField()
+    last_read_message = serializers.IntegerField(
+        source="last_read_message_id",  # vì là fk của ConversationMember model nên đọc thẳng đc
+        read_only=True,
+        allow_null=True
+    )
     class Meta:
         model = ConversationMember
         fields = [
@@ -240,9 +239,7 @@ class ConversationMemberSerializer(serializers.ModelSerializer):
             "joined_at",
             "last_read_message",
         ]
-    def get_last_read_message(self, obj):
-        return obj.last_read_message.id if obj.last_read_message else None # là lấy ra cái id của tin nhắn cuối, vì last_read_message là foreign key nên lấy ra id, obj chính là member
-        
+
 class ConversationSerializer(serializers.ModelSerializer):
     members = ConversationMemberSerializer( # vì là serializer này lấy ra model conversation,mà conversationmember là FK, nên đoạn conversation sẽ là obj khi được gọi, gọi ra member thì chỉ cần set
         source="conversationmember_set",

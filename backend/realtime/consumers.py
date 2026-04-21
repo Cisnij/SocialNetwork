@@ -98,6 +98,8 @@ connect-> receive(server) -> send -> client"""
 -Frontend: socket.send tin nhắn 
 -Backend: Chạy receive nhận data từ fe dưới dạng json và lưu db, sau đó chạy group_send lấy từ db vừa save, chuẩn bị data và gửi tín hiệu, cuối cùng chạy chat_message send load data từ groupsend để gửi về fe load ra
 -Frontend: Nhận tin nhắn và chạy onmessage
+
+ng dùng gọi api websocket trước xong kích hoạt application mới gọi middleware
 """
 
 '''
@@ -156,7 +158,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         # check các điều kiện trước khi lưu (block, pending status...)
-        allowed, reason = await self.can_send() # reason là trả về lỗi khi cái await sai
+        allowed, reason = await self.can_send() # reason là trả về lỗi khi cái await sai, chứa giá trị true/false và reason
         if not allowed:
             await self.send(text_data=json.dumps({'error': reason})) # báo lỗi về client
             return
@@ -275,7 +277,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 message_type=message_type,
             )
         except Exception as e:
-            print(f"❌ Save message error: {e}")
+            print(f" Save message error: {e}")
             return None
 
     @database_sync_to_async
@@ -295,4 +297,4 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     body=message
                 )
         except Exception as e:
-            print(f"❌ Push notification error: {e}")
+            print(f" Push notification error: {e}")

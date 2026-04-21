@@ -17,3 +17,7 @@ chưa xong
 
 chạy lại các api và đọc query
 sau này check block,follow,friend dùng filter hết và đẩy sang value list cho nhanh ở phần friendship manager
+
+#check select related ở những chỗ láy ra profile rồi truy vấn ngc user, check filter search luôn(trước là ds bạn bè), check pagination
+#check block trong user page, check block trong ds bạn bè cụ thể
+# check lại Fk nào có liên kết thì source ở serializer luôn tránh n+1

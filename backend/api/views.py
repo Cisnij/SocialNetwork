@@ -113,7 +113,7 @@ class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa prof
                 raise NotFound("Admin cần truyền ID profile để truy cập.")
             return get_object_or_404(Profile.objects.select_related('user','user__profile'), id=profile_id)
             
-        return get_object_or_404(Profile, user=user)
+        return get_object_or_404(Profile.objects.select_related('user'), user=user)
 
 class ProfileList(generics.ListAPIView):#List tất cả profile
     permission_classes=[IsAuthenticated]
@@ -132,11 +132,11 @@ class ProfileList(generics.ListAPIView):#List tất cả profile
 
     def get_serializer_context(self): #gọi hàm custome ở trên
         context = super().get_serializer_context()
-        #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
+        #  Lấy dữ liệu queryset đã lọc  (đã filter, đã phân trang)
         objs = getattr(self, 'object_list', None)
         if objs is None:
-            objs=self.get_queryset()
-        context['online_set'] = get_online_set(objs)
+            objs=self.get_queryset() # gọi query set lại
+        context['online_set'] = get_online_set(objs) # truyền tất cả profile vào và lấy ra tất cả status onl
         return context
     
 class ProfileUser(generics.RetrieveAPIView):
@@ -145,7 +145,12 @@ class ProfileUser(generics.RetrieveAPIView):
 
     def get_object(self):
         user_id = self.kwargs.get("user")  # lấy từ URL
-        return get_object_or_404(Profile.objects.select_related('user'), id=user_id) #lấy ra user id trong profile, user__id là vì onetoonefield với profile à user là object tức user chứ nhiều thứ bên trong nữa nên lấy ra id từ bên trong đó
+        user=self.request.user
+        target_profile=get_object_or_404(Profile.objects.select_related("user"),id=user_id)#lấy ra user id trong profile, user__id là vì onetoonefield với profile và user là object tức user chứa nhiều thứ bên trong nữa nên lấy ra id từ bên trong đó
+        target_user=target_profile.user
+        if Block.objects.is_blocked(user, target_user): #check block
+            raise PermissionDenied("Cannot see profile of this user")
+        return target_profile
 
 class ProfileView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
@@ -189,7 +194,7 @@ class PostPhotoListCreate(generics.ListCreateAPIView):
     
     def post(self, request, *args, **kwargs): #gọi hàm post để thêm nhiều ảnh vào 1 post
         post_id=self.kwargs.get('post_id')
-        post=get_object_or_404(Post,pk=post_id) #pk ở đây là bí danh alias cho primary key ở tất cả bảng, vì v khi gọi pk thì dùng pk luôn k cần tên
+        post=get_object_or_404(Post.objects.select_related("user"),pk=post_id) #pk ở đây là bí danh alias cho primary key ở tất cả bảng, vì v khi gọi pk thì dùng pk luôn k cần tên
         if post.user != request.user and not request.user.is_staff: # không phải là user chủ post kh được upload
             raise PermissionDenied()
         photos = request.FILES.getlist('photo') # lấy data dạng file từ form data gửi lên và dùng form parser để parse về json và lưu
@@ -293,7 +298,7 @@ class PostUser(generics.ListAPIView):  # List tất cả post của user
         if not hasattr(self, '_qs'):
             profile_id = self.kwargs.get("user")
             user = self.request.user
-            profile = get_object_or_404(Profile, id=profile_id)
+            profile = get_object_or_404(Profile.objects.select_related("user"), id=profile_id)
             target_user = profile.user
             if Block.objects.is_blocked(user, target_user):
                 raise PermissionDenied("Cannot see posts of this user")
@@ -574,11 +579,13 @@ class UserReactionCommentList(generics.ListAPIView):
 
 
 #===============ACTIVITY==========================
-class UserActivity(
-    generics.ListAPIView):  # lấy ra danh sách các hoạt động. Để tạo chức năng ví dụ hoạt động của user, hoạt động trên post
+class UserActivity(generics.ListAPIView):  # lấy ra danh sách các hoạt động. Để tạo chức năng ví dụ hoạt động của user, hoạt động trên post
     serializer_class = ActionSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = SmallPagePagination
+    filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
+    search_fields=['verb', 'actor_object_id'] #tìm kiếm
+    ordering_fields=['id','timestamp'] #sắp xếp theo thứ tự tăng giảm dần
 
     def get_queryset(self):
         user = self.request.user
@@ -605,7 +612,7 @@ class SendFriendRequestView(generics.CreateAPIView):  # tạo lời mời kết 
         to_user_id = self.kwargs.get("pk")  # Lấy từ URL
 
         # Lấy user từ Profile 
-        profile = get_object_or_404(Profile, id=to_user_id)
+        profile = get_object_or_404(Profile.objects.select_related("user"), id=to_user_id)
         to_user = profile.user
 
         # Kiểm tra ID hợp lệ
@@ -662,7 +669,7 @@ class AcceptFriendRequestView(generics.UpdateAPIView):  # đồng ý lời mời
         if not fr_id:
             return Response({"error": "Friend request ID is required"}, status=400)
 
-        friend_request = get_object_or_404(FriendshipRequest, pk=fr_id)
+        friend_request = get_object_or_404(FriendshipRequest.objects.select_related("to_user"), pk=fr_id)
 
         # Chỉ người nhận mới có quyền accept ( người nhận là to_user và nguòi gửi là request user, phải khác nhau mới accept đc)
         if friend_request.to_user != request.user:
@@ -684,7 +691,7 @@ class RejectFriendRequestView(generics.UpdateAPIView):  # từ chối lời mờ
         if not fr_id:
             return Response({"error": "Friend request ID is required"}, status=400)
 
-        friend_request = get_object_or_404(FriendshipRequest, pk=fr_id)
+        friend_request = get_object_or_404(FriendshipRequest.objects.select_related("to_user"), pk=fr_id)
 
         # Chỉ người nhận mới có quyền reject
         if friend_request.to_user != request.user:
@@ -708,7 +715,7 @@ class CancelFriendRequestView(generics.DestroyAPIView):
             return Response({"error": "ID is required"}, status=400)
 
         # Lấy FriendshipRequest theo ID
-        fr_obj = get_object_or_404(FriendshipRequest, pk=fr_id)
+        fr_obj = get_object_or_404(FriendshipRequest.objects.select_related("from_user"), pk=fr_id)
 
         # Chỉ người gửi mới có quyền hủy
         if fr_obj.from_user != request.user:
@@ -726,7 +733,7 @@ class UnfriendView(generics.DestroyAPIView):  # hủy kết bạn
     def destroy(self, request, *args, **kwargs):
         profile_id = self.kwargs.get("pk")
 
-        profile = get_object_or_404(Profile, id=profile_id)
+        profile = get_object_or_404(Profile.objects.select_related("user"), id=profile_id)
         friend_user = profile.user
 
         if not Friend.objects.are_friends(request.user, friend_user):  # kiểm tra có phải là bạn trước khi xóa
@@ -743,23 +750,35 @@ class UnfriendView(generics.DestroyAPIView):  # hủy kết bạn
         return Response({"detail": "Unfriended"})
 
 
-class FriendListView(generics.ListAPIView):  # danh sách bạn bè
+class FriendListView(generics.ListAPIView):  # danh sách bạn bè của mình
     permission_classes = [IsAuthenticated]
     serializer_class = FriendSerializer
     pagination_class = LargePagePagination
+    filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
+    search_fields=['to_user__profile__first_name','to_user__profile__last_name'] #tìm kiếm
+    ordering_fields=['id','created'] #sắp xếp theo thứ tự tăng giảm dần
     def get_queryset(self):
         return Friend.objects.filter(from_user=self.request.user).select_related('to_user__profile')
 
 
-class FriendUser(generics.ListAPIView):
+class FriendUser(generics.ListAPIView): #ds bạn bè cụ thể
     permission_classes = [IsAuthenticated]
     serializer_class = FriendSerializer
     pagination_class = LargePagePagination
+    filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
+    search_fields=['to_user__profile__first_name','to_user__profile__last_name'] #tìm kiếm
+    ordering_fields=['id','created'] #sắp xếp theo thứ tự tăng giảm dần
     def get_queryset(self):
         user_id = self.kwargs.get("pk")
-        profile = get_object_or_404(Profile, id=user_id)
-        user = profile.user
-        return Friend.objects.filter(from_user=user).select_related('to_user__profile')
+        profile = get_object_or_404(Profile.objects.select_related("user"), id=user_id)
+        target_user = profile.user
+        user=self.request.user
+        if Block.objects.is_blocked(user, target_user): #check block
+            raise PermissionDenied("Cannot see friend of this user")
+        blocked_ids = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
+        blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
+        exclude_ids = set(blocked_ids) | set(blocking_ids)
+        return Friend.objects.filter(from_user=target_user).select_related('to_user__profile').exclude(to_user_id__in=exclude_ids).order_by("-created")
 
 
 class FollowView(generics.CreateAPIView):  # theo dõi người dùng
@@ -768,7 +787,7 @@ class FollowView(generics.CreateAPIView):  # theo dõi người dùng
 
     def create(self, request, *args, **kwargs):
         profile_id = self.kwargs.get("pk")
-        profile = get_object_or_404(Profile, id=profile_id)
+        profile = get_object_or_404(Profile.objects.select_related("user"), id=profile_id)
         user_to_follow = profile.user
 
         # check không follow chính mình
@@ -792,7 +811,7 @@ class UnfollowView(generics.DestroyAPIView):  # hủy follow
 
     def destroy(self, request, *args, **kwargs):
         profile_id = self.kwargs.get("pk")
-        profile = get_object_or_404(Profile, id=profile_id)
+        profile = get_object_or_404(Profile.objects.select_related("user"), id=profile_id)
         user_to_unfollow = profile.user
 
         # check có đang follow không
@@ -825,7 +844,7 @@ class BlockView(generics.CreateAPIView):  # chặn người dùng
 
     def create(self, request, *args, **kwargs):
         id = self.kwargs.get('pk')
-        profile = get_object_or_404(Profile, id=id)
+        profile = get_object_or_404(Profile.objects.select_related("user"), id=id)
         user = profile.user
 
         if request.user == user:
@@ -854,7 +873,7 @@ class UnblockView(generics.DestroyAPIView):  # bỏ chặn người dùng
 
     def destroy(self, request, *args, **kwargs):
         id = self.kwargs.get('pk')
-        profile = get_object_or_404(Profile, id=id)
+        profile = get_object_or_404(Profile.objects.select_related("user"), id=id)
         user = profile.user
 
         if not Block.objects.is_blocked(request.user, user):
@@ -909,7 +928,7 @@ class UnsendMessageAPIView(APIView):  # action xóa message
     permission_classes = [IsAuthenticated, IsConversationMember]
 
     def delete(self, request, pk):
-        message = get_object_or_404(Message, pk=pk)
+        message = get_object_or_404(Message.objects.select_related("conversation"), pk=pk)
         if message.sender != request.user:
             raise PermissionDenied("You can only unsend your own message")
         self.check_object_permissions(request, message.conversation)
@@ -939,7 +958,7 @@ class StartConversationAPIView(
     serializer_class = ConversationSerializer
 
     def post(self, request, user_id):  # hàm post sẽ tự lấy tham số truyền vào từ url là post_id
-        target_profile = get_object_or_404(Profile, id=user_id)  # láy ra profile từ id
+        target_profile = get_object_or_404(Profile.objects.select_related("user"), id=user_id)  # láy ra profile từ id
         target_user = target_profile.user  # lấy ra user từ profile
         current_user = request.user
 
@@ -1008,7 +1027,7 @@ class AcceptMessageRequest(APIView):
             )
 
         first_message = (  # lấy message đầu tiên
-            Message.objects.filter(conversation=conv).order_by('created_at').first()
+            Message.objects.filter(conversation=conv).select_related("sender").order_by('created_at').first()
         )
         # nếu chưa có message thì không cho accept
         if not first_message:
@@ -1132,20 +1151,16 @@ class MemberOfConversation(generics.ListAPIView):  # danh sách thành viên tro
     pagination_class = LargePagePagination
     def get_queryset(self):
         convo_id = self.kwargs["pk"]
-
-        # 404 trước
-        if not Conversation.objects.filter(id=convo_id).exists():
-            raise NotFound("Conversation not found.")
-
+        conv =get_object_or_404(Conversation,id=convo_id)
+        self.check_object_permissions(self.request,conv)
         return (
             ConversationMember.objects
-            .filter(conversation_id=convo_id)
-            .select_related("user", "user__profile")
+            .filter(conversation=conv)
+            .select_related( "user","user__profile")
         )
 
 
-class SeenMessage(
-    APIView):  # đánh dấu đã xem tin nhắn, logic là khi mở trò chuyện sẽ post về server be, be sẽ lấy ra tin nhắn mới nhất và đánh dấu last_read là tin nhắn đó
+class SeenMessage(APIView):  # đánh dấu đã xem tin nhắn, logic là khi mở trò chuyện sẽ post về server be, be sẽ lấy ra tin nhắn mới nhất và đánh dấu last_read là tin nhắn đó
     permission_classes = [IsAuthenticated, IsConversationMember]
 
     def post(self, request, *args, **kwargs):
@@ -1153,7 +1168,7 @@ class SeenMessage(
 
         conversation = get_object_or_404(Conversation, id=convo_id)
         self.check_object_permissions(request, conversation)
-        last_message = (Message.objects.filter(conversation=conversation).select_related('sender').order_by(
+        last_message = (Message.objects.filter(conversation=conversation).order_by(
             "-created_at").first())  # lấy ra tin nhắn mới nhất trong cuộc trò chuyện
         if not last_message:
             return Response({"detail": "No messages"}, status=200)
@@ -1220,7 +1235,7 @@ class ProfileRelationship(APIView):
 
     def get(self, request,
             profile_id):  # get khác post là chỉ dùng khi lấy dữ liệu. Còn post thì dùng khi thay đổi csdl như tạo update
-        profile = get_object_or_404(Profile, pk=profile_id)
+        profile = get_object_or_404(Profile.objects.select_related("user"), pk=profile_id)
 
         target_user = profile.user
         current_user = request.user
@@ -1246,11 +1261,14 @@ class NotificationListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationSerializer
     pagination_class = LargePagePagination
+    filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
+    # search_fields=[] #tìm kiếm
+    ordering_fields=['id','created_at']
 
     def get_queryset(self):
         return Notification.objects.filter(
             reciever=self.request.user
-        ).select_related('actor__profile')
+        ).select_related('actor__profile').order_by("-created_at")
 
 
 # ===========================Firebase=======================================
@@ -1317,7 +1335,7 @@ class SearchAPIView(APIView):
         excluded_user_ids = set(blocked_ids) | set(blocking_ids)
         if search_type in ('all', 'posts'):  # chỉ search post khi cần
             try:
-                post_search = PostDocument.search().query(
+                post_search = PostDocument.search().query( # chạy lấy ra các post tìm kiếm
                     "bool",
                     should=[
                         MultiMatch(query=keyword, fields=['title'], fuzziness='AUTO', boost=1.0),
@@ -1331,7 +1349,7 @@ class SearchAPIView(APIView):
                 # giữ thứ tự relevance từ Elasticsearch (score cao nhất lên đầu)
                 post_hits = list(post_search)
                 post_ids = [hit.meta.id for hit in post_hits]  # lấy id của các bài post sau lọc
-                posts_qs = Post.objects.filter(  # tìm id trong post mà chưa delete
+                posts_qs = Post.objects.filter(  # tìm id trong post và loại bỏ block
                     post_id__in=post_ids,
                     deleted__isnull=True
                 ).exclude(
