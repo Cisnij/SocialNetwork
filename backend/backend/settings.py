@@ -121,7 +121,7 @@ DATABASES = {
         "CONN_HEALTH_CHECKS": True,  # kiểm tra connection còn sống không trước khi dùng
 
         # Connection pool dùng để tái sử dụng các connection mà k cần tạo mới mỗi request
-        "POOL_OPTIONS": {
+        "POOL_OPTIONS": { #số pool có sẵn là 20, khi chưa dùng hết thì dùng lại, khi hết thì mở thêm và tối đa mở 30
             "POOL_SIZE": 20,  # số connection pool
             "MAX_OVERFLOW": 30,  # connection thêm khi pool đầy
             "RECYCLE": 300,  # recycle connection sau 5 phút

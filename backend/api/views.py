@@ -1,3 +1,4 @@
+from itertools import chain
 
 from .serializers import *
 from rest_framework import generics,permissions
@@ -27,6 +28,7 @@ from asgiref.sync import async_to_sync
 # elastic
 from .documents import PostDocument,ProfileDocument
 from elasticsearch_dsl.query import MultiMatch
+from elasticsearch_dsl import Q as ESQ         # Django Q — dùng cho ORM filter
 
 
 def get_online_set(queryset):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
@@ -237,22 +239,24 @@ class PostFriend(generics.ListAPIView):  # List tất cả post của bạn bè
             #self dùng để cho các def khác có thể lấy được, và cũng private trong class này
             user = self.request.user
             # lấy ra tất cả id và chỉ id
-            friend_ids = [u.id for u in Friend.objects.friends(user)]
-            following_ids = [u.id for u in Follow.objects.following(user)]
-            blocked_ids = [u.id for u in Block.objects.blocked(user)]
-            blocked_by_ids = [u.id for u in Block.objects.blocking(user)]
+            friend_ids   = Friend.objects.filter(to_user=user).values_list("from_user_id", flat=True)
+            following_ids = Follow.objects.filter(follower=user).values_list("followee_id", flat=True)
+            blocked_ids  = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+            blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
 
-            target_user_ids = set(friend_ids + following_ids + [
-                user.id])  # lấy ra id của bạn bè, người đang follow và chính user để lấy post của họ
-            all_blocked_ids = set(blocked_ids + blocked_by_ids)  # lấy ra id của người bị block và người block mình
-            final_ids = target_user_ids - all_blocked_ids  # loại bỏ những người bị block khỏi danh sách mục tiêu
-            self._qs = (  # gán giá trị đã có
+            self._qs = (
                 Post.objects
-                .filter(user_id__in=final_ids)  # Dùng user_id__in thay vì user__in để tránh JOIN bảng User vô ích
+                .filter( # câu lệnh Q..| là OR
+                    Q(user_id=user.id) |  #lấy post của user
+                    Q(user_id__in=friend_ids) |
+                    Q(user_id__in=following_ids) #lấy post của follow
+                )
+                .exclude(user_id__in=blocked_ids) #loại block
+                .exclude(user_id__in=blocking_ids)
                 .select_related("user", "user__profile")
-                .prefetch_related('photos')
+                .prefetch_related("photos")
                 .order_by("-created_at")
-                .distinct()  # Đảm bảo không trùng bài viết nếu logic friend/follow giao nhau
+                .distinct()
             )
         return self._qs
 
@@ -399,15 +403,14 @@ class CommentListCreate(generics.ListCreateAPIView):  # thêm list comment
         if not hasattr(self, '_qs'):
             post_id = self.kwargs.get('post_id')
             user = self.request.user
-            blocked_ids = [u.id for u in Block.objects.blocked(user)]
-            blocking_ids = [u.id for u in Block.objects.blocking(user)]
-            excluded_user_ids = set(blocked_ids) | set(blocking_ids)
             if not post_id:
                 raise NotFound("Cần truyền ID post để truy cập.")
+            blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+            blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
             # if user.is_superuser or user.is_staff:
             #     return Comment.objects.all()
             #lọc ra và count các replies con bên trong cmt cha parent is null=True
-            self._qs = Comment.objects.filter(post_id=post_id, parent__isnull=True).exclude(user_id__in=excluded_user_ids).select_related('user__profile','post').prefetch_related('tagged_users__profile').annotate(reply_count=Count('replies')).order_by('-is_pinned','-created_at')#count related fields của parent là replies
+            self._qs = Comment.objects.filter(post_id=post_id, parent__isnull=True).exclude(Q(user_id__in=blocked_ids)| Q(user_id__in=blocking_ids)).select_related('user__profile','post').prefetch_related('tagged_users__profile').annotate(reply_count=Count('replies')).order_by('-is_pinned','-created_at')#count related fields của parent là replies
             # ví dụ lấy ra comment c, join với comment r ON r.parent_id=c.id và count cái r.id
         return self._qs
 
@@ -461,7 +464,7 @@ class CommentModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa co
         if not comment:
             raise NotFound('Comment not found')
         post_owner = comment.post.user
-        if post_owner == user or comment.user == user:
+        if post_owner == user or comment.user == user: # user và chủ post có thể xóa
             comment.delete()
             return Response({'Success'}, status=200)
         return Response({'Cannot delete'}, status=404)
@@ -480,13 +483,12 @@ class NestedCommentList(generics.ListAPIView):
             comment_id = self.kwargs.get('pk')
             comment = get_object_or_404(Comment, id=comment_id)
             # lấy danh sách user bị block
-            blocked_ids = [u.id for u in Block.objects.blocked(user)]
-            blocking_ids = [u.id for u in Block.objects.blocking(user)]
-            excluded_user_ids = set(blocked_ids) | set(blocking_ids)
+            blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+            blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
             self._qs= Comment.objects.filter(
                 parent=comment,
             ).exclude(
-                user_id__in=excluded_user_ids
+                Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)
             ).select_related('user__profile').prefetch_related('tagged_users')
         return self._qs
 
@@ -515,7 +517,7 @@ class PinCommentView(generics.RetrieveUpdateAPIView):
         comment= get_object_or_404(Comment.objects.select_related('post'),pk=pin_id)
         if comment.post.user_id != self.request.user.id:
             return Response({'error':'You are not post owner'},status=400)
-        if comment.is_pinned:
+        if comment.is_pinned: #nếu pin thì gỡ, nếu gỡ thì pin
             comment.is_pinned=False
             comment.save()
         else:
@@ -555,10 +557,9 @@ class UserReactionPostList(generics.ListAPIView):  # Danh sách reaction của u
         post_id = self.kwargs.get('post_id')
         post_ct= ContentType.objects.get_for_model(Post)
         user = self.request.user
-        blocked_ids= [u.id for u in Block.objects.blocked(user)]
-        blocking_ids=[u.id for u in Block.objects.blocking(user)]
-        exclude_ids= set(blocked_ids) | set(blocking_ids)
-        return UserReaction.objects.filter(reaction__object_id=post_id,reaction__content_type=post_ct).exclude(user_id__in=exclude_ids).select_related('user__profile','reaction__settings', 'react')
+        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True) #lazy tức là chưa query ngay mà db xử lý trực tiếp
+        return UserReaction.objects.filter(reaction__object_id=post_id,reaction__content_type=post_ct).exclude(Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)).select_related('user__profile','reaction__settings', 'react')
 
 class UserReactionCommentList(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -572,10 +573,9 @@ class UserReactionCommentList(generics.ListAPIView):
         comment_id = self.kwargs.get('comment_id')
         comment_ct=ContentType.objects.get_for_model(Comment)
         user = self.request.user
-        blocked_ids=[u.id for u in Block.objects.blocked(user)]
-        blocking_ids=[u.id for u in Block.objects.blocking(user)]
-        exclude_ids= set(blocked_ids) | set(blocking_ids) # dùng set để loại nhưng cái giống nhau
-        return UserReaction.objects.filter(reaction__object_id=comment_id,reaction__content_type=comment_ct).exclude(user_id__in=exclude_ids).select_related('user__profile','reaction__settings', 'react')
+        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+        return UserReaction.objects.filter(reaction__object_id=comment_id,reaction__content_type=comment_ct).exclude(Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)).select_related('user__profile','reaction__settings', 'react')
 
 
 #===============ACTIVITY==========================
@@ -775,10 +775,9 @@ class FriendUser(generics.ListAPIView): #ds bạn bè cụ thể
         user=self.request.user
         if Block.objects.is_blocked(user, target_user): #check block
             raise PermissionDenied("Cannot see friend of this user")
-        blocked_ids = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
-        blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
-        exclude_ids = set(blocked_ids) | set(blocking_ids)
-        return Friend.objects.filter(from_user=target_user).select_related('to_user__profile').exclude(to_user_id__in=exclude_ids).order_by("-created")
+        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+        return Friend.objects.filter(from_user=target_user).select_related('to_user__profile').exclude(Q(to_user_id__in=blocked_ids) | Q(to_user_id__in =blocking_ids)).order_by("-created")
 
 
 class FollowView(generics.CreateAPIView):  # theo dõi người dùng
@@ -1329,19 +1328,25 @@ class SearchAPIView(APIView):
         user = request.user
         posts = []
         profiles = []
+        profiles_qs = Profile.objects.none()
         # Lấy danh sách user bị block và block mình
-        blocked_ids = [u.id for u in Block.objects.blocked(user)]
-        blocking_ids = [u.id for u in Block.objects.blocking(user)]
-        excluded_user_ids = set(blocked_ids) | set(blocking_ids)
+        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
         if search_type in ('all', 'posts'):  # chỉ search post khi cần
             try:
                 post_search = PostDocument.search().query( # chạy lấy ra các post tìm kiếm
                     "bool",
                     should=[
-                        MultiMatch(query=keyword, fields=['title'], fuzziness='AUTO', boost=1.0),
-                        # fuzziness là tự sửa lỗi chính tả rồi tìm
-                        {"match_phrase_prefix": {"title": {"query": keyword, "boost": 2.0}}},
-                        # ưu tiên prefix match hơn fuzzy ở boost 2.0 ví dụ tìm chữ hello sẽ cho ra kết quả hello trước và tự tìm được từ hell cho ra kết quả sau
+                        # Gõ đúng cụm từ liền nhau — rank cao nhất
+                        ESQ("bool", must=[ESQ("match_phrase", title=keyword)], boost=4.0),
+                        # Match thường + sửa lỗi chính tả
+                        ESQ("match", title={
+                            "query": keyword,
+                            "boost": 2.0,
+                            "fuzziness": "AUTO",#sửa lỗi chính tả và cho ra kết quả
+                            "prefix_length": 0, # bắt buộc từ đầu phải ko cần đúng ví dụ trần nghị thì trần phải đúng
+                            "max_expansions": 50 #giới hạn biến thể mà tự sửa lỗi chính tả cho ra ví dụ trn :tran,trần...
+                        }),
                     ],
                     minimum_should_match=1  # bắt buộc match ít nhất 1 điều kiện, tránh trả về kết quả rác
                 )[:50]  # lấy tối đa 50 kết quả thay vì mặc định 10
@@ -1353,7 +1358,7 @@ class SearchAPIView(APIView):
                     post_id__in=post_ids,
                     deleted__isnull=True
                 ).exclude(
-                    user_id__in=excluded_user_ids  # loại bài post của người bị block
+                    Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)  # loại bài post của người bị block
                 ).select_related('user__profile').prefetch_related('photos')
                 # sắp xếp lại theo thứ tự relevance của ES vì Django filter không giữ thứ tự
                 posts_dict = {str(p.post_id): p for p in posts_qs}
@@ -1365,14 +1370,23 @@ class SearchAPIView(APIView):
                 profile_search = ProfileDocument.search().query(
                     "bool",
                     should=[
-                        MultiMatch(query=keyword, fields=['first_name', 'last_name'], fuzziness='AUTO'),
-                        # lọc ra profile trùng với firstname và last name
-                        {"match_phrase_prefix": {"first_name": {"query": keyword, "boost": 2.0}}},
-                        # ưu tiên prefix match
-                        {"match_phrase_prefix": {"last_name": {"query": keyword, "boost": 2.0}}},
+                        # 1. Gõ đúng cụm — boost cao nhất: "tran nghi" → "Trần Nghị"
+                        ESQ("bool", must=[ESQ("match_phrase", full_name=keyword)], boost=5.0),
+                        # 2. Match full_name — gõ 1 phần cũng ra: "tran" → "Trần Nghị"
+                        ESQ("match", full_name={
+                            "query": keyword,
+                            "boost": 3.0,
+                            "fuzziness": "AUTO",  # sửa lỗi chính tả: "trna" → "tran"
+                            "prefix_length": 0,  # ký tự đầu phải ko cần đúng, tránh nhiễu
+                            "max_expansions": 50  # giới hạn số biến thể fuzziness tạo ra
+                        }),
+                        # 3. Fallback họ hoặc tên riêng lẻ
+                        ESQ("match",first_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 0}),
+                        ESQ("match", last_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 0}),
                     ],
                     minimum_should_match=1  # bắt buộc match ít nhất 1 điều kiện
                 )[:50]
+
                 # giữ thứ tự relevance từ Elasticsearch (score cao nhất lên đầu)
                 profile_hits = list(profile_search)
                 profile_ids = [hit.meta.id for hit in profile_hits]  # lấy các id từ kết quả lọc
@@ -1380,12 +1394,12 @@ class SearchAPIView(APIView):
                     id__in=profile_ids,
                     deleted__isnull=True
                 ).exclude(
-                    user_id__in=excluded_user_ids  # loại profile của người bị block
+                    Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)  # loại profile của người bị block
                 ).select_related('user')
                 # sắp xếp lại theo thứ tự relevance của ES vì Django filter không giữ thứ tự
                 profiles_dict = {str(p.id): p for p in profiles_qs}
                 profiles = [profiles_dict[pid] for pid in profile_ids if pid in profiles_dict]
-            except Exception:
+            except Exception as e:
                 profiles = []
 
         return Response({  # trả về serializer của 1 trong 2
@@ -1405,39 +1419,31 @@ class FriendSuggestion(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-
-        # lọc ra bạn
+        # lọc ra bạn của mình
         friend_ids = Friend.objects.filter(from_user=user).values_list('to_user_id', flat=True)
-
+        #bạn của bạn mình
+        friends_of_friends_ids = Friend.objects.filter(from_user_id__in=friend_ids).values('to_user_id')
         # loại trừ
-        sent_ids = [r.to_user_id for r in Friend.objects.sent_requests(user)]
-        received_ids = [r.from_user_id for r in Friend.objects.unread_requests(user=user)]
-        blocked_ids = [u.id for u in Block.objects.blocked(user)]
-        blocking_ids = [u.id for u in Block.objects.blocking(user)]
-
-        excluded_user_ids = (
-                set(friend_ids) | set(sent_ids) | set(received_ids) |
-                set(blocked_ids) | set(blocking_ids) | {user.id}
-        )  # gộp các set lại, set để k trùng
+        sent_ids = FriendshipRequest.objects.filter(from_user=user).values_list("to_user_id", flat=True)
+        received_ids = FriendshipRequest.objects.filter(to_user=user).values_list("from_user_id", flat=True)
+        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
 
         # lọc các profile có id trong id danh sách bạn bè của bạn mình
         return (
             Profile.objects.filter(
-                user__id__in=Friend.objects.filter(  # profile có id trong friend_ids
-                    from_user_id__in=friend_ids
-                ).values_list('to_user_id', flat=True)  # flat=True để lấy 1 field duy nhất là id
+                user__id__in=friends_of_friends_ids
             )
-            .exclude(user__id__in=excluded_user_ids)  # loại trừ những ng này
+            .exclude(Q(user_id__in=friend_ids) | Q(user_id=user.id)| Q(user_id__in=sent_ids) | Q(user_id__in=received_ids) | Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids))  # loại trừ những ng này
             .annotate(
                 mutual_count=Count(
-                    'user__friends',
-                    filter=Q(user__friends__from_user_id__in=friend_ids)
+                    'user__friends', #user là 1-1 Profile và friends là related name của to_user
+                    filter=Q(user__friends__from_user_id__in=friend_ids), # dếm người user nào nằm trong danh sách bạn bè của mình nhiều nhất
+                    distince=True
                 )
             )  # đếm số bạn chung
             .select_related('user')  # join với user
             .order_by('-mutual_count')  # lọc ra số bạn chung nhiều nhất
         )
-
-
 
 

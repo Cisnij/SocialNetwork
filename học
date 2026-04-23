@@ -788,6 +788,11 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
                 models.Index(fields=['actor']),
             ]#ví dụ nó sẽ lưu vào user là 5 trong db index và mốt nó truy vấn chỉ cần vào đó tìm user 5 sẽ ra row 1000
         -cache page: dùng cho các api trả ra k cần query và công khai, nó gọi view và nếu có trong view thì response, khác cache ops là ops nó gọi query trong db và nếu có lưu cache thì trả luôn(k dùng khi filter theo user vì nó là private dễ lấy info user b cho user a)
+        - Subquery trong filter posts = Post.objects.filter(author_id__in=Subquery(friend_ids)) tức là nó sẽ lồng các câu lệnh sql kiểu SELECT * FROM post WHERE author_id IN (SELECT from_user_id FROM friend WHERE to_user_id = 123), dùng khi filter bằng kết quả của query khác sẽ nhanh hơn thay vì user_id__in
+        -Q dùng cho thục thi and or not trong db không cần quay về python
+            Q(a=1) & Q(b=2)   # AND
+            Q(a=1) | Q(b=2)   # OR
+            ~Q(a=1)           # NOT
     -Model nâng cao
         Trong model có 2 cách dùng hàm tiện ích một là @property : nhưng property sẽ không nhận tham số truyền vào và chỉ nhận self
         cách 2 là method, viết def như bth bên trong đó mà k dùng @property: truyền đc tham số để check các thứ

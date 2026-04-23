@@ -138,3 +138,7 @@ ELASTICSEARCH_DSL = {
         'hosts': 'http://localhost:9200'
     }
 }
+#=============sửa cấu hình spectacular lấy thằng api lỗi luôn=========================
+SPECTACULAR_SETTINGS = {
+    'DISABLE_ERRORS_AND_WARNINGS': True,
+}

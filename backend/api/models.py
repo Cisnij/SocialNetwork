@@ -129,6 +129,7 @@ class Comment(SafeDeleteModel):
         return f"Comment {self.id} | user_id={self.user_id} | post_id={self.post_id} | {self.content[:30]}"
     class Meta:
         indexes = [
+            models.Index(fields=['post', 'parent', '-is_pinned', '-created_at']),
             models.Index(fields=['post', '-created_at']),
             models.Index(fields=['user']),
             models.Index(fields=['parent']),

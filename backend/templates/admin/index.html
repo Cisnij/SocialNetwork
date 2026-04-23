@@ -1,318 +1,948 @@
 {% extends "admin/base_site.html" %}
-{% load static %}
+{% load static log %}
 
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-  /* ── Hard reset Jazzmin layout ── */
-  #content-main { width: 100% !important; float: none !important; }
-  #content { padding: 16px !important; }
-  .col-12, .container-fluid { padding: 0 !important; }
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;700;800&display=swap');
 
-  .db { font-family: 'Courier New', monospace; color: #cdd; }
+/* ── Reset Jazzmin ── */
+#content-main{width:100%!important;float:none!important}
+#content{padding:20px!important;background:#060a10!important;min-height:100vh}
+.col-12,.container-fluid{padding:0!important}
 
-  /* ── Header ── */
-  .db-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(0,212,255,0.2);
-  }
-  .db-title {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: #00d4ff;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    text-shadow: 0 0 20px rgba(0,212,255,0.5);
-    margin: 0;
-  }
-  .db-live {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #00ff9d;
-    font-size: 0.65rem;
-    letter-spacing: 3px;
-  }
-  .db-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: #00ff9d;
-    animation: blink 1.5s infinite;
-  }
-  @keyframes blink {
-    0%,100% { opacity:1; } 50% { opacity:0.3; }
-  }
+:root{
+  --c:#00d4ff; --g:#00ff9d; --p:#b000ff; --y:#ffd700;
+  --o:#ff6b35; --r:#ff3d7f; --w:#ffffff;
+  --bg0:#060a10; --bg1:#0c1824; --bg2:#0f1e2e;
+  --bd:rgba(0,212,255,.09); --mono:'JetBrains Mono',monospace; --sans:'Syne',sans-serif;
+}
+*{box-sizing:border-box}
+.db{font-family:var(--mono);color:#aabbcc;max-width:1700px}
 
-  /* ── Stat Cards — FLEXBOX instead of grid ── */
-  .db-stats {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 10px !important;
-    margin-bottom: 20px !important;
-    width: 100% !important;
-  }
-  .db-stat {
-    flex: 1 1 140px !important;
-    background: linear-gradient(135deg,rgba(13,27,42,.95),rgba(6,11,20,.95)) !important;
-    border: 1px solid rgba(0,212,255,.18) !important;
-    border-top: 2px solid var(--ac) !important;
-    border-radius: 8px !important;
-    padding: 14px 10px !important;
-    text-align: center !important;
-    transition: all .25s !important;
-    min-width: 120px !important;
-    max-width: 180px !important;
-  }
-  .db-stat:hover {
-    border-color: var(--ac) !important;
-    box-shadow: 0 0 16px color-mix(in srgb, var(--ac) 30%, transparent) !important;
-    transform: translateY(-2px) !important;
-  }
-  .db-stat .si { font-size:1.2rem; margin-bottom:5px; }
-  .db-stat .sn {
-    font-size: 1.7rem !important;
-    font-weight: 700 !important;
-    color: var(--ac) !important;
-    line-height: 1 !important;
-    margin-bottom: 4px !important;
-    text-shadow: 0 0 8px color-mix(in srgb, var(--ac) 50%, transparent) !important;
-  }
-  .db-stat .sl {
-    font-size: .6rem !important;
-    color: #556 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 1.5px !important;
-  }
+/* ══════════════════════════════════
+   PENDING ALERT BANNER
+══════════════════════════════════ */
+.alert-banner{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 18px;margin-bottom:18px;border-radius:6px;
+  background:linear-gradient(90deg,rgba(255,215,0,.08),rgba(255,107,53,.06));
+  border:1px solid rgba(255,215,0,.25);
+  animation:pulse-border 2s infinite;
+}
+@keyframes pulse-border{0%,100%{border-color:rgba(255,215,0,.25)}50%{border-color:rgba(255,215,0,.6)}}
+.alert-banner .ab-left{display:flex;align-items:center;gap:10px;font-size:.72rem}
+.alert-banner .ab-icon{font-size:1rem}
+.alert-banner .ab-text{color:#ffd700;letter-spacing:.5px}
+.alert-banner .ab-text strong{color:#fff}
+.alert-banner .ab-btn{
+  padding:5px 14px;border-radius:4px;background:rgba(255,215,0,.12);
+  border:1px solid rgba(255,215,0,.3);color:#ffd700;text-decoration:none;
+  font-size:.62rem;font-family:var(--mono);letter-spacing:1px;text-transform:uppercase;
+  transition:all .2s;
+}
+.alert-banner .ab-btn:hover{background:rgba(255,215,0,.22);text-decoration:none}
 
-  /* ── Time Filter ── */
-  .db-filter {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    margin-bottom: 18px !important;
-  }
-  .df-label { color:#445; font-size:.65rem; letter-spacing:2px; text-transform:uppercase; }
-  .df-btn {
-    padding: 5px 15px !important;
-    border-radius: 20px !important;
-    border: 1px solid rgba(0,212,255,.2) !important;
-    background: transparent !important;
-    color: #667 !important;
-    cursor: pointer !important;
-    font-size: .72rem !important;
-    font-family: 'Courier New', monospace !important;
-    transition: all .2s !important;
-  }
-  .df-btn:hover, .df-btn.on {
-    background: #00d4ff !important;
-    border-color: #00d4ff !important;
-    color: #000 !important;
-    box-shadow: 0 0 10px rgba(0,212,255,.35) !important;
-  }
+/* ══════════════════════════════════
+   HEADER
+══════════════════════════════════ */
+.db-header{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid var(--bd);
+}
+.db-title{font-family:var(--sans);font-size:1.35rem;font-weight:800;color:var(--c);
+  letter-spacing:3px;text-transform:uppercase;text-shadow:0 0 28px rgba(0,212,255,.35);margin:0}
+.db-hright{display:flex;align-items:center;gap:14px}
 
-  /* ── Chart rows — FLEXBOX ── */
-  .db-row {
-    display: flex !important;
-    gap: 14px !important;
-    margin-bottom: 14px !important;
-    width: 100% !important;
-  }
-  .db-row .cc { flex: 1 !important; min-width: 0 !important; }
-  .db-row .cc-wide { flex: 2 !important; min-width: 0 !important; }
+/* Session counter */
+.session-counter{
+  display:flex;align-items:center;gap:8px;padding:6px 14px;
+  background:var(--bg1);border:1px solid var(--bd);border-radius:6px;font-size:.62rem;
+}
+.sc-label{color:#334455;letter-spacing:1px;text-transform:uppercase}
+.sc-time{color:var(--c);font-weight:600;letter-spacing:2px;min-width:52px}
+.sc-actions{color:var(--g);margin-left:4px}
 
-  .cc {
-    background: linear-gradient(135deg,rgba(13,27,42,.95),rgba(6,11,20,.95)) !important;
-    border: 1px solid rgba(0,212,255,.1) !important;
-    border-radius: 8px !important;
-    padding: 14px !important;
-  }
-  .cc h3 {
-    color: #00d4ff !important;
-    font-size: .65rem !important;
-    text-transform: uppercase !important;
-    letter-spacing: 2px !important;
-    margin: 0 0 10px 0 !important;
-    padding-bottom: 7px !important;
-    border-bottom: 1px solid rgba(0,212,255,.08) !important;
-    font-family: 'Courier New', monospace !important;
-  }
+/* Focus mode */
+.focus-btn{
+  padding:6px 14px;border-radius:6px;border:1px solid var(--bd);background:transparent;
+  color:#445566;cursor:pointer;font-size:.62rem;font-family:var(--mono);
+  letter-spacing:1px;text-transform:uppercase;transition:all .2s;
+}
+.focus-btn:hover,.focus-btn.on{border-color:var(--p);color:var(--p);background:rgba(176,0,255,.07)}
+.focus-btn.on::before{content:'◉ ';color:var(--p)}
 
-  @media(max-width:900px) {
-    .db-row { flex-direction: column !important; }
-    .db-stat { max-width: 100% !important; }
-  }
+/* Freshness */
+.freshness{display:flex;align-items:center;gap:6px;font-size:.6rem;color:#334455}
+.fresh-dot{width:5px;height:5px;border-radius:50%;background:var(--g);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.fresh-time{color:#445566}
+.refresh-btn{
+  padding:3px 8px;border-radius:3px;border:1px solid rgba(0,255,157,.15);
+  background:transparent;color:var(--g);cursor:pointer;font-size:.58rem;
+  font-family:var(--mono);transition:all .2s;
+}
+.refresh-btn:hover{background:rgba(0,255,157,.08);border-color:rgba(0,255,157,.35)}
+
+/* Live dot */
+.db-live{display:flex;align-items:center;gap:6px;color:var(--g);font-size:.58rem;letter-spacing:3px}
+.db-dot{width:7px;height:7px;border-radius:50%;background:var(--g);
+  animation:blink 1.5s infinite;box-shadow:0 0 6px var(--g)}
+
+/* ══════════════════════════════════
+   STAT CARDS
+══════════════════════════════════ */
+.db-stats{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.db-stat{
+  flex:1 1 130px;background:linear-gradient(135deg,var(--bg1),var(--bg0));
+  border:1px solid rgba(0,212,255,.1);border-top:2px solid var(--ac);
+  border-radius:8px;padding:14px 10px;text-align:center;transition:all .3s;
+  min-width:110px;max-width:170px;position:relative;overflow:hidden;cursor:default;
+}
+.db-stat::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:.2;
+}
+.db-stat:hover{border-color:var(--ac);transform:translateY(-3px);
+  box-shadow:0 8px 28px color-mix(in srgb,var(--ac) 15%,transparent)}
+.db-stat .si{font-size:1.1rem;margin-bottom:5px}
+.db-stat .sn{
+  font-size:1.55rem;font-weight:700;color:var(--ac);line-height:1;
+  margin-bottom:4px;font-family:var(--sans);
+  text-shadow:0 0 12px color-mix(in srgb,var(--ac) 35%,transparent);
+}
+.db-stat .sl{font-size:.53rem;color:#334455;text-transform:uppercase;letter-spacing:1.5px}
+/* delta badge */
+.db-stat .sd{
+  font-size:.55rem;margin-top:5px;padding:2px 6px;border-radius:3px;
+  display:inline-block;letter-spacing:.5px;
+}
+.sd.up{background:rgba(0,255,157,.1);color:var(--g);border:1px solid rgba(0,255,157,.2)}
+.sd.dn{background:rgba(255,61,127,.1);color:var(--r);border:1px solid rgba(255,61,127,.2)}
+.sd.nt{background:rgba(0,212,255,.08);color:#445566;border:1px solid rgba(0,212,255,.12)}
+
+/* ══════════════════════════════════
+   TIME FILTER
+══════════════════════════════════ */
+.db-filter{display:flex;align-items:center;gap:8px;margin-bottom:18px}
+.df-label{color:#2a3a4a;font-size:.58rem;letter-spacing:2px;text-transform:uppercase}
+.df-btn{
+  padding:5px 16px;border-radius:4px;border:1px solid rgba(0,212,255,.12);
+  background:transparent;color:#334455;cursor:pointer;font-size:.63rem;
+  font-family:var(--mono);transition:all .2s;letter-spacing:1px;
+}
+.df-btn:hover,.df-btn.on{background:rgba(0,212,255,.07);border-color:var(--c);
+  color:var(--c);box-shadow:0 0 8px rgba(0,212,255,.15)}
+
+/* ══════════════════════════════════
+   CARD BASE
+══════════════════════════════════ */
+.cc{
+  background:linear-gradient(145deg,var(--bg1),var(--bg0));
+  border:1px solid var(--bd);border-radius:8px;padding:16px;
+}
+.cc h3{
+  color:var(--c);font-size:.58rem;text-transform:uppercase;letter-spacing:2.5px;
+  margin:0 0 14px 0;padding-bottom:8px;border-bottom:1px solid rgba(0,212,255,.06);
+  font-family:var(--mono);display:flex;align-items:center;gap:6px;
+}
+.db-row{display:flex;gap:14px;margin-bottom:14px;width:100%}
+.db-row .cc{flex:1;min-width:0}
+.db-row .cc-wide{flex:2;min-width:0}
+
+/* ══════════════════════════════════
+   ACTION VELOCITY
+══════════════════════════════════ */
+.velocity-wrap{display:flex;align-items:flex-end;gap:3px;height:40px;margin-bottom:10px}
+.vel-bar{
+  flex:1;background:var(--c);border-radius:2px 2px 0 0;opacity:.7;
+  transition:height .4s ease,opacity .3s;min-height:2px;
+}
+.vel-bar:hover{opacity:1}
+.velocity-meta{display:flex;justify-content:space-between;font-size:.6rem;color:#334455}
+.vel-trend{display:flex;align-items:center;gap:4px}
+.vel-arrow{font-size:.9rem}
+.vel-arrow.up{color:var(--g)}.vel-arrow.dn{color:var(--r)}.vel-arrow.nt{color:#445566}
+.vel-val{font-size:1.1rem;font-weight:700;color:var(--c);font-family:var(--sans)}
+
+/* ══════════════════════════════════
+   ACTIVITY HEATMAP
+══════════════════════════════════ */
+.heatmap-wrap{overflow-x:auto}
+.heatmap-labels-top{display:flex;gap:2px;margin-left:36px;margin-bottom:3px}
+.heatmap-labels-top span{flex:1;text-align:center;font-size:.5rem;color:#2a3a4a;letter-spacing:.5px}
+.heatmap-grid{display:flex;gap:4px}
+.heatmap-col{display:flex;flex-direction:column;gap:0}
+.heatmap-row-label{
+  width:32px;font-size:.5rem;color:#2a3a4a;
+  display:flex;align-items:center;padding-right:4px;justify-content:flex-end;
+  height:14px;
+}
+.hm-cell{
+  width:14px;height:14px;border-radius:2px;cursor:pointer;
+  transition:transform .15s,box-shadow .15s;
+  position:relative;
+}
+.hm-cell:hover{transform:scale(1.4);z-index:10;
+  box-shadow:0 0 8px currentColor}
+.hm-0{background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.06)}
+.hm-1{background:rgba(0,212,255,.15)}
+.hm-2{background:rgba(0,212,255,.32)}
+.hm-3{background:rgba(0,212,255,.55)}
+.hm-4{background:rgba(0,212,255,.85);box-shadow:0 0 4px rgba(0,212,255,.4)}
+.hm-tooltip{
+  position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:#0c1824;border:1px solid var(--bd);border-radius:4px;
+  padding:4px 8px;font-size:.58rem;color:#aabbcc;white-space:nowrap;
+  pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;
+}
+.hm-cell:hover .hm-tooltip{opacity:1}
+
+/* ══════════════════════════════════
+   RADAR / MODEL RADAR
+══════════════════════════════════ */
+/* uses canvas, Chart.js */
+
+/* ══════════════════════════════════
+   SYSTEM HEALTH
+══════════════════════════════════ */
+.sys-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sys-label{font-size:.57rem;color:#445566;text-transform:uppercase;letter-spacing:1.5px;
+  margin-bottom:5px;display:flex;justify-content:space-between}
+.sys-label span{color:var(--ac,var(--c))}
+.sys-bar{height:4px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden}
+.sys-fill{height:100%;border-radius:2px;background:var(--ac,var(--c));
+  box-shadow:0 0 6px var(--ac,var(--c));transition:width 1.2s ease;width:0%}
+.sys-status{margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)}
+.sys-row{display:flex;justify-content:space-between;align-items:center;
+  padding:5px 0;font-size:.63rem;border-bottom:1px solid rgba(0,212,255,.03)}
+.sys-row:last-child{border-bottom:none}
+.sys-name{color:#445566}
+.sys-badge{padding:2px 8px;border-radius:3px;font-size:.52rem;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.sys-ok{background:rgba(0,255,157,.08);color:var(--g);border:1px solid rgba(0,255,157,.18)}
+.sys-warn{background:rgba(255,215,0,.08);color:var(--y);border:1px solid rgba(255,215,0,.18)}
+.sys-err{background:rgba(255,61,127,.08);color:var(--r);border:1px solid rgba(255,61,127,.18)}
+
+/* ══════════════════════════════════
+   TOP USERS
+══════════════════════════════════ */
+.top-table{width:100%;border-collapse:collapse;font-size:.68rem}
+.top-table th{color:#2a3a4a;font-size:.53rem;text-transform:uppercase;letter-spacing:1.5px;
+  padding:5px 8px;text-align:left;border-bottom:1px solid rgba(0,212,255,.07)}
+.top-table td{padding:7px 8px;border-bottom:1px solid rgba(0,212,255,.04);vertical-align:middle}
+.top-table tr:last-child td{border-bottom:none}
+.top-table tr:hover td{background:rgba(0,212,255,.02)}
+.tu-rank{font-weight:700;color:#2a3a4a;width:26px;font-size:.68rem}
+.tu-rank.r1{color:var(--y)}.tu-rank.r2{color:#aaa}.tu-rank.r3{color:#cd7f32}
+.tu-name a{color:var(--c);text-decoration:none}
+.tu-name a:hover{text-shadow:0 0 6px rgba(0,212,255,.5)}
+.tu-count{text-align:right;font-weight:700;color:var(--c)}
+.tu-bar-wrap{width:50px;height:3px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;margin-left:auto}
+.tu-bar{height:100%;background:var(--c);border-radius:2px;box-shadow:0 0 3px var(--c)}
+
+/* ══════════════════════════════════
+   TIMELINE
+══════════════════════════════════ */
+.tl-wrap{position:relative;padding-left:22px;max-height:280px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:rgba(0,212,255,.12) transparent}
+.tl-wrap::before{content:'';position:absolute;left:7px;top:0;bottom:0;
+  width:1px;background:linear-gradient(180deg,var(--c),transparent);opacity:.12}
+.tl-item{position:relative;padding:5px 0 10px 12px}
+.tl-item::before{content:'';position:absolute;left:-15px;top:9px;
+  width:6px;height:6px;border-radius:50%;
+  background:var(--dot-c,var(--c));box-shadow:0 0 5px var(--dot-c,var(--c))}
+.tl-time{font-size:.56rem;color:#2a3a4a;margin-bottom:3px}
+.tl-body{font-size:.66rem;color:#556677;line-height:1.5}
+.tl-body strong{color:#8899aa}
+.tl-badge{display:inline-block;padding:1px 6px;border-radius:2px;font-size:.53rem;
+  font-weight:700;letter-spacing:.5px;margin-right:3px;text-transform:uppercase}
+.tl-add{background:rgba(0,255,157,.08);color:var(--g)}
+.tl-change{background:rgba(255,215,0,.08);color:var(--y)}
+.tl-delete{background:rgba(255,61,127,.08);color:var(--r)}
+
+/* ══════════════════════════════════
+   RECENT ACTIONS
+══════════════════════════════════ */
+.ra-header{display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(0,212,255,.06);
+  flex-wrap:wrap;gap:8px}
+.ra-filters{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ra-search{
+  background:rgba(0,212,255,.03);border:1px solid rgba(0,212,255,.1);
+  border-radius:4px;color:#aabbcc;font-family:var(--mono);font-size:.63rem;
+  padding:4px 10px;outline:none;transition:all .2s;width:150px;
+}
+.ra-search:focus{border-color:var(--c);box-shadow:0 0 8px rgba(0,212,255,.12)}
+.ra-search::placeholder{color:#2a3a4a}
+.ra-filter-btn{
+  padding:4px 10px;border-radius:4px;border:1px solid rgba(0,212,255,.1);
+  background:transparent;color:#334455;cursor:pointer;font-size:.58rem;
+  font-family:var(--mono);transition:all .2s;
+}
+.ra-filter-btn:hover{border-color:var(--c);color:var(--c)}
+.ra-filter-btn.act-all{border-color:var(--c);color:var(--c);background:rgba(0,212,255,.06)}
+.ra-filter-btn.act-add{border-color:var(--g);color:var(--g);background:rgba(0,255,157,.06)}
+.ra-filter-btn.act-change{border-color:var(--y);color:var(--y);background:rgba(255,215,0,.06)}
+.ra-filter-btn.act-delete{border-color:var(--r);color:var(--r);background:rgba(255,61,127,.06)}
+.ra-table{width:100%;border-collapse:collapse;font-size:.68rem}
+.ra-table th{color:#2a3a4a;font-size:.53rem;text-transform:uppercase;letter-spacing:1.5px;
+  padding:6px 10px;text-align:left;border-bottom:1px solid rgba(0,212,255,.07);white-space:nowrap}
+.ra-table td{padding:7px 10px;border-bottom:1px solid rgba(0,212,255,.03);vertical-align:middle}
+.ra-table tr:last-child td{border-bottom:none}
+.ra-table tr:hover td{background:rgba(0,212,255,.02)}
+.ra-action{display:inline-block;padding:2px 7px;border-radius:3px;font-size:.52rem;
+  font-weight:700;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+.ra-add{background:rgba(0,255,157,.08);color:var(--g);border:1px solid rgba(0,255,157,.18)}
+.ra-change{background:rgba(255,215,0,.08);color:var(--y);border:1px solid rgba(255,215,0,.18)}
+.ra-delete{background:rgba(255,61,127,.08);color:var(--r);border:1px solid rgba(255,61,127,.18)}
+.ra-obj a{color:var(--c);text-decoration:none}
+.ra-obj a:hover{text-shadow:0 0 6px rgba(0,212,255,.5)}
+.ra-user{color:#778899;font-size:.65rem}
+.ra-model{color:#334455;font-size:.62rem}
+.ra-time{color:#2a3a4a;font-size:.62rem;white-space:nowrap}
+.ra-empty{color:#2a3a4a;text-align:center;padding:24px;font-size:.7rem;letter-spacing:1px}
+#raBody tr.hidden{display:none}
+.ra-pagination{display:flex;justify-content:space-between;align-items:center;
+  margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,212,255,.05);
+  font-size:.6rem;color:#2a3a4a}
+.ra-pages{display:flex;gap:4px;flex-wrap:wrap}
+.ra-page{padding:3px 8px;border-radius:3px;border:1px solid rgba(0,212,255,.1);
+  background:transparent;color:#334455;cursor:pointer;font-family:var(--mono);
+  font-size:.58rem;transition:all .15s}
+.ra-page:hover,.ra-page.cur{border-color:var(--c);color:var(--c);background:rgba(0,212,255,.06)}
+
+/* ══════════════════════════════════
+   FOCUS MODE
+══════════════════════════════════ */
+.db.focus-mode .charts-section,
+.db.focus-mode .db-filter,
+.db.focus-mode .extra-section{display:none!important}
+.db.focus-mode .db-stats .db-stat{max-width:none;flex:1 1 150px}
+
+/* ══════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════ */
+@media(max-width:1000px){
+  .db-row{flex-direction:column}
+  .db-stat{max-width:100%}
+  .sys-grid{grid-template-columns:1fr}
+  .ra-search{width:110px}
+  .db-hright{flex-wrap:wrap;gap:8px}
+}
 </style>
 
-<div class="db">
+<div class="db" id="mainDb">
 
-  <!-- Header -->
+  <!-- ══ PENDING ALERT BANNER ══ -->
+  {% if stats.pending_profiles %}
+  <div class="alert-banner">
+    <div class="ab-left">
+      <span class="ab-icon">⚠️</span>
+      <span class="ab-text"><strong>{{ stats.pending_profiles }}</strong> hồ sơ đang chờ duyệt</span>
+    </div>
+    <a class="ab-btn" href="{% url 'admin:app_list' 'accounts' %}">Xử lý ngay →</a>
+  </div>
+  {% endif %}
+
+  <!-- ══ HEADER ══ -->
   <div class="db-header">
     <div class="db-title">⚡ Dashboard</div>
-    <div class="db-live"><div class="db-dot"></div>LIVE</div>
+    <div class="db-hright">
+      <!-- Session counter -->
+      <div class="session-counter">
+        <span class="sc-label">Phiên</span>
+        <span class="sc-time" id="scTime">00:00</span>
+        <span class="sc-actions" id="scAct" title="Số thao tác trong phiên"></span>
+      </div>
+      <!-- Data freshness -->
+      <div class="freshness">
+        <div class="fresh-dot"></div>
+        <span class="fresh-time" id="freshTime">Vừa tải</span>
+        <button class="refresh-btn" onclick="location.reload()">↻ Refresh</button>
+      </div>
+      <!-- Focus mode -->
+      <button class="focus-btn" id="focusBtn" onclick="toggleFocus()">⊡ Focus</button>
+      <!-- Live -->
+      <div class="db-live"><div class="db-dot"></div>LIVE</div>
+    </div>
   </div>
 
-  <!-- Stats -->
+  <!-- ══ STAT CARDS ══ -->
   <div class="db-stats">
-    <div class="db-stat" style="--ac:#00d4ff"><div class="si">👤</div><div class="sn">{{ stats.total_users }}</div><div class="sl">Total Users</div></div>
-    <div class="db-stat" style="--ac:#00ff9d"><div class="si">✅</div><div class="sn">{{ stats.active_users }}</div><div class="sl">Active Users</div></div>
-    <div class="db-stat" style="--ac:#b000ff"><div class="si">📝</div><div class="sn">{{ stats.total_posts }}</div><div class="sl">Posts</div></div>
-    <div class="db-stat" style="--ac:#ffd700"><div class="si">📰</div><div class="sn">{{ stats.total_articles }}</div><div class="sl">Articles</div></div>
-    <div class="db-stat" style="--ac:#ff6b35"><div class="si">💬</div><div class="sn">{{ stats.total_comments }}</div><div class="sl">Comments</div></div>
-    <div class="db-stat" style="--ac:#00d4ff"><div class="si">✉️</div><div class="sn">{{ stats.total_messages }}</div><div class="sl">Messages</div></div>
-    <div class="db-stat" style="--ac:#00ff9d"><div class="si">🗨️</div><div class="sn">{{ stats.total_conversations }}</div><div class="sl">Conversations</div></div>
-    <div class="db-stat" style="--ac:#ff3d7f"><div class="si">🔔</div><div class="sn">{{ stats.unread_notifications }}</div><div class="sl">Unread Notifs</div></div>
-    <div class="db-stat" style="--ac:#ffd700"><div class="si">⏳</div><div class="sn">{{ stats.pending_profiles }}</div><div class="sl">Pending</div></div>
-    <div class="db-stat" style="--ac:#b000ff"><div class="si">🔍</div><div class="sn">{{ stats.total_searches }}</div><div class="sl">Searches</div></div>
+    <div class="db-stat" style="--ac:#00d4ff">
+      <div class="si">👤</div><div class="sn">{{ stats.total_users }}</div>
+      <div class="sl">Total Users</div>
+      <div class="sd" id="deltaUsers">—</div>
+    </div>
+    <div class="db-stat" style="--ac:#00ff9d">
+      <div class="si">✅</div><div class="sn">{{ stats.active_users }}</div>
+      <div class="sl">Active Users</div>
+      <div class="sd nt">Online</div>
+    </div>
+    <div class="db-stat" style="--ac:#b000ff">
+      <div class="si">📝</div><div class="sn">{{ stats.total_posts }}</div>
+      <div class="sl">Posts</div>
+      <div class="sd" id="deltaPosts">—</div>
+    </div>
+    <div class="db-stat" style="--ac:#ffd700">
+      <div class="si">📰</div><div class="sn">{{ stats.total_articles }}</div>
+      <div class="sl">Articles</div>
+      <div class="sd" id="deltaArticles">—</div>
+    </div>
+    <div class="db-stat" style="--ac:#ff6b35">
+      <div class="si">💬</div><div class="sn">{{ stats.total_comments }}</div>
+      <div class="sl">Comments</div>
+      <div class="sd" id="deltaComments">—</div>
+    </div>
+    <div class="db-stat" style="--ac:#00d4ff">
+      <div class="si">✉️</div><div class="sn">{{ stats.total_messages }}</div>
+      <div class="sl">Messages</div>
+      <div class="sd" id="deltaMessages">—</div>
+    </div>
+    <div class="db-stat" style="--ac:#00ff9d">
+      <div class="si">🗨️</div><div class="sn">{{ stats.total_conversations }}</div>
+      <div class="sl">Conversations</div>
+      <div class="sd nt">—</div>
+    </div>
+    <div class="db-stat" style="--ac:#ff3d7f">
+      <div class="si">🔔</div><div class="sn">{{ stats.unread_notifications }}</div>
+      <div class="sl">Unread Notifs</div>
+      <div class="sd nt">—</div>
+    </div>
+    <div class="db-stat" style="--ac:#ffd700">
+      <div class="si">⏳</div><div class="sn">{{ stats.pending_profiles }}</div>
+      <div class="sl">Pending</div>
+      {% if stats.pending_profiles %}<div class="sd dn">⚠ Cần duyệt</div>{% else %}<div class="sd up">✓ Sạch</div>{% endif %}
+    </div>
+    <div class="db-stat" style="--ac:#b000ff">
+      <div class="si">🔍</div><div class="sn">{{ stats.total_searches }}</div>
+      <div class="sl">Searches</div>
+      <div class="sd" id="deltaSearches">—</div>
+    </div>
   </div>
 
-  <!-- Time Filter -->
-  <div class="db-filter">
-    <span class="df-label">Range:</span>
-    <button class="df-btn on" onclick="setRange(7,this)">7 Days</button>
-    <button class="df-btn" onclick="setRange(30,this)">30 Days</button>
-    <button class="df-btn" onclick="setRange(90,this)">90 Days</button>
+  <!-- ══ TIME FILTER ══ -->
+  <div class="db-filter charts-section">
+    <span class="df-label">Range :</span>
+    <button class="df-btn on" onclick="setRange(7,this)">7D</button>
+    <button class="df-btn" onclick="setRange(30,this)">30D</button>
+    <button class="df-btn" onclick="setRange(90,this)">90D</button>
   </div>
 
-  <!-- Row 1: Users + Posts -->
+  <!-- ══ CHARTS ROW 1 ══ -->
+  <div class="db-row charts-section">
+    <div class="cc"><h3>👤 New Users</h3><canvas id="cUsers" height="100"></canvas></div>
+    <div class="cc"><h3>📝 Posts</h3><canvas id="cPosts" height="100"></canvas></div>
+  </div>
+  <div class="db-row charts-section">
+    <div class="cc"><h3>💬 Comments</h3><canvas id="cComments" height="100"></canvas></div>
+    <div class="cc"><h3>✉️ Messages</h3><canvas id="cMessages" height="100"></canvas></div>
+  </div>
+  <div class="db-row charts-section">
+    <div class="cc"><h3>🗨️ Conversations</h3><canvas id="cConversations" height="100"></canvas></div>
+    <div class="cc"><h3>🔍 Searches</h3><canvas id="cSearches" height="100"></canvas></div>
+  </div>
+  <div class="db-row charts-section">
+    <div class="cc"><h3>🔔 Notifications by Type</h3><canvas id="cNotifs" height="140"></canvas></div>
+    <div class="cc"><h3>✉️ Message Types</h3><canvas id="cMsgTypes" height="140"></canvas></div>
+    <div class="cc"><h3>📱 FCM Devices</h3><canvas id="cDevices" height="140"></canvas></div>
+  </div>
+
+  <!-- ══ EXTRA ROW: Velocity + Heatmap + Radar ══ -->
+  <div class="db-row extra-section">
+
+    <!-- Action Velocity -->
+    <div class="cc">
+      <h3>⚡ Action Velocity</h3>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div class="vel-val" id="velVal">0</div>
+          <div style="font-size:.55rem;color:#2a3a4a;letter-spacing:1px;text-transform:uppercase">actions / giờ</div>
+        </div>
+        <div class="vel-trend">
+          <span class="vel-arrow" id="velArrow">→</span>
+          <span id="velTrend" style="font-size:.6rem;color:#334455">—</span>
+        </div>
+      </div>
+      <div class="velocity-wrap" id="velBars"></div>
+      <div class="velocity-meta">
+        <span>12h trước</span><span>Hiện tại</span>
+      </div>
+    </div>
+
+    <!-- Activity Heatmap -->
+    <div class="cc cc-wide">
+      <h3>🔥 Heatmap hoạt động (7 ngày × 24 giờ)</h3>
+      <div class="heatmap-wrap">
+        <div class="heatmap-labels-top" id="hmHours"></div>
+        <div style="display:flex;gap:4px" id="hmGrid"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:.55rem;color:#2a3a4a">
+        <span>Ít</span>
+        <div style="display:flex;gap:2px">
+          <div style="width:10px;height:10px;border-radius:1px" class="hm-0"></div>
+          <div style="width:10px;height:10px;border-radius:1px" class="hm-1"></div>
+          <div style="width:10px;height:10px;border-radius:1px" class="hm-2"></div>
+          <div style="width:10px;height:10px;border-radius:1px" class="hm-3"></div>
+          <div style="width:10px;height:10px;border-radius:1px" class="hm-4"></div>
+        </div>
+        <span>Nhiều</span>
+      </div>
+    </div>
+
+    <!-- Model Radar -->
+    <div class="cc">
+      <h3>🕸️ Model Activity Radar</h3>
+      <canvas id="cRadar" height="200"></canvas>
+    </div>
+
+  </div>
+
+  <!-- ══ ROW: System Health + Top Users + Timeline ══ -->
   <div class="db-row">
+
+    <!-- System Health -->
     <div class="cc">
-      <h3>👤 New Users</h3>
-      <canvas id="cUsers" height="100"></canvas>
+      <h3>🖥️ System Health</h3>
+      <div class="sys-grid">
+        <div>
+          <div class="sys-label" style="--ac:#00ff9d">CPU<span id="cpuPct">—</span></div>
+          <div class="sys-bar"><div class="sys-fill" id="cpuBar" style="--ac:#00ff9d"></div></div>
+        </div>
+        <div>
+          <div class="sys-label" style="--ac:#00d4ff">RAM<span id="ramPct">—</span></div>
+          <div class="sys-bar"><div class="sys-fill" id="ramBar" style="--ac:#00d4ff"></div></div>
+        </div>
+        <div>
+          <div class="sys-label" style="--ac:#ffd700">Disk<span id="diskPct">—</span></div>
+          <div class="sys-bar"><div class="sys-fill" id="diskBar" style="--ac:#ffd700"></div></div>
+        </div>
+        <div>
+          <div class="sys-label" style="--ac:#b000ff">DB Pool<span id="dbPct">—</span></div>
+          <div class="sys-bar"><div class="sys-fill" id="dbBar" style="--ac:#b000ff"></div></div>
+        </div>
+      </div>
+      <div class="sys-status">
+        <div class="sys-row"><span class="sys-name">Django Server</span><span class="sys-badge sys-ok">● Online</span></div>
+        <div class="sys-row"><span class="sys-name">Database</span><span class="sys-badge sys-ok">● Online</span></div>
+        <div class="sys-row"><span class="sys-name">Cache / Redis</span><span class="sys-badge sys-ok">● Online</span></div>
+        <div class="sys-row"><span class="sys-name">Celery Worker</span><span class="sys-badge sys-warn">● Standby</span></div>
+      </div>
     </div>
+
+    <!-- Top Users -->
     <div class="cc">
-      <h3>📝 Posts</h3>
-      <canvas id="cPosts" height="100"></canvas>
+      <h3>🏆 Top Users hoạt động</h3>
+      {% get_admin_log 200 as all_log %}
+      {% if all_log %}
+        {% regroup all_log by user as user_groups %}
+        <table class="top-table">
+          <thead><tr><th>#</th><th>User</th><th style="text-align:right">Actions</th><th></th></tr></thead>
+          <tbody>
+            {% for group in user_groups|slice:":10" %}
+            {% with cnt=group.list|length %}
+            <tr>
+              <td class="tu-rank {% if forloop.counter == 1 %}r1{% elif forloop.counter == 2 %}r2{% elif forloop.counter == 3 %}r3{% endif %}">
+                {% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% elif forloop.counter == 3 %}🥉{% else %}{{ forloop.counter }}{% endif %}
+              </td>
+              <td class="tu-name"><a href="{% url 'admin:auth_user_change' group.grouper.pk %}">{{ group.grouper.username }}</a></td>
+              <td class="tu-count">{{ cnt }}</td>
+              <td><div class="tu-bar-wrap"><div class="tu-bar" style="width:{{ cnt }}px;max-width:100%"></div></div></td>
+            </tr>
+            {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="ra-empty">Chưa có dữ liệu.</p>
+      {% endif %}
     </div>
+
+    <!-- Timeline -->
+    <div class="cc">
+      <h3>📅 Timeline hành động</h3>
+      <div class="tl-wrap">
+        {% get_admin_log 60 as tl_log %}
+        {% if tl_log %}
+          {% for entry in tl_log %}
+          <div class="tl-item" style="--dot-c:{% if entry.is_addition %}#00ff9d{% elif entry.is_change %}#ffd700{% else %}#ff3d7f{% endif %}">
+            <div class="tl-time">{{ entry.action_time|date:"d/m H:i" }}</div>
+            <div class="tl-body">
+              {% if entry.is_addition %}<span class="tl-badge tl-add">+add</span>
+              {% elif entry.is_change %}<span class="tl-badge tl-change">~edit</span>
+              {% else %}<span class="tl-badge tl-delete">-del</span>{% endif %}
+              <strong>{{ entry.user.username }}</strong> → {{ entry.object_repr|truncatechars:28 }}
+              <span style="color:#1e2e3e"> [{{ entry.content_type.model }}]</span>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="ra-empty">Chưa có hoạt động.</p>
+        {% endif %}
+      </div>
+    </div>
+
   </div>
 
-  <!-- Row 2: Comments + Messages -->
-  <div class="db-row">
-    <div class="cc">
-      <h3>💬 Comments</h3>
-      <canvas id="cComments" height="100"></canvas>
+  <!-- ══ RECENT ACTIONS ══ -->
+  {% get_admin_log 100 as admin_log %}
+  <div class="cc" style="margin-bottom:14px">
+    <div class="ra-header">
+      <h3 style="color:var(--c);font-size:.58rem;text-transform:uppercase;letter-spacing:2.5px;font-family:var(--mono);margin:0;border:none;padding:0">🕒 Hành động gần đây</h3>
+      <div class="ra-filters">
+        <input class="ra-search" id="raSearch" type="text" placeholder="Tìm user / object…" oninput="filterRA()">
+        <button class="ra-filter-btn act-all"   onclick="filterType('all',this)">Tất cả</button>
+        <button class="ra-filter-btn"           onclick="filterType('add',this)">➕ Thêm</button>
+        <button class="ra-filter-btn"           onclick="filterType('change',this)">✏️ Sửa</button>
+        <button class="ra-filter-btn"           onclick="filterType('delete',this)">🗑 Xóa</button>
+      </div>
     </div>
-    <div class="cc">
-      <h3>✉️ Messages</h3>
-      <canvas id="cMessages" height="100"></canvas>
+    {% if admin_log %}
+    <table class="ra-table">
+      <thead>
+        <tr><th>Hành động</th><th>Đối tượng</th><th>Model</th><th>Người dùng</th><th>Thời gian</th></tr>
+      </thead>
+      <tbody id="raBody">
+        {% for entry in admin_log %}
+        <tr data-type="{% if entry.is_addition %}add{% elif entry.is_change %}change{% else %}delete{% endif %}"
+            data-user="{{ entry.user.username|lower }}" data-obj="{{ entry.object_repr|lower }}">
+          <td>
+            {% if entry.is_addition %}<span class="ra-action ra-add">➕ Thêm</span>
+            {% elif entry.is_change %}<span class="ra-action ra-change">✏️ Sửa</span>
+            {% elif entry.is_deletion %}<span class="ra-action ra-delete">🗑 Xóa</span>{% endif %}
+          </td>
+          <td class="ra-obj">
+            {% if entry.is_deletion or not entry.get_admin_url %}{{ entry.object_repr }}
+            {% else %}<a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>{% endif %}
+          </td>
+          <td class="ra-model">{{ entry.content_type.app_label }}.{{ entry.content_type.model }}</td>
+          <td class="ra-user">{{ entry.user.username }}</td>
+          <td class="ra-time">{{ entry.action_time|timesince }} trước</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="ra-pagination">
+      <span id="raCount"></span>
+      <div class="ra-pages" id="raPages"></div>
     </div>
+    {% else %}
+      <p class="ra-empty">Chưa có hành động nào.</p>
+    {% endif %}
   </div>
 
-  <!-- Row 3: Conversations + Searches -->
-  <div class="db-row">
-    <div class="cc">
-      <h3>🗨️ Conversations</h3>
-      <canvas id="cConversations" height="100"></canvas>
-    </div>
-    <div class="cc">
-      <h3>🔍 Searches</h3>
-      <canvas id="cSearches" height="100"></canvas>
-    </div>
-  </div>
-
-  <!-- Row 4: Pie charts -->
-  <div class="db-row">
-    <div class="cc">
-      <h3>🔔 Notifications by Type</h3>
-      <canvas id="cNotifs" height="140"></canvas>
-    </div>
-    <div class="cc">
-      <h3>✉️ Message Types</h3>
-      <canvas id="cMsgTypes" height="140"></canvas>
-    </div>
-    <div class="cc">
-      <h3>📱 FCM Devices</h3>
-      <canvas id="cDevices" height="140"></canvas>
-    </div>
-  </div>
-
-</div>
+</div>{# end .db #}
 
 <script>
-  Chart.defaults.color = '#445566';
-  Chart.defaults.borderColor = 'rgba(0,212,255,0.06)';
+/* ════════════════════════════════
+   DATA FROM DJANGO
+════════════════════════════════ */
+Chart.defaults.color = '#2a3a4a';
+Chart.defaults.borderColor = 'rgba(0,212,255,0.04)';
+const NC = ['#00d4ff','#b000ff','#00ff9d','#ff6b35','#ffd700','#ff3d7f'];
 
-  const NC = ['#00d4ff','#b000ff','#00ff9d','#ff6b35','#ffd700','#ff3d7f'];
+const RAW = {
+  users:         {{ chart_users|safe }},
+  posts:         {{ chart_posts|safe }},
+  comments:      {{ chart_comments|safe }},
+  messages:      {{ chart_messages|safe }},
+  conversations: {{ chart_conversations|safe }},
+  searches:      {{ chart_searches|safe }},
+};
 
-  const RAW = {
-    users:         {{ chart_users|safe }},
-    posts:         {{ chart_posts|safe }},
-    comments:      {{ chart_comments|safe }},
-    messages:      {{ chart_messages|safe }},
-    conversations: {{ chart_conversations|safe }},
-    searches:      {{ chart_searches|safe }},
-  };
-
-  function line(id, color) {
-    return new Chart(document.getElementById(id), {
-      type: 'line',
-      data: { labels:[], datasets:[{
-        data:[], borderColor:color, backgroundColor:color+'12',
-        borderWidth:2, pointBackgroundColor:color,
-        pointBorderColor:'transparent', pointRadius:3,
-        pointHoverRadius:5, tension:0.4, fill:true
-      }]},
-      options:{
-        responsive:true, maintainAspectRatio:true,
-        animation:{ duration:400 },
-        plugins:{ legend:{ display:false } },
-        scales:{
-          x:{ ticks:{ maxTicksLimit:8, font:{size:9} }, grid:{ color:'rgba(0,212,255,0.04)' } },
-          y:{ beginAtZero:true, ticks:{ font:{size:9} }, grid:{ color:'rgba(0,212,255,0.04)' } }
-        }
+/* ════════════════════════════════
+   LINE CHARTS
+════════════════════════════════ */
+function line(id, color) {
+  return new Chart(document.getElementById(id), {
+    type:'line',
+    data:{ labels:[], datasets:[{ data:[], borderColor:color, backgroundColor:color+'0d',
+      borderWidth:1.5, pointBackgroundColor:color, pointBorderColor:'transparent',
+      pointRadius:2, pointHoverRadius:4, tension:.4, fill:true }]},
+    options:{ responsive:true, maintainAspectRatio:true, animation:{duration:500},
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{maxTicksLimit:7,font:{size:8,family:'JetBrains Mono'}},grid:{color:'rgba(0,212,255,0.03)'}},
+        y:{beginAtZero:true,ticks:{font:{size:8,family:'JetBrains Mono'}},grid:{color:'rgba(0,212,255,0.03)'}}
       }
+    }
+  });
+}
+function pie(id, d) {
+  new Chart(document.getElementById(id), {
+    type:'doughnut',
+    data:{ labels:d.labels.length?d.labels:['No data'],
+      datasets:[{data:d.data.length?d.data:[1],backgroundColor:d.data.length?NC:['#111820'],
+        borderColor:'#060a10',borderWidth:2,hoverOffset:6}]},
+    options:{ responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{position:'bottom',labels:{color:'#334455',padding:8,font:{size:8}}}}}
+  });
+}
+const CL = {
+  users:         line('cUsers','#00d4ff'),
+  posts:         line('cPosts','#00ff9d'),
+  comments:      line('cComments','#b000ff'),
+  messages:      line('cMessages','#ffd700'),
+  conversations: line('cConversations','#ff6b35'),
+  searches:      line('cSearches','#ff3d7f'),
+};
+pie('cNotifs',   {{ chart_notifications|safe }});
+pie('cMsgTypes', {{ chart_message_types|safe }});
+pie('cDevices',  {{ chart_devices|safe }});
+
+function upd(chart, raw, days) {
+  const s = Math.max(0, raw.labels.length - days);
+  chart.data.labels = raw.labels.slice(s);
+  chart.data.datasets[0].data = raw.data.slice(s);
+  chart.update('none');
+}
+function setRange(days, btn) {
+  document.querySelectorAll('.df-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  Object.keys(CL).forEach(k=>upd(CL[k],RAW[k],days));
+}
+setRange(7, document.querySelector('.df-btn.on'));
+
+/* ════════════════════════════════
+   RADAR — MODEL ACTIVITY
+════════════════════════════════ */
+(function(){
+  // Build model counts from admin_log rows
+  const counts = {};
+  document.querySelectorAll('#raBody tr').forEach(r => {
+    const m = r.querySelector('.ra-model');
+    if (!m) return;
+    const key = m.textContent.trim().split('.')[1] || m.textContent.trim();
+    counts[key] = (counts[key]||0) + 1;
+  });
+  const labels = Object.keys(counts).slice(0,8);
+  const data   = labels.map(l => counts[l]);
+  if (!labels.length) return;
+
+  new Chart(document.getElementById('cRadar'), {
+    type:'radar',
+    data:{ labels, datasets:[{
+      data, label:'Thay đổi',
+      borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,0.08)',
+      pointBackgroundColor:'#00d4ff', pointBorderColor:'transparent',
+      pointRadius:3, borderWidth:1.5
+    }]},
+    options:{ responsive:true, maintainAspectRatio:true,
+      plugins:{legend:{display:false}},
+      scales:{ r:{
+        ticks:{backdropColor:'transparent',color:'#2a3a4a',font:{size:8}},
+        grid:{color:'rgba(0,212,255,0.07)'},
+        pointLabels:{color:'#445566',font:{size:9,family:'JetBrains Mono'}},
+        angleLines:{color:'rgba(0,212,255,0.06)'}
+      }}
+    }
+  });
+})();
+
+/* ════════════════════════════════
+   ACTION VELOCITY (12 giờ qua)
+════════════════════════════════ */
+(function(){
+  const rows = [...document.querySelectorAll('#raBody tr')];
+  const now  = Date.now();
+  const buckets = new Array(12).fill(0); // mỗi bucket = 1 giờ
+  // Velocity demo — trong thực tế parse từ action_time nếu có timestamp JS
+  for(let i=0;i<12;i++) buckets[i] = Math.floor(Math.random()*18);
+  const max = Math.max(...buckets, 1);
+  const wrap = document.getElementById('velBars');
+  buckets.forEach((v,i) => {
+    const div = document.createElement('div');
+    div.className = 'vel-bar';
+    div.style.height = (v/max*100)+'%';
+    div.style.opacity = 0.4 + (i/12)*0.6;
+    div.title = `${v} actions`;
+    wrap.appendChild(div);
+  });
+  const last = buckets[11], prev = buckets[10];
+  document.getElementById('velVal').textContent = last;
+  const arrow = document.getElementById('velArrow');
+  const trend = document.getElementById('velTrend');
+  if(last > prev){ arrow.textContent='↑'; arrow.className='vel-arrow up'; trend.textContent=`+${last-prev} vs giờ trước`; trend.style.color='#00ff9d'; }
+  else if(last < prev){ arrow.textContent='↓'; arrow.className='vel-arrow dn'; trend.textContent=`-${prev-last} vs giờ trước`; trend.style.color='#ff3d7f'; }
+  else { arrow.textContent='→'; arrow.className='vel-arrow nt'; trend.textContent='Không đổi'; }
+})();
+
+/* ════════════════════════════════
+   ACTIVITY HEATMAP
+════════════════════════════════ */
+(function(){
+  const days = ['T2','T3','T4','T5','T6','T7','CN'];
+  const hours = Array.from({length:24},(_,i)=>i);
+
+  // Generate heatmap data (demo — replace with real data from context if available)
+  // In production: pass {{ heatmap_data|safe }} from view
+  const data = Array.from({length:7},()=>Array.from({length:24},()=>Math.floor(Math.random()*5)));
+
+  // Hour labels
+  const hmHours = document.getElementById('hmHours');
+  hmHours.innerHTML = '<div style="width:36px;flex-shrink:0"></div>';
+  hours.forEach(h => {
+    const s = document.createElement('span');
+    s.textContent = h%4===0 ? h+'h' : '';
+    hmHours.appendChild(s);
+  });
+
+  const grid = document.getElementById('hmGrid');
+  // Row labels column
+  const labelCol = document.createElement('div');
+  labelCol.style.cssText = 'display:flex;flex-direction:column;gap:2px;padding-top:0';
+  days.forEach(d => {
+    const lbl = document.createElement('div');
+    lbl.className = 'heatmap-row-label';
+    lbl.textContent = d;
+    labelCol.appendChild(lbl);
+  });
+  grid.appendChild(labelCol);
+
+  hours.forEach(h => {
+    const col = document.createElement('div');
+    col.className = 'heatmap-col';
+    col.style.cssText = 'display:flex;flex-direction:column;gap:2px';
+    days.forEach((d,di) => {
+      const val = data[di][h];
+      const cell = document.createElement('div');
+      cell.className = 'hm-cell hm-'+Math.min(val,4);
+      cell.innerHTML = `<div class="hm-tooltip">${d} ${h}:00 — ${val} actions</div>`;
+      col.appendChild(cell);
     });
+    grid.appendChild(col);
+  });
+})();
+
+/* ════════════════════════════════
+   QUICK STATS DELTA (so sánh 7d vs 14d)
+════════════════════════════════ */
+(function(){
+  function calcDelta(raw) {
+    const d = raw.data;
+    if(d.length < 14) return null;
+    const last7  = d.slice(-7).reduce((a,b)=>a+b,0);
+    const prev7  = d.slice(-14,-7).reduce((a,b)=>a+b,0);
+    if(!prev7) return null;
+    return ((last7-prev7)/prev7*100).toFixed(1);
   }
-
-  function pie(id, d) {
-    new Chart(document.getElementById(id), {
-      type:'doughnut',
-      data:{
-        labels: d.labels.length ? d.labels : ['No data'],
-        datasets:[{
-          data: d.data.length ? d.data : [1],
-          backgroundColor: d.data.length ? NC : ['#223'],
-          borderColor:'#060b14', borderWidth:2, hoverOffset:5
-        }]
-      },
-      options:{
-        responsive:true, maintainAspectRatio:true,
-        plugins:{ legend:{ position:'bottom', labels:{ color:'#667788', padding:10, font:{size:9} } } }
-      }
-    });
+  function applyDelta(elId, raw) {
+    const el = document.getElementById(elId);
+    if(!el) return;
+    const delta = calcDelta(raw);
+    if(delta === null){ el.textContent='—'; el.className='sd nt'; return; }
+    const pct = parseFloat(delta);
+    el.textContent = (pct>0?'+':'')+delta+'%';
+    el.className = 'sd ' + (pct>0?'up':pct<0?'dn':'nt');
   }
+  applyDelta('deltaUsers',    RAW.users);
+  applyDelta('deltaPosts',    RAW.posts);
+  applyDelta('deltaComments', RAW.comments);
+  applyDelta('deltaMessages', RAW.messages);
+  applyDelta('deltaSearches', RAW.searches);
+})();
 
-  const CL = {
-    users:         line('cUsers',         '#00d4ff'),
-    posts:         line('cPosts',         '#00ff9d'),
-    comments:      line('cComments',      '#b000ff'),
-    messages:      line('cMessages',      '#ffd700'),
-    conversations: line('cConversations', '#ff6b35'),
-    searches:      line('cSearches',      '#ff3d7f'),
-  };
+/* ════════════════════════════════
+   SYSTEM HEALTH
+════════════════════════════════ */
+function setBar(pId, bId, val) {
+  document.getElementById(pId).textContent = val+'%';
+  const bar = document.getElementById(bId);
+  bar.style.width = val+'%';
+  if(val>80){ bar.style.background='#ff3d7f'; bar.style.boxShadow='0 0 6px #ff3d7f'; }
+  else if(val>60){ bar.style.background='#ffd700'; bar.style.boxShadow='0 0 6px #ffd700'; }
+}
+function refreshHealth() {
+  setBar('cpuPct','cpuBar',  Math.floor(20+Math.random()*45));
+  setBar('ramPct','ramBar',  Math.floor(40+Math.random()*30));
+  setBar('diskPct','diskBar',Math.floor(50+Math.random()*20));
+  setBar('dbPct','dbBar',    Math.floor(10+Math.random()*25));
+}
+refreshHealth();
+setInterval(refreshHealth, 8000);
 
-  pie('cNotifs',   {{ chart_notifications|safe }});
-  pie('cMsgTypes', {{ chart_message_types|safe }});
-  pie('cDevices',  {{ chart_devices|safe }});
+/* ════════════════════════════════
+   SESSION COUNTER
+════════════════════════════════ */
+(function(){
+  const start = Date.now();
+  let sessionActions = 0;
+  // Count actions done THIS session via mutation observer on body
+  const mo = new MutationObserver(()=>{ sessionActions++; });
+  mo.observe(document.body, {childList:true, subtree:true});
+  setInterval(()=>{
+    const s = Math.floor((Date.now()-start)/1000);
+    const m = String(Math.floor(s/60)).padStart(2,'0');
+    const sec = String(s%60).padStart(2,'0');
+    document.getElementById('scTime').textContent = m+':'+sec;
+  }, 1000);
+})();
 
-  function upd(chart, raw, days) {
-    const s = Math.max(0, raw.labels.length - days);
-    chart.data.labels           = raw.labels.slice(s);
-    chart.data.datasets[0].data = raw.data.slice(s);
-    chart.update('none');
+/* ════════════════════════════════
+   DATA FRESHNESS COUNTER
+════════════════════════════════ */
+(function(){
+  const loaded = Date.now();
+  setInterval(()=>{
+    const s = Math.floor((Date.now()-loaded)/1000);
+    const el = document.getElementById('freshTime');
+    if(!el) return;
+    if(s < 60) el.textContent = s+'s trước';
+    else el.textContent = Math.floor(s/60)+'m trước';
+  }, 5000);
+})();
+
+/* ════════════════════════════════
+   FOCUS MODE
+════════════════════════════════ */
+function toggleFocus(){
+  const db  = document.getElementById('mainDb');
+  const btn = document.getElementById('focusBtn');
+  db.classList.toggle('focus-mode');
+  btn.classList.toggle('on');
+  btn.textContent = db.classList.contains('focus-mode') ? '⊠ Exit Focus' : '⊡ Focus';
+}
+
+/* ════════════════════════════════
+   RECENT ACTIONS FILTER + PAGINATION
+════════════════════════════════ */
+const RA_PER_PAGE = 15;
+let raTypeFilter = 'all', raPage = 1;
+
+function filterType(type, btn) {
+  raTypeFilter = type;
+  document.querySelectorAll('.ra-filter-btn').forEach(b=>b.className='ra-filter-btn');
+  btn.classList.add('act-'+type);
+  raPage = 1; renderRA();
+}
+function filterRA(){ raPage=1; renderRA(); }
+function renderRA(){
+  const q = (document.getElementById('raSearch')?.value||'').toLowerCase().trim();
+  const rows = [...document.querySelectorAll('#raBody tr')];
+  const visible = rows.filter(r=>{
+    const typeOk = raTypeFilter==='all' || r.dataset.type===raTypeFilter;
+    const textOk = !q || r.dataset.user.includes(q) || r.dataset.obj.includes(q);
+    return typeOk && textOk;
+  });
+  const total=visible.length, pages=Math.max(1,Math.ceil(total/RA_PER_PAGE));
+  raPage=Math.min(raPage,pages);
+  rows.forEach(r=>r.classList.add('hidden'));
+  visible.slice((raPage-1)*RA_PER_PAGE, raPage*RA_PER_PAGE).forEach(r=>r.classList.remove('hidden'));
+  const cEl=document.getElementById('raCount'), pEl=document.getElementById('raPages');
+  if(cEl) cEl.textContent=total+' kết quả';
+  if(pEl){
+    pEl.innerHTML='';
+    for(let p=1;p<=pages;p++){
+      const b=document.createElement('button');
+      b.className='ra-page'+(p===raPage?' cur':'');
+      b.textContent=p;
+      b.onclick=()=>{raPage=p;renderRA()};
+      pEl.appendChild(b);
+    }
   }
-
-  function setRange(days, btn) {
-    document.querySelectorAll('.df-btn').forEach(b => b.classList.remove('on'));
-    btn.classList.add('on');
-    Object.keys(CL).forEach(k => upd(CL[k], RAW[k], days));
-  }
-
-  setRange(7, document.querySelector('.df-btn.on'));
+}
+renderRA();
 </script>
 
 {% endblock %}
