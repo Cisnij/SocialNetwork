@@ -1344,7 +1344,7 @@ class SearchAPIView(APIView):
                             "query": keyword,
                             "boost": 2.0,
                             "fuzziness": "AUTO",#sửa lỗi chính tả và cho ra kết quả
-                            "prefix_length": 0, # bắt buộc từ đầu phải ko cần đúng ví dụ trần nghị thì trần phải đúng
+                            "prefix_length": 1, # b ký tự đầu phải đúng ví dụ trần nghị thì t phải đúng
                             "max_expansions": 50 #giới hạn biến thể mà tự sửa lỗi chính tả cho ra ví dụ trn :tran,trần...
                         }),
                     ],
@@ -1377,12 +1377,12 @@ class SearchAPIView(APIView):
                             "query": keyword,
                             "boost": 3.0,
                             "fuzziness": "AUTO",  # sửa lỗi chính tả: "trna" → "tran"
-                            "prefix_length": 0,  # ký tự đầu phải ko cần đúng, tránh nhiễu
+                            "prefix_length": 1,  # ký tự đầu phải đúng tránh a mà thành c ở đầu
                             "max_expansions": 50  # giới hạn số biến thể fuzziness tạo ra
                         }),
                         # 3. Fallback họ hoặc tên riêng lẻ
-                        ESQ("match",first_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 0}),
-                        ESQ("match", last_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 0}),
+                        ESQ("match",first_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 1}),
+                        ESQ("match", last_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 1}),
                     ],
                     minimum_should_match=1  # bắt buộc match ít nhất 1 điều kiện
                 )[:50]
@@ -1401,11 +1401,15 @@ class SearchAPIView(APIView):
                 profiles = [profiles_dict[pid] for pid in profile_ids if pid in profiles_dict]
             except Exception as e:
                 profiles = []
-
+        # Paginate trước khi trả về
+        paginator = self.pagination_class()
+        posts_page = paginator.paginate_queryset(posts, request)
+        profile_paginator = self.pagination_class()
+        profiles_page = profile_paginator.paginate_queryset(profiles, request)
         return Response({  # trả về serializer của 1 trong 2
-            'posts': PostSerializer(posts, many=True, context={'request': request}).data,
+            'posts': PostSerializer(posts_page, many=True, context={'request': request}).data,
             # vì serializer cần lấy request để lấy user ở trường get user is reaction nên cần truyền
-            'profiles': ProfileSerializer(profiles, many=True, context={'request': request,
+            'profiles': ProfileSerializer(profiles_page, many=True, context={'request': request,
                                                                         'online_set': get_online_set(
                                                                             profiles_qs) if profiles else set()}).data,
         })
@@ -1439,7 +1443,7 @@ class FriendSuggestion(generics.ListAPIView):
                 mutual_count=Count(
                     'user__friends', #user là 1-1 Profile và friends là related name của to_user
                     filter=Q(user__friends__from_user_id__in=friend_ids), # dếm người user nào nằm trong danh sách bạn bè của mình nhiều nhất
-                    distince=True
+                    distinct=True
                 )
             )  # đếm số bạn chung
             .select_related('user')  # join với user

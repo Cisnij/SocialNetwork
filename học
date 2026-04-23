@@ -778,6 +778,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         -Conversation.objects.only("id", "status").get(id=conv_id) : thay vì lấy hết object ra thì chỉ lấy các field cần 
         -ConversationMember.objects.filter(conversation=conv).values_list("user_id", flat=True) : values list để lấy ra list của field cần thiết ví dụ ở đây là user_id [1,2,4]
             còn values sẽ trả về dict {'username':'an'}
+            values là values_list đều là lazy, tức là nó chưa filter nhưng khi tới cuối cần dữ liệu mới chạy gộp vào các query ví dụ dùng IN
         -@cached_property dùng cho hàm thuộc tính trong model là property, thay vì ví dụ lấy ra conv.last_message 3 lần thì nó sẽ truy vấn 3 lần, dùng thì sẽ chỉ truy vấn 1 lần và lấy ra dùng lại
         -class Meta: #Meta là cách thiết lập model hoạt động , kiểu setting mặc định 
             ordering = ['-created_at'] #auto sắp xếp giảm dần 

@@ -16,13 +16,10 @@ chưa xong
 
 
 chạy lại các api và đọc query
-sau này check block,follow,friend dùng filter hết và đẩy sang value list cho nhanh ở phần friendship manager
-( nhớ chụp output trước và sau khi sửa xem có đúng)
 
-friend_ids   = Friend.objects.filter(to_user=user).values_list("from_user_id", flat=True)
-following_ids = Follow.objects.filter(follower=user).values_list("followee_id", flat=True)
-blocked_ids  = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+
+
+
 
 kêu claude đánh index lại
 cân nhắc thêm field reply count thay vì count riêng tránh nặng
