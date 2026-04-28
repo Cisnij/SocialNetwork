@@ -539,8 +539,9 @@ def notify_comment(sender, instance, created, **kwargs):
         Notification.objects.create(
             reciever=instance.post.user, #thông báo cho chủ post
             actor=instance.user,
-            type='comment',
-            object_id=instance.post.post_id,
+            type='comment_on_post',
+            object_id=instance.id,
+            post_id=instance.post.post_id,
             message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} commented on your post {instance.post.title}'
         )
     if instance.parent: # nếu mới tạo và có parent
@@ -548,24 +549,26 @@ def notify_comment(sender, instance, created, **kwargs):
             Notification.objects.create(
                 reciever=instance.parent.user, # thông báo cho comment gốc rằng có reply
                 actor=instance.user,
-                type='comment',
+                type='reply_on_comment',
                 object_id=instance.id,
+                post_id=instance.parent.post_id,
                 message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} replied to your comment'
             )
 
 @receiver(m2m_changed,sender=Comment.tagged_users.through) #nếu trong comment field tagged user mà many to many field change thì chạy
-def notify_tagged_users(sender,instance,action, pk_set,**kwargs):
+def notify_tagged_users(sender,instance,action, pk_set,**kwargs):#pk_set lấy ra loạt id trong m2m field
     if action == 'post_add' and pk_set: # post_add giống post save và nếu có field mới đc thêm vào many to many field, pk_set là các khóa ngoại trả về
         instance = Comment.objects.select_related('user__profile', 'post').get(pk=instance.pk)
         Notification.objects.bulk_create([
             Notification(
                 reciever=user,
                 actor=instance.user,
-                type='comment',
+                type='tagged_in_reply',
                 object_id=instance.id,
+                post_id=instance.post_id,
                 message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} tagged you on post {instance.post.title}'
             )
-            for user in User.objects.filter(pk__in=pk_set).select_related('profile').exclude(pk=instance.user.pk)
+            for user in User.objects.filter(pk__in=pk_set).select_related('profile').exclude(pk=instance.user.pk) # trừ user chủ động tag
         ])
 
 @receiver(post_save, sender=UserReaction)
@@ -580,14 +583,17 @@ def notify_reaction(sender, instance, created, **kwargs):
     # phân biệt react vào post hay comment
     if isinstance(target, Comment):
         msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} reacted to your comment'
+        type = 'reaction_on_comment'
     else:
         msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} reacted to your post'
+        type = 'reaction_on_post'
 
     Notification.objects.create(
         reciever=target.user,
         actor=instance.user,
-        type='reaction',
+        type=type,
         object_id=reaction.object_id,
+        post_id=target.post_id,
         message=msg
     )
 @receiver(post_save, sender=Follow)
@@ -598,6 +604,7 @@ def notify_follow(sender, instance, created, **kwargs):
             reciever=instance.followee,
             actor=instance.follower,
             type='follow',
+            post_id=None,
             message=f'{instance.follower.profile.first_name} {instance.follower.profile.last_name} followed you'
         )
 
@@ -609,6 +616,7 @@ def notify_friend_request(sender, instance, created, **kwargs):
             reciever =instance.to_user,
             actor=instance.from_user,
             type='friend_request',
+            post_id=None,
             message=f'{instance.from_user.profile.first_name} {instance.from_user.profile.last_name} sent you a friend request'
         )
 #==============================================================================

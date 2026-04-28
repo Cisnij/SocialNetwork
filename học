@@ -782,7 +782,10 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         -@cached_property dùng cho hàm thuộc tính trong model là property, thay vì ví dụ lấy ra conv.last_message 3 lần thì nó sẽ truy vấn 3 lần, dùng thì sẽ chỉ truy vấn 1 lần và lấy ra dùng lại
         -class Meta: #Meta là cách thiết lập model hoạt động , kiểu setting mặc định 
             ordering = ['-created_at'] #auto sắp xếp giảm dần 
-            
+            CheckConstraint(check=Q(age__gte=0), name='tự đặt') #check ràng buộc
+            db_table = 'ten_bang_tuy_chinh'  # đổi tên bảng trong db
+            verbose_name = 'Tên hiển thị'    # tên hiển thị trong admin
+            get_latest_by = 'created_at'  # Comment.objects.latest() / earliest() tự biết lấy cái mới nhất
             indexes = [ # giống mục lục sách, thay vì tìm từng dòng thì nhảy thẳng đến, giúp truy vấn mấy cái hay tìm dễ hơn ví dụ theo ngày..., dùng tăng tốc filter, order_by , tăng bộ nhớ ram nhưng nhanh
                 models.Index(fields=['reciever', '-created_at']),
                 models.Index(fields=['is_read']),

@@ -1269,7 +1269,6 @@ class NotificationListView(generics.ListAPIView):
             reciever=self.request.user
         ).select_related('actor__profile').order_by("-created_at")
 
-
 # ===========================Firebase=======================================
 class SaveFCMTokenView(APIView):
     permission_classes = [IsAuthenticated]

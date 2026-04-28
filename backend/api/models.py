@@ -190,7 +190,7 @@ class ConversationMember(models.Model):
     def __str__(self):
         return f"Member user_id={self.user_id} | conv_id={self.conversation_id}"
     class Meta:
-        unique_together = ('conversation', 'user') # đảm bảo mỗi user chỉ tham gia 1 lần trong 1 conversation
+        unique_together = ('conversation', 'user') # đảm bảo mỗi user chỉ tham gia 1 lần trong 1 conversation, tự tạo index cho 2 cái
         indexes = [
             models.Index(fields=['user']),
             models.Index(fields=['conversation']),
@@ -235,8 +235,11 @@ class FCMToken(models.Model): #đại diện cho 1 app, 1 thiết bị, 1 lần 
 #==========================Notification=============================
 class Notification(models.Model):
     TYPE_CHOICES = [
-        ('comment', 'Comment'),
-        ('reaction', 'Reaction'),
+        ('comment_on_post', 'Comment on Post'),
+        ('reply_on_comment', 'Reply on Comment'),
+        ('tagged_in_reply', 'Tagged in Reply'),
+        ('reaction_on_post', 'Reaction on Post'),
+        ('reaction_on_comment', 'Reaction on Comment'),
         ('friend_request', 'Friend Request'),
         ('follow', 'Follow'),
     ]
@@ -244,6 +247,7 @@ class Notification(models.Model):
     actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
     type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     object_id = models.PositiveIntegerField(null=True, blank=True)
+    post_id=  models.PositiveIntegerField(null=True, blank=True)
     message = models.TextField(blank=True)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -260,22 +264,11 @@ class Notification(models.Model):
             models.Index(fields=['actor']),
         ]#ví dụ nó sẽ lưu vào user là 5 trong db index và mốt nó truy vấn chỉ cần vào đó tìm user 5 sẽ ra row 1000
 
-# class Notification(models.Model):
+# Cách để tạo model gán đc cho nhiều thằng
 #     content_type= models.ForeignKey(ContentType,on_delete=models.CASCADE)
 #     object_id= models.PositiveIntegerField()
 #     content_object=GenericForeignKey('content_type','object_id') # dùng để tham chiếu thẳng tới object trong model đó, cách để đem model gắn vào nhiều th model khác dùng GenericRelation(Notification) và Reaction.objects.create(content_object=post, ...) và post.reactions.all()
-#         TYPE_CHOICES = [
-    #     ('comment', 'Comment'),
-    #     ('reaction', 'Reaction'),
-    #     ('friend_request', 'Friend Request'),
-    #     ('follow', 'Follow'),
-    # ]
-    # reciever = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
-    # actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
-    # type = models.CharField(max_length=20, choices=TYPE_CHOICES)
-#     message = models.TextField(blank=True)
-#     is_read = models.BooleanField(default=False)
-#     created_at = models.DateTimeField(auto_now_add=True)
+
 # # ======================================================================
 class SearchHistory(models.Model):
     user= models.ForeignKey(User,on_delete=models.CASCADE)

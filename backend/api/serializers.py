@@ -337,7 +337,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Notification
-        fields = ["id", "actor", "type", "object_id", "created_at"]
+        fields = ["id", "actor","actor_id", "type", "object_id",'post_id', "created_at"]
 
     def get_actor(self, obj):
         return f"{obj.actor.profile.first_name} {obj.actor.profile.last_name}"
