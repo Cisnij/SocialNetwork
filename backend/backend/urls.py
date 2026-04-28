@@ -125,6 +125,8 @@ urlpatterns = [
     path("fcm-token/", SaveFCMTokenView.as_view()), # token cho thiết bị
     #in-app notification
     path("api/notifications/", NotificationListView.as_view(), name="notification-list"), #thống báo user
+    path("api/notifications/mark-read/",NotificationMarkReadView.as_view(),name="notification-mark-read"),
+    path("api/notifications/count/",NotificationUnreadCountView.as_view(),name="notification-unread-count"),
     #check mqh
     path('api/relationship/<int:profile_id>/',ProfileRelationship.as_view(),name='relationship'), # check mqh
     #thay đổi email 

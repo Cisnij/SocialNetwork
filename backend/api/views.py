@@ -29,7 +29,8 @@ from asgiref.sync import async_to_sync
 from .documents import PostDocument,ProfileDocument
 from elasticsearch_dsl.query import MultiMatch
 from elasticsearch_dsl import Q as ESQ         # Django Q — dùng cho ORM filter
-
+#cacheops
+from cacheops import invalidate_model
 
 def get_online_set(queryset):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
     ids = queryset.values_list('user_id',flat=True)  # lấy các user id trong queryset của serializer đưa vào list với 1 fields
@@ -952,7 +953,7 @@ class UnsendMessageAPIView(APIView):  # action xóa message
 
 
 class StartConversationAPIView(
-    generics.GenericAPIView):  # bấm chat với ai đó sẽ get_or_create cuộc trò chuyện với ng đó, truyền vào id user đó
+    generics.GenericAPIView):  # bấm chat với ai đó sẽ get_or_create cuộc trò chuyện với ng đó, truyền vào id user đó,GenericAPIView có các tiện ích như query, paginate và tự custome, APIView k có tiện ích, generics thì tích hợp sẵn crud
     permission_classes = [IsAuthenticated]
     serializer_class = ConversationSerializer
 
@@ -1090,11 +1091,11 @@ class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ 
     pagination_class = LargePagePagination
     def get_queryset(self):
         return Conversation.objects.filter(
-            conversationmember__user=self.request.user
+            conversationmember__user=self.request.user # lấy ra đoạn chat có user
         ).distinct().prefetch_related(
             # load members + user + profile + last_read_message trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
             # (1 query join conv với message có trong conv, 1 query join user trong conv
-            Prefetch(
+            Prefetch( #lấy ra đoạn chat có user và prefetch lấy ra các user trong đó đoạn chat đó luôn (select convmember in conv)
                 'conversationmember_set',  # conversationmember có FK với conversation nên phải lấy tham chiếu là set
                 queryset=ConversationMember.objects.select_related(  # tùy chỉnh thêm field muốn lấy
                     'user__profile',  # JOIN user và profile (1-1)
@@ -1103,7 +1104,7 @@ class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ 
             ),
             # load messages mới nhất trong 1 query IN riêng
             # kèm JOIN sender+profile để get_last_message không query thêm
-            Prefetch(
+            Prefetch(  #lấy ra đoạn chat có user kèm tất cả message (select message in conv)
                 'message_set',  # relation 1-nhiều: 1 conv có nhiều messages
                 queryset=Message.objects.select_related(
                     'sender__profile'  # JOIN sender và profile luôn (1-1)
@@ -1255,7 +1256,6 @@ class ProfileRelationship(APIView):
 
 
 # ===============================Thông báo in-app==========================================
-
 class NotificationListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationSerializer
@@ -1268,7 +1268,31 @@ class NotificationListView(generics.ListAPIView):
         return Notification.objects.filter(
             reciever=self.request.user
         ).select_related('actor__profile').order_by("-created_at")
+    
+    # def list(self,request,*args,**kwargs): # chạy sau khi list ra, có tác dụng thêm logic trước/sau khi trả response, bên trong nó tự gọi get_queryset
+    #     response = super().list(request, *args, **kwargs) #kế thừa gọi get queryset, filter,pagination...
+    #     return response
 
+class NotificationMarkReadView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        updated = Notification.objects.filter(
+            reciever=request.user,
+            is_read=False
+        ).update(is_read=True)
+        invalidate_model(Notification) # dùng cái này vì update k kích hoạt xóa cacheops khi thay đổi dữ liệu như th khác nên thủ công xóa cache(bulk_create,bulk_update,update,filter().delete() sẽ k chạy phát hiẹn thay đổi nên phải thủ công)
+        return Response({'detail': f'{updated} marked as read'})
+
+
+class NotificationUnreadCountView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        count = Notification.objects.filter(
+            reciever=request.user,
+            is_read=False
+        ).count()
+        return Response({'count': count})
 # ===========================Firebase=======================================
 class SaveFCMTokenView(APIView):
     permission_classes = [IsAuthenticated]

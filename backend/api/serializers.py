@@ -242,7 +242,7 @@ class ConversationMemberSerializer(serializers.ModelSerializer):
 
 class ConversationSerializer(serializers.ModelSerializer):
     members = ConversationMemberSerializer( # vì là serializer này lấy ra model conversation,mà conversationmember là FK, nên đoạn conversation sẽ là obj khi được gọi, gọi ra member thì chỉ cần set
-        source="conversationmember_set",
+        source="conversationmember_set", #lấy từ ram
         many=True,
         read_only=True
     )
@@ -271,21 +271,21 @@ class ConversationSerializer(serializers.ModelSerializer):
         user = self.context['request'].user # lấy user trong request
         #  conversationmember_set đã prefetch sẵn → không query DB mà lấy trong ram khi gọi api có liên quan đến conv
         member = next(
-            (m for m in obj.conversationmember_set.all() if m.user_id == user.id), #lấy tất cả thành viên trong đoạn chat trừ mình đừa vào list
+            (m for m in obj.conversationmember_set.all() if m.user_id == user.id), #lọc ra trong conv member có mình không, có thì trả không thì default là None, next là láy phần tử đầu tiên
             None
         )
 
-        if not member: # ko có ai trả về 0
+        if not member: # mình ko phải là thành viên thì trả 0
             return 0
         #  đếm từ prefetched_messages trong RAM, không query DB
         msgs = getattr(obj, 'prefetched_messages', [])
 
-        if member.last_read_message is None:# chưa đọc lần nào , đếm tất cả tin nhắn từ đầu
+        if member.last_read_message is None:# chưa đọc lần nào , đếm tất cả tin nhắn từ đầu trừ tin nhắn mình
             return sum(1 for m in msgs if m.sender_id != user.id)
         # đếm tin của người khác sau lần đọc cuối
         return sum(
             1 for m in msgs
-            if m.created_at > member.last_read_message.created_at  # đếm tin sau lần đọc cuối
+            if m.created_at > member.last_read_message.created_at  # đếm tin nhắn last read của mình có thời gian nhỏ hơn n tin nhắn mới
             and m.sender_id != user.id                             #  không đếm tin của mình
         )
 class MessageAttachmentSerializer(serializers.ModelSerializer):
@@ -334,20 +334,18 @@ class MessageSerializer(serializers.ModelSerializer):
         
 class NotificationSerializer(serializers.ModelSerializer):
     actor = serializers.SerializerMethodField()
-
+    actor_avatar=serializers.SerializerMethodField()
     class Meta:
         model = Notification
-        fields = ["id", "actor","actor_id", "type", "object_id",'post_id', "created_at"]
+        fields = ['id', 'type', 'object_id', 'post_id', 'message', 'is_read', 'created_at', 'actor', 'actor_avatar']
 
     def get_actor(self, obj):
         return f"{obj.actor.profile.first_name} {obj.actor.profile.last_name}"
 
-#class NotificationSerializer(serializers.ModelSerializer):
-#     target = serializers.SerializerMethodField()
+    def get_actor_avatar(self, obj):
+        return obj.actor.profile.picture.url if obj.actor.profile.picture else None
 
-#     class Meta:
-#         model = Notification
-#         fields = "__all__"
+#class NotificationSerializer(serializers.ModelSerializer):
 
 #     def get_target(self, obj):
 #         target = obj.content_object
@@ -360,14 +358,6 @@ class NotificationSerializer(serializers.ModelSerializer):
 #                 "post_id": target.post_id
 #             }
 
-#         if isinstance(target, Post):
-#             return {
-#                 "type": "post",
-#                 "id": target.post_id,
-#                 "title": target.title
-#             }
-
-#         return None
  #====================================Email serializer=========================
 from allauth.account.models import EmailAddress
 class EmailSerializer(serializers.ModelSerializer):

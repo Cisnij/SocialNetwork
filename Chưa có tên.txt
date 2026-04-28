@@ -14,6 +14,9 @@ chưa xong
 - xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
 
 
-- xây thêm các chức năng in app như đã đọc is read,
-//liên kết tới post nào và thêm các trường follow... vào luôn
-chạy lại các api và đọc query
+
+#xây thêm websocket cho notification
+
+
+
+
