@@ -16,7 +16,7 @@ class PostPhotoInline(admin.TabularInline):  # hoặc StackedInline để hiển
 @admin.register(Post) #sửa lại trường có thể show trong trang admin
 class PostAdmin(SafeDeleteAdmin):
     inlines = [PostPhotoInline] #thêm trường hiển thị trong Post do khác bảng mà muốn gộp lại  
-    list_display = ('post_id', 'user', 'title', 'created_at','deleted') #trường lấy ra sẵn 
+    list_display = ('post_id', 'user', 'title', 'created_at','deleted','share_code','share_count') #trường lấy ra sẵn
     list_filter = (SafeDeleteAdminFilter,'user') #lọc theo trạng thái xóa mềm và user
     list_select_related = ['user']# Join giảm thgian load trang thqua query, tự select related với chính model instance này là post
     actions = ['undelete_selected', 'hard_delete_selected']

@@ -80,6 +80,7 @@ urlpatterns = [
     path('api/user/post/userpage/<int:user>/', PostUser.as_view(), name='post-user'),#lấy ra tất cả post của chính user đó
     path('api/user/post/create/',PostCreate.as_view(),name='post-create'), #tạo post để gán ảnh
     path('api/admin/post/',PostListAll.as_view(), name='post-list'), #láy ra tất cả post cho admin
+    path('share/<str:share_code>/', PostShareView.as_view()),# dạng share link
     path('api/user/post-article/', PostArticleListCreate.as_view(), name='post-article-list'), #thêm láy tất cả post article
     path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể
     path('api/user/comments/post/<int:post_id>',CommentListCreate.as_view(),name='comment-list'), #lấy Thêm comments từ post cụ thể

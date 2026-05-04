@@ -15,8 +15,6 @@ chưa xong
 
 
 
-#xây thêm websocket cho notification
 
 
-
-
+share link facebook, làm thêm count share

@@ -284,9 +284,9 @@ class PostModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa post
         if user.is_superuser or user.is_staff:
             if not post_id:
                 raise NotFound("Admin cần truyền ID post và slug chính xác để truy cập.")
-            return get_object_or_404(Post, post_id=post_id)
+            return get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'), post_id=post_id)
 
-        return get_object_or_404(Post, user=user, post_id=post_id)
+        return get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'), user=user, post_id=post_id)
 
 
 class PostUser(generics.ListAPIView):  # List tất cả post của user
@@ -355,6 +355,17 @@ class PostListAll(generics.ListAPIView):
         context.update(get_reactions_post_context(objs, self.request.user))
         return context
 
+
+class PostShareView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostSerializer
+
+    def get_object(self):
+        share_code=self.kwargs.get('share_code')
+        post = get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'), share_code=share_code)
+        post.share_count += 1
+        post.save(update_fields=['share_count']) # update_fields để patch update 1 phần thay vì toàn bộ
+        return post
 #===================POSTARTICLE===============================
 class PostArticleListCreate(generics.ListCreateAPIView):  # List tất cả post
     permission_classes = [IsAuthenticated]
