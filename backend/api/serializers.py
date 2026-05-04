@@ -337,11 +337,10 @@ class NotificationSerializer(serializers.ModelSerializer):
     actor_avatar=serializers.SerializerMethodField()
     class Meta:
         model = Notification
-        fields = ['id', 'type', 'object_id', 'post_id', 'message', 'is_read', 'created_at', 'actor', 'actor_avatar']
+        fields = ['id', 'type', 'object_id', 'post_id', 'message', 'is_read', 'created_at','actor_id' ,'actor', 'actor_avatar']
 
     def get_actor(self, obj):
         return f"{obj.actor.profile.first_name} {obj.actor.profile.last_name}"
-
     def get_actor_avatar(self, obj):
         return obj.actor.profile.picture.url if obj.actor.profile.picture else None
 

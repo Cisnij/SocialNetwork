@@ -79,7 +79,6 @@ CHANNEL_LAYERS = {
             "capacity": 1500,  # Giới hạn hàng đợi tin nhắn
             "expiry": 30,     # Tin nhắn chờ trong 30s nếu ko ai nhận thì hủy
             "symmetric_encryption_keys": [env('SECRET_KEY')], # bảo mật dữ liệu
-            "on_host_is_down": "raise", # dọn các kết nối lỗi
         },
     },
 }

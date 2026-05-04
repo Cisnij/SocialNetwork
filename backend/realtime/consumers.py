@@ -7,9 +7,9 @@ connect-> receive(server) -> send -> client"""
 """
 -flow từ back tới front end
 -Frontend: User gọi tất cả đoạn chat và gán id cho từng cái đó, front-end gọi new WebSocket và khởi tạo url với conversation_id đó khi click tương ứng,sau đó chạy open
--Backend: chạy hàm connect và group add conversation_id đó sau đó chạy accept
+-Backend: chạy hàm connect và group add conversation_id đó sau đó chạy accept (group add lưu tên room trong redis kèm theo đó là các máy connect với room để gửi data)
 -Frontend: socket.send tin nhắn 
--Backend: Chạy receive nhận data từ fe dưới dạng json và lưu db, sau đó chạy group_send lấy từ db vừa save, chuẩn bị data và gửi tín hiệu, cuối cùng chạy chat_message send load data từ groupsend để gửi về fe load ra
+-Backend: Chạy receive nhận data từ fe dưới dạng json và lưu db, sau đó chạy group_send lấy từ db vừa save gửi vào các kết nối trong room trong redis, chuẩn bị data và gửi tín hiệu, cuối cùng chạy send để gửi tới fe
 -Frontend: Nhận tin nhắn và chạy onmessage
 -Frontend: out ra đoạn chat thì chạy socket.close
 
@@ -28,7 +28,7 @@ group send và send luôn đi chung, 1 cái gửi tín hiệu và cái còn lạ
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from api.models import ConversationMember, Message, Conversation
+from api.models import ConversationMember, Message, Conversation, Notification
 from friendship.models import Block
 from django.contrib.auth.models import User
 from api.firebase import push_to_user
@@ -39,8 +39,8 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
     async def connect(self):
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id'] # lấy conversation_id từ url
         self.user = self.scope['user'] # lấy user từ middleware (JWT đã xác thực ở middleware) 
-        self.room_name = f'chat_{self.conversation_id}' # tên phòng để group_send
-        # check đăng nhập, middleware JWT không hợp lệ sẽ bị đây
+        self.room_name = f'chat_{self.conversation_id}' # tên phòng để group_send, lưu tên phòng vào redis
+        # check đăng nhập, middleware JWT không hợp lệ sẽ bị đóng
         if self.user.is_anonymous:
             await self.close()
             return
@@ -50,13 +50,13 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
             await self.close()
             return
 
-        await self.channel_layer.group_add(self.room_name, self.channel_name) # thêm vào group phòng chat
+        await self.channel_layer.group_add(self.room_name, self.channel_name) # thêm vào group phòng chat trong redis, room name là tên lưu trong redis, channel name là tên channels tự sinh ra unique cụ thể
         await self.accept() # chấp nhận kết nối WebSocket
         print("CONNECT:", self.channel_name)
 
     # ===== DISCONNECT =====
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.room_name, self.channel_name) # rời khỏi group khi ngắt kết nối
+        await self.channel_layer.group_discard(self.room_name, self.channel_name) # rời khỏi group khi ngắt kết nối, xóa khỏi redis
 
     # ===== RECEIVE - nhận tin nhắn từ client =====
     async def receive(self, text_data):
@@ -74,7 +74,7 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
         # check các điều kiện trước khi lưu (block, pending status...)
         allowed, reason = await self.can_send() # reason là trả về lỗi khi cái await sai, chứa giá trị true/false và reason
         if not allowed:
-            await self.send(text_data=json.dumps({'error': reason})) # báo lỗi về client
+            await self.send(text_data=json.dumps({'error': reason})) # báo lỗi về client, chuyển thành chuỗi json
             return
 
         # lưu vào db
@@ -101,7 +101,7 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
         await self.push_notifications(message)
 
     # ===== CHAT_MESSAGE - gửi tin nhắn tới từng client trong group =====
-    # hàm này chạy sau group_send, bắt buộc tên phải giống type trong group_send, lấy ra từ db và gửi đi
+    # hàm này chạy sau group_send, bắt buộc tên phải giống type trong group_send, lấy ra từ group send và gửi đi
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
             'id': event['id'],
@@ -212,3 +212,32 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
                 )
         except Exception as e:
             print(f" Push notification error: {e}")
+
+class NotificationConsumer(AsyncWebsocketConsumer): # chịu trách nhiệm kết nối khi vào app và đếm số count noti ngay khi vào app, khi nhấn vào noti sẽ broadcast từ signal qua và đặt lại 0
+    async def connect(self):
+        if not self.scope['user'].is_authenticated:
+            await self.close()
+            return
+        self.user = self.scope['user'] #lấy ra user trong consumer giống request.user
+        self.group_name = f'notification_{self.user.id}' # lưu tên kèm user id vào redis để gửi kết nối và data tới n thiết bị có tên đó
+        await self.channel_layer.group_add(self.group_name, self.channel_name)# add vào redis tên group và tên channels tạo
+        await self.accept()
+
+        count = await self.get_unread_count()
+        await self.send(text_data=json.dumps({'unread_count': count})) # chuyển thành chuỗi json
+
+    async def disconnect(self, close_code):
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    async def receive(self,text_data):
+            pass
+
+    async def send_notification(self,event): #event là cái group send gửi lên, event[''] là dữ liệu th group send
+            await self.send(text_data=json.dumps(event['data']))# chuyển data của event thành json
+
+    @database_sync_to_async
+    def get_unread_count(self): # count ban đầu khi vào app
+            return Notification.objects.filter(
+                reciever=self.user,
+                is_read=False
+            ).count()

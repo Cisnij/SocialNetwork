@@ -1,3 +1,5 @@
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.db.models.signals import post_save, post_delete, pre_delete, \
     m2m_changed  # post save là ngay khi tạo user thì trigger tạo profile
 from django.dispatch import receiver
@@ -534,7 +536,7 @@ def notify_comment(sender, instance, created, **kwargs):
         'user__profile',
         'post',
         'parent__user__profile',
-    ).get(pk=instance.pk)
+    ).get(pk=instance.pk) # lấy comment từ instance.pk của chính comment đó
     if instance.user != instance.post.user: # nếu ng comment vào post k phải chủ bài post thì mới thông báo
         Notification.objects.create(
             reciever=instance.post.user, #thông báo cho chủ post
@@ -559,8 +561,9 @@ def notify_comment(sender, instance, created, **kwargs):
 def notify_tagged_users(sender,instance,action, pk_set,**kwargs):#pk_set lấy ra loạt id trong m2m field
     if action == 'post_add' and pk_set: # post_add giống post save và nếu có field mới đc thêm vào many to many field, pk_set là các khóa ngoại trả về
         instance = Comment.objects.select_related('user__profile', 'post').get(pk=instance.pk)
-        Notification.objects.bulk_create([
-            Notification(
+        tagged_users = User.objects.filter(pk__in=pk_set).select_related('profile').exclude(pk=instance.user.pk) # trừ user chủ động tag
+        for user in tagged_users:
+            Notification.objects.create(
                 reciever=user,
                 actor=instance.user,
                 type='tagged_in_reply',
@@ -568,9 +571,6 @@ def notify_tagged_users(sender,instance,action, pk_set,**kwargs):#pk_set lấy r
                 post_id=instance.post_id,
                 message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} tagged you on post {instance.post.title}'
             )
-            for user in User.objects.filter(pk__in=pk_set).select_related('profile').exclude(pk=instance.user.pk) # trừ user chủ động tag
-        ])
-
 @receiver(post_save, sender=UserReaction)
 def notify_reaction(sender, instance, created, **kwargs):
     if not created:
@@ -619,6 +619,34 @@ def notify_friend_request(sender, instance, created, **kwargs):
             post_id=None,
             message=f'{instance.from_user.profile.first_name} {instance.from_user.profile.last_name} sent you a friend request'
         )
+@receiver(post_save, sender=Notification) # khi có noti mới, lọc ra người dùng của noti mới đó, count lại và gửi qua ws
+def push_ws_notification(sender,instance,created,**kwargs):
+    if not created:
+        return
+    try:
+        unread_count = Notification.objects.select_related('actor__profile').filter(reciever=instance.reciever, is_read=False).count()
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(# gửi số unread count cho fe, gửi cả message lên để load ra noti
+            f'notification_{instance.reciever.id}',
+            {
+                'type': 'send_notification',
+                'data': {
+                    'unread_count': unread_count,
+                    'id': instance.id,
+                    'type': instance.type,
+                    'message': instance.message,
+                    'object_id': instance.object_id,
+                    'post_id': instance.post_id,
+                    'actor_id': instance.actor_id,
+                    'actor_name': f'{instance.actor.profile.first_name} {instance.actor.profile.last_name}',
+                    'actor_avatar': instance.actor.profile.picture.url if instance.actor.profile.picture else None,
+                }
+
+            }
+        )
+    except Exception:
+        pass
+
 #==============================================================================
 @receiver(email_confirmed) # khi 1 email đã xác nhận, xóa các email trùng tên chưa xác nhận khỏi db 
 def delete_unverified_email(sender, request, email_address, **kwargs):

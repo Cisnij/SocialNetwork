@@ -1281,6 +1281,19 @@ class NotificationMarkReadView(APIView):
             is_read=False
         ).update(is_read=True)
         invalidate_model(Notification) # dùng cái này vì update k kích hoạt xóa cacheops khi thay đổi dữ liệu như th khác nên thủ công xóa cache(bulk_create,bulk_update,update,filter().delete() sẽ k chạy phát hiẹn thay đổi nên phải thủ công)
+        
+        try: # khi gọi api mark read tức là đang ở trang notification sẽ đánh read count = 0, k kết nối ws sẽ pass
+            channel_layer=get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'notification_{request.user.id}',
+                {
+                    'type': 'send_notification',
+                    'data': {'unread_count':0}
+                }
+            )
+        except Exception:
+            pass
+        
         return Response({'detail': f'{updated} marked as read'})
 
 
