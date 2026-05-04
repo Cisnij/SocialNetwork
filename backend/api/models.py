@@ -107,6 +107,7 @@ class Post(SafeDeleteModel):
         indexes = [
             models.Index(fields=['user', '-created_at']),
             models.Index(fields=['title']),
+            models.Index(fields=['share_code'])
         ]
 
 
