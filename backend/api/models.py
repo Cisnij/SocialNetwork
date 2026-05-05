@@ -230,8 +230,8 @@ class ConversationMember(models.Model):
     last_read_message = models.ForeignKey("Message", null=True, blank=True,
                                           on_delete=models.SET_NULL)  # ondelete set null để khi message bị xóa thì trường này sẽ null
     joined_at = models.DateTimeField(auto_now_add=True)
-    deleted_before_message  = models.ForeignKey('Message', null=True, blank=True, on_delete=models.SET_NULL,related_name='+')
-
+    deleted_at_message_id = models.PositiveBigIntegerField(null=True, blank=True)
+    is_hidden=models.BooleanField(default=False)
     def __str__(self):
         return f"Member user_id={self.user_id} | conv_id={self.conversation_id}"
 
@@ -240,8 +240,8 @@ class ConversationMember(models.Model):
                            'user')  # đảm bảo mỗi user chỉ tham gia 1 lần trong 1 conversation, tự tạo index cho 2 cái
         indexes = [
             models.Index(fields=['user']),
-            models.Index(fields=['conversation']),
             models.Index(fields=['conversation','user']),
+            models.Index(fields=['conversation', 'is_hidden']),
         ]
 
 

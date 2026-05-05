@@ -186,16 +186,16 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
     @database_sync_to_async
     def save_message(self, message, message_type='text'): # chỉ lưu DB, không làm gì khác
         try:
-            # Update updated_at của conversation để sort list chat
-            Conversation.objects.filter(id=self.conversation_id).update(
-                updated_at=timezone.now()
-            )
-            return Message.objects.create(
+            msg = Message.objects.create(
                 conversation_id=self.conversation_id,
                 sender=self.user,
                 content=message,
                 message_type=message_type,
             )
+            # Update updated_at của conversation để sort list chat
+            Conversation.objects.filter(id=self.conversation_id).update(updated_at=timezone.now())
+            ConversationMember.objects.filter(conversation_id=self.conversation_id,is_hidden=True).update(is_hidden=False)
+            return msg
         except Exception as e:
             print(f" Save message error: {e}")
             return None

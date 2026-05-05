@@ -149,8 +149,11 @@ class PostPhotoAdmin(SafeDeleteAdmin):
             obj.delete(force_policy=HARD_DELETE)
         self.message_user(request, f"⚠️ Đã xóa cứng {count} ảnh.")
     
-admin.site.register([Conversation,ConversationMember,Message,MessageAttachment,FCMToken,Notification,SearchHistory])
+admin.site.register([ConversationMember,Message,MessageAttachment,FCMToken,Notification,SearchHistory])
 
+@admin.register(Conversation)
+class ConversationAdmin(admin.ModelAdmin):
+    readonly_fields = ['updated_at', 'created_at']  # thêm vào đây để hiện
 #==========================CHART====================================================
 
 

@@ -916,7 +916,7 @@ class ListBlockedFromUser(generics.ListAPIView):  # danh sách user đã bị ch
 # ===========================Chat=====================================================================
 '''send Message sau này dùng để gửi ảnh, file rồi broad cast qua
 logic: gửi ảnh qua api, lưu về, broadcast qua ws
-nhớ thêm check block'''
+nhớ thêm check block và thêm is_hidden y chang bên consumer khi gửi để hiện lại ở list khi xóa'''
 class SendMessageAPIView(
     APIView):  # gửi tin nhắn tới cuộc trò chuyện, nên dùng APIView vì có nhiều logic hơn là chỉ tạo và đặc biệt là k cho gửi body mà phải gán người gửi sender vào luôn
     permission_classes = [IsAuthenticated, IsConversationMember]
@@ -1110,7 +1110,8 @@ class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ 
     pagination_class = LargePagePagination
     def get_queryset(self):
         return Conversation.objects.filter(
-            conversationmember__user=self.request.user # lấy ra đoạn chat có user
+            conversationmember__user=self.request.user, # lấy ra đoạn chat có user
+            conversationmember__is_hidden=False
         ).distinct().prefetch_related(
             # load members + user + profile + last_read_message trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
             # (1 query join conv với message có trong conv, 1 query join user trong conv
@@ -1153,10 +1154,10 @@ class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò c
             .prefetch_related("attachments")  # lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments n-n)
             .order_by("-created_at")
         )
-        if not (self.request.user.is_superuser or self.request.user.is_staff):
-            member= ConversationMember.objects.filter(conversation=conv,user=self.request.user).only('deleted_before_message_id').first() # chỉ lấy deleted
-            if member and member.deleted_before_message_id is not None:
-                return qs.filter(id__gt=member.deleted_before_message_id) # lấy tin nhắn có thơi gian lớn hơn delete
+        if (self.request.user.is_superuser or self.request.user.is_staff):
+            member= ConversationMember.objects.filter(conversation=conv,user=self.request.user).only('deleted_at_message_id').first() # chỉ lấy deleted
+            if member and member.deleted_at_message_id is not None:
+                return qs.filter(id__gt=member.deleted_at_message_id) # lấy tin nhắn có thơi gian lớn hơn delete
         return qs
 
 
@@ -1255,9 +1256,10 @@ class DeleteConversationOneSide(APIView): # nếu xóa conv thì sẽ lấy th�
         last_msg=Message.objects.filter(conversation=conv).order_by('-created_at').first() #lấy ra tin nhắn mới nhất
         if not last_msg:
             return Response({"detail": "No messages to delete"}, status=200)
-        member.deleted_before_message = last_msg # đặt id deleted at khi gọi api băng với id tin nhắn cuối, chỉ lấy tin nhắn sau tin nhắn cuối chưa xóa
+        member.deleted_at_message_id = last_msg.id # đặt id deleted at khi gọi api băng với id tin nhắn cuối, chỉ lấy tin nhắn sau tin nhắn cuối chưa xóa
         member.last_read_message=None # đặt lại last_read_mesage
-        member.save(update_fields=['deleted_before_message','last_read_message'])
+        member.is_hidden = True # ẩn khỏi coversation
+        member.save(update_fields=['deleted_at_message_id','last_read_message','is_hidden'])
         return Response({"detail": "Conversation deleted"}, status=200)
 
 # =============================================================================
