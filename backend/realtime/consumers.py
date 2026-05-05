@@ -4,6 +4,7 @@
 sau đó, thông qua hàm chat_message() thì server sẽ gửi tin nhắn về ng dùng(vì thế nên bắt buộc phải lấy đúng event từ receive, vì nếu k có nó thì sao gửi)
 connect-> receive(server) -> send -> client"""
 
+
 """
 -flow từ back tới front end
 -Frontend: User gọi tất cả đoạn chat và gán id cho từng cái đó, front-end gọi new WebSocket và khởi tạo url với conversation_id đó khi click tương ứng,sau đó chạy open
@@ -30,6 +31,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from api.models import ConversationMember, Message, Conversation, Notification
 from friendship.models import Block
+from django.utils import timezone
 from django.contrib.auth.models import User
 from api.firebase import push_to_user
 
@@ -184,6 +186,10 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
     @database_sync_to_async
     def save_message(self, message, message_type='text'): # chỉ lưu DB, không làm gì khác
         try:
+            # Update updated_at của conversation để sort list chat
+            Conversation.objects.filter(id=self.conversation_id).update(
+                updated_at=timezone.now()
+            )
             return Message.objects.create(
                 conversation_id=self.conversation_id,
                 sender=self.user,

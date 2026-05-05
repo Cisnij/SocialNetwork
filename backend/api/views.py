@@ -1,5 +1,6 @@
 from itertools import chain
 
+
 from .serializers import *
 from rest_framework import generics,permissions
 from rest_framework.permissions import *
@@ -913,6 +914,9 @@ class ListBlockedFromUser(generics.ListAPIView):  # danh sách user đã bị ch
 
 
 # ===========================Chat=====================================================================
+'''send Message sau này dùng để gửi ảnh, file rồi broad cast qua
+logic: gửi ảnh qua api, lưu về, broadcast qua ws
+nhớ thêm check block'''
 class SendMessageAPIView(
     APIView):  # gửi tin nhắn tới cuộc trò chuyện, nên dùng APIView vì có nhiều logic hơn là chỉ tạo và đặc biệt là k cho gửi body mà phải gán người gửi sender vào luôn
     permission_classes = [IsAuthenticated, IsConversationMember]
@@ -932,6 +936,10 @@ class SendMessageAPIView(
         serializer.save(
             sender=request.user,
             conversation=conv)
+        # Update updated_at của conversation để sort list chat
+        Conversation.objects.filter(id=conv).update(
+            updated_at=timezone.now()
+        )
         return Response(serializer.data, status=201)
 
 
@@ -1137,21 +1145,19 @@ class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò c
     def get_queryset(self):
         convo_id = self.kwargs.get("pk")
         conv = get_object_or_404(Conversation, id=convo_id)
-        self.check_object_permissions(self.request,
-                                      conv)  # phải dùng cho get querryset, chỉ có get object mới k cần dùng còn lại dùng hết
-        if self.request.user.is_superuser or self.request.user.is_staff:
-            return Message.objects.filter(conversation_id=convo_id).select_related("sender__profile").prefetch_related(
-                "attachments").order_by("-created_at")
-
-        return (
+        self.check_object_permissions(self.request,conv)  # phải dùng cho get querryset, chỉ có get object mới k cần dùng còn lại dùng hết
+        qs=(
             Message.objects
             .filter(conversation_id=convo_id)  # lọc theo cuộc trò chuyên
-            .select_related(
-                "sender__profile")  # lấy ra profile của sender để hiển thị thông tin người gửi đồng thời với message(1-1 với sender)
-            .prefetch_related(
-                "attachments")  # lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments n-n)
+            .select_related("sender__profile")  # lấy ra profile của sender để hiển thị thông tin người gửi đồng thời với message(1-1 với sender)
+            .prefetch_related("attachments")  # lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments n-n)
             .order_by("-created_at")
         )
+        if not (self.request.user.is_superuser or self.request.user.is_staff):
+            member= ConversationMember.objects.filter(conversation=conv,user=self.request.user).only('deleted_before_message_id').first() # chỉ lấy deleted
+            if member and member.deleted_before_message_id is not None:
+                return qs.filter(id__gt=member.deleted_before_message_id) # lấy tin nhắn có thơi gian lớn hơn delete
+        return qs
 
 
 class MemberOfConversation(generics.ListAPIView):  # danh sách thành viên trong cuộc trò chuyện
@@ -1239,6 +1245,20 @@ class UpdateMessage(APIView):
         )
         return Response(serializer.data)
 
+class DeleteConversationOneSide(APIView): # nếu xóa conv thì sẽ lấy thời gian tại mốc tin nhắn cuối, chỉ load ra từ sau đó
+    permission_classes = [IsAuthenticated]
+    def patch(self,request,pk):
+        conv=get_object_or_404(Conversation,pk=pk)
+        member= ConversationMember.objects.filter(conversation=conv,user=request.user).first()
+        if not member: # check quyền
+            raise PermissionDenied("You are not member of this conversation")
+        last_msg=Message.objects.filter(conversation=conv).order_by('-created_at').first() #lấy ra tin nhắn mới nhất
+        if not last_msg:
+            return Response({"detail": "No messages to delete"}, status=200)
+        member.deleted_before_message = last_msg # đặt id deleted at khi gọi api băng với id tin nhắn cuối, chỉ lấy tin nhắn sau tin nhắn cuối chưa xóa
+        member.last_read_message=None # đặt lại last_read_mesage
+        member.save(update_fields=['deleted_before_message','last_read_message'])
+        return Response({"detail": "Conversation deleted"}, status=200)
 
 # =============================================================================
 class ProfileRelationship(APIView):
