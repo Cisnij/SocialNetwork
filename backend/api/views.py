@@ -1111,7 +1111,8 @@ class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ 
     def get_queryset(self):
         return Conversation.objects.filter(
             conversationmember__user=self.request.user, # lấy ra đoạn chat có user
-            conversationmember__is_hidden=False
+            conversationmember__is_hidden=False,
+            conversationmember__is_permanently_hidden=False
         ).distinct().prefetch_related(
             # load members + user + profile + last_read_message trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
             # (1 query join conv với message có trong conv, 1 query join user trong conv
@@ -1261,6 +1262,49 @@ class DeleteConversationOneSide(APIView): # nếu xóa conv thì sẽ lấy th�
         member.is_hidden = True # ẩn khỏi coversation
         member.save(update_fields=['deleted_at_message_id','last_read_message','is_hidden'])
         return Response({"detail": "Conversation deleted"}, status=200)
+
+class ToogleHideConversation(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        member = get_object_or_404(
+            ConversationMember,
+            conversation_id=pk,
+            user=request.user
+        )
+        member.is_permanently_hidden = not member.is_permanently_hidden# nếu là true thì gán not true là false và ngược lại
+        member.save(update_fields=['is_permanently_hidden'])
+
+        return Response({"detail": "success", "is_hidden": member.is_permanently_hidden}, status=200)
+
+
+class ListHideConversation(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    pagination_class = SmallPagePagination
+    serializer_class = ConversationSerializer
+    def get_queryset(self):
+        return (Conversation.objects.filter(conversationmember__is_permanently_hidden=True, conversationmember__user=self.request.user)
+        .distinct()
+        .prefetch_related(
+            # load members + user + profile + last_read_message trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
+            # (1 query join conv với message có trong conv, 1 query join user trong conv
+        Prefetch( #lấy ra đoạn chat có user và prefetch lấy ra các user trong đó đoạn chat đó luôn (select convmember in conv)
+            'conversationmember_set',  # conversationmember có FK với conversation nên phải lấy tham chiếu là set
+            queryset=ConversationMember.objects.select_related(  # tùy chỉnh thêm field muốn lấy
+                'user__profile',  # JOIN user và profile (1-1)
+                'last_read_message'  # JOIN last_read_message (1-1)
+            )
+        ),
+            # load messages mới nhất trong 1 query IN riêng
+            # kèm JOIN sender+profile để get_last_message không query thêm
+        Prefetch(  #lấy ra đoạn chat có user kèm tất cả message (select message in conv)
+            'message_set',  # relation 1-nhiều: 1 conv có nhiều messages
+            queryset=Message.objects.select_related(
+                'sender__profile'  # JOIN sender và profile luôn (1-1)
+            ).order_by('-created_at'),  # sắp xếp mới nhất trước, prefetch related thì k thêm đc
+            to_attr='prefetched_messages'  # lưu vào obj.prefetched_messages( vào ram )
+        ),
+    ).order_by('-updated_at'))
 
 # =============================================================================
 class ProfileRelationship(APIView):

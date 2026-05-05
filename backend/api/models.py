@@ -232,6 +232,7 @@ class ConversationMember(models.Model):
     joined_at = models.DateTimeField(auto_now_add=True)
     deleted_at_message_id = models.PositiveBigIntegerField(null=True, blank=True)
     is_hidden=models.BooleanField(default=False)
+    is_permanently_hidden = models.BooleanField(default=False)
     def __str__(self):
         return f"Member user_id={self.user_id} | conv_id={self.conversation_id}"
 
@@ -242,6 +243,7 @@ class ConversationMember(models.Model):
             models.Index(fields=['user']),
             models.Index(fields=['conversation','user']),
             models.Index(fields=['conversation', 'is_hidden']),
+            models.Index(fields=['is_permanently_hidden']),
         ]
 
 
