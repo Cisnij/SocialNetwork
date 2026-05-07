@@ -278,11 +278,12 @@ class ConversationSerializer(serializers.ModelSerializer):
         if member.last_read_message is None:# chưa đọc lần nào , đếm tất cả tin nhắn từ đầu trừ tin nhắn mình
             return sum(1 for m in msgs if m.sender_id != user.id)
         # đếm tin của người khác sau lần đọc cuối
-        return sum(
+        count =  sum(
             1 for m in msgs
             if m.id > member.last_read_message  # đếm tin nhắn last read của mình có thời gian nhỏ hơn n tin nhắn mới
             and m.sender_id != user.id                             #  không đếm tin của mình
         )
+        return min(count,10) # trả về nhỏ nhất, count hoặc mặc định là 10
 class MessageAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = MessageAttachment
@@ -293,7 +294,7 @@ class MessageSerializer(serializers.ModelSerializer):
     sender = ProfileSerializer(source="sender.profile", read_only=True)
     attachments = MessageAttachmentSerializer(many=True, read_only=True)
     conversation = serializers.PrimaryKeyRelatedField(read_only=True) #láy ra/trả ra id có liên quan đến object ở đây là override cái conversation r , Ví dụ gửi message thì message đó thuộc về conversation nào thì lấy ra id của conversation đó
-    
+    reply_to = serializers.SerializerMethodField()
     class Meta:
         model = Message
         fields = [
@@ -304,6 +305,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "message_type",
             "attachments",
             "created_at",
+            "reply_to"
         ]
         read_only_fields = [ # định nghĩa các trường chỉ đọc
             "id",
@@ -314,7 +316,14 @@ class MessageSerializer(serializers.ModelSerializer):
         ]
     def get_conversation(self, obj):
         return obj.conversation.id
-
+    def get_reply_to(self,obj):
+        if not obj.reply_to:
+            return None
+        return {
+            "id": obj.reply_to.id,
+            'content_reply': obj.reply_to.content,
+            "sender_id": obj.reply_to.sender_id,
+        }
 #==========================in-app noti ===============================
 
 #     def get_actor(self, obj): ví dụ 

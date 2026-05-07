@@ -257,6 +257,7 @@ class Message(SafeDeleteModel):
         default='text'
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    reply_to=models.ForeignKey('self',on_delete=models.SET_NULL,related_name='replies',null=True,blank=True)
 
     def __str__(self):
         return f"Message {self.id} | sender_id={self.sender_id} | conv_id={self.conversation_id} | {self.content[:30]}"

@@ -69,7 +69,7 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
 
         message = data.get('message', '').strip() # lấy message và xóa khoảng trắng
         message_type = data.get('message_type', 'text') # mặc định là text
-
+        reply_to_id = data.get('reply_to_id') # nhận vào id
         if not message: # không cho gửi tin rỗng
             return
 
@@ -80,7 +80,7 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
             return
 
         # lưu vào db
-        msg = await self.save_message(message, message_type)
+        msg = await self.save_message(message, message_type,reply_to_id) # save sẽ trả về 1 object đầy đủ
         if not msg: # lưu thất bại
             await self.send(text_data=json.dumps({'error': 'Không thể gửi tin nhắn'}))
             return
@@ -96,6 +96,8 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
                 'sender_id': self.user.id,
                 'message_type': message_type,
                 'created_at': msg.created_at.isoformat(),
+                'reply_to_id':reply_to_id,
+                'reply_to_id_content':msg.reply_to.content if msg.reply_to else None, # lấy content từ obj trả về sau lưu
             }
         )
 
@@ -112,6 +114,8 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
             'sender_id': event['sender_id'],
             'message_type': event.get('message_type', 'text'),
             'created_at': event['created_at'],
+            'reply_to_id': event['reply_to_id'],
+            'reply_to_id_content': event['reply_to_id_content'],
         }))
 
     # ===== SEEN MESSAGE - đồng bộ trạng thái đã xem giữa các thiết bị =====
@@ -184,13 +188,17 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
         return True, None
 
     @database_sync_to_async
-    def save_message(self, message, message_type='text'): # chỉ lưu DB, không làm gì khác
+    def save_message(self, message, message_type='text',reply_to_id=None): # chỉ lưu DB, không làm gì khác, mặc định reply_id là none
         try:
+            reply_to=None
+            if reply_to_id:
+                reply_to=Message.objects.filter(id=reply_to_id,conversation_id=self.conversation_id).first()# validate trước khi tạo xem có message để reply
             msg = Message.objects.create(
                 conversation_id=self.conversation_id,
                 sender=self.user,
                 content=message,
                 message_type=message_type,
+                reply_to=reply_to
             )
             # Update updated_at của conversation để sort list chat
             Conversation.objects.filter(id=self.conversation_id).update(updated_at=timezone.now())

@@ -50,7 +50,7 @@ work flows
 37. Thực hiện thêm notification realtime. Khi người dùng vào app sẽ kết nối ws cho notification, khi có thông báo mới sẽ kích hoạt signal và broadcast qua ws tăng count. Khi gọi api mark read sẽ broadcast đặt count là 0
 38 Thực hiện thêm xóa conversation 1 phía. Flow là khi user nhấn xóa sẽ đặt id của field delete_message = với id message mới nhất. Khi list message ra chỉ filter ra các message id ở sau cái delete message
     Flow của ẩn conv khỏi list khi xóa là khi user gọi api xóa sẽ set is_hidden =True, nếu nhắn lần nữa thì set lại là False
-
+39.Thêm reply message. khi user truyền vào id reply sẽ lưu id reply, lấy ra message từ id đó và trả ra cả id lẫn content
 
 
 =====================================================================================

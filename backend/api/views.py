@@ -1,6 +1,6 @@
 from itertools import chain
-
-
+from django.db.models.expressions import Window
+from django.db.models.functions import RowNumber
 from .serializers import *
 from rest_framework import generics,permissions
 from rest_framework.permissions import *
@@ -11,7 +11,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from .pagination import *
 from .signals import unfriended_log
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
-from django.db.models import Q, Prefetch, prefetch_related_objects
+from django.db.models import Q, Prefetch, prefetch_related_objects, F
 from .permissions import IsConversationMember
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
@@ -916,7 +916,7 @@ class ListBlockedFromUser(generics.ListAPIView):  # danh sách user đã bị ch
 # ===========================Chat=====================================================================
 '''send Message sau này dùng để gửi ảnh, file rồi broad cast qua
 logic: gửi ảnh qua api, lưu về, broadcast qua ws
-nhớ thêm check block và thêm is_hidden y chang bên consumer khi gửi để hiện lại ở list khi xóa'''
+nhớ thêm check block và thêm is_hidden và thêm reply_to y chang bên consumer khi gửi để hiện lại ở list khi xóa'''
 class SendMessageAPIView(
     APIView):  # gửi tin nhắn tới cuộc trò chuyện, nên dùng APIView vì có nhiều logic hơn là chỉ tạo và đặc biệt là k cho gửi body mà phải gán người gửi sender vào luôn
     permission_classes = [IsAuthenticated, IsConversationMember]
@@ -1124,15 +1124,23 @@ class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ 
             ),
             # load messages mới nhất trong 1 query IN riêng
             # kèm JOIN sender+profile để get_last_message không query thêm
-            Prefetch(  #lấy ra đoạn chat có user kèm tất cả message (select message in conv)
+            Prefetch(  # lấy ra đoạn chat có user kèm 11 message mới nhất (select message in conv)
                 'message_set',  # relation 1-nhiều: 1 conv có nhiều messages
-                queryset=Message.objects.select_related(
+                queryset=Message.objects.annotate(
+                    row_num=Window(  # đánh số thứ tự từng tin trong conv
+                        expression=RowNumber(),
+                        partition_by=[F('conversation_id')],  # reset số thứ tự theo từng conv
+                        order_by=F('created_at').desc()  # tin mới nhất = row_num 1
+                    )
+                ).filter(row_num__lte=11)  # chỉ lấy 11 tin gần nhất, đủ để FE hiển thị 9+ nếu count >= 10
+                .select_related(
                     'sender__profile'  # JOIN sender và profile luôn (1-1)
-                ).order_by('-created_at'),  # sắp xếp mới nhất trước, prefetch related thì k thêm đc
-                to_attr='prefetched_messages'  # lưu vào obj.prefetched_messages( vào ram )
+                )
+                .prefetch_related('attachments')
+                .order_by('-created_at'),  # sắp xếp mới nhất trước
+                to_attr='prefetched_messages'  # lưu vào obj.prefetched_messages trong RAM
             ),
         ).order_by('-updated_at')
-
 
 class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò chuyện
     serializer_class = MessageSerializer
@@ -1287,22 +1295,32 @@ class ListHideConversation(generics.ListAPIView):
         .prefetch_related(
             # load members + user + profile  trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
             # (1 query join conv với message có trong conv, 1 query join user trong conv
-        Prefetch( #lấy ra đoạn chat có user và prefetch lấy ra các user trong đó đoạn chat đó luôn (select convmember in conv)
-            'conversationmember_set',  # conversationmember có FK với conversation nên phải lấy tham chiếu là set
-            queryset=ConversationMember.objects.select_related(  # tùy chỉnh thêm field muốn lấy
-                'user__profile',  # JOIN user và profile (1-1)
-            )
-        ),
+            Prefetch(
+                # lấy ra đoạn chat có user và prefetch lấy ra các user trong đó đoạn chat đó luôn (select convmember in conv)
+                'conversationmember_set',  # conversationmember có FK với conversation nên phải lấy tham chiếu là set
+                queryset=ConversationMember.objects.select_related(  # tùy chỉnh thêm field muốn lấy
+                    'user__profile',  # JOIN user và profile (1-1)
+                )
+            ),
             # load messages mới nhất trong 1 query IN riêng
             # kèm JOIN sender+profile để get_last_message không query thêm
-        Prefetch(  #lấy ra đoạn chat có user kèm tất cả message (select message in conv)
-            'message_set',  # relation 1-nhiều: 1 conv có nhiều messages
-            queryset=Message.objects.select_related(
-                'sender__profile'  # JOIN sender và profile luôn (1-1)
-            ).order_by('-created_at'),  # sắp xếp mới nhất trước, prefetch related thì k thêm đc
-            to_attr='prefetched_messages'  # lưu vào obj.prefetched_messages( vào ram )
-        ),
-    ).order_by('-updated_at'))
+            Prefetch(  # lấy ra đoạn chat có user kèm 11 message mới nhất (select message in conv)
+                'message_set',  # relation 1-nhiều: 1 conv có nhiều messages
+                queryset=Message.objects.annotate(
+                    row_num=Window(  # đánh số thứ tự từng tin trong conv
+                        expression=RowNumber(),
+                        partition_by=[F('conversation_id')],  # reset số thứ tự theo từng conv
+                        order_by=F('created_at').desc()  # tin mới nhất = row_num 1
+                    )
+                ).filter(row_num__lte=11)  # chỉ lấy 11 tin gần nhất, đủ để FE hiển thị 9+ nếu count >= 10
+                .select_related(
+                    'sender__profile'  # JOIN sender và profile luôn (1-1)
+                )
+                .prefetch_related("attachments")
+                .order_by('-created_at'),  # sắp xếp mới nhất trước
+                to_attr='prefetched_messages'  # lưu vào obj.prefetched_messages trong RAM
+            ),
+        ).order_by('-updated_at'))
 
 # =============================================================================
 class ProfileRelationship(APIView):
