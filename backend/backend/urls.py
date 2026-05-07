@@ -124,7 +124,7 @@ urlpatterns = [
     path('api/chat/messages/update/<int:pk>/', UpdateMessage.as_view(), name='update-message'), #cập nhật tin nhắn đã gửi
     path('api/chat/conversation/<int:pk>/delete/',DeleteConversationOneSide.as_view(),name='delete-message-oneside'),
     path('api/chat/conversation/<int:pk>/toogle-hidden/',ToogleHideConversation.as_view(),name='toogle-hidden'),
-    path('api/chat/conversation/hidden-chat/',ListHideConversation.as_view(),name='toogle-hidden'),
+    path('api/chat/conversation/hidden-chat/',ListHideConversation.as_view(),name='hidden-chat'),
     #fire base notification
     path("fcm-token/", SaveFCMTokenView.as_view()), # token cho thiết bị
     #in-app notification

@@ -227,8 +227,7 @@ class Conversation(models.Model):
 class ConversationMember(models.Model):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    last_read_message = models.ForeignKey("Message", null=True, blank=True,
-                                          on_delete=models.SET_NULL)  # ondelete set null để khi message bị xóa thì trường này sẽ null
+    last_read_message = models.PositiveBigIntegerField(null=True, blank=True)
     joined_at = models.DateTimeField(auto_now_add=True)
     deleted_at_message_id = models.PositiveBigIntegerField(null=True, blank=True)
     is_hidden=models.BooleanField(default=False)

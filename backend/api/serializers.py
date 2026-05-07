@@ -227,11 +227,6 @@ class BlockSerializer(serializers.ModelSerializer):
 
 class ConversationMemberSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source="user.profile", read_only=True)
-    last_read_message = serializers.IntegerField(
-        source="last_read_message_id",  # vì là fk của ConversationMember model nên đọc thẳng đc
-        read_only=True,
-        allow_null=True
-    )
     class Meta:
         model = ConversationMember
         fields = [
@@ -285,7 +280,7 @@ class ConversationSerializer(serializers.ModelSerializer):
         # đếm tin của người khác sau lần đọc cuối
         return sum(
             1 for m in msgs
-            if m.created_at > member.last_read_message.created_at  # đếm tin nhắn last read của mình có thời gian nhỏ hơn n tin nhắn mới
+            if m.id > member.last_read_message  # đếm tin nhắn last read của mình có thời gian nhỏ hơn n tin nhắn mới
             and m.sender_id != user.id                             #  không đếm tin của mình
         )
 class MessageAttachmentSerializer(serializers.ModelSerializer):

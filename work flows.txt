@@ -48,7 +48,8 @@ work flows
 35. Tag tên người dùng trong comment: khi người dùng nhấn @, fe thực hiện tìm kiếm với api gọi tất cả profile bạn bè api/friends/, sau đó nhấn chọn người nào sẽ láy id truyền vào cái tạo comment. Khi người dùng nhấn reply 1 reply con, reply con sẽ chứa data parent và data user id, khi gọi api sẽ truyền parent gốc và tag user là user.id
 36. Sửa lại Block,Friend,Follow dùng value list cho nhẹ, improve Search API xin như google
 37. Thực hiện thêm notification realtime. Khi người dùng vào app sẽ kết nối ws cho notification, khi có thông báo mới sẽ kích hoạt signal và broadcast qua ws tăng count. Khi gọi api mark read sẽ broadcast đặt count là 0
-
+38 Thực hiện thêm xóa conversation 1 phía. Flow là khi user nhấn xóa sẽ đặt id của field delete_message = với id message mới nhất. Khi list message ra chỉ filter ra các message id ở sau cái delete message
+    Flow của ẩn conv khỏi list khi xóa là khi user gọi api xóa sẽ set is_hidden =True, nếu nhắn lần nữa thì set lại là False
 
 
 

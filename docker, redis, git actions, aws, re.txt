@@ -11,6 +11,13 @@ elastic: "http://127.0.0.1:9200" (server private)
 
 1 server có nhiều worker để khi worker chạy hết thì chuyển sang worker khác gọi là multi worker,tăng rq/s nhưng tăng ram, nếu full tất cả worker thì nhảy qua server khác gọi là load balancer
 
+
+file python nên chia nhỏ r như sau
+app/user
+app/notification
+app/post
+app/ comment
+trong mỗi phần app/ đó sẽ có model, serializer, và file service viết logic chung(bussiness logic vào) để tái sử dụng
 ---
 
 
@@ -146,7 +153,32 @@ elastic: "http://127.0.0.1:9200" (server private)
 * Học Node.js và triển khai cho mobile (tương lai)
 
 
-=============================================================================================================================
+=======================================================================================================================================
+ý tưởng share, tạo model user share, ở view api post user và post feed đều thêm vào filter post share có user hoặc bạn user sẽ lọc ra hiện ra trang feed và trang cá nhân, làm thêm 1 api tổng hợp tất cả share của bài post đó qua filter post=post
+==========================================================================================================================================
+prefetch trong conversation bị lỗi vì nó load toàn bộ vô ram
+sửa lại,  thêm field unread count trong conversation và khi seen sẽ reset lại // hoặc giới hạn trong 10 ngày gần nhất 
+
+--thêm field
+unread_count = models.PositiveIntegerField(default=0)
+--tăng khi nhắn tin
+ConversationMember.objects.filter(
+    conversation_id=conv_id
+).exclude(user_id=sender_id).update(
+    unread_count=models.F('unread_count') + 1
+)
+--reset 
+ConversationMember.objects.filter(
+    conversation=conversation,
+    user=request.user
+).update(last_read_message=last_message, unread_count=0)
+
+--đọc trong serializer 
+    if not member:
+        return 0
+    return member.unread_count
+=====================================================================================================================================
+
 logic tạo group và phân quyền chỉnh sửa bài viết trong group
 
 group > user
@@ -160,6 +192,7 @@ tạo view cho list all post cho user riêng dùng generics List
 tạo view cho list và sửa cho admin dùng generic retrieveupdatedestroy và list của cái trên, nếu user là chủ bài viết cũng k đc chỉnh sửa
 
 ==================================================================================================================================
+
 Chức năng phân quyền ai được xem và không
 ---
 
@@ -304,28 +337,7 @@ view user page thì
 nếu là request.user = (id trang cá nhân truyền vào) đó thì filter ra bài viết của chính họ tất cả, còn check user.request mà khác id truyền vào thì chỉ filter ra các bài viết công khai, còn nếu là bạn bè thì filter ra bài viết của họ mà công khai và bạn bè
 
 ===========================================================================================================================
-Xóa đoạn chat
 
-thêm trường is_del_conv=models.BooleanField(default=False)
-
-class DeleteConversation(generics.UpdateAPIView):
-    permission_classes = [IsAuthenticated,IsConversationMember]
-    serializer_class = ConversationMemberSerializer
-    def put(self,request, *args, **kwargs):
-        conv_id=request.data.get('conv_id')
-        conv=Conversation.objects.get(id=conv_id).first()
-        user=request.user
-        self.check_object_permissions(request, conv)
-        if not conv:
-            return Response({'error': 'No conversation'},status=400)
-        conv_del= ConversationMember.objects.filter(conversation=conv, user=user).first()
-        if not conv_del:
-            return Response({'error': 'Not a member'}, status=400)
-        conv_del.is_del_conv=True
-        conv_del.save()
-        return Response({'message': 'Deleted successfully'}, status=200)
-
-=======================================================================================================
 xây group chat và sửa lại tất cả có liên quan
 Facebook check theo thứ tự:Có file không? → có → cho qua dù text rỗng
              → không → có text không? → có → cho qua
@@ -413,3 +425,157 @@ luồng là user nhấn reply to ai đó và thêm content thì sẽ gọi tạo
         blank=True,
         related_name='replies'     # msg.replies.all()
     )
+
+ nếu nhấn nút reply sẽ thêm id vào body và truyền về
+ load ra message cũng load thêm reply to
+gửi tin nhắn nhận vào reply to,ko có thì Null
+Cần sửa/thêm ở **4 chỗ:**
+
+---
+
+**1. Model — thêm field (đã có):**
+```python
+reply_to = models.ForeignKey(
+    'self',
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name='replies'
+)
+```
+```bash
+python manage.py makemigrations && python manage.py migrate
+```
+
+---
+
+**2. `MessageSerializer` — thêm `reply_to`:**
+```python
+class MessageSerializer(serializers.ModelSerializer):
+    sender = ProfileSerializer(source="sender.profile", read_only=True)
+    attachments = MessageAttachmentSerializer(many=True, read_only=True)
+    conversation = serializers.PrimaryKeyRelatedField(read_only=True)
+    reply_to = serializers.SerializerMethodField()  # ← thêm
+
+    class Meta:
+        model = Message
+        fields = [
+            "id", "conversation", "sender", "content",
+            "message_type", "attachments", "created_at",
+            "reply_to",  # ← thêm
+        ]
+
+    def get_reply_to(self, obj):
+        if not obj.reply_to_id:
+            return None
+        return {
+            "id": obj.reply_to.id,
+            "content": obj.reply_to.content,
+            "sender_id": obj.reply_to.sender_id,
+        }
+```
+
+---
+
+**3. `SendMessageAPIView` — nhận `reply_to_id` từ request:**
+```python
+def post(self, request, pk):
+    ...
+    reply_to_id = request.data.get('reply_to_id')
+    reply_to = None
+    if reply_to_id:
+        reply_to = Message.objects.filter(
+            id=reply_to_id,
+            conversation=conv  # phải cùng conv
+        ).first()
+        if not reply_to:
+            return Response({"error": "Message not found"}, status=400)
+
+    serializer.save(
+        sender=request.user,
+        conversation=conv,
+        reply_to=reply_to  # ← thêm
+    )
+```
+
+---
+
+**4. `consumers.py` — nhận và save `reply_to_id`:**
+
+```python
+async def receive(self, text_data):
+    data = json.loads(text_data)
+    message = data.get('message', '').strip()
+    message_type = data.get('message_type', 'text')
+    reply_to_id = data.get('reply_to_id')  # ← thêm
+
+    ...
+
+    msg = await self.save_message(message, message_type, reply_to_id)  # ← thêm
+
+    await self.channel_layer.group_send(
+        self.room_name,
+        {
+            'type': 'chat_message',
+            'id': msg.id,
+            'message': message,
+            'sender': self.user.username,
+            'sender_id': self.user.id,
+            'message_type': message_type,
+            'created_at': msg.created_at.isoformat(),
+            'reply_to_id': reply_to_id,  # ← thêm
+            'reply_to_content': msg.reply_to.content if msg.reply_to else None,  # ← thêm
+        }
+    )
+```
+
+```python
+@database_sync_to_async
+def save_message(self, message, message_type='text', reply_to_id=None):
+    try:
+        reply_to = None
+        if reply_to_id:
+            reply_to = Message.objects.filter(
+                id=reply_to_id,
+                conversation_id=self.conversation_id
+            ).first()
+        msg = Message.objects.create(
+            conversation_id=self.conversation_id,
+            sender=self.user,
+            content=message,
+            message_type=message_type,
+            reply_to=reply_to  # ← thêm
+        )
+        after_message_saved(self.conversation_id)
+        return msg
+    except Exception as e:
+        print(f"Save message error: {e}")
+        return None
+```
+
+```python
+async def chat_message(self, event):
+    await self.send(text_data=json.dumps({
+        'id': event['id'],
+        'message': event['message'],
+        'sender': event['sender'],
+        'sender_id': event['sender_id'],
+        'message_type': event.get('message_type', 'text'),
+        'created_at': event['created_at'],
+        'reply_to_id': event.get('reply_to_id'),        # ← thêm
+        'reply_to_content': event.get('reply_to_content'),  # ← thêm
+    }))
+```
+
+---
+
+**`ConversationMessage` — thêm `select_related` để tránh N+1:**
+```python
+qs = (
+    Message.objects
+    .filter(conversation_id=convo_id)
+    .select_related("sender__profile", "reply_to__sender__profile")  # ← thêm reply_to
+    .prefetch_related("attachments")
+    .order_by("-created_at")
+)
+```

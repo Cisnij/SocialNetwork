@@ -937,7 +937,7 @@ class SendMessageAPIView(
             sender=request.user,
             conversation=conv)
         # Update updated_at của conversation để sort list chat
-        Conversation.objects.filter(id=conv).update(
+        Conversation.objects.filter(id=conv.id).update(
             updated_at=timezone.now()
         )
         return Response(serializer.data, status=201)
@@ -1114,13 +1114,12 @@ class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ 
             conversationmember__is_hidden=False,
             conversationmember__is_permanently_hidden=False
         ).distinct().prefetch_related(
-            # load members + user + profile + last_read_message trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
+            # load members + user + profile  trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
             # (1 query join conv với message có trong conv, 1 query join user trong conv
             Prefetch( #lấy ra đoạn chat có user và prefetch lấy ra các user trong đó đoạn chat đó luôn (select convmember in conv)
                 'conversationmember_set',  # conversationmember có FK với conversation nên phải lấy tham chiếu là set
                 queryset=ConversationMember.objects.select_related(  # tùy chỉnh thêm field muốn lấy
                     'user__profile',  # JOIN user và profile (1-1)
-                    'last_read_message'  # JOIN last_read_message (1-1)
                 )
             ),
             # load messages mới nhất trong 1 query IN riêng
@@ -1195,7 +1194,7 @@ class SeenMessage(APIView):  # đánh dấu đã xem tin nhắn, logic là khi m
         ConversationMember.objects.filter(
             conversation=conversation,
             user=request.user
-        ).update(last_read_message=last_message)
+        ).update(last_read_message=last_message.id)
 
         # Gửi seen event qua WebSocket để đồng bộ các thiết bị khác, cách custome
         try:
@@ -1286,13 +1285,12 @@ class ListHideConversation(generics.ListAPIView):
         return (Conversation.objects.filter(conversationmember__is_permanently_hidden=True, conversationmember__user=self.request.user)
         .distinct()
         .prefetch_related(
-            # load members + user + profile + last_read_message trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
+            # load members + user + profile  trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
             # (1 query join conv với message có trong conv, 1 query join user trong conv
         Prefetch( #lấy ra đoạn chat có user và prefetch lấy ra các user trong đó đoạn chat đó luôn (select convmember in conv)
             'conversationmember_set',  # conversationmember có FK với conversation nên phải lấy tham chiếu là set
             queryset=ConversationMember.objects.select_related(  # tùy chỉnh thêm field muốn lấy
                 'user__profile',  # JOIN user và profile (1-1)
-                'last_read_message'  # JOIN last_read_message (1-1)
             )
         ),
             # load messages mới nhất trong 1 query IN riêng
