@@ -12,9 +12,20 @@ chưa xong
 - xây gửi file, ảnh, video trong message dùng pip install python-magic
 - xong tất cả thì xây signal 1 thể
 - xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
-- thêm cái conversation real time để broad cast, chức năng là có tin nhắn mới ở trang conversation thì nhảy lên đầu và count dựa vào message create. Có các thông tin như conversation id, last message = message vừa tạo đó để hiện ra chứ k hiện count, updated_at
 
 
 
 
-reply message
+
+test cái conversation consumer
+import asyncio
+
+# thay vì
+await self.push_notifications(message)
+member_ids = await self.get_member_ids()
+
+# dùng
+member_ids, _ = await asyncio.gather(
+    self.get_member_ids(),
+    self.push_notifications(message)
+)

@@ -3,7 +3,7 @@
 """flow là khi người dùng gửi tin nhắn thì chạy connect trước, sau đó là chạy receive() để server nhận tin nhắn từ người dùng
 sau đó, thông qua hàm chat_message() thì server sẽ gửi tin nhắn về ng dùng(vì thế nên bắt buộc phải lấy đúng event từ receive, vì nếu k có nó thì sao gửi)
 connect-> receive(server) -> send -> client"""
-
+import asyncio
 
 """
 -flow từ back tới front end
@@ -20,7 +20,7 @@ ng dùng gọi api websocket trước xong kích hoạt application mới gọi 
 '''
 Máy A ->> [SER] ->> [Máy A]
 Máy B ->> [VER] ->> [Máy B]
-server nhận,lưu và gửi tín hiệu event các máy trong group, sau đó dùng chat_message để các máy nhận và load ra
+server nhận,lưu và gửi tín hiệu event các máy trong group, sau đó dùng gọi hàm tương ứng(chat_message) và send để các máy nhận và load ra
 
 Mở rộng ra, cứ nghĩ cái backend là server chỉ nhận và truyền. Thì ng dùng nhập typing hay gì đó sẽ gọi type:'type" cho backend xử lý và trả lại json cho toàn bộ 
 group send và send luôn đi chung, 1 cái gửi tín hiệu và cái còn lại gửi dữ liệu json cho fe load ra
@@ -52,7 +52,7 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
             await self.close()
             return
 
-        await self.channel_layer.group_add(self.room_name, self.channel_name) # thêm vào group phòng chat trong redis, room name là tên lưu trong redis, channel name là tên channels tự sinh ra unique cụ thể
+        await self.channel_layer.group_add(self.room_name, self.channel_name) # thêm vào group phòng chat trong redis, room name là tên lưu trong redis, channel name là tên channels tự sinh ra unique cụ thể gắn với connect của user, khi kết nối sẽ group send cho các connect này mặc dù k biết user
         await self.accept() # chấp nhận kết nối WebSocket
         print("CONNECT:", self.channel_name)
 
@@ -87,7 +87,7 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
 
         # broadcast tới tất cả client trong phòng
         await self.channel_layer.group_send(
-            self.room_name,
+            self.room_name, # send tới tên group
             {
                 'type': 'chat_message', # maps tới hàm chat_message bên dưới
                 'id': msg.id,
@@ -102,10 +102,31 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
         )
 
         # push notification sau cùng, tách hoàn toàn, lỗi firebase không ảnh hưởng message đã lưu và đã broadcast
-        await self.push_notifications(message)
+        member_ids, _ = await asyncio.gather(
+            self.get_member_ids(),
+            self.push_notifications(message)
+        )
+        for user in member_ids:
+            if user == self.user.id: # người nào gửi là người đó đang kết nối vô phòng, còn nếu đang ở đoạn chat sẵn thì fe bỏ qua cái này
+                continue
+            await self.channel_layer.group_send(
+                f'conv_list_{user}',
+                {
+                    'type': 'conversation_updated',
+                    'conversation_id': self.conversation_id,
+                    'last_message': message,
+                    'sender_id': self.user.id,
+                    'sender_name': self.user.username,
+                    'message_type': message_type,
+                    'created_at': msg.created_at.isoformat(),
+                }
+            )
+
+
 
     # ===== CHAT_MESSAGE - gửi tin nhắn tới từng client trong group =====
     # hàm này chạy sau group_send, bắt buộc tên phải giống type trong group_send, lấy ra từ group send và gửi đi
+    # send sẽ chạy từng người ví dụ conv có 5 thì send 5 lần, groupsend thì gửi hàng loạt tín hiệu tới group conv đó
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
             'id': event['id'],
@@ -227,6 +248,10 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
         except Exception as e:
             print(f" Push notification error: {e}")
 
+    @database_sync_to_async
+    def get_member_ids(self):
+        return list(ConversationMember.objects.filter(conversation_id=self.conversation_id).values_list('user_id', flat=True)) # chỉ lấy 1 field user_id
+
 class NotificationConsumer(AsyncWebsocketConsumer): # chịu trách nhiệm kết nối khi vào app và đếm số count noti ngay khi vào app, khi nhấn vào noti sẽ broadcast từ signal qua và đặt lại 0
     async def connect(self):
         if not self.scope['user'].is_authenticated:
@@ -255,3 +280,33 @@ class NotificationConsumer(AsyncWebsocketConsumer): # chịu trách nhiệm kế
                 reciever=self.user,
                 is_read=False
             ).count()
+
+class ConversationConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        if not self.scope['user'].is_authenticated:
+            await self.close()
+            return
+        self.user = self.scope['user']
+        self.group_name= f'conv_list_{self.user.id}'
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+
+
+    async def disconnect(self, code):
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    async def receive(self, text_data):
+        pass
+
+    async def conversation_updated(self,event):
+        await self.send(text_data=json.dumps({
+            'conversation_id':event['conversation_id'],
+            'last_message':event['last_message'],
+            'sender_id': event['sender_id'],
+            'sender_name': event['sender_name'],
+            'message_type': event['message_type'],
+            'created_at': event['created_at'],
+
+        }))
+
+# cần lặp group send vì không như chat mn chung 1 group, conv list thì môi user 1 conv list
