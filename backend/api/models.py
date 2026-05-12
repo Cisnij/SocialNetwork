@@ -92,6 +92,11 @@ class PendingProfile(models.Model):
 
 class Post(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE  # khi xóa post thì các comment, photo liên quan cũng bị xóa mềm theo
+    PRIVACY_CHOICES=[
+        ('public', 'Công khai'),
+        ('friends', 'Bạn bè'),
+        ('private', 'Chỉ mình tôi'),
+    ]
     post_id = models.BigAutoField(primary_key=True, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=200, null=False)
@@ -100,6 +105,8 @@ class Post(SafeDeleteModel):
         Reaction)  # generic relation dùng để kết nối nhiều model thay vì chỉ 1 như FK cố định. Ví dụ Fk là cần phải có trường đó để tạo FK thì cái này có thể gắn bất kì model nào mà k cần trường chung
     share_code = models.CharField(max_length=10, unique=True, default=generate_shared_code, editable=False)
     share_count=models.PositiveIntegerField(default=0)
+    privacy= models.CharField(max_length=15,choices=PRIVACY_CHOICES,default='public')
+    # group=models.ForeignKey(Group,null=True,blank=True)
     def __str__(self):
         return f"Post {self.post_id} | user_id={self.user_id} | {self.title[:30]}"
 
@@ -175,7 +182,7 @@ class Comment(SafeDeleteModel):
 class Setting(models.Model):
     darkmode = models.BooleanField(default=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-
+    #sau này thêm default post privacy để lưu giá trị privacy user set mỗi khi đăng bài, khi perform create thì lấy ra và gán luôn nếu có gán thủ công thì lấy thủ công
     def __str__(self):
         return f"Setting of {self.user.username}"
 

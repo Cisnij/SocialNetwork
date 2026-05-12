@@ -35,10 +35,47 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from api.firebase import push_to_user
 
-class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới url ở routing, khi out đoạn chat sẽ chạy disconnect
+class HeartbeatMixin:
+    '''giúp tự kết nối khi bị ngắt, flow là server gửi ping sau 30s, client còn sống thì gửi pong. Nếu k gửi pong thì server disconnect và client k nhận ping cũng sẽ tự reconnect 3s chỉ sau khi server close'''
+    ''' 
+    lần 1 start heartbeat là true mặc định
+    lần 2 _hearbeat chạy sau 30s, pong_received=True ở lần 1, chạy set lại pong_received=False và gửi client ping, 
+        client trả về pong ở recieve thì chạy handle và set pong_received=True lại, lặp lại n lần
+    lần n: sau 30s ,pong_received=True ở lần n-1, chạy set lại pong_received=False, gửi client ping,
+        client không trả pong ở receive, def handle chạy kiểm tra không có pong và set pong_received=False
+    lần n+1: sau 30s,pong_received=False ở lần n, chạy close()
+    client khi 3s sau close sẽ tự chạy reconnect, có 2 dạng là client biết disconnect và không biết disconnect mặc đù đang connect nên cần tới cách ping pong
+    '''
+    async def start_heartbeat(self):
+        self.pong_received =True # mặc định kết nối là True
+        self.ping_task = asyncio.create_task(self._heartbeat()) #tạo hàm chạy ngầm vòng lặp của hàm _heartbeat
+
+    async def stop_heartbeat(self):
+        if hasattr(self, 'ping_task') and self.ping_task: #kiểm tra có ping_task đang chạy k
+            self.ping_task.cancel() #cancel task chạy ngầm
+
+    async def _heartbeat(self): # hàm private
+        while True:
+            await asyncio.sleep(30) # vòng lặp, cứ 30s sau sleep là ping 1 lần
+            try:
+                if not self.pong_received:  # nếu không nhận pong sau n giây thì đóng connect vì client ngắt
+                    await self.close()
+                    break
+                self.pong_received = False # mỗi 30s reset false đợi client trả về mới set True
+                await self.send(text_data=json.dumps({'type': 'ping'}))
+            except Exception:
+                break
+    def handle_pong(self,data): # hàm check, nếu có gửi thì set True lại
+        if data.get('type') == 'pong':
+            self.pong_received = True  # đánh dấu client còn sống
+            return True
+        return False
+
+class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới url ở routing, khi out đoạn chat sẽ chạy disconnect
 
     # ===== CONNECT =====
     async def connect(self):
+        self.ping_task=None
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id'] # lấy conversation_id từ url
         self.user = self.scope['user'] # lấy user từ middleware (JWT đã xác thực ở middleware) 
         self.room_name = f'chat_{self.conversation_id}' # tên phòng để group_send, lưu tên phòng vào redis
@@ -54,11 +91,14 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
 
         await self.channel_layer.group_add(self.room_name, self.channel_name) # thêm vào group phòng chat trong redis, room name là tên lưu trong redis, channel name là tên channels tự sinh ra unique cụ thể gắn với connect của user, khi kết nối sẽ group send cho các connect này mặc dù k biết user
         await self.accept() # chấp nhận kết nối WebSocket
+        await self.start_heartbeat()
         print("CONNECT:", self.channel_name)
 
     # ===== DISCONNECT =====
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.room_name, self.channel_name) # rời khỏi group khi ngắt kết nối, xóa khỏi redis
+        await self.stop_heartbeat() # nếu có ping-task chạy thì tắt hẳn
+        if self.room_name: # nếu có roomname mới ngắt kết nối, tránh lỗi khi k truyền roomname vào
+            await self.channel_layer.group_discard(self.room_name, self.channel_name) # rời khỏi group khi ngắt kết nối, xóa khỏi redis
 
     # ===== RECEIVE - nhận tin nhắn từ client =====
     async def receive(self, text_data):
@@ -66,7 +106,8 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
             data = json.loads(text_data)
         except json.JSONDecodeError:
             return
-
+        if self.handle_pong(data): # lấy data server nhận đưa vào hàm kiểm tra có pong k, có true không false và false thì dừng
+            return
         message = data.get('message', '').strip() # lấy message và xóa khoảng trắng
         message_type = data.get('message_type', 'text') # mặc định là text
         reply_to_id = data.get('reply_to_id') # nhận vào id
@@ -209,9 +250,9 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
         return True, None
 
     @database_sync_to_async
-    def save_message(self, message, message_type='text',reply_to_id=None): # chỉ lưu DB, không làm gì khác, mặc định reply_id là none
+    def save_message(self, message, message_type='text',reply_to_id=None): # chỉ lưu DB, không làm gì khác, mặc định reply_id là none, mặc định msg type là text
         try:
-            reply_to=None
+            reply_to=None# mặc định object là None
             if reply_to_id:
                 reply_to=Message.objects.filter(id=reply_to_id,conversation_id=self.conversation_id).first()# validate trước khi tạo xem có message để reply
             msg = Message.objects.create(
@@ -252,8 +293,9 @@ class ChatConsumer(AsyncWebsocketConsumer): # chỉ kết nối khi gọi tới 
     def get_member_ids(self):
         return list(ConversationMember.objects.filter(conversation_id=self.conversation_id).values_list('user_id', flat=True)) # chỉ lấy 1 field user_id
 
-class NotificationConsumer(AsyncWebsocketConsumer): # chịu trách nhiệm kết nối khi vào app và đếm số count noti ngay khi vào app, khi nhấn vào noti sẽ broadcast từ signal qua và đặt lại 0
+class NotificationConsumer(HeartbeatMixin,AsyncWebsocketConsumer): # chịu trách nhiệm kết nối khi vào app và đếm số count noti ngay khi vào app, khi nhấn vào noti sẽ broadcast từ signal qua và đặt lại 0
     async def connect(self):
+        self.ping_task=None
         if not self.scope['user'].is_authenticated:
             await self.close()
             return
@@ -261,14 +303,20 @@ class NotificationConsumer(AsyncWebsocketConsumer): # chịu trách nhiệm kế
         self.group_name = f'notification_{self.user.id}' # lưu tên kèm user id vào redis để gửi kết nối và data tới n thiết bị có tên đó
         await self.channel_layer.group_add(self.group_name, self.channel_name)# add vào redis tên group và tên channels tạo
         await self.accept()
+        await self.start_heartbeat()
 
         count = await self.get_unread_count()
         await self.send(text_data=json.dumps({'unread_count': count})) # chuyển thành chuỗi json
 
     async def disconnect(self, close_code):
-            await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        await self.stop_heartbeat()
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self,text_data):
+        try:
+            data = json.loads(text_data)
+            self.handle_pong(data)  # ← thêm
+        except json.JSONDecodeError:
             pass
 
     async def send_notification(self,event): #event là cái group send gửi lên, event[''] là dữ liệu th group send
@@ -281,8 +329,9 @@ class NotificationConsumer(AsyncWebsocketConsumer): # chịu trách nhiệm kế
                 is_read=False
             ).count()
 
-class ConversationConsumer(AsyncWebsocketConsumer):
+class ConversationConsumer(HeartbeatMixin,AsyncWebsocketConsumer):
     async def connect(self):
+        self.ping_task=None
         if not self.scope['user'].is_authenticated:
             await self.close()
             return
@@ -290,13 +339,19 @@ class ConversationConsumer(AsyncWebsocketConsumer):
         self.group_name= f'conv_list_{self.user.id}'
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        await self.start_heartbeat()
 
 
     async def disconnect(self, code):
+        await self.stop_heartbeat()
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data):
-        pass
+        try:
+            data = json.loads(text_data)
+            self.handle_pong(data)  # ← thêm
+        except json.JSONDecodeError:
+            pass
 
     async def conversation_updated(self,event):
         await self.send(text_data=json.dumps({

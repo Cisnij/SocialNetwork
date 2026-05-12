@@ -12,7 +12,7 @@ from .pagination import *
 from .signals import unfriended_log
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
 from django.db.models import Q, Prefetch, prefetch_related_objects, F
-from .permissions import IsConversationMember
+from .permissions import IsConversationMember, PostViewPermission
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
 from .utils import get_reactions_post_context,get_reactions_comment_context
@@ -250,8 +250,8 @@ class PostFriend(generics.ListAPIView):  # List tất cả post của bạn bè
                 Post.objects
                 .filter( # câu lệnh Q..| là OR
                     Q(user_id=user.id) |  #lấy post của user
-                    Q(user_id__in=friend_ids) |
-                    Q(user_id__in=following_ids) #lấy post của follow
+                    Q(user_id__in=friend_ids,privacy__in=['public','friends']) |
+                    Q(user_id__in=following_ids, privacy='public') #lấy post của follow
                 )
                 .exclude(user_id__in=blocked_ids) #loại block
                 .exclude(user_id__in=blocking_ids)
@@ -273,22 +273,16 @@ class PostFriend(generics.ListAPIView):  # List tất cả post của bạn bè
 
 
 class PostModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa post
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,PostViewPermission] #rules check can view và edit
     serializer_class = PostSerializer
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'post'
 
     def get_object(self):
-        user = self.request.user
         post_id = self.kwargs.get('pk')
-
-        if user.is_superuser or user.is_staff:
-            if not post_id:
-                raise NotFound("Admin cần truyền ID post và slug chính xác để truy cập.")
-            return get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'), post_id=post_id)
-
-        return get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'), user=user, post_id=post_id)
-
+        post = get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'),post_id=post_id)
+        self.check_object_permissions(self.request, post)  #  rules chạy ở đây, nó sẽ check post public hay friends và có đc xem,edit
+        return post
 
 class PostUser(generics.ListAPIView):  # List tất cả post của user
     permission_classes = [IsAuthenticated]
@@ -308,7 +302,15 @@ class PostUser(generics.ListAPIView):  # List tất cả post của user
             target_user = profile.user
             if Block.objects.is_blocked(user, target_user):
                 raise PermissionDenied("Cannot see posts of this user")
-            self._qs = Post.objects.filter(user__profile__id=profile_id).select_related('user__profile').prefetch_related('photos').order_by('-created_at')
+            #là chính mình thì lấy tất cả
+            if user==target_user:
+                self._qs= Post.objects.filter(user=target_user).select_related('user__profile').prefetch_related('photos').order_by("-created_at")
+            # là bạn thì lấy post public và friend
+            elif Friend.objects.are_friends(user,target_user):
+                self._qs= Post.objects.filter(user=target_user,privacy__in=['public','friends']).select_related('user__profile').prefetch_related('photos').order_by("-created_at")
+            # là người lạ thì chỉ lấy public
+            else:
+                self._qs = Post.objects.filter(user=target_user,privacy='public').select_related('user__profile').prefetch_related('photos').order_by('-created_at')
         return self._qs
 
     def get_serializer_context(self):
@@ -358,15 +360,32 @@ class PostListAll(generics.ListAPIView):
 
 
 class PostShareView(generics.RetrieveAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,PostViewPermission]
     serializer_class = PostSerializer
 
     def get_object(self):
         share_code=self.kwargs.get('share_code')
         post = get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'), share_code=share_code)
+        self.check_object_permissions(self.request, post) #check xem post đc share thì user có đc xem
         post.share_count += 1
         post.save(update_fields=['share_count']) # update_fields để patch update 1 phần thay vì toàn bộ
         return post
+
+class ChangePostPrivacy(APIView):
+    permission_classes = [IsAuthenticated,PostViewPermission]
+    def patch(self,request,post_id):
+        post= get_object_or_404(Post,post_id=post_id)
+        self.check_object_permissions(request, post)
+        privacy_type=request.data.get("privacy_type")
+        if privacy_type not in ['public', 'friends', 'private']:
+            return Response(
+                {'error': 'privacy_type phải là public, friends hoặc private'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        post.privacy=privacy_type
+        post.save(update_fields=['privacy'])
+        return Response({'post_id': post.post_id, 'privacy': post.privacy})
+
 #===================POSTARTICLE===============================
 class PostArticleListCreate(generics.ListCreateAPIView):  # List tất cả post
     permission_classes = [IsAuthenticated]

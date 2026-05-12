@@ -525,7 +525,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         #pip install django-filter : dùng lọc dữ liệu cho REST
         #+pip install drf-spectacular[sidecar]: Tự động tạo tài liệu cho api, ví dụ khi tạo api và muốn ngta truy cập vào /books/version/get thì phải cho ngta biết, nó sẽ tự sinh ra tài liệu để ngta biết truy cập
         #+pip install django-cors-headers: bắt buộc dùng nếu muốn gọi api từ django
-        +pip install django-guardian || Django-rules || Django-role-permissions: phân quyền chi tiết đối tượng, ví dụ chỉ user A thấy bài viết A
+        #pip install django-guardian || rules || Django-role-permissions: phân quyền chi tiết đối tượng, ví dụ chỉ user A thấy bài viết A
         #  pip install -U 'channels[daphne]' chat realtime
         #django-channels-presence: theo dỗi hoạt động onl/off real time
         #pip install channels-redis: bắt buộc nếu dùng channels

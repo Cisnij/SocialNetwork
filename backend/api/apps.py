@@ -27,6 +27,8 @@ class ApiConfig(AppConfig):
         init_firebase()
         #auditlog
         import api.auditlog
+        #rules
+        import api.rules
         
     
 

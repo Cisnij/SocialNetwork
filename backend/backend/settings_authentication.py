@@ -104,6 +104,7 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_ADAPTER = "api.adapter.MySocialAccountAdapter"
 AUTHENTICATION_BACKENDS=[
     'axes.backends.AxesStandaloneBackend',#axes
+    'rules.permissions.ObjectPermissionBackend', #rules check quyền
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',#allauth
 ]

@@ -51,6 +51,6 @@ work flows
 38 Thực hiện thêm xóa conversation 1 phía. Flow là khi user nhấn xóa sẽ đặt id của field delete_message = với id message mới nhất. Khi list message ra chỉ filter ra các message id ở sau cái delete message
     Flow của ẩn conv khỏi list khi xóa là khi user gọi api xóa sẽ set is_hidden =True, nếu nhắn lần nữa thì set lại là False
 39.Thêm reply message. khi user truyền vào id reply sẽ lưu id reply, lấy ra message từ id đó và trả ra cả id lẫn content
-
-
+40.thêm conversation real time để và broad cast từ chat consumer, chức năng là có tin nhắn mới ở trang conversation thì nhảy lên đầu và chạy dựa vào chat consumer khi groupsend. Có các thông tin như conversation id, last message = message vừa tạo đó để hiện ra chứ k hiện count, updated_at
+41. thêm quyền cho post dùng django rules, tạo bảng cho model nằm trong 3 cái public, friends, only. Các api lấy ra feed hay post trang cá nhân user sẽ check nếu is friend thì lấy ra public và friends, nếu là chủ page thì lấy ra only
 =====================================================================================

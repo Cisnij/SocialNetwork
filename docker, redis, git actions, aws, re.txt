@@ -155,28 +155,6 @@ trong mỗi phần app/ đó sẽ có model, serializer, và file service viết
 
 =======================================================================================================================================
 ý tưởng share, tạo model user share, ở view api post user và post feed đều thêm vào filter post share có user hoặc bạn user sẽ lọc ra hiện ra trang feed và trang cá nhân, làm thêm 1 api tổng hợp tất cả share của bài post đó qua filter post=post
-==========================================================================================================================================
-prefetch trong conversation bị lỗi vì nó load toàn bộ vô ram
-sửa lại,  thêm field unread count trong conversation và khi seen sẽ reset lại // hoặc giới hạn trong 10 ngày gần nhất 
-
---thêm field
-unread_count = models.PositiveIntegerField(default=0)
---tăng khi nhắn tin
-ConversationMember.objects.filter(
-    conversation_id=conv_id
-).exclude(user_id=sender_id).update(
-    unread_count=models.F('unread_count') + 1
-)
---reset 
-ConversationMember.objects.filter(
-    conversation=conversation,
-    user=request.user
-).update(last_read_message=last_message, unread_count=0)
-
---đọc trong serializer 
-    if not member:
-        return 0
-    return member.unread_count
 =====================================================================================================================================
 
 logic tạo group và phân quyền chỉnh sửa bài viết trong group
@@ -187,7 +165,7 @@ group > post, trường is_accept=False, tạo api khi nhấn đồng ý thì tr
  ví dụ group 1 có user a và user b
  ví dụ group 1 có 2 bài post a và b
 thì groupuser có field is_admin
-và khi list all thì sẽ liệt kê user có trong group đó không, user có phải là admin không nếu không thì chỉ return, nếu có thì liệt kê ra hết, serializer có field là is_admin để fe hiểu là đc chỉnh sửa 
+và khi list all post thì sẽ liệt kê user có trong group đó không, user có phải là admin không nếu không thì chỉ return, nếu có thì liệt kê ra hết post, serializer có field là is_admin để fe hiểu là đc chỉnh sửa
 tạo view cho list all post cho user riêng dùng generics List
 tạo view cho list và sửa cho admin dùng generic retrieveupdatedestroy và list của cái trên, nếu user là chủ bài viết cũng k đc chỉnh sửa
 
@@ -335,13 +313,13 @@ sau đó sửa lại view xem bài viết chỉ filter ra bài viết mà của 
 
 view user page thì 
 nếu là request.user = (id trang cá nhân truyền vào) đó thì filter ra bài viết của chính họ tất cả, còn check user.request mà khác id truyền vào thì chỉ filter ra các bài viết công khai, còn nếu là bạn bè thì filter ra bài viết của họ mà công khai và bạn bè
-
+sau này triển khai nếu user nằm trong id này thì được xem, user nằm trong id này thì k đc xem(chức năng chỉ hiển thị với người này hoặc ẩn người này của fb)
 ===========================================================================================================================
 
 xây group chat và sửa lại tất cả có liên quan
 Facebook check theo thứ tự:Có file không? → có → cho qua dù text rỗng
-             → không → có text không? → có → cho qua
-                                      → không → chặn
+                                          → không → có text không? → có → cho qua
+                                                                    → không → chặn
 
 logic tạo group
 

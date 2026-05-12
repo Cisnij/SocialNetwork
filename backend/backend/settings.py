@@ -61,6 +61,10 @@ INSTALLED_APPS = [
     'auditlog',
     #auto prefetch
     # 'auto_prefetch',
+    # rules
+    'rules',
+
+
 
     # django cleanup, cuối
     "django_cleanup.apps.CleanupConfig",
