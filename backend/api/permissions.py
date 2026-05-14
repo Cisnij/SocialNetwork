@@ -25,6 +25,6 @@ class IsConversationMember(BasePermission):
 
 class PostViewPermission(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS: # các method xem an toàn như get,head,options
-            return request.user.has_perm('api.view_post',obj)# kết nối với file rules xem có đc xem post, truyền user ở request.user, truyền post ở obj
+        if request.method == 'POST' or request.method in permissions.SAFE_METHODS: # các method xem an toàn như get,head,options
+            return request.user.has_perm('api.view_post',obj)# kết nối với file rules xem có đc xem post và sharepost, truyền user ở request.user, truyền post ở obj
         return request.user.has_perm('api.edit_post',obj) # các method put patch delete thì check xem có đc edit, có thì true

@@ -4,7 +4,7 @@ from django.db.models.signals import post_save, post_delete, pre_delete, \
     m2m_changed  # post save là ngay khi tạo user thì trigger tạo profile
 from django.dispatch import receiver
 from django.contrib.auth.models import User
-from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log,Notification,Message,ConversationMember
+from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log,Notification,Message,PostShare
 from reaction.models import UserReaction
 from allauth.account.signals import email_confirmed, user_logged_in
 from django.contrib.auth import get_user_model
@@ -542,8 +542,8 @@ def notify_comment(sender, instance, created, **kwargs):
             reciever=instance.post.user, #thông báo cho chủ post
             actor=instance.user,
             type='comment_on_post',
-            object_id=instance.id,
-            post_id=instance.post.post_id,
+            object_id=instance.id, #comment id
+            post_id=instance.post.post_id, #post id
             message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} commented on your post {instance.post.title}'
         )
     if instance.parent: # nếu mới tạo và có parent
@@ -575,13 +575,13 @@ def notify_tagged_users(sender,instance,action, pk_set,**kwargs):#pk_set lấy r
 def notify_reaction(sender, instance, created, **kwargs):
     if not created:
         return
-    instance = UserReaction.objects.select_related('user__profile', 'reaction').get(pk=instance.pk)
-    reaction = getattr(instance, 'reaction', None)
-    target = getattr(reaction, 'content_object', None)
-    if not hasattr(target, 'user') or target.user == instance.user:
+    instance = UserReaction.objects.select_related('user__profile', 'reaction').get(pk=instance.pk) #lấy ra user reaction vừa tạo
+    reaction = getattr(instance, 'reaction', None) # lấy ra reaction từ user reaction vì  pk với reaction
+    target = getattr(reaction, 'content_object', None) #lấy ra content type từ reaction vì pk
+    if not hasattr(target, 'user') or target.user == instance.user: # nếu content object k có user
         return
     # phân biệt react vào post hay comment
-    if isinstance(target, Comment):
+    if isinstance(target, Comment): # content object có là comment không
         msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} reacted to your comment'
         type = 'reaction_on_comment'
     else:
@@ -618,6 +618,20 @@ def notify_friend_request(sender, instance, created, **kwargs):
             type='friend_request',
             post_id=None,
             message=f'{instance.from_user.profile.first_name} {instance.from_user.profile.last_name} sent you a friend request'
+        )
+@receiver(post_save,sender=PostShare)
+def notify_post_share(sender,instance,created,**kwargs):
+    if created:
+        instance =PostShare.objects.select_related('post','user__profile','post__user').get(pk=instance.pk) #lấy ra cái id mà postshare vừa tạo để lấy ra object
+        if instance.post.user == instance.user:
+            return
+        Notification.objects.create(
+            reciever= instance.post.user,
+            actor= instance.user,
+            type='share_post',
+            object_id=instance.pk,
+            post_id=instance.post.post_id,
+            message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} share your post'
         )
 @receiver(post_save, sender=Notification) # khi có noti mới, lọc ra người dùng của noti mới đó, count lại và gửi qua ws
 def push_ws_notification(sender,instance,created,**kwargs):

@@ -394,7 +394,7 @@ class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 b
         user = self.request.user
         # Lấy post gốc, check quyền xem trước, có là public hoặc user hiện có là bạn với post gốc privacy là friends
         post = get_object_or_404(Post.objects.select_related('user'), post_id=post_id)
-        if not user.has_perm('api.view_post', post): # dùng rules trực tiếp
+        if not user.has_perm('api.view_post', post): # dùng rules trực tiếp check post gốc vì nhận vào id post gốc
             raise PermissionDenied()
 
         # Lọc block: loại share của người đã block / bị block
@@ -409,7 +409,7 @@ class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 b
             .filter(post_id=post_id)
             .filter(
                 Q(user=user) |                                      # share của chính mình
-                Q(user_id__in=friend_ids, privacy__in=['public', 'friends']) |  # bạn bè
+                Q(user_id__in=friend_ids, privacy__in=['public', 'friends']) |  # người share là bạn mình thì hiện theo privacy
                 Q(privacy='public')                                 # người lạ chỉ thấy public
             )
             .exclude(Q(user_id__in=blocked_ids) | Q(user_id__in=blocking_ids))
@@ -417,10 +417,10 @@ class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 b
             .prefetch_related('post__photos')
             .order_by('-created_at')
         )
-    def create(self,request,*args,**kwargs):
+    def create(self, request, *args, **kwargs):
         post_id = self.kwargs.get('post_id')
         content =self.request.data.get('content')
-        privacy = request.data.get('privacy', 'public')
+        privacy = self.request.data.get('privacy', 'public') #key nhận là privacy và default là public
         if privacy not in ['public', 'friends', 'private']:
             return Response({'error': 'privacy không hợp lệ'}, status=400)
         post=get_object_or_404(Post.objects.select_related('user__profile'),post_id=post_id)
@@ -429,6 +429,7 @@ class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 b
         post.share_count += 1
         post.save(update_fields=['share_count'])  # update_fields để patch update 1 phần thay vì toàn bộ
         return Response({'message': 'Share thành công'}, status=status.HTTP_201_CREATED)
+
 
 class PostUserShareDelete(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
@@ -507,7 +508,19 @@ class PostFriendShare(generics.ListAPIView): # tất cả share của bạn bè
         .prefetch_related('post__photos')
         .order_by('-created_at'))
 
-
+class ChangePostSharePrivacy(APIView):
+    permission_classes = [IsAuthenticated,PostViewPermission]
+    def patch(self,request,share_id):
+        post_share= get_object_or_404(PostShare,id=share_id,user=request.user)
+        privacy_type=request.data.get("privacy_type")
+        if privacy_type not in ['public', 'friends', 'private']:
+            return Response(
+                {'error': 'privacy_type phải là public, friends hoặc private'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        post_share.privacy=privacy_type
+        post_share.save(update_fields=['privacy'])
+        return Response({'post_share_id': post_share.id, 'privacy': post_share.privacy})
 #===================POSTARTICLE===============================
 class PostArticleListCreate(generics.ListCreateAPIView):  # List tất cả post
     permission_classes = [IsAuthenticated]

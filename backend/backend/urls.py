@@ -82,11 +82,12 @@ urlpatterns = [
     path('api/user/post/create/',PostCreate.as_view(),name='post-create'), #tạo post để gán ảnh
     path('api/admin/post/',PostListAll.as_view(), name='post-list'), #láy ra tất cả post cho admin
     path('share/<str:share_code>/', PostShareView.as_view()),# dạng share link
-    path('api/post/<int:post_id>/privacy-change/',ChangePostPrivacy.as_view(),name='change-privact'),#đổi chế độ xem post
-    path('api/posts/<int:post_id>/share/', AllPostShareView.as_view(),name='all-share-post'), # list hoặc tạo share post
+    path('api/post/<int:post_id>/privacy-change/',ChangePostPrivacy.as_view(),name='change-privacy'),#đổi chế độ xem post
+    path('api/posts/<int:post_id>/share/', AllPostShareView.as_view(),name='all-share-post'), # list share post và create share post
     path('api/posts/share/<int:pk>/delete/', PostUserShareDelete.as_view(),name='uesr-delete-share-post'), # xóa share post
     path('api/posts/user/<int:user_id>/share/',PostUserShare.as_view(),name='user_share'),# lấy ra tất cả share của user
     path('api/posts/share/', PostFriendShare.as_view(), name='user_share'), # lấy ra tất cả share của bạn bè
+    path('api/post/share/<int:share_id>/privacy-change/',ChangePostSharePrivacy.as_view(),name='change-share-privacy'),#đổi chế độ xem post
     #url post-article
     path('api/user/post-article/', PostArticleListCreate.as_view(), name='post-article-list'), #thêm láy tất cả post article
     path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể
