@@ -47,10 +47,19 @@ work flows
 34. Sửa lại comment thêm pin comment(sắp xếp comment list trong post theo pin trước và created sau, tạo api thêm pin và xóa pin chung 1 api) thêm nested
 35. Tag tên người dùng trong comment: khi người dùng nhấn @, fe thực hiện tìm kiếm với api gọi tất cả profile bạn bè api/friends/, sau đó nhấn chọn người nào sẽ láy id truyền vào cái tạo comment. Khi người dùng nhấn reply 1 reply con, reply con sẽ chứa data parent và data user id, khi gọi api sẽ truyền parent gốc và tag user là user.id
 36. Sửa lại Block,Friend,Follow dùng value list cho nhẹ, improve Search API xin như google
-37. Thực hiện thêm notification realtime. Khi người dùng vào app sẽ kết nối ws cho notification, khi có thông báo mới sẽ kích hoạt signal và broadcast qua ws tăng count. Khi gọi api mark read sẽ broadcast đặt count là 0
+37. Thực hiện thêm notification realtime. Khi người dùng vào app sẽ kết nối ws cho notification, khi có thông báo mới sẽ kích hoạt signal và broadcast qua ws tăng count. Khi gọi api mark read sẽ broadcast đặt count là 0,khi vào trang noti thì cũng sẽ nhận thông báo real time qua ws
 38 Thực hiện thêm xóa conversation 1 phía. Flow là khi user nhấn xóa sẽ đặt id của field delete_message = với id message mới nhất. Khi list message ra chỉ filter ra các message id ở sau cái delete message
     Flow của ẩn conv khỏi list khi xóa là khi user gọi api xóa sẽ set is_hidden =True, nếu nhắn lần nữa thì set lại là False
 39.Thêm reply message. khi user truyền vào id reply sẽ lưu id reply, lấy ra message từ id đó và trả ra cả id lẫn content
 40.thêm conversation real time để và broad cast từ chat consumer, chức năng là có tin nhắn mới ở trang conversation thì nhảy lên đầu và chạy dựa vào chat consumer khi groupsend. Có các thông tin như conversation id, last message = message vừa tạo đó để hiện ra chứ k hiện count, updated_at
 41. thêm quyền cho post dùng django rules, tạo bảng cho model nằm trong 3 cái public, friends, only. Các api lấy ra feed hay post trang cá nhân user sẽ check nếu is friend thì lấy ra public và friends, nếu là chủ page thì lấy ra only
+42. Xây dựng share, thêm model share, api share của 1 bài post, api share của user, api share của bạn bè, api đổi privacy share và api xóa share
+    Luồn là luôn check từ post gốc tới post share, post gốc mà bị riêng tư thì k đc load ra, post share mà bị riêng tư cũng k đc load ra, và chỉ đc share bài public hoặc friend
+43. Thêm chức năng thêm ảnh vào chat
+    (fe) flow là khi gửi ảnh và message gọi api ->
+    (be) api post lên cloudinary, cloudinary trả về backend url mã hóa, lưu trước file và url vào db messageattachment tránh mất khi mất connect ws và trả ra data vừa lưu->
+    (fe) client nhận về tên file và url và id file lưu, gọi ws truyền cả message và id của file ->
+    (be) tạo,lưu message và update lại messageattachment gắn message vào
+    *không có message thì chỉ thực thi save file và message là none
+    *không có file thì k thực thi lệnh if của file
 =====================================================================================

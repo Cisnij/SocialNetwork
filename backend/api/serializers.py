@@ -285,15 +285,22 @@ class ConversationSerializer(serializers.ModelSerializer):
             and m.sender_id != user.id                             #  không đếm tin của mình
         )
         return min(count,10) # trả về nhỏ nhất, count hoặc mặc định là 10
+
 class MessageAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = MessageAttachment
-        fields = '__all__'
+        fields = [
+            'id',
+            'file_url',
+            'file_type',
+            'file_name',
+            'file_size',
+        ]
 
 class MessageSerializer(serializers.ModelSerializer):
     #khi người dùng post sẽ tạo content cho message, validate data rồi lấy ra cái attatchment có liên quan từ messageattachment đã validate rồi lưu vào message
     sender = ProfileSerializer(source="sender.profile", read_only=True)
-    attachments = MessageAttachmentSerializer(many=True, read_only=True)
+    attachments = MessageAttachmentSerializer(many=True, read_only=True) # tự tham chiếu qua, với mỗi object message thì gọi select messageattachment có message_id= object_id ( đầu tiên gọi lấy ra all id message của user, sau đó gọi lấy messageattachment có message_id in message ở query 1, rồi tự ghép vào lại đúng id), nested chỉ dùng đc khi lấy hết các object liên quan,  lọc ra nữa thì k đc
     conversation = serializers.PrimaryKeyRelatedField(read_only=True) #láy ra/trả ra id có liên quan đến object ở đây là override cái conversation r , Ví dụ gửi message thì message đó thuộc về conversation nào thì lấy ra id của conversation đó
     reply_to = serializers.SerializerMethodField()
     class Meta:

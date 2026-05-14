@@ -5,6 +5,7 @@ sau đó, thông qua hàm chat_message() thì server sẽ gửi tin nhắn về 
 connect-> receive(server) -> send -> client"""
 import asyncio
 
+
 """
 -flow từ back tới front end
 -Frontend: User gọi tất cả đoạn chat và gán id cho từng cái đó, front-end gọi new WebSocket và khởi tạo url với conversation_id đó khi click tương ứng,sau đó chạy open
@@ -29,7 +30,7 @@ group send và send luôn đi chung, 1 cái gửi tín hiệu và cái còn lạ
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from api.models import ConversationMember, Message, Conversation, Notification
+from api.models import ConversationMember, Message, Conversation, Notification, MessageAttachment
 from friendship.models import Block
 from django.utils import timezone
 from django.contrib.auth.models import User
@@ -41,6 +42,7 @@ class HeartbeatMixin:
     lần 1 start heartbeat là true mặc định
     lần 2 _hearbeat chạy sau 30s, pong_received=True ở lần 1, chạy set lại pong_received=False và gửi client ping, 
         client trả về pong ở recieve thì chạy handle và set pong_received=True lại, lặp lại n lần
+        nếu gửi mà client k trả pong thì nó chạy lần nữa sau 30s check là false thì disconnect
     lần n: sau 30s ,pong_received=True ở lần n-1, chạy set lại pong_received=False, gửi client ping,
         client không trả pong ở receive, def handle chạy kiểm tra không có pong và set pong_received=False
     lần n+1: sau 30s,pong_received=False ở lần n, chạy close()
@@ -48,8 +50,8 @@ class HeartbeatMixin:
     '''
     async def start_heartbeat(self):
         self.pong_received =True # mặc định kết nối là True
-        self.ping_task = asyncio.create_task(self._heartbeat()) #tạo hàm chạy ngầm vòng lặp của hàm _heartbeat
-
+        # self.ping_task = asyncio.create_task(self._heartbeat()) #tạo hàm chạy ngầm vòng lặp của hàm _heartbeat
+        self.ping_task = None  # thêm tạm khi test
     async def stop_heartbeat(self):
         if hasattr(self, 'ping_task') and self.ping_task: #kiểm tra có ping_task đang chạy k
             self.ping_task.cancel() #cancel task chạy ngầm
@@ -92,7 +94,6 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
         await self.channel_layer.group_add(self.room_name, self.channel_name) # thêm vào group phòng chat trong redis, room name là tên lưu trong redis, channel name là tên channels tự sinh ra unique cụ thể gắn với connect của user, khi kết nối sẽ group send cho các connect này mặc dù k biết user
         await self.accept() # chấp nhận kết nối WebSocket
         await self.start_heartbeat()
-        print("CONNECT:", self.channel_name)
 
     # ===== DISCONNECT =====
     async def disconnect(self, close_code):
@@ -111,7 +112,8 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
         message = data.get('message', '').strip() # lấy message và xóa khoảng trắng
         message_type = data.get('message_type', 'text') # mặc định là text
         reply_to_id = data.get('reply_to_id') # nhận vào id
-        if not message: # không cho gửi tin rỗng
+        attachment_ids = data.get('attachment_ids', []) # nhận vào id của attachment đã đc tạo hoặc rỗng
+        if not message and not attachment_ids: # không cho gửi tin rỗng
             return
 
         # check các điều kiện trước khi lưu (block, pending status...)
@@ -121,11 +123,11 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
             return
 
         # lưu vào db
-        msg = await self.save_message(message, message_type,reply_to_id) # save sẽ trả về 1 object đầy đủ
+        msg = await self.save_message(message, message_type,reply_to_id,attachment_ids) # save sẽ trả về 1 object đầy đủ
         if not msg: # lưu thất bại
             await self.send(text_data=json.dumps({'error': 'Không thể gửi tin nhắn'}))
             return
-
+        attachments = await self.get_attachments(msg.id) # gọi hàm lấy ra nhiều objects attachments trong 1 id message 1-N
         # broadcast tới tất cả client trong phòng
         await self.channel_layer.group_send(
             self.room_name, # send tới tên group
@@ -139,6 +141,7 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
                 'created_at': msg.created_at.isoformat(),
                 'reply_to_id':reply_to_id,
                 'reply_to_id_content':msg.reply_to.content if msg.reply_to else None, # lấy content từ obj trả về sau lưu
+                'attachments': attachments,
             }
         )
 
@@ -178,6 +181,7 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
             'created_at': event['created_at'],
             'reply_to_id': event['reply_to_id'],
             'reply_to_id_content': event['reply_to_id_content'],
+            'attachments': event.get('attachments', []),
         }))
 
     # ===== SEEN MESSAGE - đồng bộ trạng thái đã xem giữa các thiết bị =====
@@ -250,7 +254,7 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
         return True, None
 
     @database_sync_to_async
-    def save_message(self, message, message_type='text',reply_to_id=None): # chỉ lưu DB, không làm gì khác, mặc định reply_id là none, mặc định msg type là text
+    def save_message(self, message, message_type='text',reply_to_id=None,attachment_ids=[]): # chỉ lưu DB, không làm gì khác, mặc định reply_id là none, mặc định msg type là text
         try:
             reply_to=None# mặc định object là None
             if reply_to_id:
@@ -258,10 +262,17 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
             msg = Message.objects.create(
                 conversation_id=self.conversation_id,
                 sender=self.user,
-                content=message,
+                content=message or None,
                 message_type=message_type,
                 reply_to=reply_to
             )
+            if attachment_ids: #update field message của n file nếu có
+                MessageAttachment.objects.filter(
+                    id__in=attachment_ids,
+                    conversation_id=self.conversation_id,
+                    uploaded_by=self.user,
+                    message=None # chỉ lọc cái chưa gắn message và gắn
+                ).update(message=msg)
             # Update updated_at của conversation để sort list chat
             Conversation.objects.filter(id=self.conversation_id).update(updated_at=timezone.now())
             ConversationMember.objects.filter(conversation_id=self.conversation_id,is_hidden=True).update(is_hidden=False)
@@ -270,6 +281,19 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
             print(f" Save message error: {e}")
             return None
 
+    @database_sync_to_async
+    def get_attachments(self, message_id):
+        attachments = MessageAttachment.objects.filter(message_id=message_id)
+        return [
+            {
+                'id': a.id,
+                'file_url': a.file_url,
+                'file_type': a.file_type,
+                'file_name': a.file_name,
+                'file_size': a.file_size,
+            }
+            for a in attachments
+        ]
     @database_sync_to_async
     def push_notifications(self, message): # tách riêng, lỗi ở đây không ảnh hưởng gì cả
         try:
@@ -283,8 +307,8 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
                     continue
                 push_to_user( # gọi firebase push
                     m.user,
-                    title=f'{self.user.username} gửi tin nhắn',
-                    body=message
+                    title=f'{self.user.username} gửi tin nhắn' if message else f'{self.user.username} gửi file',
+                    body=message if message else 'File đính kèm'
                 )
         except Exception as e:
             print(f" Push notification error: {e}")
@@ -315,7 +339,8 @@ class NotificationConsumer(HeartbeatMixin,AsyncWebsocketConsumer): # chịu trá
     async def receive(self,text_data):
         try:
             data = json.loads(text_data)
-            self.handle_pong(data)  # ← thêm
+            if self.handle_pong(data):
+                return
         except json.JSONDecodeError:
             pass
 
@@ -349,7 +374,8 @@ class ConversationConsumer(HeartbeatMixin,AsyncWebsocketConsumer):
     async def receive(self, text_data):
         try:
             data = json.loads(text_data)
-            self.handle_pong(data)  # ← thêm
+            if self.handle_pong(data):
+                return
         except json.JSONDecodeError:
             pass
 

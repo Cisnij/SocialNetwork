@@ -1,3 +1,4 @@
+import uuid
 from itertools import chain
 from django.db.models.expressions import Window
 from django.db.models.functions import RowNumber
@@ -32,6 +33,8 @@ from elasticsearch_dsl.query import MultiMatch
 from elasticsearch_dsl import Q as ESQ         # Django Q — dùng cho ORM filter
 #cacheops
 from cacheops import invalidate_model
+#cloudinary
+import cloudinary.uploader
 
 def get_online_set(queryset):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
     ids = queryset.values_list('user_id',flat=True)  # lấy các user id trong queryset của serializer đưa vào list với 1 fields
@@ -1481,6 +1484,57 @@ class ListHideConversation(generics.ListAPIView):
                 to_attr='prefetched_messages'  # lưu vào obj.prefetched_messages trong RAM
             ),
         ).order_by('-updated_at'))
+
+'''
+    (fe) flow là khi gửi ảnh và message gọi api ->
+    (be) api post lên cloudinary, cloudinary trả về backend url mã hóa, lưu trước file và url vào db messageattachment tránh mất khi mất connect ws và trả ra data vừa lưu->
+    (fe) client nhận về tên file và url và id file lưu, gọi ws truyền cả message và id của file ->
+    (be) tạo,lưu message và update lại messageattachment gắn message vào
+    *không có message thì chỉ thực thi save file và message là none
+    *không có file thì k thực thi lệnh if của file
+'''
+class ChatAttachmentUpload(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser,FormParser]
+    def post(self,request,conv_id):
+        if not ConversationMember.objects.filter(user=request.user,conversation_id=conv_id).exists():
+            return Response({'error': 'Không có quyền'}, status=403)
+        files=request.FILES.getlist('files')
+        if not files:
+            return Response({'error': 'Thiếu file'}, status=400)
+        image_exts = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+        video_exts = ['mp4', 'mov', 'avi']
+        results = []
+        for file in files:
+            if file.size > 50*1024*1024: # 50 mb
+                return Response({'error': f'{file.name} vượt quá 50MB'}, status=400)
+            ext = file.name.split('.')[-1].lower() #abc.PNG -> abc.png và lấy ra loại file
+            if ext in image_exts: # là ảnh thì gán ảnh
+                file_type = 'image'
+                resource_type = 'image'
+            elif ext in video_exts: # là video thì gán video
+                file_type = 'video'
+                resource_type = 'video'
+            else: # là file khác như exe thì k gán
+                file_type = 'file'
+                resource_type = 'raw'
+            result = cloudinary.uploader.upload( #up lên cloudinary
+                file,
+                folder=f'chat/conv_{conv_id}',
+                resource_type=resource_type,
+                public_id = str(uuid.uuid4())
+            )
+            attachment = MessageAttachment.objects.create(
+                conversation_id=conv_id,
+                uploaded_by=request.user,
+                file_url=result['secure_url'], # file url nhận về sau khi upload lên cloudinary
+                file_type=file_type,
+                file_name=file.name,
+                file_size=file.size,
+                message=None
+            )
+            results.append(MessageAttachmentSerializer(attachment).data | {'attachment_id': attachment.id}) # để trả ra nhiều serializer tương ứng với n file
+        return Response({'attachments': results}, status=200)
 
 # =============================================================================
 class ProfileRelationship(APIView):

@@ -153,10 +153,7 @@ trong mỗi phần app/ đó sẽ có model, serializer, và file service viết
 * Học Node.js và triển khai cho mobile (tương lai)
 
 
-=======================================================================================================================================
-ý tưởng share, tạo model user share, ở view api post user và post feed đều thêm vào filter post share có user hoặc bạn user sẽ lọc ra hiện ra trang feed và trang cá nhân, làm thêm 1 api tổng hợp tất cả share của bài post đó qua filter post=post
-=====================================================================================================================================
-
+=================================================================================================================
 logic tạo group và phân quyền chỉnh sửa bài viết trong group
 
 group > user
@@ -171,149 +168,11 @@ tạo view cho list và sửa cho admin dùng generic retrieveupdatedestroy và 
 
 ==================================================================================================================================
 
-Chức năng phân quyền ai được xem và không
----
 
-### Bước 1: Cấu hình Model & Database
-Thêm trường `privacy` để lưu trạng thái bài viết.
 
-```python
-# models.py
-class Post(models.Model):
-    PRIVACY_CHOICES = [
-        ('public', 'Công khai'),
-        ('friends', 'Bạn bè'),
-        ('private', 'Chỉ mình tôi'),
-    ]
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
-    content = models.TextField()
-    privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='public')
-    # Cho tương lai: group = models.ForeignKey(Group, null=True, blank=True...)
-```
-
----
-
-### Bước 2: Định nghĩa Logic bằng `django-rules`
-Đây là "trái tim" của hệ thống. Bạn tách rời điều kiện kiểm tra ra khỏi View.
-
-```python
-# rules.py (Tạo file này trong app của bạn)
-import rules
-from friendship.models import Friend
-
-@rules.predicate
-def is_post_author(user, post):
-    return post.user == user
-
-@rules.predicate
-def is_friend(user, post):
-    if user.is_anonymous or not post: return False
-    return Friend.objects.are_friends(user, post.user)
-
-@rules.predicate
-def is_public_post(user, post):
-    return post.privacy == 'public'
-
-# RULE: Ai được xem bài? (Tác giả HOẶC Public HOẶC (Bạn bè + post để mode Friends))
-can_view_post = is_post_author | is_public_post | (is_friend & rules.predicate(lambda u, p: p.privacy == 'friends'))
-
-# RULE: Ai được sửa/xóa/đổi quyền? (Chỉ tác giả hoặc Staff)
-# Sau này thêm Group Admin chỉ cần: is_post_author | is_group_admin | rules.is_staff
-can_edit_post = is_post_author | rules.is_staff
-
-rules.add_perm('posts.view_post', can_view_post)
-rules.add_perm('posts.change_post', can_edit_post)
-```
-
----
-
-### Bước 3: Tạo Permission Class cho DRF
-Để kết nối `django-rules` vào các API View của bạn một cách tự động.
-
-```python
-# permissions.py
-from rest_framework import permissions
-
-class RulesBasedPermission(permissions.BasePermission):
-    def has_object_permission(self, request, view, obj):
-        # Nếu là các method xem (GET, HEAD, OPTIONS)
-        if request.method in permissions.SAFE_METHODS:
-            return request.user.has_perm('posts.view_post', obj)
-        # Nếu là các method thay đổi (PUT, PATCH, DELETE)
-        return request.user.has_perm('posts.change_post', obj)
-```
-
----
-
-### Bước 4: Tối ưu QuerySet (Lọc dữ liệu hàng loạt)
-`django-rules` kiểm tra từng object, nhưng để trang Newsfeed chạy nhanh, bạn cần lọc ngay ở câu lệnh SQL.
-
-View Trang Feed
-
-class PostFriend(generics.ListAPIView):
-    serializer_class = PostSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-        friend_ids = Friend.objects.friends(user)
-
-        return Post.objects.filter(
-            Q(user=user) | # Bài của chính mình
-            Q(user__in=friend_ids, privacy__in=[Post.PUBLIC, Post.FRIENDS]) # Bài bạn bè (Public/Friends)
-        ).distinct().order_by("-created_at")
-
-View Trang cá nhân
-class PostUser(generics.ListAPIView):
-    serializer_class = PostSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        target_profile_id = self.kwargs.get("user") # Lấy ID profile từ URL
-        target_user = get_object_or_404(User, profile__id=target_profile_id)
-        request_user = self.request.user
-
-        # 1. Nếu xem tường nhà mình: Hiện tất cả
-        if request_user == target_user:
-            return Post.objects.filter(user=target_user)
-
-        # 2. Nếu xem tường người khác:
-        is_friend = Friend.objects.are_friends(request_user, target_user)
-        
-        if is_friend:
-            # Nếu là bạn: Xem được Public + Friends
-            return Post.objects.filter(user=target_user, privacy__in=[Post.PUBLIC, Post.FRIENDS])
-        else:
-            # Nếu người lạ: Chỉ xem được bài Public
-            return Post.objects.filter(user=target_user, privacy=Post.PUBLIC)
-
-### Bước 5: API Chỉnh sửa quyền (Step-by-step cho User)
-Khi User bấm đổi quyền trên giao diện, Frontend sẽ gửi request `PATCH`.
-
-```python
-# views.py
-class PostModify(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAuthenticated, RulesBasedPermission]
-    serializer_class = PostSerializer
-    queryset = Post.objects.all()
-
-    def get_object(self):
-        obj = get_object_or_404(Post, pk=self.kwargs.get('pk'))
-        # Kích hoạt kiểm tra has_object_permission ở Bước 3
-        self.check_object_permissions(self.request, obj)
-        return obj
-```
-
-sửa model post thành có các type như friends_only, user_only, public
-
-tạo api cập nhật cho bài post, truyền vào id bài post và check có phải chủ sở hữu bài post nếu có cho chuyển
-
-view trang feed là 
-sau đó sửa lại view xem bài viết chỉ filter ra bài viết mà của mình mọi loại type, bài viết trong id của bạn bè mà type là công khai hoặc friends 
-
-view user page thì 
-nếu là request.user = (id trang cá nhân truyền vào) đó thì filter ra bài viết của chính họ tất cả, còn check user.request mà khác id truyền vào thì chỉ filter ra các bài viết công khai, còn nếu là bạn bè thì filter ra bài viết của họ mà công khai và bạn bè
 sau này triển khai nếu user nằm trong id này thì được xem, user nằm trong id này thì k đc xem(chức năng chỉ hiển thị với người này hoặc ẩn người này của fb)
+tạo rules là if user.id mà = với user id được truyền vào thì return True, trong permissions sẽ nhận 1 list user, ở view thì check object permission truyền vào list user
+còn ở file post user và post friend chỉ cần lọc ra user_id__in là dcd
 ===========================================================================================================================
 
 xây group chat và sửa lại tất cả có liên quan

@@ -90,7 +90,7 @@ class PendingProfile(models.Model):
         return f"{self.user.username}- Pending"
 
 
-class Post(SafeDeleteModel):
+class   Post(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE  # khi xóa post thì các comment, photo liên quan cũng bị xóa mềm theo
     PRIVACY_CHOICES=[
         ('public', 'Công khai'),
@@ -258,7 +258,7 @@ class Message(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
-    content = models.TextField()
+    content = models.TextField(null=True,blank=True)
     message_type = models.CharField(  # ô chọn
         max_length=20,
         choices=(('text', 'Text'), ('image', 'Image'), ('file', 'File')),
@@ -268,7 +268,7 @@ class Message(SafeDeleteModel):
     reply_to=models.ForeignKey('self',on_delete=models.SET_NULL,related_name='replies',null=True,blank=True)
 
     def __str__(self):
-        return f"Message {self.id} | sender_id={self.sender_id} | conv_id={self.conversation_id} | {self.content[:30]}"
+        return f"Message {self.id} | sender_id={self.sender_id} | conv_id={self.conversation_id} | {(self.content or '') [:30]}"
 
     class Meta:
         indexes = [models.Index(fields=['conversation', '-created_at']),
@@ -276,13 +276,29 @@ class Message(SafeDeleteModel):
                    ]
 
 
-class MessageAttachment(models.Model):  # phục vụ gửi file, hình ảnh trong chat
-    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='attachments')
-    file = models.FileField(upload_to=chat_upload_path)
-    file_type = models.CharField(max_length=20)
+class MessageAttachment(models.Model):
+    FILE_TYPE_CHOICES = [
+        ('image', 'Image'),
+        ('file', 'File'),
+        ('video', 'Video'),
+    ]
+    message = models.ForeignKey(Message,on_delete=models.CASCADE,related_name='attachments',null=True,blank=True)#related name phải khớp với bên MessageSerializer để khi nó ghép attachments vào message cho đúng
+    conversation = models.ForeignKey(Conversation,on_delete=models.CASCADE)
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    file_url = models.URLField(max_length=500)
+    file_type = models.CharField(max_length=20, choices=FILE_TYPE_CHOICES)
+    file_name = models.CharField(max_length=255)
+    file_size = models.PositiveIntegerField(null=True)  # bytes
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        indexes = [models.Index(fields=['message']), ]
+        indexes = [
+            models.Index(fields=['message']),
+            models.Index(fields=['conversation']),
+        ]
+
+
+
 
 
 # ===================================Firebase Token==================================

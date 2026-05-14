@@ -135,6 +135,7 @@ urlpatterns = [
     path('api/chat/conversation/<int:pk>/delete/',DeleteConversationOneSide.as_view(),name='delete-message-oneside'), # xóa chat 1 phía
     path('api/chat/conversation/<int:pk>/toogle-hidden/',ToogleHideConversation.as_view(),name='toogle-hidden'), # tắt/bật ần chat vĩnh viển
     path('api/chat/conversation/hidden-chat/',ListHideConversation.as_view(),name='hidden-chat'),# url hiện tất cả đoạn chat ẩn
+    path('api/chat/conversation/<int:conv_id>/upload/',ChatAttachmentUpload.as_view(),name='upload-file'),
     #fire base notification
     path("fcm-token/", SaveFCMTokenView.as_view()), # token cho thiết bị
     #in-app notification
