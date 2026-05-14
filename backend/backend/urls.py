@@ -122,7 +122,6 @@ urlpatterns = [
     path('api/user/activity/', UserActivity.as_view(), name='user-activity'), #lấy ra lịch sử hoạt động của user hoặc tất cả user
     path('api/admin/logs/', LogList.as_view(), name='log-list'), #lấy ra tất cả log cho admin
     # url cho chat
-    path('api/chat/messages/send/<int:pk>/', SendMessageAPIView.as_view(), name='send-message'), #gửi tin nhắn trong cuộc trò chuyện cụ thể
     path('api/chat/messages/unsend/<int:pk>/', UnsendMessageAPIView.as_view(), name='unsend-message'), # thu hồi tin nhắn
     path('api/chat/conversations/', ConversationListAPIView.as_view(), name='conversation-list'), #danh sách cuộc trò chuyện của user
     path('api/chat/start/<int:user_id>/', StartConversationAPIView.as_view(), name='conversation-start'), #bắt đầu cuộc trò chuyện mới

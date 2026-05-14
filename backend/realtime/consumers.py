@@ -50,8 +50,8 @@ class HeartbeatMixin:
     '''
     async def start_heartbeat(self):
         self.pong_received =True # mặc định kết nối là True
-        # self.ping_task = asyncio.create_task(self._heartbeat()) #tạo hàm chạy ngầm vòng lặp của hàm _heartbeat
-        self.ping_task = None  # thêm tạm khi test
+        self.ping_task = asyncio.create_task(self._heartbeat()) #tạo hàm chạy ngầm vòng lặp của hàm _heartbeat
+        # self.ping_task = None  # thêm tạm khi test
     async def stop_heartbeat(self):
         if hasattr(self, 'ping_task') and self.ping_task: #kiểm tra có ping_task đang chạy k
             self.ping_task.cancel() #cancel task chạy ngầm

@@ -1077,34 +1077,6 @@ class ListBlockedFromUser(generics.ListAPIView):  # danh sách user đã bị ch
 
 
 # ===========================Chat=====================================================================
-'''send Message sau này dùng để gửi ảnh, file rồi broad cast qua
-logic: gửi ảnh qua api, lưu về, broadcast qua ws
-nhớ thêm check block và thêm is_hidden và thêm reply_to y chang bên consumer khi gửi để hiện lại ở list khi xóa'''
-class SendMessageAPIView(
-    APIView):  # gửi tin nhắn tới cuộc trò chuyện, nên dùng APIView vì có nhiều logic hơn là chỉ tạo và đặc biệt là k cho gửi body mà phải gán người gửi sender vào luôn
-    permission_classes = [IsAuthenticated, IsConversationMember]
-
-    def post(self, request, pk):
-        conv = get_object_or_404(Conversation, id=pk)
-        self.check_object_permissions(request,
-                                      conv)  # kiểm tra permission custom vì dùng APIView nên k tự kiểm tra được khác với generics là tự động kiểm tra permission object, phải truyền vào conv để biết làm việc với obj nào
-
-        if conv.status == 'pending':  # dành cho message request khi chưa là bạn thì phải check, nếu là người nhận đc request thì phải accept mới được gửi tin nhắn
-            first_message = Message.objects.filter(conversation=conv).order_by('created_at').first()
-            if first_message and request.user != first_message.sender:
-                raise PermissionDenied("You must accept the request before replying")
-
-        serializer = MessageSerializer(data=request.data)  # tạo serializer từ data gửi lên
-        serializer.is_valid(raise_exception=True)  # check valid
-        serializer.save(
-            sender=request.user,
-            conversation=conv)
-        # Update updated_at của conversation để sort list chat
-        Conversation.objects.filter(id=conv.id).update(
-            updated_at=timezone.now()
-        )
-        return Response(serializer.data, status=201)
-
 
 class UnsendMessageAPIView(APIView):  # action xóa message
     permission_classes = [IsAuthenticated, IsConversationMember]
@@ -1114,6 +1086,14 @@ class UnsendMessageAPIView(APIView):  # action xóa message
         if message.sender != request.user:
             raise PermissionDenied("You can only unsend your own message")
         self.check_object_permissions(request, message.conversation)
+        # xóa file trên Cloudinary trước
+        for attachment in message.attachments.all():
+            try:
+                public_id = attachment.file_url.split('/upload/')[1]  # lấy public_id từ URL
+                public_id = '/'.join(public_id.split('/')[1:]).split('.')[0]  # bỏ version
+                cloudinary.uploader.destroy(public_id)
+            except Exception:
+                pass
         # lưu lại trước khi xóa
         conversation_id = message.conversation_id
         message_id = message.id
@@ -1325,10 +1305,9 @@ class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò c
             .prefetch_related("attachments")  # lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments n-n)
             .order_by("-created_at")
         )
-        if (self.request.user.is_superuser or self.request.user.is_staff):
-            member= ConversationMember.objects.filter(conversation=conv,user=self.request.user).only('deleted_at_message_id').first() # chỉ lấy deleted
-            if member and member.deleted_at_message_id is not None:
-                return qs.filter(id__gt=member.deleted_at_message_id) # lấy tin nhắn có thơi gian lớn hơn delete
+        member= ConversationMember.objects.filter(conversation=conv,user=self.request.user).only('deleted_at_message_id').first() # chỉ lấy deleted
+        if member and member.deleted_at_message_id is not None: # nếu là thành viên và đã xóa
+            qs= qs.filter(id__gt=member.deleted_at_message_id) # lấy tin nhắn có thơi gian lớn hơn delete
         return qs
 
 
