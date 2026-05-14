@@ -245,7 +245,6 @@ class PostFriend(generics.ListAPIView):  # List tất cả post của bạn bè
             following_ids = Follow.objects.filter(follower=user).values_list("followee_id", flat=True)
             blocked_ids  = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
             blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
-
             self._qs = (
                 Post.objects
                 .filter( # câu lệnh Q..| là OR
@@ -385,6 +384,129 @@ class ChangePostPrivacy(APIView):
         post.privacy=privacy_type
         post.save(update_fields=['privacy'])
         return Response({'post_id': post.post_id, 'privacy': post.privacy})
+
+class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 bài viết
+    permission_classes = [IsAuthenticated,PostViewPermission]
+    serializer_class = PostShareSerializer
+    pagination_class = LargePagePagination
+    def get_queryset(self):
+        post_id = self.kwargs.get('post_id')
+        user = self.request.user
+        # Lấy post gốc, check quyền xem trước, có là public hoặc user hiện có là bạn với post gốc privacy là friends
+        post = get_object_or_404(Post.objects.select_related('user'), post_id=post_id)
+        if not user.has_perm('api.view_post', post): # dùng rules trực tiếp
+            raise PermissionDenied()
+
+        # Lọc block: loại share của người đã block / bị block
+        blocked_ids = Block.objects.filter(blocked=user).values_list('blocker_id', flat=True)
+        blocking_ids = Block.objects.filter(blocker=user).values_list('blocked_id', flat=True)
+
+        # Lấy share của chính mình + bạn bè (public/friends) + người lạ (chỉ public)
+        friend_ids = Friend.objects.filter(to_user=user).values_list('from_user_id', flat=True)
+
+        return (
+            PostShare.objects
+            .filter(post_id=post_id)
+            .filter(
+                Q(user=user) |                                      # share của chính mình
+                Q(user_id__in=friend_ids, privacy__in=['public', 'friends']) |  # bạn bè
+                Q(privacy='public')                                 # người lạ chỉ thấy public
+            )
+            .exclude(Q(user_id__in=blocked_ids) | Q(user_id__in=blocking_ids))
+            .select_related('user__profile', 'post__user__profile')
+            .prefetch_related('post__photos')
+            .order_by('-created_at')
+        )
+    def create(self,request,*args,**kwargs):
+        post_id = self.kwargs.get('post_id')
+        content =self.request.data.get('content')
+        privacy = request.data.get('privacy', 'public')
+        if privacy not in ['public', 'friends', 'private']:
+            return Response({'error': 'privacy không hợp lệ'}, status=400)
+        post=get_object_or_404(Post.objects.select_related('user__profile'),post_id=post_id)
+        self.check_object_permissions(self.request, post)
+        PostShare.objects.create(post=post,user=self.request.user,content=content,privacy=privacy)
+        post.share_count += 1
+        post.save(update_fields=['share_count'])  # update_fields để patch update 1 phần thay vì toàn bộ
+        return Response({'message': 'Share thành công'}, status=status.HTTP_201_CREATED)
+
+class PostUserShareDelete(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    # xóa nên k cần truyền serializer
+    def get_object(self): # dùng get_objecct cho destroy để k cần phải xử lý dài như .delete() và response
+        return get_object_or_404(PostShare, id=self.kwargs.get('pk'), user=self.request.user)
+
+class PostUserShare(generics.ListAPIView): #tất cả share của 1 user
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostShareSerializer
+    pagination_class = LargePagePagination
+    def get_queryset(self):
+        target_id = self.kwargs.get('user_id')
+        profile = get_object_or_404(Profile.objects.select_related('user'), id=target_id)
+        target_user = profile.user
+        user = self.request.user
+
+        if Block.objects.is_blocked(user, target_user):
+            raise PermissionDenied("Cannot see posts of this user")
+
+        friend_ids = Friend.objects.filter(to_user=user).values_list('from_user_id', flat=True)
+        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+
+        if target_user == user:
+            privacy_filter = {}
+        elif Friend.objects.are_friends(user, target_user):
+            privacy_filter = {'privacy__in': ['public', 'friends']}
+        else:
+            privacy_filter = {'privacy': 'public'}
+        '''đầu tiên là khi truyền vào 1 id để xem share của 1 người thì phải lấy ra những bài share mà user hiện tại đc xem thôi
+         -> Check theo thứ tự gốc tới share, 
+         gốc: post là public, post.user là bạn của user hiện tại, post của user
+         share: người share là target_user và privacy là public hoặc friend nếu là friend
+         '''
+        return (
+            PostShare.objects
+            .filter(
+                Q(post__privacy='public') | # lọc ra post share mà post gốc là public
+                Q(post__user_id__in=friend_ids, post__privacy='friends') |#lọc ra post share mà user post gốc là bạn và privacy là bạn
+                Q(post__user=user)   # lọc ra post share mà post có user là user hiện tại
+            )
+            .exclude(Q(post__user_id__in=blocked_ids) | Q(post__user_id__in=blocking_ids)) #check block post gốc, xóa nếu nó share bài của ng mình block
+            .filter(user=target_user, **privacy_filter)
+            .select_related('user__profile', 'post__user__profile')
+            .prefetch_related('post__photos')
+            .order_by('-created_at')
+        )
+
+class PostFriendShare(generics.ListAPIView): # tất cả share của bạn bè
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostShareSerializer
+    pagination_class = LargePagePagination
+    def get_queryset(self):
+        user = self.request.user
+        friend_ids = Friend.objects.filter(to_user=user).values_list("from_user_id", flat=True)
+        following_ids = Follow.objects.filter(follower=user).values_list("followee_id", flat=True)
+        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+        return (PostShare.objects.filter(
+            #check post gốc
+            Q(user=user) | # lọc ra post mình share
+            Q(post__privacy='public') | # lọc ra post gốc là public
+            Q(post__user_id__in=friend_ids, post__privacy='friends') | # lọc ra post gốc là của friends và privacy là friends
+            Q(post__user_id__in=following_ids, post__privacy='public') # lọc ra post gốc là của following và public
+        )
+        .exclude(
+            #loại trừ block từ user post gốc
+            Q(post__user_id__in=blocked_ids) | #check block post gốc
+            Q(post__user_id__in=blocking_ids)|
+            Q(user_id__in=blocked_ids) | #check block người share
+            Q(user_id__in=blocking_ids)
+        )
+        .filter(privacy__in=['public', 'friends']) #lọc share public và friends
+        .select_related('user__profile', 'post__user__profile')
+        .prefetch_related('post__photos')
+        .order_by('-created_at'))
+
 
 #===================POSTARTICLE===============================
 class PostArticleListCreate(generics.ListCreateAPIView):  # List tất cả post
@@ -666,6 +788,12 @@ class SendFriendRequestView(generics.CreateAPIView):  # tạo lời mời kết 
         if Block.objects.is_blocked(request.user, to_user):
             return Response({"error": "Cannot send friend request due to blocking"}, status=400)
 
+        # kiểm tra trên 1k bạn thì k đc thêm
+        if Friend.objects.filter(from_user=request.user).count() >1000 or Friend.objects.filter(from_user=to_user).count() >1000:
+            return Response(
+                {'error': 'Đã đạt giới hạn bạn bè'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         # Tạo request
         with transaction.atomic():
             req = Friend.objects.add_friend(request.user, to_user, message="")  # tạo lời mời kb

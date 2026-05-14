@@ -81,7 +81,8 @@ class PostSerializer(serializers.ModelSerializer):
             reaction__object_id=obj.pk
         ).first()
         return qs.reaction.settings.name if qs else None
-    
+
+
 class PostArticalSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source="user.profile", read_only=True)
     class Meta:
@@ -386,3 +387,11 @@ class FriendSuggestionSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return f"{obj.first_name or ''} {obj.last_name or ''}".strip()
+
+#================================POST SHARE============================================
+class PostShareSerializer(serializers.ModelSerializer):
+    user = ProfileSerializer(source='user.profile', read_only=True)
+    post=PostSerializer(read_only=True)
+    class Meta:
+        model =PostShare
+        fields = '__all__'

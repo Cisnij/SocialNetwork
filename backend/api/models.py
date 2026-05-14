@@ -114,7 +114,9 @@ class Post(SafeDeleteModel):
         indexes = [
             models.Index(fields=['user', '-created_at']),
             models.Index(fields=['title']),
-            models.Index(fields=['share_code'])
+            models.Index(fields=['share_code']),
+            models.Index(fields=['user', 'privacy']),
+            models.Index(fields=['privacy', '-created_at'])
         ]
 
 
@@ -247,7 +249,6 @@ class ConversationMember(models.Model):
                            'user')  # đảm bảo mỗi user chỉ tham gia 1 lần trong 1 conversation, tự tạo index cho 2 cái
         indexes = [
             models.Index(fields=['user']),
-            models.Index(fields=['conversation','user']),
             models.Index(fields=['conversation', 'is_hidden']),
             models.Index(fields=['is_permanently_hidden']),
         ]
@@ -352,3 +353,26 @@ class SearchHistory(models.Model):
 
     def __str__(self):
         return f"Search user_id={self.user_id} | {self.content[:30]}"
+
+#==============================================================================
+class PostShare(models.Model):
+    PRIVACY_CHOICES=[
+        ('public', 'Công khai'),
+        ('friends', 'Bạn bè'),
+        ('private', 'Chỉ mình tôi'),
+    ]
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='shares')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shared_posts')
+    created_at = models.DateTimeField(auto_now_add=True)
+    content = models.CharField(max_length=500, null=True, blank=True)  # không bắt buộc phải viết
+    privacy = models.CharField(max_length=15, choices=PRIVACY_CHOICES, default='public')
+    class Meta:
+        # unique_together = ('post', 'user') # nếu chỉ cho share 1 lần
+        indexes = [
+            models.Index(fields=['user', 'privacy']),
+            models.Index(fields=['post', '-created_at']),  # nên thêm
+            models.Index(fields=['privacy', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.user} shared {self.post}"

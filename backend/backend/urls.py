@@ -73,6 +73,7 @@ urlpatterns = [
     path('api/auth/profile/userpage/<int:user>', ProfileUser.as_view(), name='user-info'), #lấy ra thông tin userpage
     path('api/user/',ProfileView.as_view(),name='profile-view'), #lẩy ra thông tin user hiện tại
     path('api/user/pending-profile/',PendingProfileList.as_view(), name='pending-profile-list'), #lấy ra tất cả pending profile
+    #url liên qua post
     path('api/user/post-photo/<int:post_id>/',PostPhotoListCreate.as_view(),name='post-photo'), #thêm lấy ra ảnh của post cụ thể \
     path('api/user/delete-photo/<int:pk>/',PostPhotoDelete.as_view(),name='post-photo-delete'), #xóa ảnh cụ thể phục vụ chức năng chỉnh sửa post 
     path('api/user/post/<int:pk>/',PostModify.as_view(), name='post-modify'), #sửa xóa post cụ thể
@@ -82,12 +83,19 @@ urlpatterns = [
     path('api/admin/post/',PostListAll.as_view(), name='post-list'), #láy ra tất cả post cho admin
     path('share/<str:share_code>/', PostShareView.as_view()),# dạng share link
     path('api/post/<int:post_id>/privacy-change/',ChangePostPrivacy.as_view(),name='change-privact'),#đổi chế độ xem post
+    path('api/posts/<int:post_id>/share/', AllPostShareView.as_view(),name='all-share-post'), # list hoặc tạo share post
+    path('api/posts/share/<int:pk>/delete/', PostUserShareDelete.as_view(),name='uesr-delete-share-post'), # xóa share post
+    path('api/posts/user/<int:user_id>/share/',PostUserShare.as_view(),name='user_share'),# lấy ra tất cả share của user
+    path('api/posts/share/', PostFriendShare.as_view(), name='user_share'), # lấy ra tất cả share của bạn bè
+    #url post-article
     path('api/user/post-article/', PostArticleListCreate.as_view(), name='post-article-list'), #thêm láy tất cả post article
     path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể
+    #url comment
     path('api/user/comments/post/<int:post_id>',CommentListCreate.as_view(),name='comment-list'), #lấy Thêm comments từ post cụ thể
     path('api/user/comments/<int:pk>/',CommentModify.as_view(),name='comment-modify'), #lấy ra comment từ id
     path('api/user/comment/pin/<int:pin_id>/',PinCommentView.as_view(),name='pin-comment'), #pin comment
     path('api/user/nested-comments/<int:pk>/',NestedCommentList.as_view(),name='nested-comment'), # list các nested từ comment cha
+    #url setting
     path('api/user/setting/<int:pk>/',SettingModify.as_view(), name='setting-modify'),# setting của user
     #url xử lý bạn bè, follow
     path("api/friends/request/<int:pk>/", SendFriendRequestView.as_view(), name="send-friend-request"), #gửi lời mời kết bạn
@@ -123,9 +131,9 @@ urlpatterns = [
     path('api/chat/conversation/members/<int:pk>/', MemberOfConversation.as_view(), name='conversation-members'), #danh sách thành viên trong cuộc trò chuyện
     path('api/chat/messages/seen/<int:pk>/', SeenMessage.as_view(), name='mark-message-seen'), #đánh dấu tin nhắn đã xem
     path('api/chat/messages/update/<int:pk>/', UpdateMessage.as_view(), name='update-message'), #cập nhật tin nhắn đã gửi
-    path('api/chat/conversation/<int:pk>/delete/',DeleteConversationOneSide.as_view(),name='delete-message-oneside'),
-    path('api/chat/conversation/<int:pk>/toogle-hidden/',ToogleHideConversation.as_view(),name='toogle-hidden'),
-    path('api/chat/conversation/hidden-chat/',ListHideConversation.as_view(),name='hidden-chat'),
+    path('api/chat/conversation/<int:pk>/delete/',DeleteConversationOneSide.as_view(),name='delete-message-oneside'), # xóa chat 1 phía
+    path('api/chat/conversation/<int:pk>/toogle-hidden/',ToogleHideConversation.as_view(),name='toogle-hidden'), # tắt/bật ần chat vĩnh viển
+    path('api/chat/conversation/hidden-chat/',ListHideConversation.as_view(),name='hidden-chat'),# url hiện tất cả đoạn chat ẩn
     #fire base notification
     path("fcm-token/", SaveFCMTokenView.as_view()), # token cho thiết bị
     #in-app notification
