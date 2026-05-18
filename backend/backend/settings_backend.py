@@ -139,5 +139,17 @@ ELASTICSEARCH_DSL = {
 }
 #=============sửa cấu hình spectacular lấy thằng api lỗi luôn=========================
 SPECTACULAR_SETTINGS = {
-    'DISABLE_ERRORS_AND_WARNINGS': True,
+    'AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication', # dùng kiểu xác thực nào
+    ),
+    'SWAGGER_UI_SETTINGS': {
+        'persistAuthorization': True,  # Giữ token sau khi refresh trang
+        'docExpansion': 'none',  # Thu gọn tất cả endpoint mặc định
+        'filter': True,  # Hiện ô tìm kiếm
+        'displayRequestDuration': True, # hiện ms latency khi test endpoint
+    },
+    #dùng offline đc thay vì load từ cdn third party
+    'SWAGGER_UI_DIST': 'SIDECAR',
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    'REDOC_DIST': 'SIDECAR',
 }

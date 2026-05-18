@@ -1222,9 +1222,9 @@ class RejectMessageRequest(APIView):
     def post(self, request, conv_id):
         conv = get_object_or_404(Conversation, pk=conv_id)
         if conv.is_group:
-            return Response({'invalid'}, status=400)
+            return Response({'error': 'invalid'}, status=400)
         if not ConversationMember.objects.filter(conversation=conv, user=request.user).exists():
-            return Response({'You are not member of this Conversation'}, status=400)
+            return Response({'error': 'You are not member of this conversation'}, status=400)
         if conv.status == 'accept':
             return Response({'This conversation has already accepted'}, status=400)
         first_message = Message.objects.filter(conversation=conv).order_by('created_at').first()
@@ -1372,6 +1372,8 @@ class UpdateMessage(APIView):
     def patch(self, request, pk):  # patch vì partial là true
         message = get_object_or_404(Message, pk=pk)
         self.check_object_permissions(request, message.conversation)
+        if message.message_type != 'text':
+            return Response({'error': 'You can only edit text'}, status=400)
         if message.sender != request.user:
             raise PermissionDenied("You can only edit your own message")
         new_content = request.data.get('new_content')

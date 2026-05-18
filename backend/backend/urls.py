@@ -37,8 +37,8 @@ from rest_framework.routers import DefaultRouter
 from api.custome_authen import CheckPassword,DeleteAccount
 #url cho reactions
 router=DefaultRouter()
-router.register(r'posts',PostViewSet,basename='post-reactions') #thả react
-router.register(r'comments',CommentViewSet,basename='comment-reactions')
+router.register(r'api/posts',PostViewSet,basename='post-reactions') #thả react
+router.register(r'api/comments',CommentViewSet,basename='comment-reactions')
 urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),  # dịch ngôn ngữ
     path('supremacy/admin/', admin.site.urls),
@@ -52,7 +52,7 @@ urlpatterns = [
     path('api/auth/google/login/', GoogleLogin.as_view(), name='google_login'),
     path('api/auth/google/connect/',GoogleConnect.as_view(), name='google_connect'),
     path("api/auth/google/disconnect/", GoogleDisconnect.as_view(), name="google_disconnect"),
-    path("password/reset/confirm/<uidb64>/<token>/",auth_views.PasswordResetConfirmView.as_view(),name="password_reset_confirm",),
+    path("api/password/reset/confirm/<uidb64>/<token>/",auth_views.PasswordResetConfirmView.as_view(),name="password_reset_confirm",),
     path('api/auth/check-email/',CheckPassword.as_view(),name='check-password'),
     path('api/auth/delete-account/',DeleteAccount.as_view(),name='delete-account'),
     path('api/auth/google/login/', GoogleLogin.as_view(), name='google_login'),
@@ -77,11 +77,11 @@ urlpatterns = [
     path('api/user/post-photo/<int:post_id>/',PostPhotoListCreate.as_view(),name='post-photo'), #thêm lấy ra ảnh của post cụ thể \
     path('api/user/delete-photo/<int:pk>/',PostPhotoDelete.as_view(),name='post-photo-delete'), #xóa ảnh cụ thể phục vụ chức năng chỉnh sửa post 
     path('api/user/post/<int:pk>/',PostModify.as_view(), name='post-modify'), #sửa xóa post cụ thể
-    path('api/user/post/show', PostFriend.as_view(), name='post-friend'), #Láy ra post của bạn bè
+    path('api/user/post/show/', PostFriend.as_view(), name='post-friend'), #Láy ra post của bạn bè
     path('api/user/post/userpage/<int:user>/', PostUser.as_view(), name='post-user'),#lấy ra tất cả post của chính user đó
     path('api/user/post/create/',PostCreate.as_view(),name='post-create'), #tạo post để gán ảnh
     path('api/admin/post/',PostListAll.as_view(), name='post-list'), #láy ra tất cả post cho admin
-    path('share/<str:share_code>/', PostShareView.as_view()),# dạng share link
+    path('api/share/<str:share_code>/', PostShareView.as_view()),# dạng share link
     path('api/post/<int:post_id>/privacy-change/',ChangePostPrivacy.as_view(),name='change-privacy'),#đổi chế độ xem post
     path('api/posts/<int:post_id>/share/', AllPostShareView.as_view(),name='all-share-post'), # list share post và create share post
     path('api/posts/share/<int:pk>/delete/', PostUserShareDelete.as_view(),name='uesr-delete-share-post'), # xóa share post
@@ -92,7 +92,7 @@ urlpatterns = [
     path('api/user/post-article/', PostArticleListCreate.as_view(), name='post-article-list'), #thêm láy tất cả post article
     path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể
     #url comment
-    path('api/user/comments/post/<int:post_id>',CommentListCreate.as_view(),name='comment-list'), #lấy Thêm comments từ post cụ thể
+    path('api/user/comments/post/<int:post_id>/',CommentListCreate.as_view(),name='comment-list'), #lấy Thêm comments từ post cụ thể
     path('api/user/comments/<int:pk>/',CommentModify.as_view(),name='comment-modify'), #lấy ra comment từ id
     path('api/user/comment/pin/<int:pin_id>/',PinCommentView.as_view(),name='pin-comment'), #pin comment
     path('api/user/nested-comments/<int:pk>/',NestedCommentList.as_view(),name='nested-comment'), # list các nested từ comment cha
@@ -112,21 +112,21 @@ urlpatterns = [
     path("api/unfollow/<int:pk>/", UnfollowView.as_view(), name="unfollow"), #hủy theo dõi người dùng
     path("api/followers/", FollowersListView.as_view(), name="followers"), #lấy ra danh sách người theo dõi
     path("api/following/", FollowingListView.as_view(), name="following"), #lấy ra danh sách đang theo dõi
-    path('api/block/<int:pk>',BlockView.as_view(),name='block'), # block 1 người
-    path('api/unblock/<int:pk>',UnblockView.as_view(),name='unblock'), #unblock 1 người
-    path('api/block/touser',ListBlockedUser.as_view(),name='listblocktouser'), #danh sách người block user
-    path('api/block/user',ListBlockedFromUser.as_view(),name='listblockfromuser'), #danh sách block của user
+    path('api/block/<int:pk>/',BlockView.as_view(),name='block'), # block 1 người
+    path('api/unblock/<int:pk>/',UnblockView.as_view(),name='unblock'), #unblock 1 người
+    path('api/block/touser/',ListBlockedUser.as_view(),name='listblocktouser'), #danh sách người block user
+    path('api/block/user/',ListBlockedFromUser.as_view(),name='listblockfromuser'), #danh sách block của user
     #url lấy ra user đã react và activity
-    path('api/user/reaction/post/<int:post_id>',UserReactionPostList.as_view(),name='user-reaction-post'), #lấy ra tất cả user đã thẻ react post
-    path('api/user/reaction/comment/<int:comment_id>',UserReactionCommentList.as_view(),name='user-reaction-comment'), #lấy ra tất cả user đã thẻ react post
+    path('api/user/reaction/post/<int:post_id>/',UserReactionPostList.as_view(),name='user-reaction-post'), #lấy ra tất cả user đã thẻ react post
+    path('api/user/reaction/comment/<int:comment_id>/',UserReactionCommentList.as_view(),name='user-reaction-comment'), #lấy ra tất cả user đã thẻ react post
     path('api/user/activity/', UserActivity.as_view(), name='user-activity'), #lấy ra lịch sử hoạt động của user hoặc tất cả user
     path('api/admin/logs/', LogList.as_view(), name='log-list'), #lấy ra tất cả log cho admin
     # url cho chat
     path('api/chat/messages/unsend/<int:pk>/', UnsendMessageAPIView.as_view(), name='unsend-message'), # thu hồi tin nhắn
     path('api/chat/conversations/', ConversationListAPIView.as_view(), name='conversation-list'), #danh sách cuộc trò chuyện của user
     path('api/chat/start/<int:user_id>/', StartConversationAPIView.as_view(), name='conversation-start'), #bắt đầu cuộc trò chuyện mới
-    path('api/chat/accept/conversation/<int:conv_id>',AcceptMessageRequest.as_view(),name='accept-conversation'), #accept tin nhắn ng lạ
-    path('api/chat/reject/conversation/<int:conv_id>',RejectMessageRequest.as_view(),name='reject-conversation'), #reject tin nhắn người lạ
+    path('api/chat/accept/conversation/<int:conv_id>/',AcceptMessageRequest.as_view(),name='accept-conversation'), #accept tin nhắn ng lạ
+    path('api/chat/reject/conversation/<int:conv_id>/',RejectMessageRequest.as_view(),name='reject-conversation'), #reject tin nhắn người lạ
     path('api/chat/messages/list/<int:pk>/', ConversationMessage.as_view(), name='message-list'), #danh sách tin nhắn trong cuộc trò chuyện cụ thể
     path('api/chat/conversation/members/<int:pk>/', MemberOfConversation.as_view(), name='conversation-members'), #danh sách thành viên trong cuộc trò chuyện
     path('api/chat/messages/seen/<int:pk>/', SeenMessage.as_view(), name='mark-message-seen'), #đánh dấu tin nhắn đã xem
@@ -136,7 +136,7 @@ urlpatterns = [
     path('api/chat/conversation/hidden-chat/',ListHideConversation.as_view(),name='hidden-chat'),# url hiện tất cả đoạn chat ẩn
     path('api/chat/conversation/<int:conv_id>/upload/',ChatAttachmentUpload.as_view(),name='upload-file'),
     #fire base notification
-    path("fcm-token/", SaveFCMTokenView.as_view()), # token cho thiết bị
+    path("api/fcm-token/", SaveFCMTokenView.as_view()), # token cho thiết bị
     #in-app notification
     path("api/notifications/", NotificationListView.as_view(), name="notification-list"), #thống báo user
     path("api/notifications/mark-read/",NotificationMarkReadView.as_view(),name="notification-mark-read"),
