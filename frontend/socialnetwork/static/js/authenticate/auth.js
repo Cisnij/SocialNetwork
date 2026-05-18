@@ -27,7 +27,7 @@ async function authFetch(url, options = {}) { // hàm này dùng để sau này 
       throw error;
     }
   }
-
+    //có token thì gọi fetch kèm token, nếu fetch lỗi thì token hết hạn và gọi tạo lại token và fetch lần nữa
   let res = await fetch(url, {
     ...options,
     headers: {
@@ -41,7 +41,7 @@ async function authFetch(url, options = {}) { // hàm này dùng để sau này 
     try {
       await refreshAccessToken();
     } catch (e) {
-      logout();
+      logout(); //hết hạn refresh
       throw e;
     }
 

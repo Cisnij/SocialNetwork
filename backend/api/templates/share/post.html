@@ -1,0 +1,52 @@
+<!-- templates/share/post_share.html -->
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns#">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Redirect ngay, bot không xử lý cái này -->
+    <meta http-equiv="refresh" content="0;url={{ frontend_url }}" />
+
+    <title>{{ post.user.profile.full_name }} - SocialNetwork</title>
+
+    <meta property="og:title" content="{{ post.user.profile.full_name }} - SocialNetwork" />
+    <meta property="og:description" content="{{ og_description }}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="{{ frontend_url }}" />
+    {% if og_image %}
+    <meta property="og:image" content="{{ og_image }}" />
+    {% endif %}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ post.user.profile.full_name }} - SocialNetwork" />
+    <meta name="twitter:description" content="{{ og_description }}" />
+    {% if og_image %}
+    <meta name="twitter:image" content="{{ og_image }}" />
+    {% endif %}
+
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #f0f2f5;
+        }
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <p>Đang chuyển hướng đến bài viết...</p>
+        <a href="{{ frontend_url }}">Nhấn vào đây nếu không tự chuyển</a>
+    </div>
+</body>
+</html>

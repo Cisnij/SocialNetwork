@@ -75,7 +75,9 @@ class Profile(SafeDeleteModel):
 
     def __str__(self):
         return f"Profile {self.id} | user_id={self.user_id} | {self.first_name} {self.last_name}"
-
+    @property
+    def full_name(self):
+        return f'{self.first_name} {self.last_name}'.strip() #strip bỏ khoảng trắng đầu cuối
 
 class PendingProfile(models.Model):
     id = models.BigAutoField(primary_key=True, editable=False)
@@ -90,7 +92,7 @@ class PendingProfile(models.Model):
         return f"{self.user.username}- Pending"
 
 
-class   Post(SafeDeleteModel):
+class Post(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE  # khi xóa post thì các comment, photo liên quan cũng bị xóa mềm theo
     PRIVACY_CHOICES=[
         ('public', 'Công khai'),

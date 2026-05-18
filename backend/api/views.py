@@ -2,6 +2,9 @@ import uuid
 from itertools import chain
 from django.db.models.expressions import Window
 from django.db.models.functions import RowNumber
+from django.views.generic import DetailView
+
+from backend import settings_backend
 from .serializers import *
 from rest_framework import generics,permissions
 from rest_framework.permissions import *
@@ -37,6 +40,8 @@ from cacheops import invalidate_model
 import cloudinary.uploader
 # magic-bin
 import magic
+# meta
+from meta.views import MetadataMixin
 
 def get_online_set(queryset):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
     ids = queryset.values_list('user_id',flat=True)  # lấy các user id trong queryset của serializer đưa vào list với 1 fields
@@ -363,7 +368,59 @@ class PostListAll(generics.ListAPIView):
         return context
 
 
-class PostShareView(generics.RetrieveAPIView):
+class PostShareView(MetadataMixin, DetailView): #  có preview card cho các third-party application
+    #tạo preview card
+    model=Post # làm việc với model
+    template_name ='share/post.html' # render file này khi user vào api
+    slug_field= 'share_code' #lookup với field này trong model
+    slug_url_kwarg='share_code' # lấy ra từ url
+    context_object_name='post'
+
+    def get_object(self):
+        share_code=self.kwargs.get('share_code')
+        post = get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'), share_code=share_code)
+         #check thủ công xem post đc share thì user có đc xem
+        if not PostViewPermission().has_object_permission(self.request,self,post):
+            raise PermissionDenied() # 403 fe sẽ tự load không thể xem, 404 là lỗi thật
+        # Bot của FB để get ra html và render preview khi paste trên FB, chỉ tăng khi user thật, không phải bot
+        user_agent = self.request.META.get('HTTP_USER_AGENT', '').lower()
+        is_bot = any(bot in user_agent for bot in [
+            'facebookexternalhit', 'twitterbot', 'telegrambot',
+            'whatsapp', 'linkedinbot', 'zalo'
+        ])
+        if not is_bot: # nếu người thật
+            post.share_count += 1
+            post.save(update_fields=['share_count']) # update_fields để patch update 1 phần thay vì toàn bộ
+        return post
+
+    def get_context_data(self, **kwargs): # truyền context qua file html fe, context lưu vô ram và chỉ sống 1 request, tức là render ra html xong là hết và nếu f5 render lại
+        context = super().get_context_data(**kwargs)
+        context['frontend_url'] = f'{settings_backend.FRONTEND_URL}/post/share/{self.object.share_code}/'
+        photo = self.object.photos.first()
+        context['og_image'] = (
+            self.request.build_absolute_uri(photo.image.url)
+            if photo else None
+        )
+        context['og_description'] = (getattr(self.object, 'title', '') or '')[:150]
+        return context
+
+    #preview card
+    def get_meta_title(self,context=None): # hiện ra trên card là title
+        return f'{self.object.user.profile.full_name} on SocialNetwork app'
+    def get_meta_description(self, context=None): # hiện ra phần nội dung dưới title
+        content = self.object.title or ''
+        return content[:100]
+    def get_meta_image(self, context=None): # hiện ảnh preview
+        first_photo = self.object.photos.first() 
+        if first_photo:
+            return self.request.build_absolute_uri(first_photo.image.url)
+        return None
+    def get_meta_url(self, context=None):
+        return f'{settings_backend.FRONTEND_URL}/post/share/{self.object.share_code}/'
+    def get_meta_type(self, context=None):
+        return 'article'
+
+class PostShareDetailView(generics.RetrieveAPIView): # khi fe redirect thì load ra json
     permission_classes = [IsAuthenticated,PostViewPermission]
     serializer_class = PostSerializer
 
@@ -371,8 +428,6 @@ class PostShareView(generics.RetrieveAPIView):
         share_code=self.kwargs.get('share_code')
         post = get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'), share_code=share_code)
         self.check_object_permissions(self.request, post) #check xem post đc share thì user có đc xem
-        post.share_count += 1
-        post.save(update_fields=['share_count']) # update_fields để patch update 1 phần thay vì toàn bộ
         return post
 
 class ChangePostPrivacy(APIView):
@@ -1497,7 +1552,7 @@ class ChatAttachmentUpload(APIView):
             if file.size > 50*1024*1024: # check chỉ đc 50 mb
                 return Response({'error': f'{file.name} vượt quá 50MB'}, status=400)
 
-            # detect , phát hiện file giả mạo đuôi
+            # detect mime kiểu image/png hay video/mp4, phát hiện file giả mạo đuôi
             mime = magic.from_buffer(
                 file.read(4096),
                 mime=True

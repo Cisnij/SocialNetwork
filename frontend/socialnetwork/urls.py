@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path,include
-from socialnetwork import views
+from . import views
 from .views import *
 urlpatterns = [
     path('',views.getBase,name="base"),

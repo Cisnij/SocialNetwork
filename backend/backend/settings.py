@@ -63,7 +63,8 @@ INSTALLED_APPS = [
     # 'auto_prefetch',
     # rules
     'rules',
-
+    #django-meta
+    'meta',
 
 
     # django cleanup, cuối

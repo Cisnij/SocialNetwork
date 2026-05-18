@@ -81,7 +81,8 @@ urlpatterns = [
     path('api/user/post/userpage/<int:user>/', PostUser.as_view(), name='post-user'),#lấy ra tất cả post của chính user đó
     path('api/user/post/create/',PostCreate.as_view(),name='post-create'), #tạo post để gán ảnh
     path('api/admin/post/',PostListAll.as_view(), name='post-list'), #láy ra tất cả post cho admin
-    path('api/share/<str:share_code>/', PostShareView.as_view()),# dạng share link
+    path('api/share/<str:share_code>/', PostShareView.as_view(),name='share-post'),# dạng share link
+    path('api/share-detail/<str:share_code>/', PostShareDetailView.as_view(),name='share-post-detail'),# dạng share link
     path('api/post/<int:post_id>/privacy-change/',ChangePostPrivacy.as_view(),name='change-privacy'),#đổi chế độ xem post
     path('api/posts/<int:post_id>/share/', AllPostShareView.as_view(),name='all-share-post'), # list share post và create share post
     path('api/posts/share/<int:pk>/delete/', PostUserShareDelete.as_view(),name='uesr-delete-share-post'), # xóa share post

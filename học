@@ -521,16 +521,16 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
     {
         Gói api:
         #+django-restframework: REST API
-        # adrf: rest api async
+        #adrf: rest api async
         #pip install django-filter : dùng lọc dữ liệu cho REST
         #+pip install drf-spectacular[sidecar]: Tự động tạo tài liệu cho api, ví dụ khi tạo api và muốn ngta truy cập vào /books/version/get thì phải cho ngta biết, nó sẽ tự sinh ra tài liệu để ngta biết truy cập
         #+pip install django-cors-headers: bắt buộc dùng nếu muốn gọi api từ django
         #pip install django-guardian || rules || Django-role-permissions: phân quyền chi tiết đối tượng, ví dụ chỉ user A thấy bài viết A
-        #  pip install -U 'channels[daphne]' chat realtime
+        # pip install -U 'channels[daphne]' chat realtime
         #django-channels-presence: theo dỗi hoạt động onl/off real time
         #pip install channels-redis: bắt buộc nếu dùng channels
         #+pip install django-environ: tạo file .env để dấu secretkey hay db k cho push đi
-        # pip install redis: kết nối với db của redis và phân phối hàng đợi cho celery
+        #pip install redis: kết nối với db của redis và phân phối hàng đợi cho celery
         #+django-el-pagination: phân trang infinite scroll cho mvc
         #pip install orjson drf-orjson-renderer  : dùng thay json parser truyền thống nhanh hơn
         #django-db-connection-pool: dùng tối ưu db( giữ kết nối lâu hơn và tái sử dụng)
@@ -562,7 +562,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         Thông báo, sự kiện:
         +pip install django-celery: :xử lý tác vụ nền (ví dụ gửi email,thông báo mà ít ảnh hưởng hiệu năng)
         +pip install django-scheduler: để tạo các lịch hẹn, các event lặp lại
-        +pip install django-notification-hq: tạo thông báo, có hệ thống đọc/chưa đọc sẵn, có thể tích hợp channels
+        #+pip install django-notification-hq: tạo thông báo, có hệ thống đọc/chưa đọc sẵn, có thể tích hợp channels
         # django.core.mail : thư viện gửi export_email
          django-anymail: gửi mail
         # +pip install django-activity-stream: ghi log lại các hành động ng dùng
@@ -593,7 +593,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         # django-friendship: để follow
         #django-comments-xtd: comment bài viết, có like dislike cho comment
         +django-markdownx: tạo highlights
-        +django-elasticsearch-dsl : search nâng cao, python manage.py search_index --rebuild
+        #+django-elasticsearch-dsl : search nâng cao, python manage.py search_index --rebuild
         +django-taggit: tạo tag bài viết
         +pip install django-modeltranslation: hỗ trợ dịch
         +pip install django-invoices: tạo hóa đơn , gửi email, xuất pdf
@@ -601,14 +601,14 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         #+pip install django-formtools: tạo form thanh toán từng bước(có lưu session)
         +pip install django-imagekit dùng để tự động resize ảnh, tạo thumbnail
         +django-import-export: xuất file
-        +django-meta:chia sẻ link, dùng cho fe 
-        +django-structlog:theo dõi log của server(ip,lỗi)
+        #+django-meta:chia sẻ link kiểu khi copy paste vô messenger sẽ hiện card preview, dùng cho fe
+        #+django-structlog:theo dõi log của server(ip,lỗi)
         
     }
         Storage & Media:{
-            pip install django-storages  # lưu file lên S3, Google Cloud, Azure thay vì server
+            #pip install django-storages || cloudinary  # lưu file lên S3, Google Cloud, Azure thay vì server
             # pip install Pillow            # xử lý ảnh, bắt buộc nếu dùng ImageField
-            pip install python-magic      # validate đúng loại file upload (tránh upload file độc)
+            # pip install python-magic-bin     # validate đúng loại file upload (tránh upload file độc)
     }
 
     {
@@ -808,3 +808,14 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         request.headers       # Authorization, Content-Type...
         request.META          # thông tin server, IP client...
     - ModelSerializer khác serializer là model serializer ánh xạ từ model ra và validate check theo model , còn serializer k phụ thuộc model nên tự định nghĩa từng field, sau đó viết hàm validate từng field và hàm save
+
+=========================================================================================================================================================================================================================================
+Database chỉ lưu refreshtoken và sẽ tự tạo accesstoken từ đó mới mà k lưu vào db
+Flow của Frontend
+Access token lưu local, Refresh lưu cookie
+Khi login thì sẽ được cấp access token, backend set chỉ tồn tại trong 5p
+nếu 5p sau gọi api kèm bearer<token> mà backend check bị hết thời gian thì phải gọi refresh access token dùng refresh token lấy cái mới
+Authfetch sẽ truyền vào đó 1 là url, 2 là method là post put hay delete, 3 là các kiểu content-type hay multi-part
+    Khi truyền url vào chạy sẽ check accessToken xem có trong local không, nếu không thì tạo mới RefreshAccessToken
+                                                                          , nếu có thì fetch kèm theo accessToken đó,  không lỗi thì chưa hết hạn và trả data, nếu lỗi thì là hết hạn và chạy RefreshAccessToken tạo mới và chạy lại fetch lần nữa không đc thì login lại luôn
+                                                                          Nếu mà RefreshAccess token k được chứng tỏ là không Refresh hết hạn thì login lại

@@ -156,50 +156,120 @@ SPECTACULAR_SETTINGS = {
 }
 
 #=======================StructLog=========================================================
-os.makedirs('logs', exist_ok=True)
+os.makedirs('logs', exist_ok=True) # lệnh win tạo dir
+
+import os
+
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
 
     'formatters': {
+
+        # production JSON log
         'json': {
             '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+
+            'format': (
+                '%(asctime)s '
+                '%(levelname)s '
+                '%(name)s '
+                '%(message)s'
+            ),
         },
+
+        # dev readable log
         'plain': {
-            'format': '%(asctime)s | %(levelname)s | %(message)s',
+            'format': (
+                '%(asctime)s | '
+                '%(levelname)s | '
+                '%(name)s | '
+                '%(message)s'
+            ),
         },
     },
 
     'handlers': {
+
+        # console output
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'plain' if DEBUG else 'json',
         },
+
+        # file log
         'file': {
             'class': 'logging.handlers.RotatingFileHandler',
+
             'filename': 'logs/app.log',
-            'maxBytes': 10 * 1024 * 1024,  # 10MB mỗi file
-            'backupCount': 5,               # giữ 5 file cũ
+
+            'maxBytes': 10 * 1024 * 1024,  # 10MB
+
+            'backupCount': 5,
+
             'formatter': 'json',
+
+            'encoding': 'utf-8',
         },
     },
 
+    # global root logger
     'root': {
         'handlers': ['console', 'file'],
-        'level': 'INFO',
+        'level': LOG_LEVEL,
     },
 
     'loggers': {
-        'django_structlog': {
+
+        # django request log
+        'django.request': {
             'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'level': 'WARNING',
             'propagate': False,
         },
-        # Tắt log thừa của django
+
+        # django server log
+        'django.server': {
+            'handlers': ['console', 'file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+
+        # django structlog
+        'django_structlog': {
+            'handlers': ['console', 'file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+
+        # axes spam
+        'axes': {
+            'handlers': ['console', 'file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+
+        # cloudinary spam reduction
+        'cloudinary': {
+            'handlers': ['console', 'file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+
+        # suppress annoying django host spam
         'django.security.DisallowedHost': {
             'handlers': [],
             'propagate': False,
         },
     },
 }
+#=================================META===================================
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
+if DEBUG:
+    META_SITE_PROTOCOL = 'https'
+META_USE_OG_PROPERTIES = True      # Facebook Open Graph
+META_USE_TWITTER_PROPERTIES = True  # Twitter Card
+META_USE_TITLE_TAG = True
+# META_DEFAULT_IMAGE = 'https://yourapp.com/static/default-thumbnail.jpg'

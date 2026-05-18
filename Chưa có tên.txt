@@ -4,11 +4,7 @@ chưa xong
 -thiếu phần đăng nhập:, xác thực otp khi bật 2 bước, xóa tài khoản
 - tạo group
 - thêm vào reaction cho message, thêm vào setting cho chat, có role các kiểu bên trong model conversationmember,
-- thêm vào gửi file
 - api tạo group, api thêm member, thêm quyền vào db conversationmember is_admin=true, tạo api thêm quyền cho user trong đoạn chat, thêm avatar, group name vào db conversation
-- xây gửi file, ảnh, video trong message dùng pip install python-magic
 - xong tất cả thì xây signal 1 thể
 - xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
 
-
-thông báo chia sẻ bài viết của bạn
