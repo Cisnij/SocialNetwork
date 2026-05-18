@@ -35,6 +35,8 @@ from elasticsearch_dsl import Q as ESQ         # Django Q — dùng cho ORM filt
 from cacheops import invalidate_model
 #cloudinary
 import cloudinary.uploader
+# magic-bin
+import magic
 
 def get_online_set(queryset):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
     ids = queryset.values_list('user_id',flat=True)  # lấy các user id trong queryset của serializer đưa vào list với 1 fields
@@ -1474,6 +1476,13 @@ class ListHideConversation(generics.ListAPIView):
     *không có message thì chỉ thực thi save file và message là none
     *không có file thì k thực thi lệnh if của file
 '''
+BLOCKED_MIMES = { # những file có đuôi bị block nhằm bảo mật cho app
+    'text/html',
+    'application/javascript',
+    'application/x-javascript',
+    'application/xhtml+xml',
+    'image/svg+xml',
+}
 class ChatAttachmentUpload(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser,FormParser]
@@ -1481,25 +1490,32 @@ class ChatAttachmentUpload(APIView):
         if not ConversationMember.objects.filter(user=request.user,conversation_id=conv_id).exists():
             return Response({'error': 'Không có quyền'}, status=403)
         files=request.FILES.getlist('files')
-        if not files:
+        if not files: #check file hợp lệ
             return Response({'error': 'Thiếu file'}, status=400)
-        image_exts = ['jpg', 'jpeg', 'png', 'webp', 'gif']
-        video_exts = ['mp4', 'mov', 'avi']
         results = []
-        for file in files:
-            if file.size > 50*1024*1024: # 50 mb
+        for file in files: # lặp từng file trong file tải lên
+            if file.size > 50*1024*1024: # check chỉ đc 50 mb
                 return Response({'error': f'{file.name} vượt quá 50MB'}, status=400)
-            ext = file.name.split('.')[-1].lower() #abc.PNG -> abc.png và lấy ra loại file
-            if ext in image_exts: # là ảnh thì gán ảnh
+
+            # detect , phát hiện file giả mạo đuôi
+            mime = magic.from_buffer(
+                file.read(4096),
+                mime=True
+            )
+            file.seek(0)
+            if mime in BLOCKED_MIMES: # nếu đuôi gốc nằm trong đuôi bị cấm
+                return Response({'error': f'{file.name} không được hỗ trợ'}, status=400)
+            # phân loại file
+            if mime.startswith('image/'):
                 file_type = 'image'
                 resource_type = 'image'
-            elif ext in video_exts: # là video thì gán video
+            elif mime.startswith('video/'):
                 file_type = 'video'
                 resource_type = 'video'
-            else: # là file khác như exe thì k gán
+            else:
                 file_type = 'file'
                 resource_type = 'raw'
-            result = cloudinary.uploader.upload( #up lên cloudinary
+            result = cloudinary.uploader.upload( #up lên cloudinary, cloudinary trả secure url
                 file,
                 folder=f'chat/conv_{conv_id}',
                 resource_type=resource_type,
@@ -1514,7 +1530,7 @@ class ChatAttachmentUpload(APIView):
                 file_size=file.size,
                 message=None
             )
-            results.append(MessageAttachmentSerializer(attachment).data | {'attachment_id': attachment.id}) # để trả ra nhiều serializer tương ứng với n file
+            results.append(MessageAttachmentSerializer(attachment).data | {'attachment_id': attachment.id, 'mime': mime,}) # để trả ra nhiều serializer tương ứng với n file,mime để trả về đuôi gốc ví dụ ảnh1.png -> image/png
         return Response({'attachments': results}, status=200)
 
 # =============================================================================

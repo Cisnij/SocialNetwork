@@ -1,4 +1,5 @@
-from .env_config import env
+from .env_config import env,SECRET_KEY,DEBUG
+import os
 #=======================================SILK=============================================================================
 SILKY_PYTHON_PROFILER = False            # Bật profiling cho Python code
 SILKY_PYTHON_PROFILER_BINARY = True     # Lưu profile ở dạng binary (có thể dùng với tools như SnakeViz)
@@ -152,4 +153,53 @@ SPECTACULAR_SETTINGS = {
     'SWAGGER_UI_DIST': 'SIDECAR',
     'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
     'REDOC_DIST': 'SIDECAR',
+}
+
+#=======================StructLog=========================================================
+os.makedirs('logs', exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    'formatters': {
+        'json': {
+            '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+        },
+        'plain': {
+            'format': '%(asctime)s | %(levelname)s | %(message)s',
+        },
+    },
+
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'plain' if DEBUG else 'json',
+        },
+        'file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': 'logs/app.log',
+            'maxBytes': 10 * 1024 * 1024,  # 10MB mỗi file
+            'backupCount': 5,               # giữ 5 file cũ
+            'formatter': 'json',
+        },
+    },
+
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'INFO',
+    },
+
+    'loggers': {
+        'django_structlog': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Tắt log thừa của django
+        'django.security.DisallowedHost': {
+            'handlers': [],
+            'propagate': False,
+        },
+    },
 }
