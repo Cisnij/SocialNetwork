@@ -52,7 +52,7 @@ class Profile(SafeDeleteModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE)  # chỉ đc 1 profile-user k có 2
     first_name = models.CharField(max_length=50, null=True)
     last_name = models.CharField(max_length=50, null=True)
-    picture = models.ImageField(upload_to=profile_upload_path, null=True, default="default.jpg", validators=[
+    picture = models.ImageField(upload_to=profile_upload_path, null=True, blank=True, validators=[
         FileExtensionValidator(['jpg', 'jpeg', 'png',
                                 'webp'])])  # ví dụ post ảnh 123.png lên, nó sẽ chạy hàm sửa tên lấy ra chữ png và đổi tên file lại user_1_abc_9349832.png
     date_of_birth = models.DateField(null=True)
