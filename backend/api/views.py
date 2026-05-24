@@ -550,8 +550,14 @@ class PostFriendShare(generics.ListAPIView): # tất cả share của bạn bè
         blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
         blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
         return (PostShare.objects.filter(
+            # share của mình
+            Q(user=user) |
+            #post share của bạn và following
+            Q(user_id__in=friend_ids, privacy='public') |
+            Q(user_id__in=friend_ids, privacy='friends')
+        )
+        .filter(
             #check post gốc
-            Q(user=user) | # lọc ra post mình share
             Q(post__privacy='public') | # lọc ra post gốc là public
             Q(post__user_id__in=friend_ids, post__privacy='friends') | # lọc ra post gốc là của friends và privacy là friends
             Q(post__user_id__in=following_ids, post__privacy='public') # lọc ra post gốc là của following và public
