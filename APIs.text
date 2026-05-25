@@ -1,0 +1,214 @@
+
+
+
+
+&#x20;**1. Nhóm Xác thực \& Người dùng (Auth \& Profile) (Chí Nghị)**
+
+
+    **1. `api/auth/registration/`**
+
+    **2. `api/auth/password/reset/`**
+
+
+
+
+    **6. `api/auth/google/login/`**
+
+    **7. `api/auth/google/connect/`**
+
+    **8. `api/auth/google/disconnect/`**
+
+    **9. `api/password/reset/confirm/`**
+
+    **9. `/api/auth/password/change/`**
+
+    POST /api/auth/registration/resend-email/
+
+    POST /api/auth/registration/verify-email/
+
+**10. `api/auth/check-email/`**
+
+**11. `api/auth/delete-account/`**
+
+
+    **13. `api/auth/web/login/`**
+
+    **14. `api/auth/web/logout/`**
+
+    **15. `api/auth/web/token/refresh/`**
+
+    **16. `api/auth/web/google/login/`**
+
+    **17. `api/user/profile/<int:pk>/`**
+
+**18. `api/user/profile/`**
+
+    **19. `api/auth/profile/userpage/<int:user>`**
+
+    **20. `api/user/`**
+
+**22. `api/user/email/`**
+
+**23. `api/email/add/`**
+
+**24. `api/email/set/<int:pk>/`**
+
+**25. `api/email/delete/<int:pk>/`**
+
+**26. `api/user/setting/<int:pk>/`**
+
+
+
+&#x20;**2. Nhóm Bài viết (Post, Article, Share) (Minh Duc)**
+
+
+
+**27. `api/user/post-photo/<int:post\_id>/`**
+
+**28. `api/user/delete-photo/<int:pk>/`**
+
+**29. `api/user/post/<int:pk>/`**
+
+**30. `api/user/post/show/`**
+
+**31. `api/user/post/userpage/<int:user>/`**
+
+**32. `api/user/post/create/`**
+
+**33. `api/admin/post/`**
+
+**34. `api/share/<str:share\_code>/`**
+
+**35. `api/share-detail/<str:share\_code>/`**
+
+**36. `api/post/<int:post\_id>/privacy-change/`**
+
+**37. `api/posts/<int:post\_id>/share/`**
+
+**38. `api/posts/share/<int:pk>/delete/`**
+
+**39. `api/posts/user/<int:user\_id>/share/`**
+
+**40. `api/posts/share/`**
+
+**41. `api/post/share/<int:share\_id>/privacy-change/`**
+
+**44. `api/user/post/create/v2/`**
+
+**api/posts/<int:id>/react**
+
+&#x20;**3. Nhóm Bình luận \& Phản ứng (Comment \& Reaction) (Minh Duc)**
+
+
+
+**45. `api/user/comments/post/<int:post\_id>/`**
+
+**46. `api/user/comments/<int:pk>/`**
+
+**47. `api/user/comment/pin/<int:pin\_id>/`**
+
+**48. `api/user/nested-comments/<int:pk>/`**
+
+**49. `api/user/reaction/post/<int:post\_id>/`**
+
+**50. `api/user/reaction/comment/<int:comment\_id>/`**
+
+**api/comments/**[**int:id**](int:id)**/react**
+
+&#x20;**4. Nhóm Bạn bè, Theo dõi \& Chặn (Friends, Follow, Block) (Duy Thanh)**
+
+
+
+**51. `api/friends/request/<int:pk>/`**
+
+**52. `api/friends/requests/incoming/`**
+
+**53. `api/friends/requests/outgoing/`**
+
+**54. `api/friends/request/<int:pk>/accept/`**
+
+**55. `api/friends/request/<int:pk>/reject/`**
+
+**56. `api/friends/request/<int:pk>/cancel/`**
+
+**57. `api/friends/unfriend/<int:pk>/`**
+
+**58. `api/friends/`**
+
+**59. `api/friends/<int:pk>/`**
+
+**60. `api/follow/<int:pk>/`**
+
+**61. `api/unfollow/<int:pk>/`**
+
+**62. `api/followers/`**
+
+**63. `api/following/`**
+
+**64. `api/block/<int:pk>/`**
+
+**65. `api/unblock/<int:pk>/`**
+
+**66. `api/block/touser/`**
+
+**67. `api/block/user/`**
+
+**68. `api/relationship/<int:profile\_id>/`**
+
+**69. `api/user/friend-suggest/`**
+
+
+
+**5. Nhóm Chat \& Hội thoại (Chat) (Duy Thanh)**
+
+
+
+**70. `api/chat/messages/unsend/<int:pk>/`**
+
+**71. `api/chat/conversations/`**
+
+**72. `api/chat/start/<int:user\_id>/`**
+
+**73. `api/chat/accept/conversation/<int:conv\_id>/`**
+
+**74. `api/chat/reject/conversation/<int:conv\_id>/`**
+
+**75. `api/chat/messages/list/<int:pk>/`**
+
+**76. `api/chat/conversation/members/<int:pk>/`**
+
+**77. `api/chat/messages/seen/<int:pk>/`**
+
+**78. `api/chat/messages/update/<int:pk>/`**
+
+**79. `api/chat/conversation/<int:pk>/delete/`**
+
+**80. `api/chat/conversation/<int:pk>/toogle-hidden/`**
+
+**81. `api/chat/conversation/hidden-chat/`**
+
+**82. `api/chat/conversation/<int:conv\_id>/upload/`**
+
+
+
+**6. Nhóm Thông báo, Tìm kiếm \& Hệ thống (Chí Nghị, Duy thanh)**
+
+
+
+**84. `api/notifications/`**
+
+**85. `api/notifications/mark-read/`**
+
+**86. `api/notifications/count/`**
+
+**87. `api/search/`**
+
+**88. `api/user/search-history/`**
+
+
+**93. `api/user/activity/`**
+
+**94. `api/admin/logs/`**
+
+
+

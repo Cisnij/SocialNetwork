@@ -1,0 +1,12 @@
+{% extends 'app/page-shell.html' %}
+{% load static %}
+{% block title %}Hoạt động{% endblock %}
+{% block page_content %}
+<h1 class="text-2xl font-bold mb-4">Hoạt động gần đây</h1>
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 max-w-xl max-h-[70vh] overflow-y-auto">
+  <div id="activityList" class="space-y-3"></div>
+</div>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/pages/activity.js' %}"></script>
+{% endblock %}

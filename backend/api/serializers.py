@@ -254,6 +254,7 @@ class ConversationSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "is_group",
+            "status",
             "created_at",
             "members",
             "last_message",

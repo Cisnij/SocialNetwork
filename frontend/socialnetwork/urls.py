@@ -19,6 +19,16 @@ urlpatterns = [
     path('email-verified-send/', views.getEmailVerifiedSend),
     path('profile/<int:pk>/', views.getMyProfile),
     path('create-post/',views.getAddPost),
+    path('friends/', views.getFriends, name='friends'),
+    path('chat/', views.getChat, name='chat'),
+    path('notifications/', views.getNotifications, name='notifications'),
+    path('settings/', views.getSettings, name='settings'),
+    path('search/', views.getSearch, name='search'),
+    path('shares/', views.getShares, name='shares'),
+    path('post/share/<str:share_code>/', views.getShareView, name='share-view'),
+    path('post/<int:post_id>/', views.getPostDetail, name='post-detail'),
+    path('blocked/', views.getBlocked, name='blocked'),
+    path('activity/', views.getActivity, name='activity'),
 ]
 
    

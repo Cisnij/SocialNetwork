@@ -1,0 +1,44 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Đăng bài viết{% endblock %}
+{% block main_content %}
+<main class="max-w-[680px] mx-auto px-4 py-6">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4">
+    <div class="flex items-center gap-3 mb-4">
+      <img id="composerAvatar" src="/static/default-avatar.png" class="w-10 h-10 rounded-full object-cover">
+      <div class="flex-1">
+        <h2 class="font-semibold text-gray-800 dark:text-gray-200">Đăng bài viết mới</h2>
+      </div>
+    </div>
+    
+    <div class="space-y-4">
+      <textarea 
+        id="postContent" 
+        rows="6" 
+        class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 text-gray-800 dark:text-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-fb-primary" 
+        placeholder="Bạn đang nghĩ gì?"></textarea>
+      
+      <div id="photoPreview" class="grid grid-cols-2 gap-2"></div>
+      
+      <div class="flex items-center justify-between border-t dark:border-gray-700 pt-4">
+        <div class="flex items-center gap-2">
+          <label class="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-fb-secondary dark:hover:bg-gray-700 transition">
+            <span class="text-xl">📷</span>
+            <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Ảnh</span>
+            <input type="file" id="photoInput" accept="image/*" multiple class="hidden">
+          </label>
+        </div>
+        
+        <button 
+          id="postSubmitBtn" 
+          class="px-6 py-2 bg-fb-primary text-white rounded-lg font-semibold hover:bg-fb-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed">
+          Đăng
+        </button>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/app/add_post.js' %}"></script>
+{% endblock %}

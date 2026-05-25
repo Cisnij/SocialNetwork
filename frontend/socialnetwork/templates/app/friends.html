@@ -1,0 +1,19 @@
+{% extends 'app/page-shell.html' %}
+{% load static %}
+{% block title %}Bạn bè{% endblock %}
+{% block page_content %}
+<h1 class="text-2xl font-bold text-gray-800 mb-4">Bạn bè</h1>
+<nav class="flex gap-4 border-b mb-6 text-sm">
+  <a href="#" data-friends-tab="list" class="pb-2 border-b-2 border-indigo-600 text-indigo-600 font-medium">Danh sách</a>
+  <a href="#" data-friends-tab="incoming" class="pb-2 hover:text-indigo-600">Lời mời đến</a>
+  <a href="#" data-friends-tab="outgoing" class="pb-2 hover:text-indigo-600">Đã gửi</a>
+  <a href="#" data-friends-tab="suggest" class="pb-2 hover:text-indigo-600">Gợi ý</a>
+</nav>
+<div id="friendsListPanel" class="space-y-2"></div>
+<div id="incomingPanel" class="space-y-2 hidden"></div>
+<div id="outgoingPanel" class="space-y-2 hidden"></div>
+<div id="suggestPanel" class="space-y-2 hidden"></div>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/pages/friends.js' %}"></script>
+{% endblock %}

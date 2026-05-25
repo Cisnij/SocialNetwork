@@ -3,155 +3,205 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>{% block title %}{% endblock title %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SocialNetwork{% endblock title %}</title>
+  <script src="{% static 'js/shared/theme-boot.js' %}"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            fb: {
+              bg: '#f0f2f5',
+              card: '#ffffff',
+              primary: '#1877f2',
+              'primary-hover': '#166fe5',
+              secondary: '#e4e6eb',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .fb-nav-icon { @apply w-10 h-10 rounded-full flex items-center justify-center hover:bg-fb-secondary dark:hover:bg-gray-700 transition; }
+    .fb-nav-icon.active { @apply bg-fb-secondary dark:bg-gray-700; }
+    .fb-nav-icon.active svg { color: #1877f2; }
+    .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #bcc0c4; border-radius: 3px; }
+  </style>
 </head>
-<body class="bg-gradient-to-br from-slate-50 to-slate-200 font-sans">
+<body class="bg-fb-bg dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100">
 
-<nav class="bg-white shadow-md px-6 py-3 flex items-center justify-between sticky top-0 z-50">
-  <div class="flex items-center gap-4">
-    <a href="/">
-      <img src="https://cdn-icons-png.flaticon.com/512/1041/1041916.png" alt="Logo" class="w-9 h-9">
+<!-- Top navbar (Facebook-style) -->
+<header class="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-sm px-2 sm:px-4 h-14 flex items-center justify-between">
+  <div class="flex items-center gap-2 flex-1 max-w-[320px]">
+    <a href="/" class="shrink-0">
+      <div class="w-10 h-10 rounded-full bg-fb-primary flex items-center justify-center text-white font-bold text-xl">f</div>
     </a>
-    <div class="relative">
-      <input
-        type="text"
-        placeholder="Tìm kiếm bài viết, bạn bè..."
-        class="pl-10 pr-4 py-2 w-72 rounded-xl bg-slate-100 text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-      <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
+    <div class="relative flex-1 hidden sm:block">
+      <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input id="globalSearchInput" type="search" autocomplete="off" placeholder="Tìm kiếm trên SocialNetwork"
+        class="w-full pl-10 pr-3 py-2 rounded-full bg-fb-secondary dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-fb-primary">
+      <div id="searchHistoryDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-xl shadow-xl border dark:border-gray-700 py-2 z-50 max-h-64 overflow-y-auto"></div>
     </div>
   </div>
 
-  <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-8">
-    <a href="/" class="text-indigo-600 hover:text-indigo-800 transition">
-      <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-        <path d="M9 22V12h6v10"/>
-      </svg>
+  <nav class="flex items-center justify-center gap-1 sm:gap-2 flex-1 max-w-xl">
+    <a href="/" data-nav="home" class="fb-nav-icon active" title="Trang chủ">
+      <svg class="w-7 h-7 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
     </a>
-    <a href="/friends" class="text-gray-500 hover:text-indigo-600 transition">
-      <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path d="M17 20h5v-2a4 4 0 00-3-3.87"/>
-        <path d="M9 20H4v-2a4 4 0 013-3.87"/>
-        <circle cx="9" cy="7" r="4"/>
-        <circle cx="17" cy="7" r="4"/>
-      </svg>
+    <a href="/shares/" data-nav="shares" class="fb-nav-icon" title="Bài chia sẻ">
+      <svg class="w-7 h-7 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
     </a>
-  </div>
+    <a href="/friends/" data-nav="friends" class="fb-nav-icon hidden sm:flex" title="Bạn bè">
+      <svg class="w-7 h-7 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 2.05 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+    </a>
+  </nav>
 
-  <div class="flex items-center gap-5">
-    <button id="openPostModal" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">Tạo post</button>
-    <button class="relative hover:text-indigo-600 transition">Chat</button>
-    <button class="relative hover:text-indigo-600 transition">Thông báo</button>
+  <div class="flex items-center justify-end gap-1 sm:gap-2 flex-1 max-w-[320px]">
+    <button id="openPostModal" type="button" class="hidden sm:flex items-center gap-2 px-3 py-2 bg-fb-secondary dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium">
+      <span class="text-fb-primary font-bold text-lg">+</span> Tạo bài viết
+    </button>
+    <a id="navChatLink" href="/chat/" class="fb-nav-icon relative" title="Messenger">
+      <svg class="w-6 h-6 text-fb-primary" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+    </a>
+    <a id="navNotifLink" href="/notifications/" class="fb-nav-icon relative" title="Thông báo">
+      <svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V9c0-3.07-1.63-5.64-4.5-6.32V2h-3v.68C7.63 3.36 6 5.92 6 9v7l-2 2v1h16v-1l-2-2zm-2 1H8V9c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v8z"/></svg>
+      <span id="notifBadge" class="hidden absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full font-bold">0</span>
+    </a>
     <div class="relative">
-      <img src="" alt="avatar" class="w-11 h-11 rounded-full border border-gray-300 cursor-pointer" id="avatarBtn">
-      <div id="dropdownMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg overflow-hidden z-50">
-        <div class="flex items-center gap-3 px-4 py-3 border-b">
-          <img id="dropdownAvatar" src="/static/default-avatar.png" class="w-10 h-10 rounded-full border">
-          <div>
-            <p id="dropdownName" class="font-semibold text-gray-800"></p>
-            <a id="profileLink" href="" class="text-sm text-indigo-600 hover:underline">Xem trang cá nhân</a>
+      <img id="avatarBtn" src="/static/default-avatar.png" alt="" class="w-9 h-9 rounded-full cursor-pointer border-2 border-transparent hover:border-fb-primary object-cover">
+      <div id="dropdownMenu" class="hidden absolute right-0 mt-2 w-60 bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden z-50 border dark:border-gray-700">
+        <div class="flex items-center gap-3 px-4 py-3 border-b dark:border-gray-700">
+          <img id="dropdownAvatar" src="/static/default-avatar.png" class="w-10 h-10 rounded-full object-cover">
+          <div class="min-w-0">
+            <p id="dropdownName" class="font-semibold truncate"></p>
+            <a id="profileLink" href="#" class="text-sm text-fb-primary hover:underline">Xem trang cá nhân</a>
           </div>
         </div>
-        <a href="/settings" class="px-4 py-2 hover:bg-gray-100 block">Cài đặt</a>
-        <a href="" id="logoutLink" class="px-4 py-2 hover:bg-gray-100 block text-red-500">Đăng xuất</a>
+        <a href="/settings/" class="block px-4 py-2.5 hover:bg-fb-secondary dark:hover:bg-gray-700">Cài đặt & quyền riêng tư</a>
+        <a href="" id="logoutLink" class="block px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700">Đăng xuất</a>
       </div>
     </div>
   </div>
-</nav>
+</header>
 
 {% block main_content %}{% endblock main_content %}
 {% block profile %}{% endblock profile %}
 
-<!-- Modal tạo bài viết -->
-<div id="postModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden z-50">
-  <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-5 relative">
-    <div class="flex justify-between items-center border-b pb-3">
-      <h2 class="text-xl font-semibold">Tạo bài viết</h2>
-      <button id="closePostModal" class="text-gray-500 hover:text-red-500 text-2xl">&times;</button>
+<!-- Create post modal -->
+<div id="postModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg">
+    <div class="flex justify-between items-center px-4 py-3 border-b dark:border-gray-700">
+      <h2 class="text-lg font-bold">Tạo bài viết</h2>
+      <button id="closePostModal" type="button" class="w-9 h-9 rounded-full bg-fb-secondary dark:bg-gray-700 hover:bg-gray-200 text-xl">&times;</button>
     </div>
-    <div class="mt-4 space-y-4">
-      <input type="text" id="postTitle" placeholder="Tiêu đề bài viết..." class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400">
-      <div>
-        <label class="block mb-2 text-gray-700 font-medium">Chọn ảnh</label>
-        <input type="file" accept="image/*" multiple class="w-full text-gray-700 border p-2 rounded-lg cursor-pointer focus:outline-none" id="imageInput">
-        <div id="imagePreview" class="grid grid-cols-3 gap-2 mt-2 max-h-64 overflow-y-auto"></div>
+    <div class="p-4 space-y-3">
+      <textarea id="postTitle" rows="3" placeholder="Bạn đang nghĩ gì?" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 focus:outline-none resize-none"></textarea>
+      <div class="border dark:border-gray-600 rounded-lg p-3">
+        <label class="text-sm font-medium text-gray-600 dark:text-gray-400">Thêm ảnh</label>
+        <input type="file" id="imageInput" accept="image/*" multiple class="mt-2 w-full text-sm">
+        <div id="imagePreview" class="grid grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto"></div>
       </div>
     </div>
-    <div class="mt-4 flex justify-end gap-3">
-      <button id="closePostModal2" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Hủy</button>
-      <button id="submit" type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Đăng</button>
+    <div class="px-4 pb-4">
+      <button id="submit" type="button" class="w-full py-2.5 bg-fb-primary hover:bg-fb-primary-hover text-white font-semibold rounded-lg">Đăng</button>
+      <button id="closePostModal2" type="button" class="hidden">Hủy</button>
     </div>
   </div>
 </div>
 
-<!-- Modal ảnh -->
-<div id="photoModal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
-  <div class="relative w-[90%] max-w-[90vw] text-center">
-    <button id="closeModal" class="absolute top-6 right-6 text-white hover:text-gray-300 text-4xl font-bold z-50">&times;</button>
-    <img id="photoModalImg" src="" alt="Preview" class="w-full max-h-[90vh] object-contain rounded-lg mx-auto">
-    <p id="photoModalCaption" class="mt-4 text-white text-lg font-medium"></p>
-    <button id="prevPhoto" class="absolute left-4 top-1/2 -translate-y-1/2 px-4 py-2 text-white text-4xl bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 z-40">‹</button>
-    <button id="nextPhoto" class="absolute right-4 top-1/2 -translate-y-1/2 px-4 py-2 text-white text-4xl bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 z-40">›</button>
+<!-- Photo viewer -->
+<div id="photoModal" class="hidden fixed inset-0 bg-black/95 z-[60] flex items-center justify-center">
+  <button id="closeModal" type="button" class="absolute top-4 right-4 text-white text-4xl z-10">&times;</button>
+  <button id="prevPhoto" type="button" class="absolute left-4 text-white text-5xl z-10">‹</button>
+  <img id="photoModalImg" alt="" class="max-h-[90vh] max-w-[90vw] object-contain">
+  <button id="nextPhoto" type="button" class="absolute right-4 text-white text-5xl z-10">›</button>
+  <p id="photoModalCaption" class="absolute bottom-6 text-white text-center w-full"></p>
+</div>
+
+<!-- Reactions list -->
+<div id="reactionsModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-center z-[60] p-4">
+  <div class="bg-white dark:bg-gray-800 w-full max-w-md max-h-[80vh] rounded-xl overflow-hidden flex flex-col">
+    <div class="flex justify-between p-4 border-b dark:border-gray-700"><h2 class="font-bold">Cảm xúc</h2><button id="closeReactionsModal" type="button" class="text-2xl">&times;</button></div>
+    <div id="reactionsList" class="overflow-y-auto p-4 space-y-2 flex-1"></div>
   </div>
 </div>
 
-<!-- Modal reactions -->
-<div id="reactionsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-  <div class="bg-white w-96 max-h-[80vh] rounded-lg overflow-y-auto p-4">
-    <div class="flex justify-between items-center mb-3">
-      <h2 class="text-lg font-semibold">Người đã thả cảm xúc</h2>
-      <button id="closeReactionsModal" class="text-gray-500 hover:text-black">&times;</button>
-    </div>
-    <div id="reactionsList" class="space-y-3"></div>
+<!-- Delete post -->
+<div id="deleteModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm w-full text-center shadow-xl">
+    <h3 class="font-bold text-lg mb-2">Xóa bài viết?</h3>
+    <p class="text-gray-500 text-sm mb-4">Hành động này không thể hoàn tác.</p>
+    <div class="flex gap-2"><button id="cancelDelete" type="button" class="flex-1 py-2 rounded-lg bg-fb-secondary">Hủy</button><button id="confirmDelete" type="button" class="flex-1 py-2 rounded-lg bg-red-600 text-white">Xóa</button></div>
   </div>
 </div>
 
-<!-- Modal xóa bài viết -->
-<div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-  <div class="bg-white rounded-xl shadow-lg p-6 w-96 text-center">
-    <h3 class="text-lg font-semibold mb-4">⚠️ Xác nhận xóa bài viết</h3>
-    <p class="mb-6">Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.</p>
-    <div class="flex justify-center gap-4">
-      <button id="cancelDelete" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Hủy</button>
-      <button id="confirmDelete" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Xóa</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal chỉnh sửa bài viết -->
-<div id="editPostModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-  <div class="bg-white p-6 rounded-lg w-[500px] shadow-lg">
-    <h2 class="text-xl font-bold mb-3">✏️ Chỉnh sửa bài viết</h2>
-
-    <label class="block mb-2">Nội dung:</label>
-    <textarea id="editPostTitle" class="w-full border rounded p-2 mb-4"></textarea>
-
-    <div id="editImageContainer" class="flex flex-wrap mb-4"></div>
-
-    <label class="block mb-2">Thêm ảnh mới:</label>
-    <input id="editNewImages" type="file" multiple class="mb-4" />
-
-    <div class="flex justify-end gap-2">
-      <button id="cancelEditPost" class="px-4 py-2 bg-gray-400 text-white rounded">Hủy</button>
-      <button id="savePostChanges" class="px-4 py-2 bg-blue-600 text-white rounded">Lưu thay đổi</button>
+<!-- Comments -->
+<div id="commentsModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-end sm:items-center z-[60] p-0 sm:p-4">
+  <div class="bg-white dark:bg-gray-800 w-full sm:max-w-lg sm:rounded-xl max-h-[90vh] flex flex-col shadow-2xl">
+    <div class="flex justify-between p-4 border-b dark:border-gray-700"><h2 class="font-bold">Bình luận</h2><button id="closeCommentsModal" type="button" class="text-2xl">&times;</button></div>
+    <div id="commentsList" class="flex-1 overflow-y-auto p-4 scrollbar-thin min-h-[200px]"></div>
+    <div id="commentsSentinel" class="h-2"></div>
+    <div class="p-3 border-t dark:border-gray-700">
+      <p id="commentParentHint" class="text-xs text-fb-primary mb-1"></p>
+      <input type="hidden" id="commentParentId" value="">
+      <div class="flex gap-2">
+        <textarea id="commentInput" rows="1" placeholder="Viết bình luận..." class="flex-1 rounded-full px-4 py-2 bg-fb-secondary dark:bg-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-fb-primary"></textarea>
+        <button id="submitCommentBtn" type="button" class="px-4 py-2 bg-fb-primary text-white rounded-full text-sm font-semibold">Gửi</button>
+      </div>
     </div>
   </div>
 </div>
 
+<!-- Share post modal -->
+<div id="shareModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-center z-[60] p-4">
+  <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-xl p-4 shadow-xl">
+    <div class="flex justify-between mb-3"><h2 class="font-bold">Chia sẻ lên dòng thời gian</h2><button id="closeShareModal" type="button" class="text-2xl">&times;</button></div>
+    <textarea id="shareContent" rows="3" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 mb-3" placeholder="Viết gì đó về bài này..."></textarea>
+    <select id="sharePrivacy" class="w-full p-2 rounded-lg border dark:border-gray-600 mb-3 text-sm"><option value="public">Công khai</option><option value="friends">Bạn bè</option><option value="private">Chỉ mình tôi</option></select>
+    <button id="confirmShareBtn" type="button" class="w-full py-2.5 bg-fb-primary text-white rounded-lg font-semibold">Đăng chia sẻ</button>
+  </div>
+</div>
 
+<!-- Post sharers list -->
+<div id="sharersModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-center z-[60] p-4">
+  <div class="bg-white dark:bg-gray-800 w-full max-w-md max-h-[70vh] rounded-xl flex flex-col">
+    <div class="flex justify-between p-4 border-b"><h2 class="font-bold">Người đã chia sẻ</h2><button id="closeSharersModal" type="button" class="text-2xl">&times;</button></div>
+    <div id="sharersList" class="overflow-y-auto p-4 flex-1"></div>
+  </div>
+</div>
 
+<!-- Edit post -->
+<div id="editPostModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-center z-[60] p-4">
+  <div class="bg-white dark:bg-gray-800 w-full max-w-lg rounded-xl p-4 shadow-xl">
+    <h2 class="font-bold mb-3">Chỉnh sửa bài viết</h2>
+    <textarea id="editPostTitle" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 mb-3"></textarea>
+    <div id="editImageContainer" class="flex flex-wrap gap-2 mb-3"></div>
+    <input id="editNewImages" type="file" multiple accept="image/*" class="mb-4 w-full text-sm">
+    <div class="flex gap-2 justify-end"><button id="cancelEditPost" type="button" class="px-4 py-2 rounded-lg bg-fb-secondary">Hủy</button><button id="savePostChanges" type="button" class="px-4 py-2 rounded-lg bg-fb-primary text-white">Lưu</button></div>
+  </div>
+</div>
 
-<!-- Toast -->
-<div id="toast" class="fixed bottom-5 right-5 bg-green-500 text-white px-4 py-3 rounded shadow-lg hidden"></div>
-<script>window.user_id = "{{ user_id }}";</script>
+<!-- Confirm dialog -->
+<div id="confirmModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-5 max-w-sm w-full shadow-xl">
+    <h3 id="confirmModalTitle" class="font-bold text-lg mb-2">Xác nhận</h3>
+    <p id="confirmModalMessage" class="text-gray-600 dark:text-gray-400 text-sm mb-4"></p>
+    <div class="flex gap-2"><button id="confirmModalCancel" type="button" class="flex-1 py-2 rounded-lg bg-fb-secondary">Hủy</button><button id="confirmModalOk" type="button" class="flex-1 py-2 rounded-lg bg-fb-primary text-white">OK</button></div>
+  </div>
+</div>
+
+<div id="toast" class="fixed bottom-5 right-5 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg hidden z-[80] max-w-sm"></div>
+
+<script>window.user_id = "{{ user_id|default:'' }}";</script>
 <script type="module" src="{% static 'js/authenticate/base.js' %}"></script>
 <script type="module" src="{% static 'js/app/profile.js' %}"></script>
-<script type="module" src="{% static 'js/userpage/post_edit.js' %}"></script>
-
+<script type="module" src="{% static 'js/app/nav.js' %}"></script>
+<script type="module" src="{% static 'js/app/theme-init.js' %}"></script>
 {% block post_scripts %}{% endblock post_scripts %}
 </body>
 </html>

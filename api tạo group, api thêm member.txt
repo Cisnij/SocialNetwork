@@ -7,3 +7,6 @@ logic: khi kết bạn nhất chat sẽ tạo conversation, gọi api startconve
 	khi ấn ok ở request sẽ tạo conversation
 
 
+
+#thêm throttle
+sửa lại set email primary sẽ đổi username user, email user,

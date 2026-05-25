@@ -1,0 +1,13 @@
+{% extends 'app/page-shell.html' %}
+{% load static %}
+{% block title %}Thông báo{% endblock %}
+{% block page_content %}
+<div class="flex justify-between items-center mb-4">
+  <h1 class="text-2xl font-bold">Thông báo</h1>
+  <button id="markAllReadBtn" type="button" class="text-sm text-fb-primary font-semibold hover:underline">Đánh dấu đã đọc</button>
+</div>
+<div id="notificationsList"></div>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/pages/notifications.js' %}"></script>
+{% endblock %}

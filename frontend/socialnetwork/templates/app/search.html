@@ -1,0 +1,20 @@
+{% extends 'app/page-shell.html' %}
+{% load static %}
+{% block title %}Tìm kiếm{% endblock %}
+{% block page_content %}
+<h1 class="text-2xl font-bold mb-4">Tìm kiếm</h1>
+<form id="searchForm" class="flex gap-2 mb-4">
+  <input id="searchQuery" type="search" value="{{ query }}" placeholder="Tìm bài viết, người dùng..." class="flex-1 border dark:border-gray-600 rounded-xl px-4 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-fb-primary outline-none">
+  <select id="searchType" class="border dark:border-gray-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-gray-800">
+    <option value="all">Tất cả</option>
+    <option value="posts">Bài viết</option>
+    <option value="profiles">Người dùng</option>
+  </select>
+  <button type="submit" class="px-5 py-2 bg-fb-primary hover:bg-fb-primary-hover text-white rounded-xl font-semibold">Tìm</button>
+</form>
+<div id="searchHistory" class="flex flex-wrap gap-2 mb-6"></div>
+<div id="searchResults" class="space-y-4"></div>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/pages/search.js' %}"></script>
+{% endblock %}

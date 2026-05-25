@@ -88,7 +88,7 @@ urlpatterns = [
     path('api/posts/share/<int:pk>/delete/', PostUserShareDelete.as_view(),name='uesr-delete-share-post'), # xóa share post
     path('api/posts/user/<int:user_id>/share/',PostUserShare.as_view(),name='user_share'),# lấy ra tất cả share của user
     path('api/posts/share/', PostFriendShare.as_view(), name='user_share'), # lấy ra tất cả share của bạn bè
-    path('api/post/share/<int:share_id>/privacy-change/',ChangePostSharePrivacy.as_view(),name='change-share-privacy'),#đổi chế độ xem post
+    path('api/post/share/<int:share_id>/privacy-change/',ChangePostSharePrivacy.as_view(),name='change-share-privacy'),#đổi chế độ xem share post
     #url post-article
     path('api/user/post-article/', PostArticleListCreate.as_view(), name='post-article-list'), #thêm láy tất cả post article
     path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể
@@ -99,6 +99,7 @@ urlpatterns = [
     path('api/user/nested-comments/<int:pk>/',NestedCommentList.as_view(),name='nested-comment'), # list các nested từ comment cha
     #url setting
     path('api/user/setting/<int:pk>/',SettingModify.as_view(), name='setting-modify'),# setting của user
+    path('api/user/setting/',UserSetting.as_view(),name='user-setting'),#setting user hiện tại
     #url xử lý bạn bè, follow
     path("api/friends/request/<int:pk>/", SendFriendRequestView.as_view(), name="send-friend-request"), #gửi lời mời kết bạn
     path("api/friends/requests/incoming/", IncomingFriendRequestsView.as_view(), name="incoming-requests"), #lấy ra lời mời kết bạn đã nhận

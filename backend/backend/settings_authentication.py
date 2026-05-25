@@ -29,7 +29,7 @@ REST_FRAMEWORK={ #Cấu hình token
         'post':'100/minute',
         'post_article':'100/minute',
         'comment':'30/minute',
-        'setting':'10/minute',
+        'setting':'20/minute',
         'add_friend':'100/hour',
         'create_post':'30/hour',
         'follow_user': '100/minute',

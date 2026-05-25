@@ -777,6 +777,16 @@ class SettingModify(generics.RetrieveUpdateAPIView):  # Xem sửa setting
             return get_object_or_404(Setting, id=id)
         return get_object_or_404(Setting, user=user, id=id)
 
+class UserSetting(generics.RetrieveAPIView):  # Xem setting
+    permission_classes = [IsAuthenticated]
+    serializer_class = SettingSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'setting'
+
+    def get_object(self):
+        user = self.request.user
+        return get_object_or_404(Setting, user=user)
+    
 #======================REACTION===================
 class UserReactionPostList(generics.ListAPIView):  # Danh sách reaction của user trên post
     permission_classes = [IsAuthenticated]
@@ -887,7 +897,7 @@ class IncomingFriendRequestsView(generics.ListAPIView):  # danh sách lời mờ
     serializer_class = FriendShipRequestSerializer
     pagination_class = LargePagePagination
     def get_queryset(self):
-        return FriendshipRequest.objects.requests(user=self.request.user)
+        return Friend.objects.requests(user=self.request.user)
 
 
 class OutgoingFriendRequestsView(generics.ListAPIView):  # danh sách yêu cầu đã gửi kết bạn
@@ -895,7 +905,7 @@ class OutgoingFriendRequestsView(generics.ListAPIView):  # danh sách yêu cầu
     serializer_class = FriendShipRequestSerializer
     pagination_class = LargePagePagination
     def get_queryset(self):
-        return FriendshipRequest.objects.sent_requests(user=self.request.user)
+        return Friend.objects.sent_requests(user=self.request.user)
 
 
 class AcceptFriendRequestView(generics.UpdateAPIView):  # đồng ý lời mời kết bạn

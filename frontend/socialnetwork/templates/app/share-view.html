@@ -1,0 +1,14 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Bài viết được chia sẻ{% endblock %}
+{% block main_content %}
+<main class="max-w-[680px] mx-auto px-4 py-6">
+  <div id="sharePostContainer" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm min-h-[200px] flex items-center justify-center">
+    <p class="text-gray-500 text-sm">Đang tải bài viết...</p>
+  </div>
+</main>
+{% endblock %}
+{% block post_scripts %}
+<script>window.SHARE_CODE = "{{ share_code }}";</script>
+<script type="module" src="{% static 'js/pages/share-view.js' %}"></script>
+{% endblock %}

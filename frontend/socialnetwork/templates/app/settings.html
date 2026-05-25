@@ -1,0 +1,89 @@
+{% extends 'app/page-shell.html' %}
+{% load static %}
+{% block title %}Cài đặt{% endblock %}
+{% block page_content %}
+<h1 class="text-2xl font-bold mb-4">Cài đặt & quyền riêng tư</h1>
+
+<nav class="flex flex-wrap gap-2 border-b dark:border-gray-700 mb-6 text-sm font-semibold">
+  <a href="#" data-settings-tab="profile" class="px-3 py-2 border-b-2 border-fb-primary text-fb-primary">Hồ sơ</a>
+  <a href="#" data-settings-tab="appearance" class="px-3 py-2 text-gray-500">Giao diện</a>
+  <a href="#" data-settings-tab="email" class="px-3 py-2 text-gray-500">Email</a>
+  <a href="#" data-settings-tab="social" class="px-3 py-2 text-gray-500">Theo dõi & Chặn</a>
+  <a href="#" data-settings-tab="activity" class="px-3 py-2 text-gray-500">Hoạt động</a>
+  <a href="/change-password/" class="px-3 py-2 text-gray-500">Mật khẩu</a>
+</nav>
+
+<div id="panel-profile" data-settings-panel class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 max-w-xl space-y-3">
+  <input id="setFirstName" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700" placeholder="Họ">
+  <input id="setLastName" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700" placeholder="Tên">
+  <textarea id="setBio" rows="3" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700" placeholder="Giới thiệu"></textarea>
+  <input id="setPhone" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700" placeholder="Số điện thoại">
+  <input id="setAvatar" type="file" accept="image/*" class="w-full text-sm">
+  <button id="saveProfileBtn" type="button" class="px-4 py-2.5 bg-fb-primary text-white rounded-lg font-semibold">Lưu thay đổi</button>
+</div>
+
+<div id="panel-appearance" data-settings-panel class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 max-w-xl">
+  <div class="space-y-4">
+    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+          <span class="text-xl">🌙</span>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-800 dark:text-gray-200">Chế độ tối</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Áp dụng giao diện tối cho mọi trang</p>
+        </div>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input id="darkModeToggle" type="checkbox" class="sr-only peer">
+        <div class="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+      </label>
+    </div>
+    
+    <div class="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">💡</span>
+        <div>
+          <h4 class="font-medium text-gray-800 dark:text-gray-200 mb-1">Tính năng</h4>
+          <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+            <li>• Giảm mỏi mắt khi sử dụng trong điều kiện thiếu sáng</li>
+            <li>• Tiết kiệm pin cho màn hình OLED</li>
+            <li>• Thiết kế hiện đại và tinh tế</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="panel-email" data-settings-panel class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 max-w-xl">
+  <div id="emailList" class="mb-4"></div>
+  <p class="text-xs text-amber-600 mb-3">Sau khi thêm email, kiểm tra hộp thư để xác minh.</p>
+  <div class="flex gap-2">
+    <input id="newEmail" type="email" class="flex-1 p-3 rounded-lg bg-fb-secondary dark:bg-gray-700" placeholder="email@moi.com">
+    <button id="addEmailBtn" type="button" class="px-4 py-2 bg-fb-primary text-white rounded-lg font-semibold">Thêm</button>
+  </div>
+</div>
+
+<div id="panel-social" data-settings-panel class="hidden space-y-4 max-w-xl">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+    <h2 class="font-bold mb-2">Người theo dõi bạn</h2>
+    <div id="followersList"></div>
+  </div>
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+    <h2 class="font-bold mb-2">Bạn đang theo dõi</h2>
+    <div id="followingList"></div>
+  </div>
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+    <h2 class="font-bold mb-2">Đã chặn</h2>
+    <div id="blockedList"></div>
+  </div>
+</div>
+
+<div id="panel-activity" data-settings-panel class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 max-w-xl max-h-[60vh] overflow-y-auto">
+  <div id="activityList"></div>
+</div>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/pages/settings.js' %}"></script>
+{% endblock %}

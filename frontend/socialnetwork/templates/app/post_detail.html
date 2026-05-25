@@ -1,0 +1,13 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Bài viết{% endblock %}
+{% block main_content %}
+<main class="max-w-[680px] mx-auto px-4 py-6">
+  <div id="postDetailContainer" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm min-h-[200px] flex items-center justify-center">
+    <p class="text-gray-500 text-sm">Đang tải bài viết...</p>
+  </div>
+</main>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/pages/post-detail.js' %}"></script>
+{% endblock %}
