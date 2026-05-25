@@ -456,7 +456,7 @@ function setupPhotoModalEvents() {
 // ==================== API: React ====================
 async function reactToPost(postId, reactionType) {
   try {
-    const res = await authFetch(`http://localhost:8000/posts/${postId}/react/`, {
+    const res = await authFetch(`http://localhost:8000/api/posts/${postId}/react/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reaction_type: reactionType }),
