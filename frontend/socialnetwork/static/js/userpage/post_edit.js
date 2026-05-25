@@ -77,48 +77,39 @@ function openEditModal(post) {
 
   modal.classList.remove("hidden");
 
-  // ----------------------------
+// ----------------------------
   // Nút Lưu thay đổi
   // ----------------------------
   saveBtn.onclick = async () => {
     saveBtn.disabled = true;
     try {
-      const postArticle = document.querySelector(
-        `[data-post-id="${post.post_id}"]`
-      );
+      const postArticle = document.querySelector(`[data-post-id="${post.post_id}"]`);
 
       // 1️⃣ Xóa ảnh backend nếu có
       if (markedForDeletion.size > 0) {
         await Promise.all(
           [...markedForDeletion].map(async (photoId) => {
             try {
-              await authFetch(
-                `http://localhost:8000/api/user/delete-photo/${photoId}/`,
-                { method: "DELETE" }
-              );
-            } catch {
-              /* bỏ qua lỗi nhỏ */
-            }
+              await authFetch(`http://localhost:8000/api/user/delete-photo/${photoId}/`, { method: "DELETE" });
+            } catch { /* bỏ qua lỗi nhỏ */ }
           })
         );
 
-        // ✅ Đồng bộ giao diện bài viết — xoá ảnh tương ứng nếu có
+        // ✅ Đồng bộ giao diện bài viết an toàn hơn
         if (postArticle) {
           [...markedForDeletion].forEach((id) => {
             const img = postArticle.querySelector(`[data-photo-id="${id}"]`);
-            if (img) img.closest("div").remove();
+            // Sửa lại thành parentNode để tránh việc closest("div") xóa nhầm nguyên cái bài viết
+            if (img && img.parentNode) img.parentNode.remove();
           });
         }
       }
 
       // 2️⃣ Cập nhật tiêu đề
       const updated = await updatePost(post.post_id, titleInput.value);
-      const newTitle =
-        (updated && updated.title && updated.title.trim()) ||
-        titleInput.value.trim();
+      const newTitle = (updated && updated.title && updated.title.trim()) || titleInput.value.trim();
 
       if (postArticle) {
-        // tìm phần tử <p> chứa title (theo class chính xác trong renderPostCard)
         let titleEl = postArticle.querySelector("p.mt-3, p.text-gray-700");
         if (!titleEl) {
           titleEl = document.createElement("p");
@@ -132,28 +123,28 @@ function openEditModal(post) {
       const newPhotos = await addNewPhotos(post.post_id, newImagesInput.files);
 
       if (newPhotos && newPhotos.length > 0 && postArticle) {
-        let container =
-          postArticle.querySelector(".grid, .photos-container") ||
-          (() => {
+        let container = postArticle.querySelector(".grid, .photos-container") || (() => {
             const div = document.createElement("div");
-            div.className = "photos-container grid grid-cols-2 gap-2 mb-3";
-            postArticle.insertBefore(
-              div,
-              postArticle.querySelector(".text-sm") ||
-                postArticle.lastElementChild
-            );
+            div.className = "photos-container grid grid-cols-2 gap-2 mt-3 mb-3";
+
+            // 🌟 CHỐT CHẶN DOMException: Chỉ insertBefore nếu là con trực tiếp
+            const refNode = postArticle.querySelector(".text-sm");
+            if (refNode && refNode.parentNode === postArticle) {
+                postArticle.insertBefore(div, refNode);
+            } else {
+                postArticle.appendChild(div); // An toàn nhất: Cứ nhét xuống cuối
+            }
             return div;
-          })();
+        })();
 
         newPhotos.forEach((p) => {
           const src = p.local_url || `${buildPhotoUrl(p)}?t=${Date.now()}`;
           if (!src) return;
           const wrap = document.createElement("div");
-          wrap.className = "relative";
+          wrap.className = "relative inline-block"; // Đảm bảo không bị vỡ layout
           const img = document.createElement("img");
           img.src = src;
-          img.className =
-            "w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition";
+          img.className = "w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition";
           if (p.id) img.dataset.photoId = p.id;
           wrap.appendChild(img);
           container.appendChild(wrap);
@@ -163,7 +154,8 @@ function openEditModal(post) {
       showToast("✅ Cập nhật thành công!", "green");
       modal.classList.add("hidden");
     } catch (err) {
-      console.error("Lỗi khi lưu:", err);
+      // Nhờ log này bạn sẽ thấy rõ dòng code JS nào vừa bị crash
+      console.error("Lỗi kịch bản UI khi lưu:", err);
       showToast("⚠️ Lưu thất bại", "red");
     } finally {
       saveBtn.disabled = false;
@@ -201,8 +193,11 @@ async function updatePost(postId, title) {
 async function addNewPhotos(postId, files) {
   const result = [];
   for (let file of files) {
-    const localUrl = URL.createObjectURL(file); // ✅ preview local ngay
+    const localUrl = URL.createObjectURL(file);
     const formData = new FormData();
+
+    // 🌟 LƯU Ý Ở ĐÂY: Nếu API này xài chung Serializer với lúc tạo bài, bạn phải đổi thành "photos"
+    // Hãy thử đổi thành "photos" nếu sau khi F5 trang lại bị mất ảnh nhé!
     formData.append("photo", file);
 
     try {

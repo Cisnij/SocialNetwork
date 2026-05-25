@@ -1,57 +1,78 @@
 import { authFetch } from '../authenticate/auth.js';
 
+const API_BASE_URL = "http://localhost:8000";
 const DEFAULT_AVATAR = "https://res.cloudinary.com/dec8t19tm/image/upload/v1779183832/default.jpg";
 
-async function getCurrentUserId() {
-  const res = await authFetch("http://localhost:8000/api/user/", { method: "GET" });
-  if (!res.ok) throw new Error("Cannot fetch user info");
-  const data = await res.json();
-  return data.id;
-}
-
-async function loadAvatar(userId) {
-  try {
-    const res = await authFetch(`http://localhost:8000/api/auth/profile/userpage/${userId}`, { method: "GET" });
-    if (!res.ok) throw new Error("Cannot fetch profile");
-
-    const profile = await res.json();
-    console.log("Profile data:", profile);
-
-    // Xác định ảnh: lấy từ API nếu có, không thì dùng mặc định
-    const picture = (profile.picture && profile.picture.trim() !== "") ? profile.picture : DEFAULT_AVATAR;
-
-    // Cập nhật DOM an toàn (kiểm tra phần tử tồn tại trước khi gán)
-    const dropdownAvatar = document.getElementById("dropdownAvatar");
-    const avatarBtn = document.getElementById("avatarBtn");
-    const dropdownName = document.getElementById("dropdownName");
-    const profileLink = document.getElementById("profileLink");
-
-    if (dropdownAvatar) dropdownAvatar.src = picture;
-    if (avatarBtn) avatarBtn.src = picture;
-
-    if (dropdownName) {
-      dropdownName.textContent = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
-    }
-
-    if (profileLink) {
-      profileLink.href = `/profile/${userId}`;
-    }
-
-  } catch (err) {
-    console.error("Lỗi khi load profile:", err);
+/**
+ * HÀM CỐT LÕI: Đảm bảo chỉ có DUY NHẤT 1 request /api/user/ được gửi lên mạng.
+ * Tất cả các hàm khác gọi chung vào đây sẽ dùng chung kết quả của request đó.
+ */
+function fetchUserProfileShared() {
+  // Nếu chưa từng có request nào được tạo, tiến hành tạo request đầu tiên và lưu vào window
+  if (!window.currentUserPromise) {
+    window.currentUserPromise = authFetch(`${API_BASE_URL}/api/user/`, { method: "GET" })
+      .then(res => {
+        if (!res.ok) throw new Error("Cannot fetch user info");
+        return res.json();
+      })
+      .then(user => {
+        window.currentUserProfile = user; // Lưu dữ liệu cứng phòng hờ
+        return user;
+      })
+      .catch(err => {
+        window.currentUserPromise = null; // Nếu lỗi mạng, xóa đi để lần sau có thể bấm tải lại
+        throw err;
+      });
   }
+  // Trả về chung 1 tiến trình đang chạy cho mọi nơi gọi tới
+  return window.currentUserPromise;
 }
 
+/**
+ * Hàm dựng giao diện Navbar
+ */
 async function init() {
   try {
-    const userId = await getCurrentUserId();
-    await loadAvatar(userId);
+    // Đợi request chung hoàn thành
+    const user = await fetchUserProfileShared();
+
+    const userId = user.id;
+    const picture = (user.picture && user.picture.trim() !== "") ? user.picture : DEFAULT_AVATAR;
+    const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+
+    const els = {
+      dropdownAvatar: document.getElementById("dropdownAvatar"),
+      avatarBtn: document.getElementById("avatarBtn"),
+      dropdownName: document.getElementById("dropdownName"),
+      profileLink: document.getElementById("profileLink")
+    };
+
+    if (els.dropdownAvatar) els.dropdownAvatar.src = picture;
+    if (els.avatarBtn) els.avatarBtn.src = picture;
+    if (els.dropdownName) els.dropdownName.textContent = fullName;
+    if (els.profileLink && userId) els.profileLink.href = `/profile/${userId}`;
+
   } catch (err) {
-    console.error("Error init:", err);
+    console.error("Lỗi khi khởi tạo thông tin Navbar:", err);
   }
 }
 
-// Gọi init nhưng bao bọc để tránh lỗi nếu DOM chưa sẵn sàng
-document.addEventListener('DOMContentLoaded', init);
+// Kích hoạt chạy hàm dựng Navbar khi DOM sẵn sàng
+if (document.readyState === "complete" || document.readyState === "interactive") {
+  init();
+} else {
+  document.addEventListener('DOMContentLoaded', init);
+}
 
-export { getCurrentUserId };
+
+async function getCurrentUserId() {
+  try {
+    const user = await fetchUserProfileShared();
+    return user.id;
+  } catch (err) {
+    console.error("Lỗi khi getCurrentUserId:", err);
+    throw err;
+  }
+}
+
+export { getCurrentUserId, fetchUserProfileShared };

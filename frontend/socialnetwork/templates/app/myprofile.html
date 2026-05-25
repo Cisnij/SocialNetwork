@@ -18,12 +18,11 @@
   </nav>
 </div>
 
-<div id="content" class="px-4 mt-6 space-y-6 max-w-2xl mx-auto">
-    </div>
+<div id="content" class="px-4 mt-6 space-y-6 max-w-2xl mx-auto"></div>
 
 {% block post_scripts %}
 <script>window.user_id = "{{ user_id }}";</script>
-<script type="module" src="{% static 'js/userpage/userpage.js' %}"></script>  
-<script type="module" src="{% static 'js/userpage/post_edit.js' %}"></script>  
+<script type="module" src="{% static 'js/userpage/userpage.js' %}"></script>
+<script type="module" src="{% static 'js/app/add_post.js' %}"></script>
 {% endblock post_scripts %}
 {% endblock profile %}

@@ -477,7 +477,7 @@ let loadingReactions = false;
 
 async function loadReactions(postId, initial = true) {
   if (initial) {
-    nextReactionsUrl = `http://localhost:8000/api/user/reaction/${postId}`;
+    nextReactionsUrl = `http://localhost:8000/api/user/reaction/post/${postId}/`;
     document.getElementById("reactionsList").replaceChildren();
     currentPostId = postId;
   }
