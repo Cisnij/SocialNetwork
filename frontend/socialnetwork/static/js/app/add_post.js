@@ -4,12 +4,138 @@ import { showToast } from "../shared/toast.js";
 
 let selectedFiles = [];
 
-document.addEventListener("DOMContentLoaded", () => {
+console.log("add_post.js loaded");
+
+// Xử lý modal trong base.html
+function setupBaseModal() {
+  const openBtn = document.getElementById("openPostModal");
+  const closeBtn = document.getElementById("closePostModal");
+  const closeBtn2 = document.getElementById("closePostModal2");
+  const modal = document.getElementById("postModal");
+  const imageInput = document.getElementById("imageInput");
+  const imagePreview = document.getElementById("imagePreview");
+  const submitBtn = document.getElementById("submit");
+
+  console.log("Base modal elements:", {
+    openBtn: !!openBtn,
+    closeBtn: !!closeBtn,
+    modal: !!modal,
+    submitBtn: !!submitBtn
+  });
+
+  if (openBtn && modal && submitBtn) {
+    openBtn.addEventListener("click", () => {
+      console.log("Opening post modal");
+      modal.classList.remove("hidden");
+    });
+
+    closeBtn?.addEventListener("click", () => modal.classList.add("hidden"));
+    closeBtn2?.addEventListener("click", () => modal.classList.add("hidden"));
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.classList.add("hidden");
+    });
+
+    imageInput?.addEventListener("change", (event) => {
+      const files = Array.from(event.target.files);
+      selectedFiles = [...selectedFiles, ...files];
+      updateBasePhotoPreview();
+    });
+
+    submitBtn.addEventListener("click", async () => {
+      console.log("Base modal submit clicked");
+      const title = document.getElementById("postTitle")?.value.trim();
+      const files = imageInput?.files || [];
+
+      if (!title && selectedFiles.length === 0) {
+        showToast("⚠️ Vui lòng nhập tiêu đề hoặc thêm ảnh", "red");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("title", title || "Bài viết mới");
+      selectedFiles.forEach((file) => {
+        formData.append("photos", file);
+      });
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Đang đăng...";
+
+      try {
+        const resPost = await authFetch(POST_ENDPOINTS.create(), {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!resPost.ok) {
+          const errorData = await resPost.json().catch(() => ({}));
+          showToast(errorData.error || "⚠️ Không tạo được bài viết", "red");
+          return;
+        }
+
+        const newPost = await resPost.json();
+        console.log("Post created successfully:", newPost);
+
+        // Clear form
+        document.getElementById("postTitle").value = "";
+        if (imageInput) imageInput.value = "";
+        selectedFiles = [];
+        updateBasePhotoPreview();
+        modal.classList.add("hidden");
+
+        // Dispatch event để feed loader thêm bài mới
+        document.dispatchEvent(new CustomEvent("newPostCreated", { detail: newPost }));
+        
+        showToast("✅ Bài viết đã được đăng!");
+      } catch (err) {
+        console.error("Create post error:", err);
+        showToast("⚠️ Không thể kết nối server", "red");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Đăng";
+      }
+    });
+  }
+}
+
+function updateBasePhotoPreview() {
+  const preview = document.getElementById("imagePreview");
+  if (!preview) return;
+  preview.replaceChildren();
+  
+  selectedFiles.forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = document.createElement("img");
+      img.src = e.target.result;
+      img.alt = "Preview";
+      img.className = "h-24 w-24 object-cover rounded-lg border";
+      preview.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Xử lý trang add_post riêng
+function setupAddPostPage() {
   const photoInput = document.getElementById("photoInput");
   const photoPreview = document.getElementById("photoPreview");
   const postSubmitBtn = document.getElementById("postSubmitBtn");
   const postContent = document.getElementById("postContent");
   const composerAvatar = document.getElementById("composerAvatar");
+
+  console.log("Add post page elements:", {
+    photoInput: !!photoInput,
+    photoPreview: !!photoPreview,
+    postSubmitBtn: !!postSubmitBtn,
+    postContent: !!postContent,
+    composerAvatar: !!composerAvatar
+  });
+
+  if (!postSubmitBtn) {
+    console.log("Not on add post page, skipping page setup");
+    return;
+  }
 
   // Load user avatar
   async function loadUserInfo() {
@@ -28,9 +154,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Handle photo selection
   if (photoInput) {
     photoInput.addEventListener("change", (event) => {
+      console.log("Photo input changed");
       const files = Array.from(event.target.files);
       selectedFiles = [...selectedFiles, ...files];
       updatePhotoPreview();
+      updateSubmitButton();
     });
   }
 
@@ -56,6 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
         removeBtn.onclick = () => {
           selectedFiles = selectedFiles.filter((_, i) => i !== index);
           updatePhotoPreview();
+          updateSubmitButton();
         };
         
         div.appendChild(img);
@@ -67,77 +196,99 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Handle post submission
-  if (postSubmitBtn) {
-    postSubmitBtn.addEventListener("click", async () => {
-      const content = postContent?.value.trim();
-      const privacy = document.getElementById("postPrivacy")?.value || "public";
+  postSubmitBtn.addEventListener("click", async (e) => {
+    console.log("Add post page submit clicked!", e);
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const content = postContent?.value.trim();
+    const privacy = document.getElementById("postPrivacy")?.value || "public";
 
-      if (!content && selectedFiles.length === 0) {
-        showToast("⚠️ Vui lòng nhập nội dung hoặc thêm ảnh", "red");
+    console.log("Form data:", { content, privacy, selectedFilesCount: selectedFiles.length });
+
+    if (!content && selectedFiles.length === 0) {
+      showToast("⚠️ Vui lòng nhập nội dung hoặc thêm ảnh", "red");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("title", content || "Bài viết mới");
+    formData.append("privacy", privacy);
+    
+    selectedFiles.forEach((file) => {
+      formData.append("photos", file);
+    });
+
+    console.log("Submitting to API:", POST_ENDPOINTS.create());
+    postSubmitBtn.disabled = true;
+    const prevLabel = postSubmitBtn.textContent;
+    postSubmitBtn.textContent = "Đang đăng...";
+
+    try {
+      const resPost = await authFetch(POST_ENDPOINTS.create(), {
+        method: "POST",
+        body: formData,
+      });
+
+      console.log("API response status:", resPost.status);
+
+      if (!resPost.ok) {
+        const errorData = await resPost.json().catch(() => ({}));
+        console.error("API error:", errorData);
+        showToast(errorData.error || "⚠️ Không tạo được bài viết", "red");
         return;
       }
 
-      const formData = new FormData();
-      formData.append("title", content || "Bài viết mới");
-      formData.append("privacy", privacy);
+      const newPost = await resPost.json();
+      console.log("Post created:", newPost);
+
+      // Clear form
+      if (postContent) postContent.value = "";
+      if (photoInput) photoInput.value = "";
+      selectedFiles = [];
+      updatePhotoPreview();
+
+      // Dispatch event để feed loader thêm bài mới
+      document.dispatchEvent(new CustomEvent("newPostCreated", { detail: newPost }));
       
-      selectedFiles.forEach((file) => {
-        formData.append("photos", file);
-      });
+      showToast("✅ Bài viết đã được đăng!");
+      
+      // Redirect về trang chủ sau 1 giây
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1000);
+      
+    } catch (err) {
+      console.error("Create post error:", err);
+      showToast("⚠️ Không thể kết nối server", "red");
+    } finally {
+      postSubmitBtn.disabled = false;
+      postSubmitBtn.textContent = prevLabel || "Đăng";
+    }
+  });
 
-      postSubmitBtn.disabled = true;
-      const prevLabel = postSubmitBtn.textContent;
-      postSubmitBtn.textContent = "Đang đăng...";
-
-      try {
-        const resPost = await authFetch(POST_ENDPOINTS.create(), {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!resPost.ok) {
-          const errorData = await resPost.json().catch(() => ({}));
-          showToast(errorData.error || "⚠️ Không tạo được bài viết", "red");
-          return;
-        }
-
-        const newPost = await resPost.json();
-
-        // Reset form
-        if (postContent) postContent.value = "";
-        if (photoInput) photoInput.value = "";
-        selectedFiles = [];
-        updatePhotoPreview();
-
-        showToast("✅ Bài viết đã được đăng!");
-        
-        // Redirect to home or reload
-        setTimeout(() => {
-          window.location.href = "/";
-        }, 1000);
-        
-      } catch (err) {
-        console.error("Create post error:", err);
-        showToast("⚠️ Không thể kết nối server", "red");
-      } finally {
-        postSubmitBtn.disabled = false;
-        postSubmitBtn.textContent = prevLabel || "Đăng";
-      }
-    });
-  }
-
-  // Enable/disable submit button based on content
+  // Visual feedback for submit button
   const updateSubmitButton = () => {
     const content = postContent?.value.trim();
     if (postSubmitBtn) {
-      postSubmitBtn.disabled = !content && selectedFiles.length === 0;
+      if (!content && selectedFiles.length === 0) {
+        postSubmitBtn.classList.add("opacity-50");
+      } else {
+        postSubmitBtn.classList.remove("opacity-50");
+      }
     }
   };
 
   if (postContent) {
     postContent.addEventListener("input", updateSubmitButton);
   }
-  
+
   // Initial state
   updateSubmitButton();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM Content Loaded in add_post.js");
+  setupBaseModal();
+  setupAddPostPage();
 });
