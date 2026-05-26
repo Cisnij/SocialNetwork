@@ -2,6 +2,7 @@ import { authFetch } from "../../authenticate/auth.js";
 import { API, DEFAULT_AVATAR, profileUrl, shareLink } from "../config.js";
 import { openSharersModal } from "./sharers-modal.js";
 import { showToast } from "../toast.js";
+import { formatRelativeTime, cls } from "../ui.js";
 import { openEditModal } from "../post-edit.js";
 import { openCommentsModal } from "../comments-panel.js";
 import { openShareModal } from "../share-modal.js";
@@ -32,7 +33,7 @@ export function renderPostCard(post, options = {}) {
   } = options;
 
   const article = document.createElement("article");
-  article.className = "post-card p-4 bg-white dark:bg-[#242526]";
+  article.className = `post-card p-4 ${cls.card}`;
   article.dataset.postId = post.post_id;
 
   // --- Header ---
@@ -54,14 +55,15 @@ export function renderPostCard(post, options = {}) {
 
   const info = document.createElement("div");
   const name = document.createElement("h2");
-  name.className = "font-semibold text-gray-800 text-sm sm:text-base";
+  name.className = `font-semibold text-sm sm:text-base ${cls.text}`;
   name.textContent =
     `${post?.user?.first_name || ""} ${post?.user?.last_name || ""}`.trim() ||
     "Người dùng";
 
   const time = document.createElement("p");
-  time.className = "text-xs text-gray-500";
-  time.textContent = new Date(post.created_at).toLocaleString("vi-VN");
+  time.className = `text-xs ${cls.textMuted}`;
+  time.textContent = formatRelativeTime(post.created_at);
+  time.title = new Date(post.created_at).toLocaleString("vi-VN");
 
   info.append(name, time);
   profileLink.append(avatar, info);
@@ -77,24 +79,24 @@ export function renderPostCard(post, options = {}) {
     const menuBtn = document.createElement("button");
     menuBtn.type = "button";
     menuBtn.className =
-      "text-gray-500 hover:text-gray-800 text-2xl font-bold px-2 rounded-full";
+      "text-gray-500 dark:text-[#b0b3b8] hover:text-gray-800 dark:hover:text-[#e4e6eb] text-2xl font-bold px-2 rounded-full";
     menuBtn.setAttribute("aria-label", "Tùy chọn bài viết");
     menuBtn.textContent = "⋯";
 
     const menuDropdown = document.createElement("div");
     menuDropdown.className =
-      "absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg hidden z-50";
+      `absolute right-0 mt-2 w-44 ${cls.menu} rounded-lg shadow-lg hidden z-50`;
 
     const editBtn = document.createElement("button");
     editBtn.type = "button";
     editBtn.className =
-      "block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100";
+      `block w-full text-left px-4 py-2 ${cls.text} ${cls.hoverRow}`;
     editBtn.textContent = "✏️ Chỉnh sửa";
 
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
     deleteBtn.className =
-      "block w-full text-left px-4 py-2 text-red-600 hover:bg-red-100";
+      "block w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30";
     deleteBtn.textContent = "🗑️ Xóa bài viết";
 
     menuBtn.addEventListener("click", (e) => {
@@ -125,7 +127,7 @@ export function renderPostCard(post, options = {}) {
 
   // --- Title ---
   const title = document.createElement("p");
-  title.className = "post-title text-gray-800 mb-3 whitespace-pre-wrap";
+  title.className = `post-title mb-3 whitespace-pre-wrap ${cls.text}`;
   title.textContent = post.title || "";
 
   // --- Photos ---
@@ -163,7 +165,7 @@ export function renderPostCard(post, options = {}) {
   // --- Actions ---
   const actions = document.createElement("div");
   actions.className =
-    "flex justify-between text-gray-600 border-t pt-3 mt-1";
+    `flex justify-between flex-wrap gap-1 ${cls.textSub} border-t border-gray-200 dark:border-[#3e4042] pt-3 mt-1`;
 
   const reactionWrapper = document.createElement("div");
   reactionWrapper.className = "relative inline-block group";
@@ -171,15 +173,16 @@ export function renderPostCard(post, options = {}) {
   const reactBtn = document.createElement("button");
   reactBtn.type = "button";
   reactBtn.className =
-    "flex items-center gap-2 hover:text-indigo-600 hover:bg-gray-50 px-2 py-1 rounded-md transition";
+    `flex items-center gap-2 hover:text-fb-primary ${cls.hoverRow} px-2 py-1 rounded-md transition`;
   updateReactionButton(reactBtn, post.user_is_reaction || "");
 
   const reactionCtx = {
-    postId: post.post_id,
+    targetId: post.post_id,
+    reactFn: reactToPost,
     reactBtn,
     wrapper: reactionWrapper,
     reactionCount,
-    post,
+    entity: post,
   };
 
   const reactionBar = createReactionBar(reactionCtx);
@@ -187,8 +190,12 @@ export function renderPostCard(post, options = {}) {
   reactBtn.addEventListener("click", async (e) => {
     e.stopPropagation();
     const current = reactBtn.dataset.reaction;
-    const res = await reactToPost(post.post_id, current || "like");
-    if (res) applyReactionResponse(reactionCtx, res, "like");
+    try {
+      const res = await reactToPost(post.post_id, current || "like");
+      if (res) applyReactionResponse(reactionCtx, res, "like");
+    } catch (err) {
+      console.error("[post] react", err);
+    }
   });
 
   reactionWrapper.append(reactBtn, reactionBar);
@@ -196,7 +203,7 @@ export function renderPostCard(post, options = {}) {
   const commentBtn = document.createElement("button");
   commentBtn.type = "button";
   commentBtn.className =
-    "flex items-center gap-2 hover:text-indigo-600 hover:bg-gray-50 px-2 py-1 rounded-md transition";
+    `flex items-center gap-2 hover:text-fb-primary ${cls.hoverRow} px-2 py-1 rounded-md transition`;
   commentBtn.textContent = "🗨️ Bình luận";
   commentBtn.addEventListener("click", () =>
     openCommentsModal(post.post_id, post.user?.id)
@@ -205,7 +212,7 @@ export function renderPostCard(post, options = {}) {
   const shareBtn = document.createElement("button");
   shareBtn.type = "button";
   shareBtn.className =
-    "flex items-center gap-2 hover:text-indigo-600 hover:bg-gray-50 px-2 py-1 rounded-md transition";
+    `flex items-center gap-2 hover:text-fb-primary ${cls.hoverRow} px-2 py-1 rounded-md transition`;
   shareBtn.textContent = "🔂 Chia sẻ";
   shareBtn.addEventListener("click", () => openShareModal(post.post_id));
 
@@ -226,7 +233,7 @@ export function renderPostCard(post, options = {}) {
   if (isOwner) {
     const privacyWrap = document.createElement("select");
     privacyWrap.className =
-      "text-xs border rounded px-2 py-1 text-gray-600 ml-auto";
+      `text-xs border border-gray-200 dark:border-[#3e4042] rounded px-2 py-1 ml-auto bg-white dark:bg-[#3a3b3c] ${cls.textSub}`;
     ["public", "friends", "private"].forEach((p) => {
       const opt = document.createElement("option");
       opt.value = p;

@@ -1,0 +1,41 @@
+{% extends 'app/page-shell.html' %}
+{% load static %}
+{% block title %}Kiểm tra mối quan hệ{% endblock %}
+{% block page_content %}
+<div class="max-w-2xl mx-auto">
+  <h1 class="text-2xl font-bold mb-6 dark:text-[#e4e6eb]">Kiểm tra mối quan hệ</h1>
+  
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6">
+    <div class="mb-6">
+      <label class="block text-sm font-medium text-gray-700 dark:text-[#e4e6eb] mb-2">Nhập ID profile</label>
+      <div class="flex gap-2">
+        <input 
+          type="number" 
+          id="profileIdInput" 
+          class="flex-1 p-3 rounded-lg bg-fb-bg dark:bg-[#3a3b3c] text-gray-800 dark:text-[#e4e6eb] focus:outline-none focus:ring-2 focus:ring-fb-primary border border-transparent focus:border-fb-primary"
+          placeholder="Nhập ID profile cần kiểm tra">
+        <button 
+          id="checkBtn" 
+          class="px-6 py-3 bg-fb-primary text-white rounded-lg font-semibold hover:bg-fb-primary/90 transition">
+          Kiểm tra
+        </button>
+      </div>
+    </div>
+    
+    <div id="result" class="hidden">
+      <div class="border-t dark:border-fb-divider pt-6">
+        <h2 class="font-bold text-lg mb-4 dark:text-[#e4e6eb]">Kết quả</h2>
+        <div id="relationshipInfo"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="mt-6 bg-fb-bg dark:bg-[#3a3b3c] rounded-xl p-4 border border-gray-200 dark:border-fb-divider">
+    <h3 class="font-semibold text-gray-800 dark:text-[#e4e6eb] mb-2">ℹ️ Hướng dẫn</h3>
+    <p class="text-sm text-gray-600 dark:text-fb-muted">Nhập ID profile để kiểm tra mối quan hệ giữa bạn và người đó (bạn bè, theo dõi, bị chặn, v.v.).</p>
+  </div>
+</div>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/pages/relationship.js' %}"></script>
+{% endblock %}

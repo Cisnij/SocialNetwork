@@ -1,4 +1,5 @@
 import { authFetch } from "../authenticate/auth.js";
+import { markAllNotificationsRead } from "../app/nav.js";
 import { API, buildListUrl } from "../shared/config.js";
 import { showToast } from "../shared/toast.js";
 import { formatDate, showEmpty, showSpinner, fullName } from "../shared/ui.js";
@@ -32,7 +33,7 @@ function buildCard(n) {
   card.type = "button";
   card.className = `w-full text-left p-4 rounded-xl shadow-sm mb-3 flex gap-3 transition hover:bg-fb-secondary dark:hover:bg-fb-hover ${
     n.is_read
-      ? "bg-white dark:bg-fb-card"
+      ? "bg-white dark:bg-[#242526]"
       : "bg-blue-50 dark:bg-[#263951] border border-blue-100 dark:border-blue-900/40"
   }`;
 
@@ -65,7 +66,7 @@ function buildCard(n) {
       "border-blue-100",
       "dark:border-blue-900/40"
     );
-    card.classList.add("bg-white", "dark:bg-fb-card");
+    card.classList.add("bg-white", "dark:bg-[#242526]");
     const href = notificationTarget(n);
     if (href) window.location.href = href;
   };
@@ -135,4 +136,6 @@ window.addEventListener("scroll", () => {
 });
 
 connectNotifPageWs();
-load(true);
+markAllNotificationsRead()
+  .catch(() => {})
+  .finally(() => load(true));

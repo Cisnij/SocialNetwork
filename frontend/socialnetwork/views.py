@@ -70,3 +70,18 @@ def getBlocked(request):
 
 def getActivity(request):
     return render(request, 'app/activity.html')
+
+def getFriendSuggest(request):
+    return render(request, 'app/friend-suggest.html')
+
+def getSearchHistory(request):
+    return render(request, 'app/search-history.html')
+
+def getRelationship(request, profile_id):
+    return render(request, 'app/relationship.html', {'profile_id': profile_id})
+
+def getAddArticle(request):
+    return render(request, 'app/add_article.html')
+
+def getTestDarkmode(request):
+    return render(request, 'app/test-darkmode.html')

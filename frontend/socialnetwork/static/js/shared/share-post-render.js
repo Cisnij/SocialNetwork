@@ -2,7 +2,7 @@ import { authFetch } from "../authenticate/auth.js";
 import { API, DEFAULT_AVATAR, profileUrl } from "./config.js";
 import { showToast } from "./toast.js";
 import { confirmDialog } from "./confirm.js";
-import { formatDate, fullName } from "./ui.js";
+import { formatRelativeTime, fullName, cls } from "./ui.js";
 import { openCommentsModal } from "./comments-panel.js";
 
 /**
@@ -16,8 +16,7 @@ export function renderShareCard(share, currentProfileId) {
     currentProfileId != null && Number(sharer.id) === Number(currentProfileId);
 
   const article = document.createElement("article");
-  article.className =
-    "bg-white dark:bg-fb-card rounded-xl shadow-sm mb-4 overflow-hidden border border-gray-200 dark:border-fb-divider";
+  article.className = `${cls.cardBorder} rounded-xl shadow-sm mb-4 overflow-hidden`;
 
   // --- Sharer header (top) ---
   const header = document.createElement("div");
@@ -32,7 +31,8 @@ export function renderShareCard(share, currentProfileId) {
   sharerName.textContent = fullName(sharer);
   const sharerSub = document.createElement("p");
   sharerSub.className = "text-xs text-gray-500 dark:text-fb-muted";
-  sharerSub.textContent = `${formatDate(share.created_at)} · đã chia sẻ một bài viết`;
+  sharerSub.textContent = `${formatRelativeTime(share.created_at)} · đã chia sẻ một bài viết`;
+  sharerSub.title = new Date(share.created_at).toLocaleString("vi-VN");
   sharerMeta.append(sharerName, sharerSub);
   header.append(sharerAv, sharerMeta);
 
@@ -93,7 +93,7 @@ export function renderShareCard(share, currentProfileId) {
   if (isOwner) {
     const privacy = document.createElement("select");
     privacy.className =
-      "text-xs border dark:border-fb-divider rounded-lg px-2 py-1 bg-white dark:bg-fb-card text-gray-800 dark:text-fb-text";
+      "text-xs border dark:border-fb-divider rounded-lg px-2 py-1 bg-white dark:bg-[#3a3b3c] text-gray-800 dark:text-[#e4e6eb]";
     ["public", "friends", "private"].forEach((p) => {
       const opt = document.createElement("option");
       opt.value = p;

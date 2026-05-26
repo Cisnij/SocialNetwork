@@ -41,10 +41,10 @@ CACHEOPS = {
 
     'auth.user': {'ops': 'all', 'timeout': 60*60}, #24h
     # cache user từ auth, ví dụ cache khi lấy ra user, lọc user
-    'api.profile': {'ops': 'all', 'timeout': 60*60*24},
+    'api.profile': {'ops': ['get', 'fetch'], 'timeout': 60*30},
     # ops là cache querry gì kiểu get,count,filter...timeout là bao lâu thì xóa
     'api.pendingProfile': {'ops': 'all', 'timeout': 60*60*24},
-    'api.setting': {'ops': 'all', 'timeout': 60*60*24},
+    'api.setting': {'ops': ['get', 'fetch'], 'timeout': 60*10},  # 10 phút
     'contenttypes.contenttype': {'ops': 'all', 'timeout': 60*60*24*30},
 
     #  Cache vừa — thay đổi vừa

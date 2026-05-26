@@ -1,11 +1,17 @@
 import { authFetch } from "../authenticate/auth.js";
 import { API, buildListUrl } from "./config.js";
 import { showToast } from "./toast.js";
-import { fullName, formatDate } from "./ui.js";
-import { getCurrentUserId } from "../app/profile.js";
+import { fullName } from "./ui.js";
+import { getCurrentUserId, fetchUserProfileShared } from "../app/profile.js";
 import { fetchPage } from "./paginated-list.js";
-import { reactToPost } from "./posts/api.js";
-import { REACTIONS, getTotalReactions } from "./posts/reactions.js";
+import { initPostModals, openReactionsModal } from "./posts/modals.js";
+import {
+  createReactionBar,
+  getTotalReactions,
+  updateReactionButton,
+  applyReactionResponse,
+  reactToComment,
+} from "./posts/reactions.js";
 
 let postId = null;
 let postOwnerId = null;
@@ -14,6 +20,8 @@ let nextUrl = null;
 let loading = false;
 
 export function initCommentsPanel() {
+  initPostModals();
+
   document.getElementById("closeCommentsModal")?.addEventListener("click", () => {
     document.getElementById("commentsModal")?.classList.add("hidden");
   });
@@ -47,7 +55,7 @@ async function loadMore(reset) {
     const data = await fetchPage(nextUrl);
     if (reset && !(data.results || []).length) {
       document.getElementById("commentsList").innerHTML =
-        '<p class="text-center text-gray-500 text-sm py-6">Chưa có bình luận</p>';
+        '<p class="text-center text-gray-500 dark:text-[#b0b3b8] text-sm py-6">Chưa có bình luận</p>';
     }
     (data.results || []).forEach((c) =>
       document
@@ -61,10 +69,72 @@ async function loadMore(reset) {
   loading = false;
 }
 
-function renderComment(c, depth = 0, ownerId = postOwnerId) {
+function syncReactionCountBtn(btn, comment) {
+  const total = getTotalReactions(comment.reactions);
+  btn.textContent = total > 0 ? `${total} lượt thích` : "";
+  btn.classList.toggle("hidden", total === 0);
+}
+
+function buildCommentReactionUI(comment, meta) {
+  const reactionCountBtn = document.createElement("button");
+  reactionCountBtn.type = "button";
+  reactionCountBtn.className =
+    "text-gray-500 dark:text-[#b0b3b8] hover:underline font-medium hidden";
+  syncReactionCountBtn(reactionCountBtn, comment);
+  reactionCountBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openReactionsModal(comment.id, "comment");
+  });
+
+  const reactionWrapper = document.createElement("div");
+  reactionWrapper.className = "relative inline-block";
+
+  const reactBtn = document.createElement("button");
+  reactBtn.type = "button";
+  reactBtn.className =
+    "hover:text-fb-primary dark:hover:text-[#e4e6eb] transition px-0";
+  updateReactionButton(reactBtn, comment.user_is_reaction || "");
+
+  const reactionCtx = {
+    targetId: comment.id,
+    reactFn: reactToComment,
+    reactBtn,
+    wrapper: reactionWrapper,
+    reactionCount: reactionCountBtn,
+    entity: comment,
+    onApplied: () => syncReactionCountBtn(reactionCountBtn, comment),
+  };
+
+  const reactionBar = createReactionBar(reactionCtx);
+  reactionWrapper.append(reactBtn, reactionBar);
+
+  reactBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const current = reactBtn.dataset.reaction;
+    try {
+      const res = await reactToComment(comment.id, current || "like");
+      if (res) applyReactionResponse(reactionCtx, res, "like");
+    } catch (err) {
+      console.error("[comment] react", err);
+      showToast("Không gửi được cảm xúc", "red");
+    }
+  });
+
+  meta.append(reactionWrapper);
+
+  return reactionCountBtn;
+}
+
+/**
+ * Chỉ 1 cấp reply: parent_id luôn là comment gốc (depth 0), kể cả khi bấm Trả lời trên reply con.
+ * @param {number|null} threadParentId - id comment cha (cấp 0) của thread
+ */
+function renderComment(c, depth = 0, ownerId = postOwnerId, threadParentId = null) {
   const wrap = document.createElement("div");
-  wrap.className = `py-3 ${depth ? "ml-8 border-l-2 border-fb-secondary pl-3" : "border-b dark:border-gray-700"}`;
+  wrap.className = `py-3 ${depth ? "ml-8 border-l-2 border-fb-secondary dark:border-[#3e4042] pl-3" : "border-b dark:border-gray-700"}`;
   wrap.dataset.commentId = c.id;
+  const replyParentId = depth === 0 ? c.id : threadParentId;
+  if (replyParentId != null) wrap.dataset.replyParentId = String(replyParentId);
 
   const row = document.createElement("div");
   row.className = "flex gap-2";
@@ -75,12 +145,13 @@ function renderComment(c, depth = 0, ownerId = postOwnerId) {
   const body = document.createElement("div");
   body.className = "flex-1 min-w-0";
   const bubble = document.createElement("div");
-  bubble.className = "bg-fb-secondary dark:bg-gray-700 rounded-2xl px-3 py-2 inline-block max-w-full";
+  bubble.className =
+    "bg-fb-secondary dark:bg-[#3a3b3c] rounded-2xl px-3 py-2 inline-block max-w-full";
   const author = document.createElement("p");
   author.className = "font-semibold text-xs text-fb-primary";
   author.textContent = fullName(c.user);
   const text = document.createElement("p");
-  text.className = "text-sm post-comment-text whitespace-pre-wrap";
+  text.className = "text-sm post-comment-text whitespace-pre-wrap dark:text-[#e4e6eb]";
   text.textContent = c.content;
   bubble.append(author, text);
   if (c.is_pinned) {
@@ -91,26 +162,30 @@ function renderComment(c, depth = 0, ownerId = postOwnerId) {
   }
   body.appendChild(bubble);
 
+  const countsRow = document.createElement("div");
+  countsRow.className = "flex items-center gap-2 mt-1 min-h-[18px]";
+
   const meta = document.createElement("div");
-  meta.className = "flex flex-wrap gap-3 mt-1 text-xs text-gray-500 font-semibold";
-  const like = document.createElement("button");
-  like.type = "button";
-  like.textContent = "Thích";
-  like.onclick = async () => {
-    await authFetch(API.commentReact(c.id), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reaction_type: "like" }),
-    });
-  };
+  meta.className =
+    "flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-500 dark:text-[#b0b3b8] font-semibold";
+
+  const reactionCountBtn = buildCommentReactionUI(c, meta);
+  countsRow.appendChild(reactionCountBtn);
+
   const reply = document.createElement("button");
   reply.type = "button";
   reply.textContent = "Trả lời";
   reply.onclick = () => {
-    document.getElementById("commentParentHint").textContent = `Trả lời ${fullName(c.user)}`;
-    document.getElementById("commentParentId").value = c.id;
+    const parentInput = document.getElementById("commentParentId");
+    const hint = document.getElementById("commentParentHint");
+    parentInput.value = replyParentId != null ? String(replyParentId) : "";
+    hint.textContent =
+      depth === 0
+        ? `Trả lời ${fullName(c.user)}`
+        : `Trả lời ${fullName(c.user)} · trong luồng bình luận`;
+    document.getElementById("commentInput")?.focus();
   };
-  meta.append(like, reply);
+  meta.appendChild(reply);
 
   if (ownerId != null && Number(myId) === Number(ownerId)) {
     const pin = document.createElement("button");
@@ -149,78 +224,180 @@ function renderComment(c, depth = 0, ownerId = postOwnerId) {
     meta.appendChild(edit);
   }
 
-  const total = getTotalReactions(c.reactions);
-  if (total > 0) {
-    const rc = document.createElement("button");
-    rc.type = "button";
-    rc.textContent = `${total} cảm xúc`;
-    rc.onclick = () => openCommentReactions(c.id);
-    meta.appendChild(rc);
-  }
-
-  body.append(meta);
+  body.append(countsRow, meta);
   row.append(av, body);
   wrap.appendChild(row);
 
-  if (c.reply_count > 0 && depth === 0) {
-    const loadBtn = document.createElement("button");
-    loadBtn.type = "button";
-    loadBtn.className = "text-xs text-fb-primary font-semibold mt-2 ml-10";
-    loadBtn.textContent = `Xem ${c.reply_count} phản hồi`;
+  if (depth === 0) {
     const repliesBox = document.createElement("div");
+    repliesBox.dataset.repliesBox = "1";
     repliesBox.className = "hidden";
-    loadBtn.onclick = async () => {
-      if (repliesBox.childElementCount) {
-        repliesBox.classList.toggle("hidden");
-        return;
-      }
-      const res = await authFetch(buildListUrl(API.nestedComments(c.id), 10));
-      const data = await res.json();
-      (data.results || []).forEach((r) =>
-        repliesBox.appendChild(renderComment(r, 1, ownerId))
-      );
-      repliesBox.classList.remove("hidden");
-      wrap.appendChild(repliesBox);
-    };
-    wrap.appendChild(loadBtn);
+    wrap.appendChild(repliesBox);
+
+    if (c.reply_count > 0) {
+      const loadBtn = document.createElement("button");
+      loadBtn.type = "button";
+      loadBtn.dataset.loadRepliesBtn = "1";
+      loadBtn.className = "text-xs text-fb-primary font-semibold mt-2 ml-10";
+      loadBtn.textContent = `Xem ${c.reply_count} phản hồi`;
+      loadBtn.onclick = async () => {
+        if (repliesBox.childElementCount && !repliesBox.classList.contains("hidden")) {
+          repliesBox.classList.add("hidden");
+          loadBtn.textContent = `Xem ${repliesBox.childElementCount} phản hồi`;
+          return;
+        }
+        if (!repliesBox.childElementCount) {
+          const res = await authFetch(buildListUrl(API.nestedComments(c.id), 10));
+          const data = await res.json();
+          (data.results || []).forEach((r) =>
+            repliesBox.appendChild(renderComment(r, 1, ownerId, c.id))
+          );
+        }
+        repliesBox.classList.remove("hidden");
+        loadBtn.textContent = "Ẩn phản hồi";
+      };
+      wrap.insertBefore(loadBtn, repliesBox);
+    }
   }
 
   return wrap;
 }
 
-async function openCommentReactions(commentId) {
-  const modal = document.getElementById("reactionsModal");
-  const list = document.getElementById("reactionsList");
-  list.replaceChildren();
-  modal.classList.remove("hidden");
-  try {
-    const data = await fetchPage(buildListUrl(API.commentReactions(commentId), 20));
-    (data.results || []).forEach((r) => {
-      const row = document.createElement("div");
-      row.className = "flex items-center gap-2 py-2";
-      row.innerHTML = `<img src="${r.user?.picture}" class="w-8 h-8 rounded-full"><span>${fullName(r.user)}</span><span>${r.slug}</span>`;
-      list.appendChild(row);
-    });
-  } catch (_) {}
+function getCommentsListEl() {
+  return document.getElementById("commentsList");
+}
+
+function removeCommentsEmptyState() {
+  getCommentsListEl()
+    ?.querySelector(":scope > p.text-center")
+    ?.remove();
+}
+
+function updateRepliesToggleBtn(parentWrap) {
+  const loadBtn = parentWrap.querySelector("[data-load-replies-btn]");
+  const repliesBox = parentWrap.querySelector("[data-replies-box]");
+  if (!loadBtn || !repliesBox) return;
+  const n = repliesBox.childElementCount;
+  if (n === 0) {
+    loadBtn.classList.add("hidden");
+    return;
+  }
+  loadBtn.classList.remove("hidden");
+  loadBtn.textContent = repliesBox.classList.contains("hidden")
+    ? `Xem ${n} phản hồi`
+    : "Ẩn phản hồi";
+}
+
+function ensureRepliesBox(parentWrap) {
+  let repliesBox = parentWrap.querySelector("[data-replies-box]");
+  if (!repliesBox) {
+    repliesBox = document.createElement("div");
+    repliesBox.dataset.repliesBox = "1";
+    repliesBox.className = "";
+    parentWrap.appendChild(repliesBox);
+  }
+  return repliesBox;
+}
+
+function insertRootComment(comment) {
+  const list = getCommentsListEl();
+  if (!list) return;
+  removeCommentsEmptyState();
+  list.prepend(renderComment(comment, 0, postOwnerId));
+}
+
+function appendReplyToThread(parentId, comment) {
+  const list = getCommentsListEl();
+  const parentWrap = list?.querySelector(
+    `[data-comment-id="${parentId}"]`
+  );
+  if (!parentWrap) {
+    insertRootComment(comment);
+    return;
+  }
+
+  const repliesBox = ensureRepliesBox(parentWrap);
+  repliesBox.classList.remove("hidden");
+  const replyNode = renderComment(comment, 1, postOwnerId, parentId);
+  repliesBox.appendChild(replyNode);
+
+  let loadBtn = parentWrap.querySelector("[data-load-replies-btn]");
+  if (!loadBtn) {
+    loadBtn = document.createElement("button");
+    loadBtn.type = "button";
+    loadBtn.dataset.loadRepliesBtn = "1";
+    loadBtn.className = "text-xs text-fb-primary font-semibold mt-2 ml-10";
+    loadBtn.onclick = () => {
+      const box = parentWrap.querySelector("[data-replies-box]");
+      if (!box) return;
+      const hide = !box.classList.contains("hidden");
+      box.classList.toggle("hidden", hide);
+      updateRepliesToggleBtn(parentWrap);
+    };
+    parentWrap.insertBefore(loadBtn, repliesBox);
+  }
+  updateRepliesToggleBtn(parentWrap);
+  replyNode.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+async function normalizeCreatedComment(raw) {
+  const c = { ...raw, reactions: raw.reactions || [], reply_count: raw.reply_count ?? 0 };
+  if (!c.user) {
+    try {
+      c.user = await fetchUserProfileShared();
+    } catch {
+      /* API thường đã trả user */
+    }
+  }
+  return c;
 }
 
 async function submitComment() {
-  const content = document.getElementById("commentInput").value.trim();
-  const parent = document.getElementById("commentParentId").value;
+  const input = document.getElementById("commentInput");
+  const parentInput = document.getElementById("commentParentId");
+  const hint = document.getElementById("commentParentHint");
+  const content = input?.value.trim();
+  const parent = parentInput?.value || "";
   if (!content || !postId) return;
+
+  const list = getCommentsListEl();
+  const scrollTop = list?.scrollTop ?? 0;
+
   const body = { content };
   if (parent) body.parent_id = Number(parent);
-  const res = await authFetch(API.comments(postId), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) return showToast("Gửi thất bại", "red");
-  document.getElementById("commentInput").value = "";
-  document.getElementById("commentParentId").value = "";
-  document.getElementById("commentParentHint").textContent = "";
-  nextUrl = buildListUrl(API.comments(postId), 15);
-  document.getElementById("commentsList").replaceChildren();
-  await loadMore(true);
-  showToast("Đã gửi bình luận");
+
+  const submitBtn = document.getElementById("submitCommentBtn");
+  if (submitBtn) submitBtn.disabled = true;
+
+  try {
+    const res = await authFetch(API.comments(postId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      showToast("Gửi thất bại", "red");
+      return;
+    }
+
+    const created = await normalizeCreatedComment(await res.json());
+    input.value = "";
+
+    if (parent) {
+      appendReplyToThread(Number(parent), created);
+    } else {
+      parentInput.value = "";
+      if (hint) hint.textContent = "";
+      insertRootComment(created);
+    }
+
+    if (list) list.scrollTop = scrollTop;
+    showToast("Đã gửi bình luận");
+  } catch (e) {
+    console.error("[comment] submit", e);
+    showToast("Gửi thất bại", "red");
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+    input?.focus();
+  }
 }

@@ -55,6 +55,7 @@ class PostDocument(Document):
     class Django:
         model = Post #model để map dữ liệu sang
         fields = [] # Để trống vì đã khai báo title ở trên
+        signals = 'auto'
 
     def get_queryset(self):
         return super().get_queryset().filter(deleted__isnull=True)
@@ -73,6 +74,7 @@ class ProfileDocument(Document):
     class Django:
         model = Profile
         fields = []
+        signals = 'auto'
 
     def prepare_full_name(self, instance): # lưu vào trường fullname trong elastic model phía trên
         # Lưu cả 2 chiều để gõ "nghị trần" cũng ra

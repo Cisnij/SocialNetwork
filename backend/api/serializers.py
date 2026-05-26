@@ -18,11 +18,17 @@ class UserSerializer(serializers.ModelSerializer):
         model=User
         fields=['id','username','first_name','last_name']
 
+DEFAULT_PROFILE_PICTURE = (
+    "https://res.cloudinary.com/dec8t19tm/image/upload/v1779183832/default.jpg"
+)
+
+
 class ProfileSerializer(serializers.ModelSerializer):
     #friends = serializers.PrimaryKeyRelatedField(many=True, read_only=True) #cách tạo serializer của many to many field
     is_online=serializers.SerializerMethodField()
     user = serializers.IntegerField(source='user_id', read_only=True)
-    picture = serializers.SerializerMethodField()
+    picture = serializers.ImageField(required=False, allow_null=True)
+
     class Meta:
         model=Profile
         fields=['id', 'user', 'first_name', 'last_name', 'picture','date_of_birth','phone_number','bio','is_completed','created_at','auth_provider', 'is_online']
@@ -33,11 +39,14 @@ class ProfileSerializer(serializers.ModelSerializer):
         if online_set is not None: 
             return obj.user_id in online_set # trả về user id trong ram, có thì trả về luôn
         return cache.get(f"online_user:{obj.user_id}") is not None # không có trong ram thì gọi get cache ram từng cái
-        
-    def get_picture(self, obj):
-        if obj.picture:
-            return obj.picture.url
-        return "https://res.cloudinary.com/dec8t19tm/image/upload/v1779183832/default.jpg"
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.picture:
+            data["picture"] = instance.picture.url
+        else:
+            data["picture"] = DEFAULT_PROFILE_PICTURE
+        return data
 
 class PendingProfileSerializer(serializers.ModelSerializer):
     class Meta:

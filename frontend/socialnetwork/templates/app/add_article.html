@@ -1,0 +1,84 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Viết bài{% endblock %}
+{% block main_content %}
+<main class="max-w-4xl mx-auto px-4 py-6">
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6">
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-800 dark:text-[#e4e6eb] mb-2">Viết bài mới</h1>
+      <p class="text-gray-500 dark:text-fb-muted">Chia sẻ kiến thức và trải nghiệm của bạn</p>
+    </div>
+    
+    <div class="space-y-6">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-[#e4e6eb] mb-2">Tiêu đề bài viết</label>
+        <input 
+          type="text" 
+          id="articleTitle" 
+          class="w-full p-4 rounded-xl bg-fb-bg dark:bg-[#3a3b3c] text-gray-800 dark:text-[#e4e6eb] focus:outline-none focus:ring-2 focus:ring-fb-primary border border-transparent focus:border-fb-primary transition"
+          placeholder="Nhập tiêu đề hấp dẫn..."
+          maxlength="200">
+        <p class="text-xs text-gray-500 dark:text-fb-muted mt-1"><span id="titleCount">0</span>/200 ký tự</p>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-[#e4e6eb] mb-2">Nội dung</label>
+        <textarea 
+          id="articleContent" 
+          rows="15" 
+          class="w-full p-4 rounded-xl bg-fb-bg dark:bg-[#3a3b3c] text-gray-800 dark:text-[#e4e6eb] resize-none focus:outline-none focus:ring-2 focus:ring-fb-primary border border-transparent focus:border-fb-primary transition font-mono text-sm"
+          placeholder="Viết nội dung bài viết của bạn tại đây...
+
+Bạn có thể viết:
+- Hướng dẫn và tutorial
+- Chia sẻ kinh nghiệm 
+- Phân tích và nhận định
+- Bài viết nghị luận
+- Và nhiều hơn nữa..."></textarea>
+      </div>
+      
+      <div class="flex items-center gap-4">
+        <label class="flex items-center gap-2 px-4 py-3 rounded-xl hover:bg-fb-secondary dark:hover:bg-[#4e4f50] transition cursor-pointer">
+          <span class="text-2xl">📷</span>
+          <span class="text-sm font-medium text-gray-600 dark:text-fb-muted">Thêm ảnh bìa</span>
+          <input type="file" id="coverImage" accept="image/*" class="hidden">
+        </label>
+        
+        <div id="coverPreview" class="hidden">
+          <img id="coverImg" src="" alt="Cover preview" class="h-20 w-20 object-cover rounded-lg">
+        </div>
+      </div>
+      
+      <div class="bg-fb-bg dark:bg-[#3a3b3c] rounded-xl p-4">
+        <label class="flex items-center justify-between">
+          <div>
+            <p class="font-medium text-gray-700 dark:text-[#e4e6eb]">Quyền riêng tư</p>
+            <p class="text-sm text-gray-500 dark:text-fb-muted">Chọn ai có thể thấy bài viết này</p>
+          </div>
+          <select id="articlePrivacy" class="px-4 py-2 rounded-lg bg-white dark:bg-[#242526] border border-gray-200 dark:border-fb-divider text-gray-700 dark:text-[#e4e6eb] focus:outline-none focus:ring-2 focus:ring-fb-primary">
+            <option value="public">🌍 Công khai</option>
+            <option value="friends">👥 Bạn bè</option>
+            <option value="private">🔒 Chỉ mình tôi</option>
+          </select>
+        </label>
+      </div>
+      
+      <div class="flex gap-4 pt-4 border-t dark:border-fb-divider">
+        <button 
+          id="saveDraftBtn" 
+          class="px-6 py-3 bg-gray-200 dark:bg-[#4e4f50] text-gray-700 dark:text-[#e4e6eb] rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-[#5a5b5c] transition">
+          Lưu nháp
+        </button>
+        <button 
+          id="publishBtn" 
+          class="flex-1 px-6 py-3 bg-fb-primary text-white rounded-xl font-semibold hover:bg-fb-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed">
+          Xuất bản bài viết
+        </button>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/app/add_article.js' %}"></script>
+{% endblock %}

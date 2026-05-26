@@ -52,6 +52,7 @@ def get_online_set(queryset):  # custome để gọi get user online 1 lần tha
 class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa profile 
     permission_classes=[IsAuthenticated]
     serializer_class=ProfileSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     throttle_classes=[ScopedRateThrottle]
     throttle_scope='profile'
     #def perform_update(self, serializer): # dùng để resize và cắt ảnh avatar
@@ -115,8 +116,12 @@ class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa prof
     #         sys.getsizeof(output),
     #         None
     #     )
-    def perform_update(self, serializer): # gán user khi update
-        serializer.save(user=self.request.user)  # Lưu các thay đổi được thực hiện trên đối tượng Profile
+    def perform_update(self, serializer):
+        picture = self.request.FILES.get("picture")
+        if picture:
+            serializer.save(user=self.request.user, picture=picture)
+        else:
+            serializer.save(user=self.request.user)
 
     def get_object(self): #nên dùng get object thay vì get querry vì ở đây cần lấy chỉ 1 đối tượng, get querryset thường dùng trả nhiều đối tượng 
         user = self.request.user 
@@ -667,8 +672,13 @@ class CommentListCreate(generics.ListCreateAPIView):  # thêm list comment
             parent = Comment.objects.filter(id=parent_id, post_id=post_id).only('id', 'parent_id').first()
             if parent is None:  # không tìm thấy hoặc đã bị xóa
                 raise ValidationError("Comment cha không khả dụng.")
+            # Chỉ 1 cấp reply: nếu client gửi id reply con thì gắn về comment gốc
             if parent.parent_id is not None:
-                raise ValidationError("Cannot reply reply") # check chỉ được reply 1 cấp , nếu parent đã có parent thì k cho
+                parent = Comment.objects.filter(
+                    id=parent.parent_id, post_id=post_id
+                ).only('id', 'parent_id').first()
+                if parent is None:
+                    raise ValidationError("Comment cha không khả dụng.")
         serializer.save(user=self.request.user, post_id=post_id, parent=parent)
 
 
@@ -784,9 +794,12 @@ class UserSetting(generics.RetrieveAPIView):  # Xem setting
     throttle_scope = 'setting'
 
     def get_object(self):
-        user = self.request.user
-        return get_object_or_404(Setting, user=user)
-    
+        setting, _ = Setting.objects.get_or_create(
+            user=self.request.user,
+            defaults={"darkmode": False},
+        )
+        return setting
+
 #======================REACTION===================
 class UserReactionPostList(generics.ListAPIView):  # Danh sách reaction của user trên post
     permission_classes = [IsAuthenticated]
@@ -833,8 +846,28 @@ class UserActivity(generics.ListAPIView):  # lấy ra danh sách các hoạt đ�
     def get_queryset(self):
         user = self.request.user
         if user.is_superuser or user.is_staff:
-            return Action.objects.all().order_by('-timestamp')
-        return Action.objects.filter(data__user_id=user.id).order_by('-timestamp')
+            return (
+                Action.objects.all()
+                .prefetch_related(
+                    'actor',
+                    'target',
+                    'action_object',
+                )
+                .order_by('-timestamp')
+            )
+
+        return (
+            Action.objects.filter(
+                actor_content_type=ContentType.objects.get_for_model(user),
+                actor_object_id=str(user.id)
+            )
+            .prefetch_related(
+                'actor',
+                'target',
+                'action_object',
+            )
+            .order_by('-timestamp')
+        )
 
 #===================LOG==================
 class LogList(generics.ListAPIView):  # Danh sách log hoạt động
@@ -1137,7 +1170,10 @@ class UnblockView(generics.DestroyAPIView):  # bỏ chặn người dùng
         if request.user == user:
             return Response({"detail": "You cannot unblock yourself"}, status=400)
 
-        Block.objects.remove_block(request.user, user)
+        Block.objects.filter(
+            blocker=request.user,
+            blocked=user
+        ).delete()
         return Response({'detail': 'Unblocked'}, status=200)
 
 

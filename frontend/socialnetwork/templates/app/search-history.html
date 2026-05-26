@@ -1,0 +1,31 @@
+{% extends 'app/page-shell.html' %}
+{% load static %}
+{% block title %}Lịch sử tìm kiếm{% endblock %}
+{% block page_content %}
+<div class="max-w-2xl mx-auto">
+  <h1 class="text-2xl font-bold mb-6 dark:text-[#e4e6eb]">Lịch sử tìm kiếm</h1>
+  
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between p-4 border-b dark:border-fb-divider">
+      <h2 class="font-semibold dark:text-[#e4e6eb]">Tìm kiếm gần đây</h2>
+      <button id="clearAllBtn" class="text-sm text-red-500 hover:text-red-600 font-medium">Xóa tất cả</button>
+    </div>
+    
+    <div id="searchHistoryList" class="divide-y dark:divide-fb-divider"></div>
+    <div class="p-4 border-t dark:border-fb-divider">
+      <button type="button" id="loadMoreHistoryBtn" class="w-full py-2.5 rounded-lg bg-fb-secondary dark:bg-[#3a3b3c] text-sm font-medium hover:opacity-90 hidden">Xem thêm</button>
+    </div>
+    <div id="emptyState" class="hidden text-center py-8">
+      <p class="text-gray-500 dark:text-fb-muted">Chưa có lịch sử tìm kiếm nào.</p>
+    </div>
+  </div>
+  
+  <div class="mt-6 bg-fb-bg dark:bg-[#3a3b3c] rounded-xl p-4 border border-gray-200 dark:border-fb-divider">
+    <h3 class="font-semibold text-gray-800 dark:text-[#e4e6eb] mb-2">ℹ️ Về lịch sử tìm kiếm</h3>
+    <p class="text-sm text-gray-600 dark:text-fb-muted">Lịch sử tìm kiếm giúp bạn dễ dàng tìm lại những nội dung đã tìm trước đây.</p>
+  </div>
+</div>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/pages/search-history.js' %}"></script>
+{% endblock %}

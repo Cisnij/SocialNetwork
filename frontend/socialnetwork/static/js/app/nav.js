@@ -85,12 +85,32 @@ document.querySelectorAll("[data-nav]").forEach((el) => {
   const nav = el.dataset.nav;
   if (
     (nav === "home" && path === "/") ||
+    (nav === "articles" && path.startsWith("/create-article")) ||
     (nav === "shares" && path.startsWith("/shares")) ||
     (nav === "friends" && path.startsWith("/friends"))
   ) {
     el.classList.add("active");
   }
 });
+
+const navNotifLink = document.getElementById("navNotifLink");
+navNotifLink?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  const href = navNotifLink.getAttribute("href") || "/notifications/";
+  try {
+    const res = await authFetch(API.notificationsMarkRead(), { method: "POST" });
+    if (res.ok && badge) badge.classList.add("hidden");
+  } catch (_) {
+    /* vẫn mở trang thông báo */
+  }
+  window.location.href = href;
+});
+
+export async function markAllNotificationsRead() {
+  const res = await authFetch(API.notificationsMarkRead(), { method: "POST" });
+  if (res.ok && badge) badge.classList.add("hidden");
+  return res.ok;
+}
 
 refreshBadge();
 connectNotifWs();

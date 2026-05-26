@@ -1,0 +1,94 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Test Dark Mode{% endblock %}
+{% block main_content %}
+<div class="max-w-2xl mx-auto p-6">
+  <h1 class="text-2xl font-bold mb-6 dark:text-[#e4e6eb]">Test Dark Mode</h1>
+  
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6 mb-6">
+    <h2 class="font-bold mb-4 dark:text-[#e4e6eb]">Current Status</h2>
+    <div class="space-y-2">
+      <p class="dark:text-[#e4e6eb]">localStorage value: <span id="localStorageValue">-</span></p>
+      <p class="dark:text-[#e4e6eb]">Root element classes: <span id="rootClasses">-</span></p>
+      <p class="dark:text-[#e4e6eb]">Body data-theme: <span id="bodyTheme">-</span></p>
+      <p class="dark:text-[#e4e6eb]">isDarkMode(): <span id="isDarkModeResult">-</span></p>
+    </div>
+  </div>
+  
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6 mb-6">
+    <h2 class="font-bold mb-4 dark:text-[#e4e6eb]">Manual Toggle</h2>
+    <div class="flex gap-4">
+      <button id="enableDark" class="px-4 py-2 bg-gray-800 text-white rounded-lg">Enable Dark Mode</button>
+      <button id="disableDark" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg">Disable Dark Mode</button>
+      <button id="checkStatus" class="px-4 py-2 bg-blue-500 text-white rounded-lg">Check Status</button>
+    </div>
+  </div>
+  
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6">
+    <h2 class="font-bold mb-4 dark:text-[#e4e6eb]">API Test</h2>
+    <button id="testApi" class="px-4 py-2 bg-green-500 text-white rounded-lg">Test User Setting API</button>
+    <div id="apiResult" class="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded"></div>
+  </div>
+</div>
+{% endblock %}
+{% block post_scripts %}
+<script type="module">
+  import { isDarkMode, applyDarkMode, saveDarkMode, bootstrapTheme } from "{% static 'js/shared/theme.js' %}";
+  import { authFetch } from "{% static 'js/authenticate/auth.js' %}";
+  import { API } from "{% static 'js/shared/config.js' %}";
+  
+  function updateStatus() {
+    document.getElementById("localStorageValue").textContent = localStorage.getItem("fb_darkmode");
+    document.getElementById("rootClasses").textContent = document.documentElement.className;
+    document.getElementById("bodyTheme").textContent = document.body.getAttribute("data-theme");
+    document.getElementById("isDarkModeResult").textContent = isDarkMode();
+  }
+  
+  document.getElementById("enableDark").addEventListener("click", () => {
+    console.log("Enable dark mode clicked");
+    applyDarkMode(true);
+    updateStatus();
+  });
+  
+  document.getElementById("disableDark").addEventListener("click", () => {
+    console.log("Disable dark mode clicked");
+    applyDarkMode(false);
+    updateStatus();
+  });
+  
+  document.getElementById("checkStatus").addEventListener("click", () => {
+    console.log("Check status clicked");
+    updateStatus();
+  });
+  
+  document.getElementById("testApi").addEventListener("click", async () => {
+    const resultDiv = document.getElementById("apiResult");
+    resultDiv.textContent = "Testing...";
+    
+    try {
+      console.log("Testing API:", API.userSetting());
+      const res = await authFetch(API.userSetting());
+      console.log("API response status:", res.status);
+      const data = await res.json();
+      console.log("API data:", data);
+      resultDiv.innerHTML = `
+        <p><strong>Status:</strong> ${res.status}</p>
+        <p><strong>Data:</strong> <pre>${JSON.stringify(data, null, 2)}</pre></p>
+      `;
+    } catch (error) {
+      console.error("API test error:", error);
+      resultDiv.innerHTML = `<p class="text-red-500"><strong>Error:</strong> ${error.message}</p>`;
+    }
+  });
+  
+  // Initial status
+  updateStatus();
+  
+  // Test bootstrap
+  console.log("Testing bootstrapTheme...");
+  bootstrapTheme().then(setting => {
+    console.log("Bootstrap completed, setting:", setting);
+    updateStatus();
+  });
+</script>
+{% endblock %}

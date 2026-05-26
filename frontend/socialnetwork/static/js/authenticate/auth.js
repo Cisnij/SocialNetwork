@@ -18,6 +18,19 @@ async function refreshAccessToken() { // hàm này sẽ được gọi khi acces
   localStorage.setItem('accessToken', accessToken);
 }
 
+function buildAuthHeaders(options = {}) {
+  const headers = {
+    ...options.headers,
+    Authorization: `Bearer ${accessToken}`,
+  };
+  // FormData: browser must set multipart boundary — never force Content-Type
+  if (options.body instanceof FormData) {
+    delete headers["Content-Type"];
+    delete headers["content-type"];
+  }
+  return headers;
+}
+
 async function authFetch(url, options = {}) { // hàm này dùng để sau này fetch cần kiểm tra authentic k, nếu có mới cho post, options dùng để lấy ra method là POST hay GET...
   if (!accessToken) { //chưa đăng nhập
     try {
@@ -30,10 +43,7 @@ async function authFetch(url, options = {}) { // hàm này dùng để sau này 
     //có token thì gọi fetch kèm token, nếu fetch lỗi thì token hết hạn và gọi tạo lại token và fetch lần nữa
   let res = await fetch(url, {
     ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${accessToken}`
-    },
+    headers: buildAuthHeaders(options),
     credentials: 'include',
   });
 
@@ -47,10 +57,7 @@ async function authFetch(url, options = {}) { // hàm này dùng để sau này 
 
     res = await fetch(url, {
       ...options,
-      headers: {
-        ...options.headers,
-        Authorization: `Bearer ${accessToken}`
-      },
+      headers: buildAuthHeaders(options),
       credentials: 'include',
     });
   }

@@ -1,2 +1,11 @@
 import { bootstrapTheme } from "../shared/theme.js";
-bootstrapTheme();
+
+function startTheme() {
+  bootstrapTheme();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", startTheme, { once: true });
+} else {
+  startTheme();
+}

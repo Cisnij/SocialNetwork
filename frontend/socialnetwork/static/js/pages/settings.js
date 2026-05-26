@@ -4,10 +4,15 @@ import { showToast } from "../shared/toast.js";
 import { confirmDialog } from "../shared/confirm.js";
 import { saveDarkMode, isDarkMode, bootstrapTheme, parseDarkmode } from "../shared/theme.js";
 import { createUserRow, showEmpty, btn } from "../shared/ui.js";
+import {
+  invalidateUserProfileCache,
+  applyProfileToNavbar,
+} from "../app/profile.js";
 import { fetchPage } from "../shared/paginated-list.js";
 
 let profileId = null;
 let darkToggleBusy = false;
+let setting = null;
 
 document.querySelectorAll("[data-settings-tab]").forEach((tab) => {
   tab.addEventListener("click", (e) => {
@@ -26,9 +31,13 @@ document.querySelectorAll("[data-settings-tab]").forEach((tab) => {
 });
 
 async function init() {
-  const setting = await bootstrapTheme();
-  const u = await authFetch(API.user());
-  profileId = (await u.json()).id;
+  setting = await bootstrapTheme();
+  const uRes = await authFetch(API.user());
+  if (!uRes.ok) {
+    showToast("Không tải hồ sơ", "red");
+    return;
+  }
+  profileId = (await uRes.json()).id;
 
   await loadProfileForm();
   await loadEmails();
@@ -47,19 +56,73 @@ async function loadProfileForm() {
   document.getElementById("setLastName").value = p.last_name || "";
   document.getElementById("setBio").value = p.bio || "";
   document.getElementById("setPhone").value = p.phone_number || "";
+  const preview = document.getElementById("setAvatarPreview");
+  if (preview && p.picture) preview.src = p.picture;
 }
 
 function setupProfileSave() {
+  document.getElementById("setAvatar")?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    const preview = document.getElementById("setAvatarPreview");
+    if (file && preview) preview.src = URL.createObjectURL(file);
+  });
+
   document.getElementById("saveProfileBtn")?.addEventListener("click", async () => {
+    if (!profileId) {
+      showToast("Chưa tải được ID hồ sơ", "red");
+      return;
+    }
+    const btn = document.getElementById("saveProfileBtn");
+    btn.disabled = true;
+
     const form = new FormData();
     form.append("first_name", document.getElementById("setFirstName").value);
     form.append("last_name", document.getElementById("setLastName").value);
     form.append("bio", document.getElementById("setBio").value);
-    form.append("phone_number", document.getElementById("setPhone").value);
+    const phone = document.getElementById("setPhone").value.trim();
+    if (phone) form.append("phone_number", phone);
     const pic = document.getElementById("setAvatar")?.files?.[0];
     if (pic) form.append("picture", pic);
-    const res = await authFetch(API.profile(profileId), { method: "PATCH", body: form });
-    showToast(res.ok ? "Đã lưu hồ sơ" : "Lỗi lưu", res.ok ? "green" : "red");
+
+    try {
+      const res = await authFetch(API.profile(profileId), {
+        method: "PATCH",
+        body: form,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg =
+          err.picture?.[0] ||
+          err.phone_number?.[0] ||
+          err.detail ||
+          (typeof err === "object" ? JSON.stringify(err) : String(err));
+        showToast(msg || `Lỗi lưu (${res.status})`, "red");
+        return;
+      }
+
+      const updated = await res.json();
+      invalidateUserProfileCache();
+      applyProfileToNavbar(updated);
+
+      const fresh = await authFetch(API.user());
+      if (fresh.ok) {
+        const user = await fresh.json();
+        applyProfileToNavbar(user);
+        const preview = document.getElementById("setAvatarPreview");
+        if (preview && user.picture) preview.src = user.picture;
+      } else if (updated.picture) {
+        const preview = document.getElementById("setAvatarPreview");
+        if (preview) preview.src = updated.picture;
+      }
+
+      document.getElementById("setAvatar").value = "";
+      showToast("Đã lưu hồ sơ", "green");
+    } catch (e) {
+      console.error("save profile", e);
+      showToast("Lỗi mạng khi lưu hồ sơ", "red");
+    } finally {
+      btn.disabled = false;
+    }
   });
 }
 
@@ -226,7 +289,7 @@ async function loadActivity(reset = false) {
       const p = document.createElement("p");
       p.className =
         "text-sm py-2 border-b dark:border-fb-divider text-gray-600 dark:text-fb-muted";
-      p.textContent = `${a.actor} ${a.verb} · ${new Date(a.timestamp).toLocaleString("vi-VN")}`;
+      p.textContent = `Bạn ${a.verb}${a.target ? ` ${a.target}` : ""} · ${new Date(a.timestamp).toLocaleString("vi-VN")}`;
       el.appendChild(p);
     });
     activityNext = data.next;

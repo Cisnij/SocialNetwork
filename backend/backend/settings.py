@@ -121,16 +121,17 @@ DATABASES = {
         "HOST": env('DB_HOST'),
         "PORT": env('DB_PORT', default='3306'),
 
-        # Performance
-        "CONN_MAX_AGE": 300,  # tái sử dụng cổng đã mở, tái sử dụng connection lâu hơn
-        "CONN_HEALTH_CHECKS": True,  # kiểm tra connection còn sống không trước khi dùng
+        # Performance, pool options lo nên tắt hết
+        "CONN_MAX_AGE": 0,  # tái sử dụng cổng đã mở, tái sử dụng connection lâu hơn
+        "CONN_HEALTH_CHECKS": False,  # kiểm tra connection còn sống không trước khi dùng
 
         # Connection pool dùng để tái sử dụng các connection mà k cần tạo mới mỗi request
         "POOL_OPTIONS": { #số pool có sẵn là 20, khi chưa dùng hết thì dùng lại, khi hết thì mở thêm và tối đa mở 30
-            "POOL_SIZE": 20,  # số connection pool
-            "MAX_OVERFLOW": 30,  # connection thêm khi pool đầy
-            "RECYCLE": 300,  # recycle connection sau 5 phút
-            "TIMEOUT": 30,  # chờ tối đa 30s lấy connection từ pool
+            "POOL_SIZE": 24,  # số connection pool
+            "MAX_OVERFLOW": 10,  # connection thêm khi pool đầy
+            "RECYCLE": 1800,  # recycle connection sau 5 phút
+            "TIMEOUT": 10,  # chờ tối đa 30s lấy connection từ pool
+            "POOL_PRE_PING": True, #check xem connection còn sống không
         },
 
         "OPTIONS": {

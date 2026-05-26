@@ -1,6 +1,8 @@
 import { authFetch } from "../authenticate/auth.js";
 import { fetchUserProfileShared } from "../app/profile.js";
 import { API, withPageSize, DEFAULT_AVATAR } from "../shared/config.js";
+import { uploadChatFiles, sendChatWsMessage } from "../shared/chat-upload.js";
+import { el, img, textEl } from "../shared/dom.js";
 import { showToast } from "../shared/toast.js";
 import { fullName } from "../shared/ui.js";
 
@@ -13,6 +15,8 @@ const convMap = new Map();
 let messagesNext = null;
 let pendingConv = false;
 let loadingMessages = false;
+let activeConvMeta = null;
+let firstMessageInConv = null;
 
 /** DOM refs — resolved on boot, not at import time */
 let convListEl;
@@ -65,8 +69,9 @@ async function loadFriendsStrip() {
 
   const friends = data.results || [];
   if (!friends.length) {
-    friendsStrip.innerHTML =
-      '<p class="text-xs text-gray-400 px-2 shrink-0">Chưa có bạn bè</p>';
+    friendsStrip.appendChild(
+      textEl("p", "text-xs text-gray-400 px-2 shrink-0", "Chưa có bạn bè")
+    );
     return;
   }
 
@@ -99,6 +104,7 @@ async function startChatWith(profileId, name) {
     return;
   }
   const conv = await res.json();
+  conv._startedByMe = true;
   history.replaceState(null, "", "/chat/");
   await loadConversations();
   openConversation(conv, name);
@@ -152,10 +158,11 @@ async function loadConversations() {
   convMap.clear();
 
   const items = data.results || [];
-  if (!items.length) {
-    convListEl.innerHTML =
-      '<p class="text-sm text-gray-400 p-4 text-center">Chưa có tin nhắn</p>';
-  } else {
+    if (!items.length) {
+      convListEl.appendChild(
+        textEl("p", "text-sm text-gray-400 p-4 text-center", "Chưa có tin nhắn")
+      );
+    } else {
     items.forEach((c) => convListEl.appendChild(renderConvItem(c)));
   }
 
@@ -175,28 +182,45 @@ async function loadConversations() {
 function renderConvItem(c) {
   const other = otherMember(c);
   const name = other ? fullName(other) : "Nhóm";
-  const wrap = document.createElement("button");
-  wrap.type = "button";
-  wrap.className =
-    "w-full flex items-center gap-2 p-2 hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] cursor-pointer group relative text-left";
-  const preview = messagePreview(c);
-  wrap.innerHTML = `
-    <img src="${other?.picture || DEFAULT_AVATAR}" class="w-12 h-12 rounded-full object-cover shrink-0" alt="">
-    <div class="flex-1 min-w-0 conv-body">
-      <p class="font-semibold text-sm truncate dark:text-[#e4e6eb]">${name}</p>
-      <p class="text-xs text-gray-500 dark:text-fb-muted truncate conv-preview">${preview}</p>
-    </div>
-    ${c.status === "pending" ? '<span class="text-[10px] text-amber-500 font-semibold shrink-0">Chờ</span>' : ""}
-    ${c.unread_count > 0 ? `<span class="bg-fb-primary text-white text-xs px-2 rounded-full shrink-0">${c.unread_count}</span>` : ""}
-    <span class="conv-menu hidden group-hover:inline text-xl px-1 shrink-0" role="presentation">⋯</span>`;
+  const wrap = el("button", "w-full flex items-center gap-2 p-2 hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] cursor-pointer group relative text-left", {
+    type: "button",
+  });
+
+  wrap.append(
+    img(other?.picture || DEFAULT_AVATAR, "w-12 h-12 rounded-full object-cover shrink-0", "")
+  );
+
+  const body = el("div", "flex-1 min-w-0 conv-body");
+  body.append(
+    textEl("p", "font-semibold text-sm truncate dark:text-[#e4e6eb]", name),
+    textEl("p", "text-xs text-gray-500 dark:text-fb-muted truncate conv-preview", messagePreview(c))
+  );
+  wrap.append(body);
+
+  if (c.status === "pending") {
+    wrap.appendChild(
+      textEl("span", "text-[10px] text-amber-500 font-semibold shrink-0", "Chờ")
+    );
+  }
+  if (c.unread_count > 0) {
+    wrap.appendChild(
+      textEl(
+        "span",
+        "bg-fb-primary text-white text-xs px-2 rounded-full shrink-0",
+        String(c.unread_count)
+      )
+    );
+  }
+
+  const menuBtn = textEl("span", "conv-menu hidden group-hover:inline text-xl px-1 shrink-0", "⋯");
+  wrap.appendChild(menuBtn);
 
   wrap.addEventListener("click", (e) => {
     if (e.target.closest(".conv-menu")) return;
     openConversation(c, name);
   });
 
-  const menuBtn = wrap.querySelector(".conv-menu");
-  menuBtn?.addEventListener("click", (e) => {
+  menuBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     showConvMenu(c.id, wrap);
   });
@@ -238,9 +262,107 @@ function showConvMenu(convId, anchor) {
   );
 }
 
+async function fetchFirstMessage(convId) {
+  try {
+    const url = `${API.messages(convId)}?ordering=created_at&page_size=1`;
+    const res = await authFetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.results || [])[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+function isFirstMessageFromMe(msg) {
+  if (!msg || myUserId == null) return false;
+  const uid = msg.sender?.user;
+  return uid != null && Number(uid) === Number(myUserId);
+}
+
+function isPendingInitiator(conv) {
+  if (isFirstMessageFromMe(firstMessageInConv)) return true;
+  return !firstMessageInConv && !!conv?._startedByMe;
+}
+
+function canSendWhilePending() {
+  if (!pendingConv) return true;
+  return isPendingInitiator(activeConvMeta);
+}
+
+async function applyPendingUI(conv) {
+  if (!pendingBanner || !pendingConv) return;
+  pendingBanner.classList.remove("hidden");
+  pendingBanner.replaceChildren();
+
+  if (isPendingInitiator(conv)) {
+    pendingBanner.appendChild(
+      textEl(
+        "p",
+        "text-sm text-amber-900 dark:text-amber-100 flex-1",
+        firstMessageInConv
+          ? "Đang chờ người nhận phản hồi. Họ cần chấp nhận yêu cầu trước khi trả lời."
+          : "Gửi tin nhắn đầu tiên để gửi yêu cầu trò chuyện."
+      )
+    );
+    chatForm?.classList.remove("opacity-50", "pointer-events-none");
+    return;
+  }
+
+  if (!firstMessageInConv) {
+    pendingBanner.appendChild(
+      textEl(
+        "p",
+        "text-sm text-amber-900 dark:text-amber-100 flex-1",
+        "Chưa có tin nhắn yêu cầu."
+      )
+    );
+    chatForm?.classList.add("opacity-50", "pointer-events-none");
+    return;
+  }
+
+  const accept = document.createElement("button");
+  accept.type = "button";
+  accept.className =
+    "px-4 py-2 bg-fb-primary text-white rounded-lg text-sm font-semibold hover:bg-fb-primary-hover";
+  accept.textContent = "Chấp nhận";
+  accept.onclick = async () => {
+    const res = await authFetch(API.acceptConv(conv.id), { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showToast(err.detail || "Không chấp nhận được", "red");
+      return;
+    }
+    pendingBanner.classList.add("hidden");
+    pendingConv = false;
+    conv.status = "accept";
+    chatForm?.classList.remove("opacity-50", "pointer-events-none");
+    showToast("Đã chấp nhận", "green");
+    loadConversations();
+  };
+  const reject = document.createElement("button");
+  reject.type = "button";
+  reject.className =
+    "px-4 py-2 rounded-lg text-sm font-semibold bg-gray-200 dark:bg-[#4e4f50] text-gray-900 dark:text-[#e4e6eb] hover:opacity-90";
+  reject.textContent = "Từ chối";
+  reject.onclick = async () => {
+    const res = await authFetch(API.rejectConv(conv.id), { method: "POST" });
+    if (!res.ok) showToast("Không từ chối được", "red");
+    else showToast("Đã từ chối");
+    pendingBanner.classList.add("hidden");
+    pendingConv = false;
+    loadConversations();
+    messagesEl?.replaceChildren();
+    activeConvId = null;
+  };
+  pendingBanner.append(accept, reject);
+  chatForm?.classList.add("opacity-50", "pointer-events-none");
+}
+
 async function openConversation(conv, titleName) {
   if (!messagesEl) return;
   activeConvId = conv.id;
+  activeConvMeta = conv;
   const panel = $("chatPanel");
   panel?.classList.remove("hidden");
   panel?.classList.add("flex");
@@ -262,54 +384,25 @@ async function openConversation(conv, titleName) {
 
   messagesEl.replaceChildren();
   pendingBanner?.classList.add("hidden");
-
   pendingConv = conv.status === "pending";
-  if (pendingConv) {
-    showPendingActions(conv);
-    chatForm?.classList.add("opacity-50", "pointer-events-none");
-  } else {
-    chatForm?.classList.remove("opacity-50", "pointer-events-none");
-  }
+  firstMessageInConv = null;
 
   connectChatWs(conv.id);
   messagesNext = API.messages(conv.id);
   await loadMessages(true);
+
+  if (pendingConv) {
+    firstMessageInConv = await fetchFirstMessage(conv.id);
+    await applyPendingUI(conv);
+  } else {
+    chatForm?.classList.remove("opacity-50", "pointer-events-none");
+  }
+
   try {
     await authFetch(API.seenMessage(conv.id), { method: "POST" });
   } catch (e) {
     console.warn("[chat] seen", e);
   }
-}
-
-function showPendingActions(conv) {
-  if (!pendingBanner) return;
-  pendingBanner.classList.remove("hidden");
-  pendingBanner.replaceChildren();
-  const accept = document.createElement("button");
-  accept.type = "button";
-  accept.className =
-    "px-3 py-1.5 bg-fb-primary text-white rounded-lg text-sm font-semibold";
-  accept.textContent = "Chấp nhận";
-  accept.onclick = async () => {
-    const res = await authFetch(API.acceptConv(conv.id), { method: "POST" });
-    if (!res.ok) return showToast("Không chấp nhận được", "red");
-    pendingBanner.classList.add("hidden");
-    pendingConv = false;
-    chatForm?.classList.remove("opacity-50", "pointer-events-none");
-    conv.status = "accept";
-    showToast("Đã chấp nhận");
-  };
-  const reject = document.createElement("button");
-  reject.type = "button";
-  reject.className = "px-3 py-1.5 bg-fb-secondary rounded-lg text-sm";
-  reject.textContent = "Từ chối";
-  reject.onclick = async () => {
-    await authFetch(API.rejectConv(conv.id), { method: "POST" });
-    showToast("Đã từ chối");
-    loadConversations();
-    messagesEl?.replaceChildren();
-  };
-  pendingBanner.append(accept, reject);
 }
 
 function connectChatWs(convId) {
@@ -350,6 +443,12 @@ function connectChatWs(convId) {
             },
             true
           );
+          if (pendingConv && activeConvMeta && !firstMessageInConv) {
+            fetchFirstMessage(activeConvId).then((m) => {
+              firstMessageInConv = m;
+              applyPendingUI(activeConvMeta);
+            });
+          }
         }
       } catch (_) {}
     };
@@ -396,26 +495,38 @@ function appendMessage(m, scroll = true) {
   text.className = "msg-text whitespace-pre-wrap";
   text.textContent = m.content || m.message || "";
 
-  if (m.attachments?.length) {
-    m.attachments.forEach((a) => {
-      if (
-        a.file_type?.startsWith("image") ||
-        a.file_url?.match(/\.(jpg|jpeg|png|gif|webp)/i)
-      ) {
-        const img = document.createElement("img");
-        img.src = a.file_url;
-        img.className = "max-w-full rounded-lg mt-1";
-        bubble.appendChild(img);
-      } else {
-        const link = document.createElement("a");
-        link.href = a.file_url;
-        link.download = a.file_name || "file";
-        link.className = "block mt-1 underline text-sm";
-        link.textContent = `📎 ${a.file_name || "Tải file"}`;
-        bubble.appendChild(link);
-      }
-    });
-  } else {
+  const content = (m.content || m.message || "").trim();
+  if (content) bubble.appendChild(text);
+
+  (m.attachments || []).forEach((a) => {
+    if (
+      a.file_type === "image" ||
+      a.file_type?.startsWith("image/") ||
+      a.file_url?.match(/\.(jpg|jpeg|png|gif|webp)/i)
+    ) {
+      const image = document.createElement("img");
+      image.src = a.file_url;
+      image.className = "max-w-full rounded-lg mt-1";
+      image.alt = a.file_name || "";
+      bubble.appendChild(image);
+    } else if (a.file_type === "video" || a.file_type?.startsWith("video/")) {
+      const video = document.createElement("video");
+      video.src = a.file_url;
+      video.controls = true;
+      video.className = "max-w-full rounded-lg mt-1";
+      bubble.appendChild(video);
+    } else {
+      const link = document.createElement("a");
+      link.href = a.file_url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.className = "block mt-1 underline text-sm";
+      link.textContent = `📎 ${a.file_name || "Tải file"}`;
+      bubble.appendChild(link);
+    }
+  });
+
+  if (!content && !(m.attachments || []).length) {
     bubble.appendChild(text);
   }
 
@@ -457,8 +568,8 @@ function appendMessage(m, scroll = true) {
 function bindEvents() {
   chatForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (pendingConv) {
-      showToast("Chấp nhận tin nhắn trước khi trả lời", "red");
+    if (!canSendWhilePending()) {
+      showToast("Chấp nhận yêu cầu tin nhắn trước khi trả lời", "red");
       return;
     }
     const text = chatInput?.value.trim();
@@ -468,29 +579,43 @@ function bindEvents() {
     }
     chatWs.send(JSON.stringify({ message: text, message_type: "text" }));
     if (chatInput) chatInput.value = "";
+    if (pendingConv && activeConvMeta && canSendWhilePending()) {
+      fetchFirstMessage(activeConvId).then((m) => {
+        firstMessageInConv = m;
+        applyPendingUI(activeConvMeta);
+      });
+    }
   });
 
   $("chatFileInput")?.addEventListener("change", async (e) => {
-    if (!activeConvId) return;
-    const files = e.target.files;
+    const input = e.target;
+    if (!activeConvId) {
+      showToast("Chọn hội thoại trước", "red");
+      input.value = "";
+      return;
+    }
+    if (!canSendWhilePending()) {
+      showToast("Chấp nhận yêu cầu tin nhắn trước khi gửi file", "red");
+      input.value = "";
+      return;
+    }
+    const files = input.files;
     if (!files?.length) return;
-    const fd = new FormData();
-    for (const f of files) fd.append("files", f);
-    const res = await authFetch(API.chatUpload(activeConvId), {
-      method: "POST",
-      body: fd,
-    });
-    if (!res.ok) return showToast("Upload thất bại", "red");
-    const uploaded = await res.json();
-    const ids = (uploaded.results || uploaded || []).map((x) => x.id);
-    chatWs?.send(
-      JSON.stringify({
-        message: "",
-        message_type: "file",
-        attachment_ids: ids,
-      })
-    );
-    e.target.value = "";
+
+    const attachBtn = input.closest("label");
+    if (attachBtn) attachBtn.classList.add("opacity-50", "pointer-events-none");
+
+    try {
+      const ids = await uploadChatFiles(activeConvId, files);
+      sendChatWsMessage(chatWs, { text: "", attachmentIds: ids });
+      showToast("Đã gửi tệp đính kèm");
+    } catch (err) {
+      console.error("[chat] upload", err);
+      showToast(err.message || "Upload thất bại", "red");
+    } finally {
+      input.value = "";
+      attachBtn?.classList.remove("opacity-50", "pointer-events-none");
+    }
   });
 
   messagesEl?.addEventListener("scroll", () => {
@@ -552,9 +677,15 @@ async function initChat() {
     console.error("[chat] init failed", e);
     showToast("Không tải được Messenger", "red");
     if (convListEl) {
-      convListEl.innerHTML =
-        '<p class="text-sm text-red-500 p-4 text-center">Lỗi tải dữ liệu. <button type="button" id="chatRetryBtn" class="underline text-fb-primary">Thử lại</button></p>';
-      $("chatRetryBtn")?.addEventListener("click", () => initChat());
+    const errBox = el("div", "text-sm text-red-500 p-4 text-center");
+    errBox.appendChild(textEl("p", "", "Lỗi tải dữ liệu."));
+    const retry = el("button", "underline text-fb-primary mt-2", {
+      type: "button",
+      text: "Thử lại",
+    });
+    retry.addEventListener("click", () => initChat());
+    errBox.appendChild(retry);
+    convListEl.appendChild(errBox);
     }
   }
 }

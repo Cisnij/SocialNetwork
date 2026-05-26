@@ -12,7 +12,12 @@ import { PostInfiniteLoader } from "../shared/posts/infinite-loader.js";
 import { getCurrentUserId } from "../app/profile.js";
 import { mountRelationshipBar } from "../shared/relationship-bar.js";
 import { renderShareCard } from "../shared/share-post-render.js";
-import { createUserRow } from "../shared/ui.js";
+import {
+  createUserRow,
+  wrapAvatarWithOnlineStatus,
+  isProfileOnline,
+  onlineStatusText,
+} from "../shared/ui.js";
 import { fetchPage } from "../shared/paginated-list.js";
 import { initCommentsPanel } from "../shared/comments-panel.js";
 
@@ -106,11 +111,13 @@ async function loadUserInfo() {
         ? user.picture
         : DEFAULT_AVATAR;
 
+    const online = isProfileOnline(user);
+
     const avatar = document.createElement("img");
     avatar.src = avatarUrl;
     avatar.alt = "avatar";
     avatar.className =
-      "w-32 h-32 rounded-full border shadow-lg mx-auto cursor-pointer object-cover hover:opacity-90 transition";
+      "w-32 h-32 rounded-full border shadow-lg cursor-pointer object-cover hover:opacity-90 transition";
 
     avatar.addEventListener("click", () => {
       const modal = document.getElementById("avatarModal");
@@ -121,17 +128,35 @@ async function loadUserInfo() {
       }
     });
 
+    const avatarWrap = wrapAvatarWithOnlineStatus(avatar, online);
+    avatarWrap.classList.add("mx-auto");
+
+    const statusRow = document.createElement("p");
+    statusRow.className =
+      "flex items-center justify-center gap-2 mt-3 text-sm font-medium";
+    const statusDot = document.createElement("span");
+    statusDot.className = `inline-block w-2.5 h-2.5 rounded-full shrink-0 ${
+      online ? "bg-green-500" : "bg-gray-400 dark:bg-gray-500"
+    }`;
+    const statusLabel = document.createElement("span");
+    statusLabel.className = online
+      ? "text-green-600 dark:text-green-400"
+      : "text-gray-500 dark:text-[#b0b3b8]";
+    statusLabel.textContent = onlineStatusText(online);
+    statusRow.append(statusDot, statusLabel);
+
     const name = document.createElement("h1");
     name.textContent =
       `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
       "Người dùng";
-    name.className = "text-2xl font-bold text-center mt-4";
+    name.className = "text-2xl font-bold text-center mt-3 dark:text-[#e4e6eb]";
 
     const bio = document.createElement("p");
     bio.textContent = user.bio || "Chưa có giới thiệu.";
-    bio.className = "text-sm text-gray-500 text-center mt-1 max-w-md";
+    bio.className =
+      "text-sm text-gray-500 dark:text-[#b0b3b8] text-center mt-1 max-w-md";
 
-    container.append(avatar, name, bio);
+    container.append(avatarWrap, statusRow, name, bio);
 
     const me = await getCurrentUserId().catch(() => null);
     myProfileId = me;
@@ -214,7 +239,7 @@ async function loadShares(initial = true) {
   }
 }
 
-async function loadFollowList(url, title, profileKey, initial = true) {
+async function loadFollowList(url, title, initial = true) {
   const container = document.getElementById("content");
   if (!container || !isOwnProfile) return;
   if (initial) {
@@ -234,8 +259,11 @@ async function loadFollowList(url, title, profileKey, initial = true) {
     const data = await fetchPage(url);
     spinner.remove();
     (data.results || []).forEach((item) => {
-      const profile = item[profileKey] || item.user;
-      if (profile) list?.appendChild(createUserRow(profile));
+      const profile =
+        item?.id != null && (item.first_name != null || item.picture != null)
+          ? item
+          : null;
+      if (profile?.id) list?.appendChild(createUserRow(profile));
     });
     if (data.next) {
       const more = document.createElement("button");
@@ -243,7 +271,7 @@ async function loadFollowList(url, title, profileKey, initial = true) {
       more.className =
         "w-full py-2 mt-2 text-sm text-fb-primary font-semibold hover:bg-fb-secondary rounded-lg";
       more.textContent = "Xem thêm";
-      more.onclick = () => loadFollowList(data.next, title, profileKey, false);
+      more.onclick = () => loadFollowList(data.next, title, false);
       list?.appendChild(more);
     }
   } catch {
@@ -262,12 +290,12 @@ async function loadIntroduce() {
     const user = await fetchUserPageShared();
     spinner.remove();
     const card = document.createElement("div");
-    card.className = "bg-white p-6 rounded-xl shadow";
+    card.className = "bg-white dark:bg-[#242526] p-6 rounded-xl shadow";
     const title = document.createElement("h2");
     title.textContent = "Giới thiệu";
-    title.className = "text-lg font-bold mb-2";
+    title.className = "text-lg font-bold mb-2 dark:text-[#e4e6eb]";
     const bio = document.createElement("p");
-    bio.className = "text-gray-700 whitespace-pre-wrap";
+    bio.className = "text-gray-700 dark:text-[#e4e6eb] whitespace-pre-wrap";
     bio.textContent = user.bio || "Chưa có giới thiệu.";
     card.append(title, bio);
     container.appendChild(card);
@@ -309,10 +337,10 @@ async function loadFriends(initial = true) {
 
     if (initial) {
       const card = document.createElement("div");
-      card.className = "bg-white p-4 rounded-xl shadow w-full";
+      card.className = "bg-white dark:bg-[#242526] p-4 rounded-xl shadow w-full";
       const title = document.createElement("h2");
       title.textContent = "Bạn bè";
-      title.className = "text-lg font-bold mb-4";
+      title.className = "text-lg font-bold mb-4 dark:text-[#e4e6eb]";
       const list = document.createElement("ul");
       list.id = "friendsListContainer";
       list.className = "grid grid-cols-1 sm:grid-cols-2 gap-3";
@@ -329,16 +357,23 @@ async function loadFriends(initial = true) {
         const link = document.createElement("a");
         link.href = profileUrl(friend.id);
         link.className =
-          "flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg transition";
+          "flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-[#3a3b3c] p-2 rounded-lg transition text-gray-900 dark:text-[#e4e6eb]";
         const av = document.createElement("img");
         av.src = friend.picture || DEFAULT_AVATAR;
         av.className = "w-10 h-10 rounded-full object-cover";
+        const avWrap = wrapAvatarWithOnlineStatus(av, isProfileOnline(friend));
+        const textCol = document.createElement("div");
+        textCol.className = "min-w-0 flex-1";
         const nm = document.createElement("span");
-        nm.className = "font-medium truncate";
+        nm.className = "font-medium truncate block";
         nm.textContent =
           `${friend.first_name || ""} ${friend.last_name || ""}`.trim() ||
           "Người dùng";
-        link.append(av, nm);
+        const friendStatus = document.createElement("span");
+        friendStatus.className = "text-xs text-gray-500 dark:text-[#b0b3b8] block";
+        friendStatus.textContent = onlineStatusText(isProfileOnline(friend));
+        textCol.append(nm, friendStatus);
+        link.append(avWrap, textCol);
         li.appendChild(link);
         fragment.appendChild(li);
       });
@@ -365,10 +400,10 @@ async function loadPhotos(initial = true) {
     allPhotoUrlsGlobal = [];
 
     const card = document.createElement("div");
-    card.className = "bg-white p-4 rounded-xl shadow w-full";
+    card.className = "bg-white dark:bg-[#242526] p-4 rounded-xl shadow w-full";
     const title = document.createElement("h2");
     title.textContent = "Ảnh";
-    title.className = "text-lg font-bold mb-4";
+    title.className = "text-lg font-bold mb-4 dark:text-[#e4e6eb]";
     const grid = document.createElement("div");
     grid.id = "photosGridContainer";
     grid.className = "grid grid-cols-3 gap-2";
@@ -467,19 +502,9 @@ function setupTabs() {
       if (type === "friends") loadFriends(true);
       if (type === "photos") loadPhotos(true);
       if (type === "following")
-        loadFollowList(
-          buildListUrl(API.following(), 20),
-          "Đang theo dõi",
-          "followee",
-          true
-        );
+        loadFollowList(buildListUrl(API.following(), 20), "Đang theo dõi", true);
       if (type === "followers")
-        loadFollowList(
-          buildListUrl(API.followers(), 20),
-          "Người theo dõi",
-          "follower",
-          true
-        );
+        loadFollowList(buildListUrl(API.followers(), 20), "Người theo dõi", true);
     });
   });
 }

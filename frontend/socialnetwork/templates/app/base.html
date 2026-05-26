@@ -29,12 +29,33 @@
       }
     }
   </script>
+  <script>
+    try {
+      var _fbDark = localStorage.getItem('fb_darkmode') === '1';
+      document.documentElement.classList.toggle('dark', _fbDark);
+    } catch (e) {}
+  </script>
   <style>
     .fb-nav-icon { @apply w-10 h-10 rounded-full flex items-center justify-center hover:bg-fb-secondary dark:hover:bg-gray-700 transition; }
     .fb-nav-icon.active { @apply bg-fb-secondary dark:bg-gray-700; }
     .fb-nav-icon.active svg { color: #1877f2; }
     .scrollbar-thin::-webkit-scrollbar { width: 6px; }
     .scrollbar-thin::-webkit-scrollbar-thumb { background: #bcc0c4; border-radius: 3px; }
+    .dark .scrollbar-thin::-webkit-scrollbar-thumb { background: #4e4f50; }
+    .dark { color-scheme: dark; }
+    .dark #globalSearchInput,
+    .dark #postTitle,
+    .dark #commentInput,
+    .dark #shareContent,
+    .dark #editPostTitle,
+    .dark select,
+    .dark textarea { color: #e4e6eb; }
+    .dark h1, .dark h2, .dark h3 { color: #e4e6eb; }
+    .dark .post-card { background-color: #242526; }
+    .dark button:not(.fb-nav-icon):not([class*="bg-fb"]):not([class*="bg-indigo"]):not([class*="bg-red"]):not([class*="bg-green"]):not([class*="bg-gray"]):not([class*="bg-\\["]) {
+      background-color: #3a3b3c;
+      color: #e4e6eb;
+    }
   </style>
 </head>
 <body class="bg-fb-bg dark:bg-[#18191a] min-h-screen text-gray-900 dark:text-[#e4e6eb]">
@@ -56,6 +77,9 @@
   <nav class="flex items-center justify-center gap-1 sm:gap-2 flex-1 max-w-xl">
     <a href="/" data-nav="home" class="fb-nav-icon active" title="Trang chủ">
       <svg class="w-7 h-7 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+    </a>
+    <a href="/create-article/" data-nav="articles" class="fb-nav-icon" title="Bài viết dài">
+      <svg class="w-7 h-7 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
     </a>
     <a href="/shares/" data-nav="shares" class="fb-nav-icon" title="Bài chia sẻ">
       <svg class="w-7 h-7 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
@@ -100,7 +124,7 @@
 <div id="postModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
   <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg">
     <div class="flex justify-between items-center px-4 py-3 border-b dark:border-gray-700">
-      <h2 class="text-lg font-bold">Tạo bài viết</h2>
+      <h2 class="text-lg font-bold dark:text-[#e4e6eb]">Tạo bài viết</h2>
       <button id="closePostModal" type="button" class="w-9 h-9 rounded-full bg-fb-secondary dark:bg-gray-700 hover:bg-gray-200 text-xl">&times;</button>
     </div>
     <div class="p-4 space-y-3">
@@ -128,7 +152,7 @@
 </div>
 
 <!-- Reactions list -->
-<div id="reactionsModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-center z-[60] p-4">
+<div id="reactionsModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-center z-[70] p-4">
   <div class="bg-white dark:bg-gray-800 w-full max-w-md max-h-[80vh] rounded-xl overflow-hidden flex flex-col">
     <div class="flex justify-between p-4 border-b dark:border-gray-700"><h2 class="font-bold">Cảm xúc</h2><button id="closeReactionsModal" type="button" class="text-2xl">&times;</button></div>
     <div id="reactionsList" class="overflow-y-auto p-4 space-y-2 flex-1"></div>
@@ -209,3 +233,7 @@
 {% block post_scripts %}{% endblock post_scripts %}
 </body>
 </html>
+
+</html>
+
+

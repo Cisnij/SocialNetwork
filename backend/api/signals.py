@@ -55,11 +55,9 @@ def create_profile(sender, request, email_address, **kwargs):
 
 # tạo setting khi đăng nhập bằng google
 @receiver(user_logged_in)
-def create_setting(sender,request,user,**kwargs):
-    if user.socialaccount_set.filter(provider='google').exists():
-        setting, created = Setting.objects.get_or_create(user=user)
-        setting.darkmode = False
-        setting.save()
+def create_setting(sender, request, user, **kwargs):
+    if user.socialaccount_set.filter(provider="google").exists():
+        Setting.objects.get_or_create(user=user, defaults={"darkmode": False})
 
 #=======================tạo tự động ghi log bằng activity stream để thông báo===========================
     

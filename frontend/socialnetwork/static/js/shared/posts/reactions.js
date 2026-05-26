@@ -1,4 +1,16 @@
+import { authFetch } from "../../authenticate/auth.js";
+import { API } from "../config.js";
 import { reactToPost } from "./api.js";
+
+export async function reactToComment(commentId, reactionType) {
+  const res = await authFetch(API.commentReact(commentId), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reaction_type: reactionType }),
+  });
+  if (!res.ok) throw new Error("React failed");
+  return res.json();
+}
 
 export const REACTIONS = [
   { type: "like", icon: "👍", label: "Thích" },
@@ -39,13 +51,13 @@ export function updateReactionButton(reactBtn, type) {
 }
 
 /**
- * @param {object} ctx - { postId, reactBtn, wrapper, reactionCount, post, onUpdate }
+ * @param {object} ctx - { targetId, reactFn, reactBtn, wrapper, reactionCount, entity, onApplied? }
  */
 export function createReactionBar(ctx) {
-  const { postId, reactBtn, wrapper, reactionCount, post } = ctx;
+  const { targetId, reactFn, reactBtn, wrapper } = ctx;
   const bar = document.createElement("div");
   bar.className =
-    "absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white shadow-lg rounded-full px-2 py-1 flex gap-2 z-50 hidden";
+    "absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#242526] shadow-lg rounded-full px-2 py-1 flex gap-2 z-50 hidden border border-gray-200 dark:border-[#3e4042]";
 
   let hideTimeout;
 
@@ -60,8 +72,12 @@ export function createReactionBar(ctx) {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       bar.classList.add("hidden");
-      const res = await reactToPost(postId, r.type);
-      if (res) applyReactionResponse(ctx, res, r.type);
+      try {
+        const res = await reactFn(targetId, r.type);
+        if (res) applyReactionResponse(ctx, res, r.type);
+      } catch (err) {
+        console.error("[reaction]", err);
+      }
     });
 
     bar.appendChild(btn);
@@ -79,7 +95,7 @@ export function createReactionBar(ctx) {
 }
 
 export function applyReactionResponse(
-  { reactBtn, reactionCount, post },
+  { reactBtn, reactionCount, entity, onApplied },
   res,
   fallbackType = ""
 ) {
@@ -92,10 +108,14 @@ export function applyReactionResponse(
 
   if (Array.isArray(res.count)) {
     const total = getTotalReactions(res.count);
-    reactionCount.textContent = total > 0 ? `${total} lượt thích` : "";
-    post.reactions = res.count;
+    if (reactionCount) {
+      reactionCount.textContent = total > 0 ? `${total} lượt thích` : "";
+      reactionCount.classList.toggle("hidden", total === 0);
+    }
+    entity.reactions = res.count;
   }
 
-  post.user_is_reaction = activeType;
+  entity.user_is_reaction = activeType;
   reactBtn.dataset.reaction = activeType;
+  onApplied?.(res);
 }

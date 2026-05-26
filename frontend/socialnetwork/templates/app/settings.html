@@ -8,7 +8,8 @@
   <a href="#" data-settings-tab="profile" class="px-3 py-2 border-b-2 border-fb-primary text-fb-primary">Hồ sơ</a>
   <a href="#" data-settings-tab="appearance" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Giao diện</a>
   <a href="#" data-settings-tab="email" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Email</a>
-  <a href="#" data-settings-tab="social" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Theo dõi & Chặn</a>
+  <a href="#" data-settings-tab="social" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Mạng xã hội</a>
+  <a href="#" data-settings-tab="notifications" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Thông báo</a>
   <a href="#" data-settings-tab="activity" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Hoạt động</a>
   <a href="/change-password/" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Mật khẩu</a>
 </nav>
@@ -18,6 +19,7 @@
   <input id="setLastName" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb]" placeholder="Tên">
   <textarea id="setBio" rows="3" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb]" placeholder="Giới thiệu"></textarea>
   <input id="setPhone" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb]" placeholder="Số điện thoại">
+  <img id="setAvatarPreview" src="/static/default-avatar.png" alt="" class="w-24 h-24 rounded-full object-cover border-2 border-fb-primary">
   <input id="setAvatar" type="file" accept="image/*" class="w-full text-sm dark:text-fb-muted">
   <button id="saveProfileBtn" type="button" class="px-4 py-2.5 bg-fb-primary text-white rounded-lg font-semibold hover:bg-fb-primary-hover">Lưu thay đổi</button>
 </div>
@@ -73,6 +75,54 @@
       <a href="/blocked/" class="text-sm text-fb-primary font-semibold hover:underline">Xem tất cả</a>
     </div>
     <div id="blockedList"></div>
+  </div>
+</div>
+
+<div id="panel-notifications" data-settings-panel class="hidden space-y-4 max-w-xl">
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6">
+    <h2 class="font-bold mb-4 dark:text-[#e4e6eb]">Cài đặt thông báo</h2>
+    <div class="space-y-4">
+      <div class="flex items-center justify-between py-3 border-b dark:border-fb-divider">
+        <div>
+          <p class="font-medium dark:text-[#e4e6eb]">Thông báo bài viết</p>
+          <p class="text-sm text-gray-500 dark:text-fb-muted">Nhận thông báo khi có người like, comment bài viết của bạn</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" class="sr-only peer" checked>
+          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary"></div>
+        </label>
+      </div>
+      <div class="flex items-center justify-between py-3 border-b dark:border-fb-divider">
+        <div>
+          <p class="font-medium dark:text-[#e4e6eb]">Thông báo lời mời kết bạn</p>
+          <p class="text-sm text-gray-500 dark:text-fb-muted">Nhận thông báo khi có người gửi lời mời kết bạn</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" class="sr-only peer" checked>
+          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary"></div>
+        </label>
+      </div>
+      <div class="flex items-center justify-between py-3 border-b dark:border-fb-divider">
+        <div>
+          <p class="font-medium dark:text-[#e4e6eb]">Thông báo tin nhắn</p>
+          <p class="text-sm text-gray-500 dark:text-fb-muted">Nhận thông báo khi có tin nhắn mới</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" class="sr-only peer" checked>
+          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary"></div>
+        </label>
+      </div>
+      <div class="flex items-center justify-between py-3">
+        <div>
+          <p class="font-medium dark:text-[#e4e6eb]">Thông báo email</p>
+          <p class="text-sm text-gray-500 dark:text-fb-muted">Nhận thông báo qua email</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" class="sr-only peer">
+          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary"></div>
+        </label>
+      </div>
+    </div>
   </div>
 </div>
 

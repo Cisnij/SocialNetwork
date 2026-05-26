@@ -2,8 +2,8 @@
 {% load static %}
 {% block title %}Messenger{% endblock %}
 {% block main_content %}
-<div id="chatPageRoot" data-page="chat" class="max-w-[1400px] mx-auto h-[calc(100vh-3.5rem)] flex bg-white dark:bg-fb-card shadow-sm">
-  <aside class="w-full md:w-[360px] border-r dark:border-fb-divider flex flex-col bg-white dark:bg-fb-card">
+<div id="chatPageRoot" data-page="chat" class="max-w-[1400px] mx-auto h-[calc(100vh-3.5rem)] flex bg-white dark:bg-[#242526] shadow-sm">
+  <aside class="w-full md:w-[360px] border-r dark:border-fb-divider flex flex-col bg-white dark:bg-[#242526]">
     <div class="p-3 border-b dark:border-fb-divider flex justify-between items-center">
       <h1 class="text-xl font-bold dark:text-fb-text">Messenger</h1>
       <button type="button" id="showHiddenChats" class="text-sm text-fb-primary font-semibold hover:underline">Đã ẩn</button>
@@ -16,14 +16,14 @@
     <p class="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-fb-muted uppercase tracking-wide">Tin nhắn</p>
     <div id="chatConvList" class="flex-1 overflow-y-auto scrollbar-thin"></div>
   </aside>
-  <section id="chatPanel" class="hidden md:flex flex-1 flex-col min-w-0 absolute md:relative inset-0 md:inset-auto z-10 bg-fb-bg dark:bg-fb-bg">
-    <div id="chatHeader" class="p-3 border-b dark:border-fb-divider flex items-center justify-between bg-white dark:bg-fb-card">
+  <section id="chatPanel" class="hidden md:flex flex-1 flex-col min-w-0 absolute md:relative inset-0 md:inset-auto z-10 bg-fb-bg dark:bg-[#18191a]">
+    <div id="chatHeader" class="p-3 border-b dark:border-fb-divider flex items-center justify-between bg-white dark:bg-[#242526]">
       <p id="chatTitle" class="font-bold dark:text-fb-text">Chọn hội thoại</p>
       <div id="chatHeaderActions" class="flex gap-2"></div>
     </div>
     <div id="chatPendingBanner" class="hidden p-3 bg-amber-50 dark:bg-amber-900/30 border-b dark:border-fb-divider flex gap-2 flex-wrap"></div>
     <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-1"></div>
-    <form id="chatForm" class="p-3 border-t dark:border-fb-divider flex gap-2 items-end bg-white dark:bg-fb-card">
+    <form id="chatForm" class="p-3 border-t dark:border-fb-divider flex gap-2 items-end bg-white dark:bg-[#242526]">
       <label class="cursor-pointer p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-fb-hover" title="Đính kèm">
         📎
         <input type="file" id="chatFileInput" multiple class="hidden">
@@ -34,7 +34,7 @@
   </section>
 </div>
 <div id="hiddenChatsModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-  <div class="bg-white dark:bg-fb-card rounded-xl w-full max-w-md max-h-[70vh] flex flex-col">
+  <div class="bg-white dark:bg-[#242526] rounded-xl w-full max-w-md max-h-[70vh] flex flex-col">
     <div class="p-4 border-b dark:border-fb-divider flex justify-between"><h2 class="font-bold dark:text-fb-text">Tin nhắn đã ẩn</h2><button type="button" id="closeHiddenChats" class="text-2xl">&times;</button></div>
     <div id="hiddenChatsList" class="overflow-y-auto p-2 flex-1"></div>
   </div>

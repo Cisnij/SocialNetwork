@@ -1,4 +1,4 @@
-import { POST_ENDPOINTS } from "../config.js";
+import { API, buildListUrl, POST_ENDPOINTS } from "../config.js";
 import { fetchReactionsPage } from "./api.js";
 import { deletePostById } from "./api.js";
 import { REACTIONS } from "./reactions.js";
@@ -9,7 +9,8 @@ let photosList = [];
 let currentPhotoIndex = 0;
 
 let nextReactionsUrl = null;
-let currentPostId = null;
+let currentReactionId = null;
+let currentReactionKind = "post";
 let loadingReactions = false;
 let reactionsAbort = null;
 
@@ -76,6 +77,9 @@ function setupReactionsModal() {
   const modal = document.getElementById("reactionsModal");
 
   closeBtn?.addEventListener("click", () => modal?.classList.add("hidden"));
+  modal?.addEventListener("click", (e) => {
+    if (e.target === modal) modal.classList.add("hidden");
+  });
 
   const scrollRoot =
     modal?.querySelector(".overflow-y-auto") || modal;
@@ -84,28 +88,33 @@ function setupReactionsModal() {
       scrollRoot.scrollTop + scrollRoot.clientHeight >=
       scrollRoot.scrollHeight - 80
     ) {
-      loadReactions(currentPostId, false);
+      loadReactions(currentReactionId, currentReactionKind, false);
     }
   });
 }
 
-export function openReactionsModal(postId) {
+/** @param {'post'|'comment'} kind */
+export function openReactionsModal(targetId, kind = "post") {
   const modal = document.getElementById("reactionsModal");
   if (!modal) return;
-  loadReactions(postId, true);
+  loadReactions(targetId, kind, true);
   modal.classList.remove("hidden");
 }
 
-async function loadReactions(postId, initial = true) {
+async function loadReactions(targetId, kind = "post", initial = true) {
   const list = document.getElementById("reactionsList");
   if (!list) return;
 
   if (initial) {
     reactionsAbort?.abort();
     reactionsAbort = new AbortController();
-    nextReactionsUrl = POST_ENDPOINTS.reactions(postId);
+    nextReactionsUrl =
+      kind === "comment"
+        ? buildListUrl(API.commentReactions(targetId), 20)
+        : POST_ENDPOINTS.reactions(targetId);
     list.replaceChildren();
-    currentPostId = postId;
+    currentReactionId = targetId;
+    currentReactionKind = kind;
   }
 
   if (!nextReactionsUrl || loadingReactions) return;
@@ -120,14 +129,15 @@ async function loadReactions(postId, initial = true) {
     (data.results || []).forEach((r) => {
       const item = document.createElement("div");
       item.className =
-        "flex items-center gap-3 py-2 px-1 hover:bg-gray-50 rounded";
+        "flex items-center gap-3 py-2 px-1 hover:bg-gray-50 dark:hover:bg-[#3a3b3c] rounded";
 
       const img = document.createElement("img");
       img.src = r.user?.picture || "/static/default-avatar.png";
       img.className = "w-8 h-8 rounded-full object-cover";
 
       const name = document.createElement("span");
-      name.className = "font-medium flex-1 truncate";
+      name.className =
+        "font-medium flex-1 truncate text-gray-900 dark:text-[#e4e6eb]";
       name.textContent = `${r.user?.first_name || ""} ${r.user?.last_name || ""}`.trim();
 
       const emoji = document.createElement("span");

@@ -1,0 +1,23 @@
+{% extends 'app/page-shell.html' %}
+{% load static %}
+{% block title %}Gợi ý kết bạn{% endblock %}
+{% block page_content %}
+<div class="max-w-2xl mx-auto">
+  <h1 class="text-2xl font-bold mb-6 dark:text-[#e4e6eb]">Gợi ý kết bạn</h1>
+  
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6">
+    <div id="friendSuggestList" class="space-y-4"></div>
+    <div id="emptyState" class="hidden text-center py-8">
+      <p class="text-gray-500 dark:text-fb-muted">Không có gợi ý kết bạn nào.</p>
+    </div>
+  </div>
+  
+  <div class="mt-6 bg-fb-bg dark:bg-[#3a3b3c] rounded-xl p-4 border border-gray-200 dark:border-fb-divider">
+    <h3 class="font-semibold text-gray-800 dark:text-[#e4e6eb] mb-2">💡 Gợi ý kết bạn</h3>
+    <p class="text-sm text-gray-600 dark:text-fb-muted">Dựa trên sở thích chung, bạn bè chung và các hoạt động của bạn để gợi ý những người bạn có thể quen biết.</p>
+  </div>
+</div>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/pages/friend-suggest.js' %}"></script>
+{% endblock %}

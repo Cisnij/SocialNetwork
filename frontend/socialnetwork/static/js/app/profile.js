@@ -75,4 +75,30 @@ async function getCurrentUserId() {
   }
 }
 
+export function invalidateUserProfileCache() {
+  window.currentUserPromise = null;
+  window.currentUserProfile = null;
+}
+
+export function applyProfileToNavbar(user) {
+  if (!user) return;
+  const picture =
+    user.picture && String(user.picture).trim() !== ""
+      ? user.picture
+      : DEFAULT_AVATAR;
+  const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+  const els = {
+    dropdownAvatar: document.getElementById("dropdownAvatar"),
+    avatarBtn: document.getElementById("avatarBtn"),
+    dropdownName: document.getElementById("dropdownName"),
+    profileLink: document.getElementById("profileLink"),
+    sidebarAvatar: document.getElementById("sidebarAvatar"),
+  };
+  if (els.dropdownAvatar) els.dropdownAvatar.src = picture;
+  if (els.avatarBtn) els.avatarBtn.src = picture;
+  if (els.dropdownName) els.dropdownName.textContent = fullName;
+  if (els.profileLink && user.id) els.profileLink.href = `/profile/${user.id}`;
+  if (els.sidebarAvatar) els.sidebarAvatar.src = picture;
+}
+
 export { getCurrentUserId, fetchUserProfileShared };

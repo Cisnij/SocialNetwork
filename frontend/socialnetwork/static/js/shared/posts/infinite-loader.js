@@ -19,7 +19,7 @@ function showSpinner(container) {
     "animate-spin h-7 w-7 border-4 border-indigo-500 border-t-transparent rounded-full";
 
   const text = document.createElement("p");
-  text.className = "text-gray-500 mt-2 text-sm";
+  text.className = "text-gray-500 dark:text-[#b0b3b8] mt-2 text-sm";
   text.textContent = "Đang tải bài viết...";
 
   wrapper.append(spinner, text);
@@ -30,7 +30,7 @@ function showSpinner(container) {
 function showError(container, message, onRetry) {
   const box = document.createElement("div");
   box.className =
-    "text-center py-8 px-4 bg-white rounded-xl shadow text-red-600 text-sm";
+    "text-center py-8 px-4 bg-white dark:bg-[#242526] rounded-xl shadow text-red-600 dark:text-red-400 text-sm";
   box.textContent = message;
   if (onRetry) {
     const btn = document.createElement("button");
@@ -47,7 +47,7 @@ function showError(container, message, onRetry) {
 function showEmpty(container) {
   const empty = document.createElement("p");
   empty.className =
-    "text-center py-12 text-gray-500 bg-white rounded-xl shadow text-sm";
+    "text-center py-12 text-gray-500 dark:text-[#b0b3b8] bg-white dark:bg-[#242526] rounded-xl shadow text-sm";
   empty.textContent = "Chưa có bài viết nào.";
   container.appendChild(empty);
 }
