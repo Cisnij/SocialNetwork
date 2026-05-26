@@ -32,7 +32,7 @@ export function renderPostCard(post, options = {}) {
   } = options;
 
   const article = document.createElement("article");
-  article.className = "post-card p-4 bg-white dark:bg-gray-800";
+  article.className = "post-card p-4 bg-white dark:bg-[#242526]";
   article.dataset.postId = post.post_id;
 
   // --- Header ---
@@ -133,14 +133,14 @@ export function renderPostCard(post, options = {}) {
 
   // --- Counts container (reaction + share) ---
   const countsContainer = document.createElement("div");
-  countsContainer.className = "flex justify-between items-center mb-2";
+  countsContainer.className = "flex items-center justify-between mb-2 text-sm min-h-[20px]";
 
   // --- Reaction count ---
   const totalReactions = getTotalReactions(post.reactions);
   const reactionCount = document.createElement("button");
   reactionCount.type = "button";
   reactionCount.className =
-    "text-sm text-gray-600 hover:underline font-medium";
+    "text-gray-600 dark:text-fb-muted hover:underline font-medium";
   reactionCount.textContent =
     totalReactions > 0 ? `${totalReactions} lượt thích` : "";
   reactionCount.addEventListener("click", () =>
@@ -152,12 +152,12 @@ export function renderPostCard(post, options = {}) {
   if ((post.share_count || 0) > 0) {
     shareCount = document.createElement("button");
     shareCount.type = "button";
-    shareCount.className = "text-sm text-gray-500 hover:underline font-medium";
+    shareCount.className = "text-gray-500 dark:text-fb-muted hover:underline font-medium";
     shareCount.textContent = `${post.share_count} lượt chia sẻ`;
     shareCount.addEventListener("click", () => openSharersModal(post.post_id));
   }
 
-  countsContainer.appendChild(reactionCount);
+  if (reactionCount.textContent) countsContainer.appendChild(reactionCount);
   if (shareCount) countsContainer.appendChild(shareCount);
 
   // --- Actions ---

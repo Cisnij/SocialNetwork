@@ -1,5 +1,5 @@
 import { authFetch } from "../authenticate/auth.js";
-import { API } from "../shared/config.js";
+import { POST_ENDPOINTS } from "../shared/config.js";
 import { renderPostCard } from "../shared/posts/render.js";
 import { getCurrentUserId } from "../app/profile.js";
 import {
@@ -11,32 +11,35 @@ import {
 import { initCommentsPanel } from "../shared/comments-panel.js";
 import { initShareModal } from "../shared/share-modal.js";
 
-const container = document.getElementById("sharePostContainer");
-const code = window.SHARE_CODE;
+const postId = window.POST_ID;
+const container = document.getElementById("postDetailContainer");
 
 initPostModals();
 initCommentsPanel();
 initShareModal();
 
 async function load() {
-  if (!code || !container) return;
+  if (!postId || !container) return;
   try {
-    const res = await authFetch(API.shareDetail(code));
+    const res = await authFetch(POST_ENDPOINTS.post(postId));
     if (!res.ok) {
       container.innerHTML =
-        '<p class="text-center py-12 text-gray-500">Không thể xem bài viết này.</p>';
+        '<p class="text-center py-12 text-gray-500">Không thể xem bài viết.</p>';
       return;
     }
     const post = await res.json();
-    if (post.post_id) {
-      window.location.replace(`/post/${post.post_id}/`);
-      return;
-    }
     const currentUserId = await getCurrentUserId().catch(() => null);
-    container.replaceChildren(
+    container.replaceChildren();
+    container.classList.remove("flex", "items-center", "justify-center");
+    container.appendChild(
       renderPostCard(post, {
         currentUserId,
-        onDelete: (id) => requestDeletePost(id),
+        onDelete: () => {
+          requestDeletePost(postId);
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 500);
+        },
         onOpenReactions: openReactionsModal,
         onOpenPhotos: openPhotoModal,
       })

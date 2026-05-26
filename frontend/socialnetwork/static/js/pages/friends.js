@@ -1,5 +1,5 @@
 import { authFetch } from "../authenticate/auth.js";
-import { API, buildListUrl } from "../shared/config.js";
+import { API, buildListUrl, withPageSize } from "../shared/config.js";
 import { showToast } from "../shared/toast.js";
 import { btn, createUserRow, showEmpty, showSpinner } from "../shared/ui.js";
 import { createPaginatedLoader } from "../shared/paginated-list.js";
@@ -38,7 +38,7 @@ async function loadFriends() {
   el.replaceChildren();
   const spin = showSpinner(el);
   try {
-    const res = await authFetch(buildListUrl(API.friends(), 30));
+    const res = await authFetch(withPageSize(API.friends(), 30));
     const data = await res.json();
     spin.remove();
     const items = data.results || [];

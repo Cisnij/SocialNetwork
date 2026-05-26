@@ -1,12 +1,13 @@
-// File này chỉ để khởi tạo theme cơ bản trước khi các module khác load
-// Logic chính sẽ được xử lý bởi bootstrapTheme() trong theme-init.js
+/** Sync theme from localStorage before paint (no API). */
 (function () {
   try {
-    // Chỉ đọc localStorage để avoid flash of wrong theme
-    // Logic chính sẽ được bootstrapTheme() xử lý sau
     const isDark = localStorage.getItem("fb_darkmode") === "1";
+    const root = document.documentElement;
     if (isDark) {
-      document.documentElement.classList.add("dark");
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
     }
+    document.body?.setAttribute("data-theme", isDark ? "dark" : "light");
   } catch (_) {}
 })();

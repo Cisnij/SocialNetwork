@@ -3,8 +3,9 @@
 {% block title %}Hoạt động{% endblock %}
 {% block page_content %}
 <h1 class="text-2xl font-bold mb-4">Hoạt động gần đây</h1>
-<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 max-w-xl max-h-[70vh] overflow-y-auto">
-  <div id="activityList" class="space-y-3"></div>
+<div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6 max-w-xl">
+  <div id="activityList" class="space-y-1 max-h-[60vh] overflow-y-auto"></div>
+  <button type="button" id="loadMoreActivityBtn" class="mt-4 w-full py-2 text-sm font-semibold text-fb-primary hover:bg-fb-secondary dark:hover:bg-fb-hover rounded-lg">Xem thêm</button>
 </div>
 {% endblock %}
 {% block post_scripts %}

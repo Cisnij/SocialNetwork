@@ -1,13 +1,13 @@
 import { authFetch } from "../authenticate/auth.js";
-import { API } from "../shared/config.js";
+import { API, buildListUrl, withPageSize } from "../shared/config.js";
 import { showToast } from "../shared/toast.js";
 import { confirmDialog } from "../shared/confirm.js";
-import { saveDarkMode, getSettingId, bootstrapTheme, isDarkMode } from "../shared/theme.js";
+import { saveDarkMode, isDarkMode, bootstrapTheme, parseDarkmode } from "../shared/theme.js";
 import { createUserRow, showEmpty, btn } from "../shared/ui.js";
 import { fetchPage } from "../shared/paginated-list.js";
-import { profileUrl } from "../shared/config.js";
 
 let profileId = null;
+let darkToggleBusy = false;
 
 document.querySelectorAll("[data-settings-tab]").forEach((tab) => {
   tab.addEventListener("click", (e) => {
@@ -26,7 +26,7 @@ document.querySelectorAll("[data-settings-tab]").forEach((tab) => {
 });
 
 async function init() {
-  await bootstrapTheme();
+  const setting = await bootstrapTheme();
   const u = await authFetch(API.user());
   profileId = (await u.json()).id;
 
@@ -34,10 +34,10 @@ async function init() {
   await loadEmails();
   await loadBlocked();
   await loadFollowLists();
-  await loadActivity();
   setupProfileSave();
   setupDarkToggle();
   setupEmailAdd();
+  loadActivity(true);
 }
 
 async function loadProfileForm() {
@@ -66,10 +66,32 @@ function setupProfileSave() {
 function setupDarkToggle() {
   const toggle = document.getElementById("darkModeToggle");
   if (!toggle) return;
-  toggle.checked = isDarkMode();
+  toggle.checked = setting
+    ? parseDarkmode(setting.darkmode)
+    : isDarkMode();
+  const iconWrap = document.getElementById("themeIconWrap");
+  const syncIcon = () => {
+    if (iconWrap) iconWrap.textContent = toggle.checked ? "🌙" : "☀️";
+  };
+  syncIcon();
   toggle.addEventListener("change", async () => {
-    await saveDarkMode(toggle.checked);
-    showToast(toggle.checked ? "Chế độ tối bật" : "Chế độ sáng bật");
+    if (darkToggleBusy) return;
+    darkToggleBusy = true;
+    toggle.disabled = true;
+    syncIcon();
+    try {
+      await saveDarkMode(toggle.checked);
+      syncIcon();
+      showToast(toggle.checked ? "Chế độ tối đã lưu" : "Chế độ sáng đã lưu");
+    } catch (err) {
+      console.error("saveDarkMode", err);
+      toggle.checked = !toggle.checked;
+      syncIcon();
+      showToast("Không lưu được cài đặt", "red");
+    } finally {
+      toggle.disabled = false;
+      darkToggleBusy = false;
+    }
   });
 }
 
@@ -84,9 +106,9 @@ async function loadEmails() {
     items.forEach((e) => {
       const row = document.createElement("div");
       row.className =
-        "flex flex-wrap items-center justify-between gap-2 py-3 border-b dark:border-gray-700";
+        "flex flex-wrap items-center justify-between gap-2 py-3 border-b dark:border-fb-divider";
       const info = document.createElement("div");
-      info.innerHTML = `<p class="font-medium">${e.email}</p><p class="text-xs text-gray-500">${e.primary ? "Email chính" : ""} ${e.verified ? "✓ Đã xác minh" : "⏳ Chưa xác minh"}</p>`;
+      info.innerHTML = `<p class="font-medium">${e.email}</p><p class="text-xs text-gray-500">${e.primary ? "Email chính · " : ""}${e.verified ? "✓ Đã xác minh" : "⏳ Chưa xác minh — kiểm tra hộp thư"}</p>`;
       const actions = document.createElement("div");
       actions.className = "flex gap-2";
       if (!e.primary && e.verified) {
@@ -135,6 +157,7 @@ function setupEmailAdd() {
     if (res.ok) {
       showToast("Đã gửi email xác minh — kiểm tra hộp thư");
       document.getElementById("newEmail").value = "";
+      loadEmails();
     } else showToast(data.error || "Thêm thất bại", "red");
   });
 }
@@ -142,64 +165,89 @@ function setupEmailAdd() {
 async function loadBlocked() {
   const el = document.getElementById("blockedList");
   el.replaceChildren();
-  const stored = JSON.parse(localStorage.getItem("blockedProfileIds") || "[]");
-  if (stored.length) {
-    for (const pid of stored) {
-      try {
-        const pr = await authFetch(API.profileUserpage(pid));
-        const user = await pr.json();
-        const un = btn("Bỏ chặn", "text-xs text-fb-primary");
-        un.onclick = async () => {
-          await authFetch(API.unblock(pid), { method: "DELETE" });
-          const arr = stored.filter((x) => x !== pid);
-          localStorage.setItem("blockedProfileIds", JSON.stringify(arr));
-          loadBlocked();
-        };
-        el.appendChild(createUserRow(user, { actions: un }));
-      } catch (_) {}
+  try {
+    const res = await authFetch(withPageSize(API.blockedByMe(), 50));
+    const data = await res.json();
+    const items = data.results || [];
+    if (!items.length) {
+      showEmpty(el, "Chưa chặn ai.");
+      return;
     }
-    return;
+    items.forEach((profile) => {
+      const un = btn("Bỏ chặn", "text-xs text-fb-primary font-semibold");
+      un.onclick = async () => {
+        await authFetch(API.unblock(profile.id), { method: "DELETE" });
+        showToast("Đã bỏ chặn");
+        loadBlocked();
+      };
+      el.appendChild(createUserRow(profile, { actions: un }));
+    });
+  } catch {
+    showEmpty(el, "Không tải danh sách chặn.");
   }
-  showEmpty(el, "Chưa chặn ai (hoặc chặn từ trang cá nhân).");
 }
 
 async function loadFollowLists() {
   const [f1, f2] = await Promise.all([
-    authFetch(API.followers()),
-    authFetch(API.following()),
+    authFetch(withPageSize(API.followers(), 30)),
+    authFetch(withPageSize(API.following(), 30)),
   ]);
   renderUsers(document.getElementById("followersList"), (await f1.json()).results);
   renderUsers(document.getElementById("followingList"), (await f2.json()).results);
 }
 
-function renderUsers(container, users) {
+function renderUsers(container, profiles) {
   container.replaceChildren();
-  if (!users?.length) return showEmpty(container, "Trống.");
-  users.forEach((u) => {
-    const p = document.createElement("p");
-    p.className = "text-sm py-1.5 border-b dark:border-gray-700";
-    p.textContent = `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.username;
-    container.appendChild(p);
+  if (!profiles?.length) return showEmpty(container, "Trống.");
+  profiles.forEach((profile) => {
+    if (profile?.id) container.appendChild(createUserRow(profile));
   });
 }
 
-async function loadActivity() {
+let activityNext = null;
+let activityLoading = false;
+
+async function loadActivity(reset = false) {
   const el = document.getElementById("activityList");
-  el.replaceChildren();
-  let url = `${API.activity()}?page_size=25`;
+  if (!el || activityLoading) return;
+  if (reset) {
+    activityNext = buildListUrl(API.activity(), 25);
+    el.replaceChildren();
+  }
+  if (!activityNext) return;
+
+  activityLoading = true;
+  const moreBtn = document.getElementById("loadMoreActivity");
+  if (moreBtn) moreBtn.disabled = true;
+
   try {
-    while (url) {
-      const data = await fetchPage(url);
-      (data.results || []).forEach((a) => {
-        const p = document.createElement("p");
-        p.className = "text-sm py-2 border-b dark:border-gray-700 text-gray-600 dark:text-gray-400";
-        p.textContent = `${a.actor} ${a.verb} · ${new Date(a.timestamp).toLocaleString("vi-VN")}`;
-        el.appendChild(p);
-      });
-      url = data.next;
+    const data = await fetchPage(activityNext);
+    (data.results || []).forEach((a) => {
+      const p = document.createElement("p");
+      p.className =
+        "text-sm py-2 border-b dark:border-fb-divider text-gray-600 dark:text-fb-muted";
+      p.textContent = `${a.actor} ${a.verb} · ${new Date(a.timestamp).toLocaleString("vi-VN")}`;
+      el.appendChild(p);
+    });
+    activityNext = data.next;
+    if (moreBtn) {
+      moreBtn.classList.toggle("hidden", !activityNext);
+    } else if (activityNext) {
+      const btn = document.createElement("button");
+      btn.id = "loadMoreActivity";
+      btn.type = "button";
+      btn.className =
+        "mt-3 w-full py-2 text-sm font-semibold text-fb-primary hover:bg-fb-secondary dark:hover:bg-fb-hover rounded-lg";
+      btn.textContent = "Xem thêm";
+      btn.onclick = () => loadActivity(false);
+      el.parentElement?.appendChild(btn);
     }
+    if (!el.childElementCount && !activityNext) showEmpty(el, "Chưa có hoạt động.");
   } catch {
-    showEmpty(el, "Không tải hoạt động.");
+    if (reset) showEmpty(el, "Không tải hoạt động.");
+  } finally {
+    activityLoading = false;
+    if (moreBtn) moreBtn.disabled = false;
   }
 }
 

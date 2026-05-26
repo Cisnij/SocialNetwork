@@ -1070,20 +1070,28 @@ class UnfollowView(generics.DestroyAPIView):  # hủy follow
         return Response({"detail": "Unfollowed"})
 
 
-class FollowersListView(generics.ListAPIView):  # danh sách follower của user
+class FollowersListView(generics.ListAPIView):  # người theo dõi mình (mình là followee)
     permission_classes = [IsAuthenticated]
-    serializer_class = UserSerializer
+    serializer_class = ProfileSerializer
     pagination_class = LargePagePagination
+
     def get_queryset(self):
-        return Follow.objects.followers(self.request.user)
+        follower_ids = Follow.objects.filter(
+            followee=self.request.user
+        ).values_list("follower_id", flat=True)
+        return Profile.objects.filter(user_id__in=follower_ids).select_related("user")
 
 
-class FollowingListView(generics.ListAPIView):  # danh sách đang follow của user
+class FollowingListView(generics.ListAPIView):  # người mình đang theo dõi (mình là follower)
     permission_classes = [IsAuthenticated]
-    serializer_class = UserSerializer
+    serializer_class = ProfileSerializer
     pagination_class = LargePagePagination
+
     def get_queryset(self):
-        return Follow.objects.following(self.request.user)
+        followee_ids = Follow.objects.filter(
+            follower=self.request.user
+        ).values_list("followee_id", flat=True)
+        return Profile.objects.filter(user_id__in=followee_ids).select_related("user")
 
 
 class BlockView(generics.CreateAPIView):  # chặn người dùng
@@ -1133,20 +1141,27 @@ class UnblockView(generics.DestroyAPIView):  # bỏ chặn người dùng
         return Response({'detail': 'Unblocked'}, status=200)
 
 
-class ListBlockedUser(generics.ListAPIView):  # danh sách người dùng đã chặn user
+class ListBlockedUser(generics.ListAPIView):  # ai đó đã chặn mình (api/block/touser/)
     permission_classes = [IsAuthenticated]
-    serializer_class = UserSerializer
+    serializer_class = ProfileSerializer
     pagination_class = LargePagePagination
+
     def get_queryset(self):
-        return Block.objects.blocked(user=self.request.user)
+        blocker_ids = Block.objects.filter(
+            blocked=self.request.user
+        ).values_list("blocker_id", flat=True)
+        return Profile.objects.filter(user_id__in=blocker_ids).select_related("user")
 
 
-class ListBlockedFromUser(generics.ListAPIView):  # danh sách user đã bị chặn bởi user
+class ListBlockedFromUser(generics.ListAPIView):  # danh sách user đã bị chặn bởi user (profile)
     permission_classes = [IsAuthenticated]
-    serializer_class = UserSerializer
+    serializer_class = ProfileSerializer
     pagination_class = LargePagePagination
     def get_queryset(self):
-        return Block.objects.blocking(user=self.request.user)
+        blocked_user_ids = Block.objects.filter(
+            blocker=self.request.user
+        ).values_list("blocked_id", flat=True)
+        return Profile.objects.filter(user_id__in=blocked_user_ids).select_related("user")
 
 
 # ===========================Chat=====================================================================

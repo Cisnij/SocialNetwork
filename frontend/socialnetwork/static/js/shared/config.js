@@ -39,14 +39,21 @@ export function profileUrl(profileId) {
 }
 
 /** Append query params to an absolute API list URL. */
-export function buildListUrl(basePath, pageSize) {
+export function buildListUrl(basePath, pageSize, ordering = "-created_at") {
   const url = new URL(basePath);
-  if (!url.searchParams.has("page_size")) {
+  if (pageSize != null && !url.searchParams.has("page_size")) {
     url.searchParams.set("page_size", String(pageSize));
   }
-  if (!url.searchParams.has("ordering")) {
-    url.searchParams.set("ordering", "-created_at");
+  if (ordering && !url.searchParams.has("ordering")) {
+    url.searchParams.set("ordering", ordering);
   }
+  return url.toString();
+}
+
+/** Page size only — avoids invalid ordering on friends/chat/etc. */
+export function withPageSize(basePath, pageSize) {
+  const url = new URL(basePath);
+  url.searchParams.set("page_size", String(pageSize));
   return url.toString();
 }
 

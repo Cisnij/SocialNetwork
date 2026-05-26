@@ -10,3 +10,7 @@ logic: khi kết bạn nhất chat sẽ tạo conversation, gọi api startconve
 
 #thêm throttle
 sửa lại set email primary sẽ đổi username user, email user,
+sửa share đúng fb
+sửa notification ava và nhấn load ra bài post,
+sửa chat
+sửa setting có dark mode

@@ -1,91 +1,105 @@
 import { authFetch } from "../authenticate/auth.js";
-import { API, API_BASE_URL } from "./config.js";
+import { API } from "./config.js";
 
 const STORAGE_KEY = "fb_darkmode";
 const SETTING_ID_KEY = "settingId";
+
+let bootstrapPromise = null;
+let saveInFlight = null;
+
+export function parseDarkmode(value) {
+  return value === true || value === 1 || value === "1" || value === "true";
+}
 
 export function isDarkMode() {
   return localStorage.getItem(STORAGE_KEY) === "1";
 }
 
+/** Apply dark/light immediately (no API). */
 export function applyDarkMode(on) {
-  document.documentElement.classList.toggle("dark", !!on);
-  localStorage.setItem(STORAGE_KEY, on ? "1" : "0");
-}
-
-/** Discover setting id + sync darkmode from API (all pages). */
-export async function bootstrapTheme() {
-  try {
-    // Gọi API userSetting để lấy setting của user hiện tại
-    const response = await authFetch(API.userSetting());
-    if (!response.ok) {
-      console.error('Failed to fetch user setting, using localStorage fallback');
-      // Nếu API thất bại, sử dụng localStorage
-      const localStorageDarkmode = localStorage.getItem(STORAGE_KEY) === "1";
-      applyDarkMode(localStorageDarkmode);
-      return;
-    }
-    
-    const setting = await response.json();
-    
-    // Lưu setting ID vào localStorage để sử dụng sau này
-    if (setting && setting.id) {
-      localStorage.setItem(SETTING_ID_KEY, String(setting.id));
-    }
-    
-    // Áp dụng darkmode từ setting (ưu tiên API)
-    if (setting?.darkmode) applyDarkMode(true);
-    else if (setting && !setting.darkmode) applyDarkMode(false);
-  } catch (error) {
-    console.error('Error fetching user setting:', error, 'using localStorage fallback');
-    // Nếu có lỗi, sử dụng localStorage
-    const localStorageDarkmode = localStorage.getItem(STORAGE_KEY) === "1";
-    applyDarkMode(localStorageDarkmode);
+  const enabled = !!on;
+  const root = document.documentElement;
+  if (enabled) {
+    root.classList.add("dark");
+  } else {
+    root.classList.remove("dark");
   }
+  localStorage.setItem(STORAGE_KEY, enabled ? "1" : "0");
+  document.body?.setAttribute("data-theme", enabled ? "dark" : "light");
 }
 
-export async function saveDarkMode(on) {
-  // Áp dụng ngay lập tức lên UI và localStorage
-  applyDarkMode(on);
-  
-  const settingId = localStorage.getItem(SETTING_ID_KEY);
-  if (!settingId) {
-    console.error('No setting ID found, trying to fetch setting first');
-    // Nếu không có setting ID, thử fetch lại
+export function invalidateThemeCache() {
+  bootstrapPromise = null;
+}
+
+/**
+ * Load user setting once per page load (deduped). API wins over localStorage.
+ */
+export function bootstrapTheme() {
+  if (bootstrapPromise) return bootstrapPromise;
+
+  bootstrapPromise = (async () => {
     try {
-      const response = await authFetch(API.userSetting());
-      if (response.ok) {
-        const setting = await response.json();
-        if (setting && setting.id) {
-          localStorage.setItem(SETTING_ID_KEY, String(setting.id));
-          // Gọi API để cập nhật
-          await updateSettingAPI(setting.id, on);
-        }
+      const res = await authFetch(API.userSetting());
+      if (!res.ok) {
+        applyDarkMode(isDarkMode());
+        return null;
       }
-    } catch (error) {
-      console.error('Error fetching setting:', error);
+      const setting = await res.json();
+      if (setting?.id != null) {
+        localStorage.setItem(SETTING_ID_KEY, String(setting.id));
+      }
+      const dark = parseDarkmode(setting?.darkmode);
+      applyDarkMode(dark);
+      return setting;
+    } catch {
+      applyDarkMode(isDarkMode());
+      return null;
     }
-    return;
-  }
-  
-  await updateSettingAPI(settingId, on);
+  })();
+
+  return bootstrapPromise;
 }
 
-async function updateSettingAPI(settingId, darkmode) {
-  try {
-    const response = await authFetch(API.setting(settingId), {
+/** Persist dark mode to API; always refresh setting id from GET first. */
+export async function saveDarkMode(on) {
+  applyDarkMode(on);
+
+  if (saveInFlight) {
+    try {
+      await saveInFlight;
+    } catch (_) {}
+  }
+
+  saveInFlight = (async () => {
+    const getRes = await authFetch(API.userSetting());
+    if (!getRes.ok) throw new Error("cannot load setting");
+    const setting = await getRes.json();
+    const settingId = setting.id;
+    if (settingId == null) throw new Error("no setting id");
+
+    localStorage.setItem(SETTING_ID_KEY, String(settingId));
+
+    const patchRes = await authFetch(API.setting(settingId), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ darkmode: darkmode }),
+      body: JSON.stringify({ darkmode: !!on }),
     });
-    
-    if (response.ok) {
-      console.log('Dark mode setting saved successfully to database');
-    } else {
-      console.error('Failed to save dark mode setting to database');
+    if (!patchRes.ok) {
+      const err = await patchRes.json().catch(() => ({}));
+      throw new Error(err.detail || err.error || "save failed");
     }
-  } catch (error) {
-    console.error('Error saving dark mode setting:', error);
+
+    const updated = await patchRes.json().catch(() => ({}));
+    const savedDark = parseDarkmode(updated.darkmode ?? on);
+    applyDarkMode(savedDark);
+    invalidateThemeCache();
+  })();
+
+  try {
+    await saveInFlight;
+  } finally {
+    saveInFlight = null;
   }
 }
 

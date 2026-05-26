@@ -16,9 +16,13 @@
             fb: {
               bg: '#f0f2f5',
               card: '#ffffff',
+              hover: '#f2f2f2',
               primary: '#1877f2',
               'primary-hover': '#166fe5',
               secondary: '#e4e6eb',
+              text: '#e4e6eb',
+              muted: '#b0b3b8',
+              divider: '#3e4042',
             }
           }
         }
@@ -33,10 +37,10 @@
     .scrollbar-thin::-webkit-scrollbar-thumb { background: #bcc0c4; border-radius: 3px; }
   </style>
 </head>
-<body class="bg-fb-bg dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100">
+<body class="bg-fb-bg dark:bg-[#18191a] min-h-screen text-gray-900 dark:text-[#e4e6eb]">
 
 <!-- Top navbar (Facebook-style) -->
-<header class="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-sm px-2 sm:px-4 h-14 flex items-center justify-between">
+<header class="sticky top-0 z-50 bg-white dark:bg-[#242526] shadow-sm px-2 sm:px-4 h-14 flex items-center justify-between border-b border-transparent dark:border-fb-divider">
   <div class="flex items-center gap-2 flex-1 max-w-[320px]">
     <a href="/" class="shrink-0">
       <div class="w-10 h-10 rounded-full bg-fb-primary flex items-center justify-center text-white font-bold text-xl">f</div>

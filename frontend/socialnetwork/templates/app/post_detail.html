@@ -9,5 +9,6 @@
 </main>
 {% endblock %}
 {% block post_scripts %}
+<script>window.POST_ID = {{ post_id }};</script>
 <script type="module" src="{% static 'js/pages/post-detail.js' %}"></script>
 {% endblock %}
