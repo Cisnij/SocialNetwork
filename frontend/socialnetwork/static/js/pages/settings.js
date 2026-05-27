@@ -225,7 +225,20 @@ function setupEmailAdd() {
     
     if (!checkRes.ok) {
       const checkData = await checkRes.json().catch(() => ({}));
-      showToast(checkData.detail || "Mật khẩu không đúng", "red");
+      const errorModal = document.createElement("div");
+      errorModal.className = "fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4";
+      errorModal.innerHTML = `
+        <div class="bg-white dark:bg-[#242526] rounded-xl w-full max-w-md shadow-xl p-6">
+          <h3 class="text-lg font-bold dark:text-[#e4e6eb] mb-2">Lỗi</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">${checkData.detail || "Mật khẩu không đúng"}</p>
+          <div class="flex gap-2">
+            <a href="/forgot-password/" class="flex-1 px-4 py-2 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg font-semibold text-center hover:opacity-90">Quên mật khẩu?</a>
+            <button class="flex-1 px-4 py-2 rounded-lg bg-gray-200 dark:bg-[#3a3b3c] text-gray-900 dark:text-[#e4e6eb] font-semibold hover:opacity-90" onclick="this.closest('.fixed').remove()">Đóng</button>
+          </div>
+        </div>
+      `;
+      errorModal.onclick = (e) => { if (e.target === errorModal) errorModal.remove(); };
+      document.body.appendChild(errorModal);
       return;
     }
     

@@ -153,6 +153,8 @@ urlpatterns = [
     #search
     path('api/search/', SearchAPIView.as_view(),name='search'),# search api/search/?q=
     path('api/user/search-history/',SearchHistoryView.as_view(),name='search-history'), #lịch sủ tìm kiếm
+    path('search-history/delete/', SearchHistoryDeleteAllView.as_view(),name='search-history-delete-all'), #xóa tất cả search
+    path('search-history/<int:pk>/delete/', SearchHistoryDeleteView.as_view(),name='search-history-delete'), #xóa search bất kì
     #friendsuggest
     path('api/user/friend-suggest/',FriendSuggestion.as_view(),name='friend-suggest'), # gợi ý bạn bè
     #v2-test full chức năng tạo post va ảnh trong 1 api

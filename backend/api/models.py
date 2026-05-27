@@ -358,7 +358,8 @@ class Notification(models.Model):
 #     content_object=GenericForeignKey('content_type','object_id') # dùng để tham chiếu thẳng tới object trong model đó, cách để đem model gắn vào nhiều th model khác dùng GenericRelation(Notification) và Reaction.objects.create(content_object=post, ...) và post.reactions.all()
 
 # # ======================================================================
-class SearchHistory(models.Model):
+class SearchHistory(SafeDeleteModel):
+    _safedelete_policy = SOFT_DELETE_CASCADE
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.CharField(max_length=250)
     created_at = models.DateTimeField(auto_now_add=True)

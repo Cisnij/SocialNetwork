@@ -86,4 +86,4 @@ class ProfileDocument(Document):
         return super().get_queryset().filter(deleted__isnull=True)
 
 # flow: model -> document -> seach query -> trả kết quả
-# ví dụ post, nó sẽ map dữ liệu từ thằng post qua bên elastic ở đây là chỉ lấy tilte qua đó, sau đó elastic tự query data title và cho ra kết quả dựa trên analyzer và search analyzer
+# ví dụ post, nó sẽ map dữ liệu từ thằng post qua bên elastic ở đây mỗi khi create/update và chỉ lấy tilte qua đó, sau đó elastic tự query data title và cho ra kết quả dựa trên analyzer và search analyzer và lưu db. Khi tìm kiếm chỉ cần query dựa trên db

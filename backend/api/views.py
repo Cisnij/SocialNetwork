@@ -1775,6 +1775,23 @@ class SearchHistoryView(generics.ListCreateAPIView):
     def get_queryset(self):
         return SearchHistory.objects.filter(user=self.request.user)
 
+class SearchHistoryDeleteAllView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        SearchHistory.objects.filter(user=request.user).delete()
+        return Response(status=204)
+
+class SearchHistoryDeleteView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk, *args, **kwargs):
+        deleted, _ = SearchHistory.objects.filter(
+            user=request.user, id=pk
+        ).delete()
+        if not deleted:
+            return Response({'detail': 'Not found'}, status=404)
+        return Response(status=204)
 
 class SearchAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1791,9 +1808,11 @@ class SearchAPIView(APIView):
         posts = []
         profiles = []
         profiles_qs = Profile.objects.none()
-        # Lấy danh sách user bị block và block mình
+        # Lấy danh sách user bị block và block mình và bạn mình
         blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
         blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+        friend_ids = Friend.objects.filter(from_user=user).values_list('to_user_id', flat=True)
+
         if search_type in ('all', 'posts'):  # chỉ search post khi cần
             try:
                 post_search = PostDocument.search().query( # chạy lấy ra các post tìm kiếm
@@ -1816,12 +1835,19 @@ class SearchAPIView(APIView):
                 # giữ thứ tự relevance từ Elasticsearch (score cao nhất lên đầu)
                 post_hits = list(post_search)
                 post_ids = [hit.meta.id for hit in post_hits]  # lấy id của các bài post sau lọc
-                posts_qs = Post.objects.filter(  # tìm id trong post và loại bỏ block
+                posts_qs = (Post.objects.filter(  # tìm id trong post và loại bỏ block
                     post_id__in=post_ids,
                     deleted__isnull=True
                 ).exclude(
                     Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)  # loại bài post của người bị block
-                ).select_related('user__profile').prefetch_related('photos')
+                )
+                .filter(
+                    Q(privacy='public') | #public post thì hiện trên tìm kiếm
+                    Q(privacy='friends', user_id__in=friend_ids) | # privacy friend nếu chủ post là bạn mình thì hiện
+                    Q(privacy='friends', user=user) | # privacy friend và bài mình
+                    Q(privacy='private', user=user) # bài mình nếu private
+                )
+                .select_related('user__profile').prefetch_related('photos'))
                 # sắp xếp lại theo thứ tự relevance của ES vì Django filter không giữ thứ tự
                 posts_dict = {str(p.post_id): p for p in posts_qs}
                 posts = [posts_dict[pid] for pid in post_ids if pid in posts_dict]

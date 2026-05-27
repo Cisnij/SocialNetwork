@@ -383,6 +383,19 @@ async function openConversation(conv, titleName) {
   }
 
   messagesEl.replaceChildren();
+  
+  // Show loading indicator
+  const loader = document.createElement("div");
+  loader.className = "flex items-center justify-center h-full gap-2";
+  const spinner = document.createElement("div");
+  spinner.className = "w-5 h-5 border-3 border-fb-primary border-t-transparent rounded-full animate-spin";
+  loader.appendChild(spinner);
+  const text = document.createElement("p");
+  text.className = "text-sm text-gray-500 dark:text-fb-muted";
+  text.textContent = "Đang tải...";
+  loader.appendChild(text);
+  messagesEl.appendChild(loader);
+  
   pendingBanner?.classList.add("hidden");
   pendingConv = conv.status === "pending";
   firstMessageInConv = null;
@@ -465,7 +478,9 @@ async function loadMessages(reset) {
     if (!res.ok) throw new Error(`messages ${res.status}`);
     const data = await res.json();
     const items = [...(data.results || [])].reverse();
-    if (reset) messagesEl.replaceChildren();
+    if (reset) {
+      messagesEl.replaceChildren();
+    }
     items.forEach((m) => appendMessage(m, false));
     messagesNext = data.next;
     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -559,6 +574,7 @@ function appendMessage(m, scroll = true) {
 
   const seen = document.createElement("p");
   seen.className = "msg-seen text-[10px] text-gray-400 mt-0.5 text-right";
+  seen.textContent = mine ? "⏳" : "";
   wrap.appendChild(bubble);
   if (mine) wrap.appendChild(seen);
   messagesEl.appendChild(wrap);

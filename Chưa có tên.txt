@@ -10,13 +10,16 @@ chưa xong
 
 #thêm throttle
 
+sửa lại set email primary sẽ đổi username user, email user,
+khi tìm kiếm vẫn ra bài viết riêng tư
+thêm setting default post privacy
 
 
 
 
 
 
-
+2 api mới
 
 
 
