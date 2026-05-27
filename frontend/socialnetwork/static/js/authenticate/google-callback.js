@@ -8,10 +8,30 @@
       return;
     }
 
+    // Get CSRF token
+    const getCSRFToken = () => {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') {
+          return decodeURIComponent(value);
+        }
+      }
+      return null;
+    };
+
+    const headers = { 
+      'Content-Type': 'application/json',
+    };
+    const csrfToken = getCSRFToken();
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+
     fetch('http://localhost:8000/api/auth/web/google/login/', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({
         code: code,
         redirect_uri: "http://localhost:3000/google/callback/" // phải khớp với URI đã cấu hình trong Google

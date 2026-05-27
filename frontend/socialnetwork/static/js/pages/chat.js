@@ -206,7 +206,7 @@ function renderConvItem(c) {
     wrap.appendChild(
       textEl(
         "span",
-        "bg-fb-primary text-white text-xs px-2 rounded-full shrink-0",
+        "bg-fb-primary dark:bg-[#1877f2] text-white text-xs px-2 rounded-full shrink-0",
         String(c.unread_count)
       )
     );
@@ -247,7 +247,7 @@ function showConvMenu(convId, anchor) {
   const del = document.createElement("button");
   del.type = "button";
   del.className =
-    "block w-full text-left px-4 py-2 hover:bg-fb-secondary text-red-500";
+    "block w-full text-left px-4 py-2 hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] text-red-500 dark:text-red-400";
   del.textContent = "Xóa hội thoại";
   del.onclick = async () => {
     await authFetch(API.deleteConv(convId), { method: "PATCH" });
@@ -324,7 +324,7 @@ async function applyPendingUI(conv) {
   const accept = document.createElement("button");
   accept.type = "button";
   accept.className =
-    "px-4 py-2 bg-fb-primary text-white rounded-lg text-sm font-semibold hover:bg-fb-primary-hover";
+    "px-4 py-2 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg text-sm font-semibold hover:bg-fb-primary-hover dark:hover:bg-[#166fe5]";
   accept.textContent = "Chấp nhận";
   accept.onclick = async () => {
     const res = await authFetch(API.acceptConv(conv.id), { method: "POST" });
@@ -487,7 +487,7 @@ function appendMessage(m, scroll = true) {
   const bubble = document.createElement("div");
   bubble.className = `max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
     mine
-      ? "bg-fb-primary text-white rounded-br-sm"
+      ? "bg-fb-primary dark:bg-[#1877f2] text-white rounded-br-sm"
       : "bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb] rounded-bl-sm"
   }`;
 
@@ -632,16 +632,43 @@ function bindEvents() {
       const res = await authFetch(withPageSize(API.hiddenChats(), 20));
       const data = await res.json();
       (data.results || []).forEach((c) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className =
-          "w-full text-left p-3 hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] rounded-lg dark:text-[#e4e6eb]";
-        btn.textContent = getConvTitle(c);
-        btn.onclick = () => {
+        const item = document.createElement("div");
+        item.className =
+          "flex items-center justify-between p-3 hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] rounded-lg dark:text-[#e4e6eb]";
+        
+        const name = document.createElement("span");
+        name.className = "flex-1";
+        name.textContent = getConvTitle(c);
+        
+        const actions = document.createElement("div");
+        actions.className = "flex gap-2";
+        
+        const unhideBtn = document.createElement("button");
+        unhideBtn.type = "button";
+        unhideBtn.className =
+          "px-3 py-1 bg-fb-primary dark:bg-[#1877f2] text-white rounded text-sm hover:bg-fb-primary-hover dark:hover:bg-[#166fe5]";
+        unhideBtn.textContent = "Hiện lại";
+        unhideBtn.onclick = async () => {
+          await authFetch(API.hideConv(c.id), { method: "PATCH" });
+          item.remove();
+          showToast("Đã hiện lại đoạn chat");
+          loadConversations();
+        };
+        
+        const openBtn = document.createElement("button");
+        openBtn.type = "button";
+        openBtn.className = "text-fb-primary text-sm font-semibold hover:underline";
+        openBtn.textContent = "Mở";
+        openBtn.onclick = () => {
           modal?.classList.add("hidden");
           openConversation(c);
         };
-        list?.appendChild(btn);
+        
+        actions.appendChild(unhideBtn);
+        actions.appendChild(openBtn);
+        item.appendChild(name);
+        item.appendChild(actions);
+        list?.appendChild(item);
       });
     } catch {
       showToast("Không tải tin nhắn ẩn", "red");

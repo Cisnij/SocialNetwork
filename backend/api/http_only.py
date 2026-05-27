@@ -77,7 +77,7 @@ class CookieGoogleLoginView(SocialLoginView):#ghi đè hàm login google để t
         # Tạo profile nếu chưa có
         profile, created = Profile.objects.get_or_create(
             user=user,
-            defaults={
+            defaults={ #default là có chỉ tạo mà k có giá trị thì set, get thì k chạy
                 "auth_provider": "google",
                 "first_name": extra.get("given_name"),
                 "last_name": extra.get("family_name"),
@@ -94,7 +94,7 @@ class CookieGoogleLoginView(SocialLoginView):#ghi đè hàm login google để t
         PendingProfile.objects.filter(user=user).delete()
 
         if user:
-            refreshToken = str(RefreshToken.for_user(user))
+            refreshToken = str(RefreshToken.for_user(user)) # tạo refresh token và gán vào cookie
             original_response.set_cookie(
                 key='refreshToken',
                 value=refreshToken,

@@ -14,8 +14,8 @@ function btnFb(label, primary = false) {
   b.type = "button";
   b.textContent = label;
   b.className = primary
-    ? "px-4 py-2 rounded-lg bg-fb-primary hover:bg-fb-primary-hover text-white text-sm font-semibold"
-    : "px-4 py-2 rounded-lg bg-fb-secondary dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-semibold";
+    ? "px-4 py-2 rounded-lg bg-fb-primary hover:bg-fb-primary-hover text-white dark:text-[#e4e6eb] text-sm font-semibold"
+    : "px-4 py-2 rounded-lg bg-fb-secondary dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-[#e4e6eb] text-sm font-semibold";
   return b;
 }
 
@@ -76,21 +76,23 @@ function renderActions(bar, profileId, status) {
         if (await confirmDialog("Hủy kết bạn?"))
           act(API.unfriend(profileId), "Đã hủy kết bạn", "DELETE");
       };
-      const b = btnFb("Chặn");
-      b.onclick = block;
       const msgBtn = btnFb("Nhắn tin", true);
       msgBtn.onclick = message;
-      bar.append(unfriend, b, msgBtn);
+      const b = btnFb("Chặn");
+      b.onclick = block;
+      bar.append(unfriend, msgBtn, b);
       break;
     }
     case "request_sent": {
       const cancel = btnFb("Hủy lời mời");
       cancel.onclick = () => cancelOutgoing(profileId, refresh);
-      const follow = btnFb("Theo dõi", true);
+      const msgBtn = btnFb("Nhắn tin", true);
+      msgBtn.onclick = message;
+      const follow = btnFb("Theo dõi");
       follow.onclick = () => act(API.follow(profileId), "Đã theo dõi");
       const b = btnFb("Chặn");
       b.onclick = block;
-      bar.append(cancel, follow, b);
+      bar.append(cancel, msgBtn, follow, b);
       break;
     }
     case "request_received": {
@@ -104,11 +106,11 @@ function renderActions(bar, profileId, status) {
       break;
     }
     case "following": {
-      const unfollow = btnFb("Bỏ theo dõi");
+      const unfollow = btnFb("Bỏ theo dõi", true);
       unfollow.onclick = () => act(API.unfollow(profileId), "Đã bỏ theo dõi", "DELETE");
-      const add = btnFb("Kết bạn", true);
-      add.onclick = () => act(API.friendRequest(profileId), "Đã gửi lời mời");
-      bar.append(unfollow, add);
+      const msgBtn = btnFb("Nhắn tin");
+      msgBtn.onclick = message;
+      bar.append(unfollow, msgBtn);
       break;
     }
     case "blocked": {

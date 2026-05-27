@@ -18,7 +18,6 @@ urlpatterns = [
     path('email-reset-password/', views.getEmailResetPassword),
     path('email-verified-send/', views.getEmailVerifiedSend),
     path('profile/<int:pk>/', views.getMyProfile),
-    path('create-post/',views.getAddPost),
     path('create-article/',views.getAddArticle),
     path('friends/', views.getFriends, name='friends'),
     path('chat/', views.getChat, name='chat'),
@@ -32,6 +31,5 @@ urlpatterns = [
     path('activity/', views.getActivity, name='activity'),
     path('friend-suggest/', views.getFriendSuggest, name='friend-suggest'),
     path('search-history/', views.getSearchHistory, name='search-history'),
-    path('relationship/<int:profile_id>/', views.getRelationship, name='relationship'),
-    path('test-darkmode/', views.getTestDarkmode, name='test-darkmode'),
+
 ]

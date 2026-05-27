@@ -17,11 +17,30 @@ async function confirmEmail() {
         }
 
         try {
+            // Get CSRF token
+            const getCSRFToken = () => {
+              const cookies = document.cookie.split(';');
+              for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'csrftoken') {
+                  return decodeURIComponent(value);
+                }
+              }
+              return null;
+            };
+
+            const headers = {
+                "Content-Type": "application/json",
+            };
+            const csrfToken = getCSRFToken();
+            if (csrfToken) {
+              headers['X-CSRFToken'] = csrfToken;
+            }
+
             const res = await fetch("http://127.0.0.1:8000/api/auth/registration/verify-email/", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: headers,
+                credentials: 'include',
                 body: JSON.stringify({ key }),
             });
 

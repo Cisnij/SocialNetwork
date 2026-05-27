@@ -42,13 +42,13 @@ async function loadIncomingSidebar() {
       const p = req.sender;
       const actions = document.createElement("div");
       actions.className = "flex gap-1";
-      const ok = btn("✓", "px-2 py-1 text-xs rounded-lg bg-fb-primary text-white");
+      const ok = btn("✓", "px-2 py-1 text-xs rounded-lg bg-fb-primary dark:bg-[#1877f2] text-white");
       ok.onclick = async () => {
         await authFetch(API.acceptRequest(req.id), { method: "PUT" });
         showToast("Đã chấp nhận");
         loadIncomingSidebar();
       };
-      const no = btn("✕", "px-2 py-1 text-xs rounded-lg bg-fb-secondary");
+      const no = btn("✕", "px-2 py-1 text-xs rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb]");
       no.onclick = async () => {
         await authFetch(API.rejectRequest(req.id), { method: "PUT" });
         loadIncomingSidebar();
@@ -68,7 +68,7 @@ async function loadSuggest() {
     el.replaceChildren();
     (data.results || []).slice(0, 5).forEach((s) => {
       const profile = { id: s.id, first_name: s.full_name, picture: s.picture };
-      const add = btn("Thêm", "px-2 py-1 text-xs rounded-lg bg-fb-secondary");
+      const add = btn("Thêm", "px-2 py-1 text-xs rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb]");
       add.onclick = async () => {
         await authFetch(API.friendRequest(profile.id), { method: "POST" });
         showToast("Đã gửi lời mời");

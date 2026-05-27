@@ -72,14 +72,18 @@ async function loadMore(reset) {
 function syncReactionCountBtn(btn, comment) {
   const total = getTotalReactions(comment.reactions);
   btn.textContent = total > 0 ? `${total} lượt thích` : "";
-  btn.classList.toggle("hidden", total === 0);
+  if (total === 0) {
+    btn.classList.add("hidden");
+  } else {
+    btn.classList.remove("hidden");
+  }
 }
 
 function buildCommentReactionUI(comment, meta) {
   const reactionCountBtn = document.createElement("button");
   reactionCountBtn.type = "button";
   reactionCountBtn.className =
-    "text-gray-500 dark:text-[#b0b3b8] hover:underline font-medium hidden";
+    "text-gray-500 dark:text-[#b0b3b8] hover:underline font-medium";
   syncReactionCountBtn(reactionCountBtn, comment);
   reactionCountBtn.addEventListener("click", (e) => {
     e.stopPropagation();

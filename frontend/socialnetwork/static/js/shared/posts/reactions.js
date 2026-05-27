@@ -109,8 +109,15 @@ export function applyReactionResponse(
   if (Array.isArray(res.count)) {
     const total = getTotalReactions(res.count);
     if (reactionCount) {
+      // Always remove hidden first to ensure element is visible
+      reactionCount.classList.remove("hidden");
+      
       reactionCount.textContent = total > 0 ? `${total} lượt thích` : "";
-      reactionCount.classList.toggle("hidden", total === 0);
+      
+      // Then hide again if no reactions
+      if (total === 0) {
+        reactionCount.classList.add("hidden");
+      }
     }
     entity.reactions = res.count;
   }

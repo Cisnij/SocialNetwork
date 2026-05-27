@@ -30,9 +30,28 @@ document.getElementById('register-form').addEventListener('submit',function(e){
         password2: password2
     };
     const url_register='http://localhost:8000/api/auth/registration/'
+    
+    // Get CSRF token
+    const getCSRFToken = () => {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') {
+          return decodeURIComponent(value);
+        }
+      }
+      return null;
+    };
+
+    const headers = {'Content-Type':'application/json'};
+    const csrfToken = getCSRFToken();
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+
     fetch(url_register,{
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:headers,
         credentials:'include',
         body:JSON.stringify(data)
     })

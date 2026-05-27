@@ -64,7 +64,7 @@
 <header class="sticky top-0 z-50 bg-white dark:bg-[#242526] shadow-sm px-2 sm:px-4 h-14 flex items-center justify-between border-b border-transparent dark:border-fb-divider">
   <div class="flex items-center gap-2 flex-1 max-w-[320px]">
     <a href="/" class="shrink-0">
-      <div class="w-10 h-10 rounded-full bg-fb-primary flex items-center justify-center text-white font-bold text-xl">f</div>
+      <div class="w-10 h-10 rounded-full bg-fb-primary dark:bg-[#1877f2] flex items-center justify-center text-white font-bold text-xl">f</div>
     </a>
     <div class="relative flex-1 hidden sm:block">
       <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -136,7 +136,7 @@
       </div>
     </div>
     <div class="px-4 pb-4">
-      <button id="submit" type="button" class="w-full py-2.5 bg-fb-primary hover:bg-fb-primary-hover text-white font-semibold rounded-lg">Đăng</button>
+      <button id="submit" type="button" class="w-full py-2.5 bg-fb-primary dark:bg-[#1877f2] hover:bg-fb-primary-hover dark:hover:bg-[#166fe5] text-white font-semibold rounded-lg">Đăng</button>
       <button id="closePostModal2" type="button" class="hidden">Hủy</button>
     </div>
   </div>
@@ -164,7 +164,7 @@
   <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm w-full text-center shadow-xl">
     <h3 class="font-bold text-lg mb-2">Xóa bài viết?</h3>
     <p class="text-gray-500 text-sm mb-4">Hành động này không thể hoàn tác.</p>
-    <div class="flex gap-2"><button id="cancelDelete" type="button" class="flex-1 py-2 rounded-lg bg-fb-secondary">Hủy</button><button id="confirmDelete" type="button" class="flex-1 py-2 rounded-lg bg-red-600 text-white">Xóa</button></div>
+    <div class="flex gap-2"><button id="cancelDelete" type="button" class="flex-1 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb]">Hủy</button><button id="confirmDelete" type="button" class="flex-1 py-2 rounded-lg bg-red-600 text-white">Xóa</button></div>
   </div>
 </div>
 
@@ -179,7 +179,7 @@
       <input type="hidden" id="commentParentId" value="">
       <div class="flex gap-2">
         <textarea id="commentInput" rows="1" placeholder="Viết bình luận..." class="flex-1 rounded-full px-4 py-2 bg-fb-secondary dark:bg-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-fb-primary"></textarea>
-        <button id="submitCommentBtn" type="button" class="px-4 py-2 bg-fb-primary text-white rounded-full text-sm font-semibold">Gửi</button>
+        <button id="submitCommentBtn" type="button" class="px-4 py-2 bg-fb-primary dark:bg-[#1877f2] text-white rounded-full text-sm font-semibold">Gửi</button>
       </div>
     </div>
   </div>
@@ -191,7 +191,7 @@
     <div class="flex justify-between mb-3"><h2 class="font-bold">Chia sẻ lên dòng thời gian</h2><button id="closeShareModal" type="button" class="text-2xl">&times;</button></div>
     <textarea id="shareContent" rows="3" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 mb-3" placeholder="Viết gì đó về bài này..."></textarea>
     <select id="sharePrivacy" class="w-full p-2 rounded-lg border dark:border-gray-600 mb-3 text-sm"><option value="public">Công khai</option><option value="friends">Bạn bè</option><option value="private">Chỉ mình tôi</option></select>
-    <button id="confirmShareBtn" type="button" class="w-full py-2.5 bg-fb-primary text-white rounded-lg font-semibold">Đăng chia sẻ</button>
+    <button id="confirmShareBtn" type="button" class="w-full py-2.5 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg font-semibold">Đăng chia sẻ</button>
   </div>
 </div>
 
@@ -210,7 +210,7 @@
     <textarea id="editPostTitle" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 mb-3"></textarea>
     <div id="editImageContainer" class="flex flex-wrap gap-2 mb-3"></div>
     <input id="editNewImages" type="file" multiple accept="image/*" class="mb-4 w-full text-sm">
-    <div class="flex gap-2 justify-end"><button id="cancelEditPost" type="button" class="px-4 py-2 rounded-lg bg-fb-secondary">Hủy</button><button id="savePostChanges" type="button" class="px-4 py-2 rounded-lg bg-fb-primary text-white">Lưu</button></div>
+    <div class="flex gap-2 justify-end"><button id="cancelEditPost" type="button" class="px-4 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb]">Hủy</button><button id="savePostChanges" type="button" class="px-4 py-2 rounded-lg bg-fb-primary dark:bg-[#1877f2] text-white">Lưu</button></div>
   </div>
 </div>
 
@@ -219,7 +219,7 @@
   <div class="bg-white dark:bg-gray-800 rounded-xl p-5 max-w-sm w-full shadow-xl">
     <h3 id="confirmModalTitle" class="font-bold text-lg mb-2">Xác nhận</h3>
     <p id="confirmModalMessage" class="text-gray-600 dark:text-gray-400 text-sm mb-4"></p>
-    <div class="flex gap-2"><button id="confirmModalCancel" type="button" class="flex-1 py-2 rounded-lg bg-fb-secondary">Hủy</button><button id="confirmModalOk" type="button" class="flex-1 py-2 rounded-lg bg-fb-primary text-white">OK</button></div>
+    <div class="flex gap-2"><button id="confirmModalCancel" type="button" class="flex-1 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb]">Hủy</button><button id="confirmModalOk" type="button" class="flex-1 py-2 rounded-lg bg-fb-primary dark:bg-[#1877f2] text-white">OK</button></div>
   </div>
 </div>
 
@@ -235,5 +235,7 @@
 </html>
 
 </html>
+
+
 
 

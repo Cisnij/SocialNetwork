@@ -26,9 +26,27 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // Get CSRF token
+    const getCSRFToken = () => {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') {
+          return decodeURIComponent(value);
+        }
+      }
+      return null;
+    };
+
+    const headers = { 'Content-Type': 'application/json' };
+    const csrfToken = getCSRFToken();
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+
     fetch('http://localhost:8000/api/auth/password/reset/confirm/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       credentials:'include',
       body: JSON.stringify({ uid, token, new_password1, new_password2 })
     })

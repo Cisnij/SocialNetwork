@@ -63,7 +63,7 @@ async function loadSearchHistory() {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className =
-        "block w-full text-left px-4 py-2 text-sm hover:bg-fb-secondary dark:hover:bg-gray-700";
+        "block w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-[#e4e6eb] hover:bg-fb-secondary dark:hover:bg-gray-700";
       btn.textContent = h.content;
       btn.onclick = () => {
         window.location.href = `/search/?q=${encodeURIComponent(h.content)}`;

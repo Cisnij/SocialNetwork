@@ -673,7 +673,7 @@ class CommentListCreate(generics.ListCreateAPIView):  # thêm list comment
             if parent is None:  # không tìm thấy hoặc đã bị xóa
                 raise ValidationError("Comment cha không khả dụng.")
             # Chỉ 1 cấp reply: nếu client gửi id reply con thì gắn về comment gốc
-            if parent.parent_id is not None:
+            if parent.parent_id is not None: # check chỉ được reply 1 cấp , nếu parent đã có parent thì k cho và gán comment gốc đó luôn
                 parent = Comment.objects.filter(
                     id=parent.parent_id, post_id=post_id
                 ).only('id', 'parent_id').first()

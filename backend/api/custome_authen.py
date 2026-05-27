@@ -167,4 +167,4 @@ class DeleteAccount(APIView):
         user=request.user
         SocialAccount.objects.filter(user=user).delete()
         user.delete()
-        return Response({"detail":"success"},status=204)
+        return Response({"detail":"success"},status=200)

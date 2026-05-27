@@ -145,6 +145,7 @@ export function renderPostCard(post, options = {}) {
     "text-gray-600 dark:text-fb-muted hover:underline font-medium";
   reactionCount.textContent =
     totalReactions > 0 ? `${totalReactions} lượt thích` : "";
+  reactionCount.classList.toggle("hidden", totalReactions === 0);
   reactionCount.addEventListener("click", () =>
     onOpenReactions?.(post.post_id)
   );
@@ -159,7 +160,7 @@ export function renderPostCard(post, options = {}) {
     shareCount.addEventListener("click", () => openSharersModal(post.post_id));
   }
 
-  if (reactionCount.textContent) countsContainer.appendChild(reactionCount);
+  countsContainer.appendChild(reactionCount);
   if (shareCount) countsContainer.appendChild(shareCount);
 
   // --- Actions ---

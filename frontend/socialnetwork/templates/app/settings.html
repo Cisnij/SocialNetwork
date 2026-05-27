@@ -11,6 +11,8 @@
   <a href="#" data-settings-tab="social" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Mạng xã hội</a>
   <a href="#" data-settings-tab="notifications" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Thông báo</a>
   <a href="#" data-settings-tab="activity" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Hoạt động</a>
+  <a href="#" data-settings-tab="privacy" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Quyền riêng tư</a>
+  <a href="#" data-settings-tab="about" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Về chúng tôi</a>
   <a href="/change-password/" class="px-3 py-2 text-gray-500 dark:text-fb-muted">Mật khẩu</a>
 </nav>
 
@@ -21,7 +23,7 @@
   <input id="setPhone" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb]" placeholder="Số điện thoại">
   <img id="setAvatarPreview" src="/static/default-avatar.png" alt="" class="w-24 h-24 rounded-full object-cover border-2 border-fb-primary">
   <input id="setAvatar" type="file" accept="image/*" class="w-full text-sm dark:text-fb-muted">
-  <button id="saveProfileBtn" type="button" class="px-4 py-2.5 bg-fb-primary text-white rounded-lg font-semibold hover:bg-fb-primary-hover">Lưu thay đổi</button>
+  <button id="saveProfileBtn" type="button" class="px-4 py-2.5 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg font-semibold hover:bg-fb-primary-hover dark:hover:bg-[#166fe5]">Lưu thay đổi</button>
 </div>
 
 <div id="panel-appearance" data-settings-panel class="hidden max-w-xl">
@@ -36,7 +38,7 @@
       </div>
       <label class="relative inline-flex items-center cursor-pointer shrink-0">
         <input id="darkModeToggle" type="checkbox" class="sr-only peer">
-        <div class="w-[52px] h-7 bg-gray-300 rounded-full peer dark:bg-[#4e4f50] peer-checked:bg-fb-primary peer-focus:ring-2 peer-focus:ring-fb-primary/40 after:content-[''] after:absolute after:top-0.5 after:left-[3px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:after:translate-x-[22px]"></div>
+        <div class="w-[52px] h-7 bg-gray-300 rounded-full peer dark:bg-[#4e4f50] peer-checked:bg-fb-primary peer-checked:dark:bg-[#1877f2] peer-focus:ring-2 peer-focus:ring-fb-primary/40 after:content-[''] after:absolute after:top-0.5 after:left-[3px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:after:translate-x-[22px]"></div>
       </label>
     </div>
     <div class="px-5 pb-5">
@@ -56,7 +58,7 @@
   <p class="text-xs text-amber-600 dark:text-amber-400 mb-3">Sau khi thêm email, kiểm tra hộp thư để xác minh.</p>
   <div class="flex gap-2">
     <input id="newEmail" type="email" class="flex-1 p-3 rounded-lg bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb]" placeholder="email@moi.com">
-    <button id="addEmailBtn" type="button" class="px-4 py-2 bg-fb-primary text-white rounded-lg font-semibold">Thêm</button>
+    <button id="addEmailBtn" type="button" class="px-4 py-2 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg font-semibold">Thêm</button>
   </div>
 </div>
 
@@ -89,7 +91,7 @@
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" class="sr-only peer" checked>
-          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary"></div>
+          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary peer-checked:dark:bg-[#1877f2]"></div>
         </label>
       </div>
       <div class="flex items-center justify-between py-3 border-b dark:border-fb-divider">
@@ -99,7 +101,7 @@
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" class="sr-only peer" checked>
-          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary"></div>
+          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary peer-checked:dark:bg-[#1877f2]"></div>
         </label>
       </div>
       <div class="flex items-center justify-between py-3 border-b dark:border-fb-divider">
@@ -109,7 +111,7 @@
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" class="sr-only peer" checked>
-          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary"></div>
+          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary peer-checked:dark:bg-[#1877f2]"></div>
         </label>
       </div>
       <div class="flex items-center justify-between py-3">
@@ -119,7 +121,7 @@
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" class="sr-only peer">
-          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary"></div>
+          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary peer-checked:dark:bg-[#1877f2]"></div>
         </label>
       </div>
     </div>
@@ -127,7 +129,94 @@
 </div>
 
 <div id="panel-activity" data-settings-panel class="hidden bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6 max-w-xl">
-  <div id="activityList" class="max-h-[50vh] overflow-y-auto"></div>
+  <div class="flex gap-2 p-4 border-b dark:border-fb-divider mb-4">
+    <button data-activity-filter="all" class="activity-filter px-4 py-2 rounded-lg text-sm font-medium bg-fb-primary dark:bg-[#1877f2] text-white">Tất cả</button>
+    <button data-activity-filter="posts" class="activity-filter px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-fb-muted hover:bg-fb-secondary dark:hover:bg-[#3a3b3c]">Bài viết</button>
+    <button data-activity-filter="comments" class="activity-filter px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-fb-muted hover:bg-fb-secondary dark:hover:bg-[#3a3b3c]">Bình luận</button>
+    <button data-activity-filter="likes" class="activity-filter px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-fb-muted hover:bg-fb-secondary dark:hover:bg-[#3a3b3c]">Lượt thích</button>
+    <button data-activity-filter="friends" class="activity-filter px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-fb-muted hover:bg-fb-secondary dark:hover:bg-[#3a3b3c]">Bạn bè</button>
+  </div>
+  <div id="activityList" class="divide-y dark:divide-fb-divider max-h-[50vh] overflow-y-auto"></div>
+  <div class="p-4 border-t dark:border-fb-divider">
+    <button type="button" id="loadMoreActivityBtn" class="w-full py-3 text-sm font-semibold text-fb-primary hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] rounded-lg transition hidden">Xem thêm hoạt động</button>
+  </div>
+</div>
+
+<div id="panel-privacy" data-settings-panel class="hidden space-y-4 max-w-xl">
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6">
+    <h2 class="font-bold mb-4 dark:text-[#e4e6eb]">Quyền riêng tư</h2>
+    <div class="space-y-4">
+      <div class="flex items-center justify-between py-3 border-b dark:border-fb-divider">
+        <div>
+          <p class="font-medium dark:text-[#e4e6eb]">Chế độ riêng tư mặc định cho bài viết</p>
+          <p class="text-sm text-gray-500 dark:text-fb-muted">Chọn ai có thể xem bài viết của bạn theo mặc định</p>
+        </div>
+        <select class="bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb] rounded-lg px-3 py-2 text-sm">
+          <option>Công khai</option>
+          <option>Bạn bè</option>
+          <option>Chỉ mình tôi</option>
+        </select>
+      </div>
+      <div class="flex items-center justify-between py-3">
+        <div>
+          <p class="font-medium dark:text-[#e4e6eb]">Cho phép người lạ tìm thấy hồ sơ</p>
+          <p class="text-sm text-gray-500 dark:text-fb-muted">Mọi người có thể tìm thấy hồ sơ của bạn qua tìm kiếm</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" class="sr-only peer" checked>
+          <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fb-primary peer-checked:dark:bg-[#1877f2]"></div>
+        </label>
+      </div>
+    </div>
+  </div>
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="font-bold dark:text-[#e4e6eb]">Đã chặn</h2>
+      <a href="/blocked/" class="text-sm text-fb-primary font-semibold hover:underline">Xem tất cả</a>
+    </div>
+    <div id="blockedUsersList" class="space-y-2"></div>
+  </div>
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6">
+    <h2 class="font-bold mb-2 dark:text-[#e4e6eb]">Lịch sử tìm kiếm</h2>
+    <p class="text-sm text-gray-500 dark:text-fb-muted mb-4">Quản lý lịch sử tìm kiếm của bạn</p>
+    <div id="searchHistoryList" class="divide-y dark:divide-fb-divider"></div>
+    <div class="p-4 border-t dark:border-fb-divider mt-4">
+      <button type="button" id="clearSearchHistoryBtn" class="text-sm text-red-500 hover:text-red-600 font-medium">Xóa tất cả lịch sử tìm kiếm</button>
+    </div>
+  </div>
+</div>
+
+<div id="panel-about" data-settings-panel class="hidden max-w-xl">
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6">
+    <h2 class="font-bold mb-4 dark:text-[#e4e6eb]">Về SocialNetwork</h2>
+    <div class="space-y-4">
+      <div>
+        <h3 class="font-semibold dark:text-[#e4e6eb] mb-2">🌟 Nền tảng kết nối hiện đại</h3>
+        <p class="text-sm text-gray-600 dark:text-fb-muted">SocialNetwork là nơi bạn kết nối với bạn bè, chia sẻ khoảnh khắc và khám phá nội dung thú vị.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold dark:text-[#e4e6eb] mb-2">💬 Chat thời gian thực</h3>
+        <p class="text-sm text-gray-600 dark:text-fb-muted">Nhắn tin và gọi video với bạn bè theo thời gian thực với công nghệ WebSocket.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold dark:text-[#e4e6eb] mb-2">🔒 Bảo mật & Quyền riêng tư</h3>
+        <p class="text-sm text-gray-600 dark:text-fb-muted">Dữ liệu của bạn được bảo vệ với các tiêu chuẩn bảo mật hiện đại.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold dark:text-[#e4e6eb] mb-2">📱 Đa nền tảng</h3>
+        <p class="text-sm text-gray-600 dark:text-fb-muted">Truy cập từ mọi thiết bị - desktop, tablet và mobile.</p>
+      </div>
+    </div>
+    <div class="mt-6 pt-6 border-t dark:border-fb-divider">
+      <p class="text-sm text-gray-500 dark:text-fb-muted text-center">© 2025 SocialNetwork. Phiên bản 1.0.0</p>
+    </div>
+  </div>
+</div>
+
+<div class="mt-8 bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6 max-w-xl border border-red-200 dark:border-red-900">
+  <h2 class="font-bold text-red-600 dark:text-red-400 mb-2">Xóa tài khoản</h2>
+  <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn sẽ bị xóa vĩnh viễn.</p>
+  <button id="deleteAccountBtn" type="button" class="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700">Xóa tài khoản</button>
 </div>
 {% endblock %}
 {% block post_scripts %}

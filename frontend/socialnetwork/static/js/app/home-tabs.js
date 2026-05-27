@@ -38,13 +38,13 @@ async function loadIncoming() {
     items.forEach((req) => {
       const actions = document.createElement("div");
       actions.className = "flex gap-2 flex-wrap";
-      const accept = btn("Chấp nhận", "px-3 py-1.5 text-sm rounded-lg bg-fb-primary text-white");
+      const accept = btn("Chấp nhận", "px-3 py-1.5 text-sm rounded-lg bg-fb-primary dark:bg-[#1877f2] text-white");
       accept.onclick = async () => {
         await authFetch(API.acceptRequest(req.id), { method: "PUT" });
         showToast("Đã chấp nhận");
         loadIncoming();
       };
-      const reject = btn("Từ chối", "px-3 py-1.5 text-sm rounded-lg bg-fb-secondary");
+      const reject = btn("Từ chối", "px-3 py-1.5 text-sm rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb]");
       reject.onclick = async () => {
         await authFetch(API.rejectRequest(req.id), { method: "PUT" });
         loadIncoming();
@@ -66,7 +66,7 @@ async function loadOutgoing() {
     const items = data.results || [];
     if (!items.length) return showEmpty(el, "Chưa gửi lời mời.");
     items.forEach((req) => {
-      const cancel = btn("Hủy lời mời", "px-3 py-1.5 text-sm rounded-lg bg-fb-secondary");
+      const cancel = btn("Hủy lời mời", "px-3 py-1.5 text-sm rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb]");
       cancel.onclick = async () => {
         await authFetch(API.cancelRequest(req.id), { method: "DELETE" });
         showToast("Đã hủy");

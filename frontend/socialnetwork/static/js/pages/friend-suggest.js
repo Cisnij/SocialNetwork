@@ -57,7 +57,7 @@ function renderSuggestCard(profile) {
   );
   card.append(info);
 
-  const addBtn = el("button", "px-4 py-2 bg-fb-primary text-white rounded-lg font-semibold hover:bg-fb-primary-hover text-sm shrink-0", {
+  const addBtn = el("button", "px-4 py-2 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg font-semibold hover:bg-fb-primary-hover dark:hover:bg-[#166fe5] text-sm shrink-0", {
     type: "button",
     text: "Thêm bạn",
   });
@@ -70,7 +70,7 @@ function renderSuggestCard(profile) {
       if (!res.ok) throw new Error("request failed");
       addBtn.textContent = "Đã gửi";
       addBtn.className =
-        "px-4 py-2 bg-fb-secondary text-gray-700 dark:text-fb-muted rounded-lg text-sm shrink-0 cursor-default";
+        "px-4 py-2 bg-fb-secondary dark:bg-[#4e4f50] text-gray-700 dark:text-[#e4e6eb] rounded-lg text-sm shrink-0 cursor-default";
       showToast("Đã gửi lời mời kết bạn");
     } catch {
       addBtn.disabled = false;

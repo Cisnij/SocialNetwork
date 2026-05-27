@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (status === "request_received") {
         const actions = el("div", "flex gap-2 flex-wrap");
-        const accept = el("button", "px-4 py-2 bg-fb-primary text-white rounded-lg text-sm font-semibold", {
+        const accept = el("button", "px-4 py-2 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg text-sm font-semibold", {
           type: "button",
           text: "Xem lời mời bạn bè",
         });
@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
         actions.appendChild(accept);
         box.append(actions);
       } else if (status === "friend" || status === "none" || status === "following") {
-        const chatBtn = el("button", "px-4 py-2 bg-fb-primary text-white rounded-lg text-sm font-semibold", {
+        const chatBtn = el("button", "px-4 py-2 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg text-sm font-semibold", {
           type: "button",
           text: "Nhắn tin",
         });

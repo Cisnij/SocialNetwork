@@ -1,12 +1,30 @@
 var accessToken = localStorage.getItem('accessToken');
 
+function getCSRFToken() {
+  // Get CSRF token from cookie
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'csrftoken') {
+      return decodeURIComponent(value);
+    }
+  }
+  return null;
+}
+
 async function refreshAccessToken() { // hàm này sẽ được gọi khi accessToken hết hạn
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  const csrfToken = getCSRFToken();
+  if (csrfToken) {
+    headers['X-CSRFToken'] = csrfToken;
+  }
+
   const res = await fetch('http://localhost:8000/api/auth/web/token/refresh/', {
     method: 'POST',
     credentials: 'include', // gửi cookie HTTP-only và dùng refresh đổi access token
-    headers: {
-      'Content-Type': 'application/json'
-    }
+    headers: headers
   });
 
   if (!res.ok) {
@@ -21,8 +39,17 @@ async function refreshAccessToken() { // hàm này sẽ được gọi khi acces
 function buildAuthHeaders(options = {}) {
   const headers = {
     ...options.headers,
-    Authorization: `Bearer ${accessToken}`,
   };
+  
+  // Add CSRF token for state-changing requests (POST, PUT, DELETE, PATCH)
+  const method = (options.method || 'GET').toUpperCase();
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+    const csrfToken = getCSRFToken();
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+  }
+  
   // FormData: browser must set multipart boundary — never force Content-Type
   if (options.body instanceof FormData) {
     delete headers["Content-Type"];
@@ -31,35 +58,16 @@ function buildAuthHeaders(options = {}) {
   return headers;
 }
 
-async function authFetch(url, options = {}) { // hàm này dùng để sau này fetch cần kiểm tra authentic k, nếu có mới cho post, options dùng để lấy ra method là POST hay GET...
-  if (!accessToken) { //chưa đăng nhập
-    try {
-      await refreshAccessToken();
-    } catch (error) {
-      logout();
-      throw error;
-    }
-  }
-    //có token thì gọi fetch kèm token, nếu fetch lỗi thì token hết hạn và gọi tạo lại token và fetch lần nữa
+async function authFetch(url, options = {}) { // Web uses cookie authentication
   let res = await fetch(url, {
     ...options,
     headers: buildAuthHeaders(options),
     credentials: 'include',
   });
 
-  if (res.status === 401) { //hết hạn access
-    try {
-      await refreshAccessToken();
-    } catch (e) {
-      logout(); //hết hạn refresh
-      throw e;
-    }
-
-    res = await fetch(url, {
-      ...options,
-      headers: buildAuthHeaders(options),
-      credentials: 'include',
-    });
+  if (res.status === 401) { // session expired
+    logout();
+    throw new Error('Unauthorized');
   }
 
   return res;
@@ -79,4 +87,8 @@ function RedirectIfNotAuth() {
   }
 }
 
-export { refreshAccessToken, authFetch, RedirectIfAuth,RedirectIfNotAuth };
+function logout() {
+  window.location.href = 'http://localhost:3000/login/';
+}
+
+export { refreshAccessToken, authFetch, RedirectIfAuth,RedirectIfNotAuth, logout };

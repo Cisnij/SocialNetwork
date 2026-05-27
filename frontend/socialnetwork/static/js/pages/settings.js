@@ -1,7 +1,7 @@
 import { authFetch } from "../authenticate/auth.js";
 import { API, buildListUrl, withPageSize } from "../shared/config.js";
 import { showToast } from "../shared/toast.js";
-import { confirmDialog } from "../shared/confirm.js";
+import { confirmDialog, passwordPrompt } from "../shared/confirm.js";
 import { saveDarkMode, isDarkMode, bootstrapTheme, parseDarkmode } from "../shared/theme.js";
 import { createUserRow, showEmpty, btn } from "../shared/ui.js";
 import {
@@ -46,6 +46,7 @@ async function init() {
   setupProfileSave();
   setupDarkToggle();
   setupEmailAdd();
+  setupDeleteAccount();
   loadActivity(true);
 }
 
@@ -175,7 +176,7 @@ async function loadEmails() {
       const actions = document.createElement("div");
       actions.className = "flex gap-2";
       if (!e.primary && e.verified) {
-        const primary = btn("Đặt làm chính", "text-xs px-2 py-1 rounded bg-fb-primary text-white");
+        const primary = btn("Đặt làm chính", "text-xs px-2 py-1 rounded bg-fb-primary dark:bg-[#1877f2] text-white");
         primary.onclick = async () => {
           if (!(await confirmDialog(`Đặt ${e.email} làm email chính?`))) return;
           await authFetch(API.setPrimaryEmail(e.id), { method: "POST" });
@@ -211,6 +212,23 @@ function setupEmailAdd() {
   document.getElementById("addEmailBtn")?.addEventListener("click", async () => {
     const email = document.getElementById("newEmail").value.trim();
     if (!email) return;
+    
+    // Check password first
+    const password = await passwordPrompt("Nhập mật khẩu để xác nhận thêm email mới", "Xác nhận mật khẩu");
+    if (!password) return;
+    
+    const checkRes = await authFetch("http://localhost:8000/api/auth/check-email/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: password }),
+    });
+    
+    if (!checkRes.ok) {
+      const checkData = await checkRes.json().catch(() => ({}));
+      showToast(checkData.detail || "Mật khẩu không đúng", "red");
+      return;
+    }
+    
     const res = await authFetch(API.addEmail(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -300,7 +318,7 @@ async function loadActivity(reset = false) {
       btn.id = "loadMoreActivity";
       btn.type = "button";
       btn.className =
-        "mt-3 w-full py-2 text-sm font-semibold text-fb-primary hover:bg-fb-secondary dark:hover:bg-fb-hover rounded-lg";
+        "mt-3 w-full py-2 text-sm font-semibold text-fb-primary dark:text-[#1877f2] hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] rounded-lg";
       btn.textContent = "Xem thêm";
       btn.onclick = () => loadActivity(false);
       el.parentElement?.appendChild(btn);
@@ -315,3 +333,29 @@ async function loadActivity(reset = false) {
 }
 
 init();
+
+
+function setupDeleteAccount() {
+  document.getElementById("deleteAccountBtn")?.addEventListener("click", async () => {
+    const password = await passwordPrompt("Nhập mật khẩu để xác nhận xóa tài khoản. Hành động này không thể hoàn tác.", "Xác nhận xóa tài khoản");
+    if (!password) return;
+    
+    if (!(await confirmDialog("Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác."))) return;
+    
+    const res = await authFetch(API.deleteAccount(), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: password }),
+    });
+    
+    if (res.ok) {
+      showToast("Đã xóa tài khoản. Đang chuyển hướng...", "green");
+      setTimeout(() => {
+        window.location.href = "/login/";
+      }, 2000);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      showToast(data.detail || "Lỗi xóa tài khoản", "red");
+    }
+  });
+}

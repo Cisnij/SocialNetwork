@@ -27,7 +27,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     #friends = serializers.PrimaryKeyRelatedField(many=True, read_only=True) #cách tạo serializer của many to many field
     is_online=serializers.SerializerMethodField()
     user = serializers.IntegerField(source='user_id', read_only=True)
-    picture = serializers.ImageField(required=False, allow_null=True)
+    picture = serializers.ImageField(required=False, allow_null=True) # nhận vòoo dạng imagefield để nhận file ảnh và để validate ảnh và lưu vào db
 
     class Meta:
         model=Profile

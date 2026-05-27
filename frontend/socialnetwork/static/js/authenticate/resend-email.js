@@ -14,11 +14,30 @@ document.getElementById('resend-email-btn').addEventListener('click',()=>{
     btn.textContent = 'Đang gửi...';
     msg.textContent = '';
 
+    // Get CSRF token
+    const getCSRFToken = () => {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') {
+          return decodeURIComponent(value);
+        }
+      }
+      return null;
+    };
+
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+    const csrfToken = getCSRFToken();
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+
     fetch(url,{
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: headers,
+        credentials: 'include',
         body: JSON.stringify({email})
     })
     .then(res => {

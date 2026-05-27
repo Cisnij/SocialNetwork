@@ -178,7 +178,7 @@ export function btn(text, className = "") {
 export function btnPrimary(text, extra = "") {
   return btn(
     text,
-    `px-4 py-2 text-sm rounded-lg font-semibold bg-fb-primary text-white hover:bg-fb-primary-hover ${extra}`.trim()
+    `px-4 py-2 text-sm rounded-lg font-semibold bg-fb-primary text-white dark:text-[#e4e6eb] hover:bg-fb-primary-hover ${extra}`.trim()
   );
 }
 
