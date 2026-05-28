@@ -31,7 +31,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model=Profile
-        fields=['id', 'user', 'first_name', 'last_name', 'picture','date_of_birth','phone_number','bio','is_completed','created_at','auth_provider', 'is_online']
+        fields=['id', 'user', 'first_name', 'last_name', 'picture','bio','is_completed','created_at','auth_provider', 'is_online']
         extra_kwargs = {"user": {"read_only": True}} # loại trừ trường user là read only 
         
     def get_is_online(self,obj):
