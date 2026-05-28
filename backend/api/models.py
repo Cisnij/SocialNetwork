@@ -108,6 +108,7 @@ class Post(SafeDeleteModel):
     share_code = models.CharField(max_length=10, unique=True, default=generate_shared_code, editable=False)
     share_count=models.PositiveIntegerField(default=0)
     privacy= models.CharField(max_length=15,choices=PRIVACY_CHOICES,default='public')
+    is_pinned= models.BooleanField(default=False)
     # group=models.ForeignKey(Group,null=True,blank=True)
     def __str__(self):
         return f"Post {self.post_id} | user_id={self.user_id} | {self.title[:30]}"
@@ -117,8 +118,8 @@ class Post(SafeDeleteModel):
             models.Index(fields=['user', '-created_at']),
             models.Index(fields=['title']),
             models.Index(fields=['share_code']),
-            models.Index(fields=['user', 'privacy']),
-            models.Index(fields=['privacy', '-created_at'])
+            models.Index(fields=['user','privacy','-is_pinned', '-created_at']),
+            models.Index(fields=['privacy', '-created_at']),
         ]
 
 

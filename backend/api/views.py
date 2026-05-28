@@ -318,13 +318,13 @@ class PostUser(generics.ListAPIView):  # List tất cả post của user
                 raise PermissionDenied("Cannot see posts of this user")
             #là chính mình thì lấy tất cả
             if user==target_user:
-                self._qs= Post.objects.filter(user=target_user).select_related('user__profile').prefetch_related('photos').order_by("-created_at")
+                self._qs= Post.objects.filter(user=target_user).select_related('user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
             # là bạn thì lấy post public và friend
             elif Friend.objects.are_friends(user,target_user):
-                self._qs= Post.objects.filter(user=target_user,privacy__in=['public','friends']).select_related('user__profile').prefetch_related('photos').order_by("-created_at")
+                self._qs= Post.objects.filter(user=target_user,privacy__in=['public','friends']).select_related('user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
             # là người lạ thì chỉ lấy public
             else:
-                self._qs = Post.objects.filter(user=target_user,privacy='public').select_related('user__profile').prefetch_related('photos').order_by('-created_at')
+                self._qs = Post.objects.filter(user=target_user,privacy='public').select_related('user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
         return self._qs
 
     def get_serializer_context(self):
@@ -372,6 +372,27 @@ class PostListAll(generics.ListAPIView):
         context.update(get_reactions_post_context(objs, self.request.user))
         return context
 
+class PinPostView(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostSerializer
+
+    def get_object(self):
+        post = get_object_or_404(Post, pk=self.kwargs.get('pin_id'))
+        if post.user != self.request.user:
+            raise PermissionDenied('You are not the post owner')
+        return post
+
+    def update(self, request, *args, **kwargs):
+        post = self.get_object()
+        with transaction.atomic():
+            if post.is_pinned:
+                post.is_pinned = False
+            else:
+                # Unpin post cũ của user này trước
+                Post.objects.filter(user=request.user, is_pinned=True).update(is_pinned=False)
+                post.is_pinned = True
+            post.save(update_fields=['is_pinned'])
+        return Response({'is_pinned': post.is_pinned}, status=status.HTTP_200_OK)
 
 class PostShareView(MetadataMixin, DetailView): #  có preview card cho các third-party application
     #tạo preview card
@@ -747,27 +768,26 @@ class NestedCommentList(generics.ListAPIView):
 class PinCommentView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CommentSerializer
-    def get_object(self):
-        pin_id = self.kwargs.get('pin_id')
-        if not pin_id:
-            return Response({'error':'Pin id is required'}, status=400)
-        return get_object_or_404(Comment,pk=pin_id)
 
-    def update(self,request,*args,**kwargs):
-        pin_id=self.kwargs.get('pin_id')
-        if not pin_id:
-            return Response({'error':'Pin id is required'}, status=400)
-        comment= get_object_or_404(Comment.objects.select_related('post'),pk=pin_id)
+    def get_object(self):
+        comment = get_object_or_404(
+            Comment.objects.select_related('post'),
+            pk=self.kwargs.get('pin_id')
+        )
         if comment.post.user_id != self.request.user.id:
-            return Response({'error':'You are not post owner'},status=400)
-        if comment.is_pinned: #nếu pin thì gỡ, nếu gỡ thì pin
-            comment.is_pinned=False
-            comment.save()
+            raise PermissionDenied('You are not the post owner')
+        return comment
+
+    def update(self, request, *args, **kwargs):
+        comment = self.get_object() #gọi lại tất cả logic hàm get_object
+        if comment.is_pinned:
+            comment.is_pinned = False
         else:
-            Comment.objects.filter(post_id=comment.post_id, is_pinned=True).update(is_pinned=False)#unpin cũ
-            comment.is_pinned=True
-            comment.save()
-        return Response({'is_pinned': comment.is_pinned}, status=200)
+            # Unpin comment cũ trước
+            Comment.objects.filter(post_id=comment.post_id, is_pinned=True).update(is_pinned=False)
+            comment.is_pinned = True
+        comment.save(update_fields=['is_pinned'])
+        return Response({'is_pinned': comment.is_pinned}, status=status.HTTP_200_OK)
 
 
 

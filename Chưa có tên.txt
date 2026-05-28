@@ -8,18 +8,19 @@ chưa xong
 - xong tất cả thì xây signal 1 thể
 - xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
 
-#thêm throttle
 
+
+thêm throttle
 sửa lại set email primary sẽ đổi username user, email user,
-khi tìm kiếm vẫn ra bài viết riêng tư
 thêm setting default post privacy
+xem tất cả các api được gọi ở 1 trang xem có thừa, test đủ các api và fe đã dùng đủ chức năng chưa và đúng logic chưa
+websocket bị lỗi, giải thích AI là có flow ping pong 
 
 
 
 
 
-
-2 api mới
+2 api mới của search history
 
 
 
