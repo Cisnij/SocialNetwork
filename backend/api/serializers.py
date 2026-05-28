@@ -417,3 +417,8 @@ class PostShareSerializer(serializers.ModelSerializer):
     class Meta:
         model =PostShare
         fields = '__all__'
+#================================================================================
+class PostReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostReport
+        fields = ['post','reason','created_at']

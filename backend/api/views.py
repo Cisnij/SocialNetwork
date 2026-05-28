@@ -3,6 +3,7 @@ from itertools import chain
 from django.db.models.expressions import Window
 from django.db.models.functions import RowNumber
 from django.views.generic import DetailView
+from urllib3 import request
 
 from backend import settings_backend
 from .serializers import *
@@ -613,6 +614,18 @@ class ChangePostSharePrivacy(APIView):
         post_share.privacy=privacy_type
         post_share.save(update_fields=['privacy'])
         return Response({'post_share_id': post_share.id, 'privacy': post_share.privacy})
+
+class PostReportView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostReportSerializer
+    def perform_create(self, serializer):
+        post_id= self.kwargs.get('post_id')
+        post = get_object_or_404(Post,post_id=post_id)
+        if post.user == self.request.user:
+            raise ValidationError('Cannot report your own post') # perform create chỉ dùng đc ValidationError
+        serializer.save(post=post,user=self.request.user)
+
+
 #===================POSTARTICLE===============================
 class PostArticleListCreate(generics.ListCreateAPIView):  # List tất cả post
     permission_classes = [IsAuthenticated]

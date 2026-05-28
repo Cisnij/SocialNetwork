@@ -90,6 +90,7 @@ urlpatterns = [
     path('api/posts/share/', PostFriendShare.as_view(), name='user_share'), # lấy ra tất cả share của bạn bè
     path('api/post/share/<int:share_id>/privacy-change/',ChangePostSharePrivacy.as_view(),name='change-share-privacy'),#đổi chế độ xem share post
     path('api/post/<int:pin_id>/pin/',PinPostView.as_view(),name='pin-post'),
+    path('api/post/<int:post_id>/report/',PostReportView.as_view(),name='post-report'),
     #url post-article
     path('api/user/post-article/', PostArticleListCreate.as_view(), name='post-article-list'), #thêm láy tất cả post article
     path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể

@@ -396,3 +396,13 @@ class PostShare(models.Model):
 
     def __str__(self):
         return f"{self.user} shared {self.post}"
+
+#=============================================================================================================
+
+class PostReport(models.Model):
+    post=models.ForeignKey(Post, on_delete=models.CASCADE)
+    user=models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reason= models.CharField(max_length=250)
+    def __str__(self):
+        return f"{self.post} | {self.reason}"
