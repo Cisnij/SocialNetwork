@@ -1,6 +1,7 @@
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from dj_rest_auth.serializers import LoginSerializer
 from django.contrib.auth import authenticate
+from django.db import transaction
 from rest_framework import serializers
 from allauth.account.models import EmailAddress
 from .models import PendingProfile, Profile
@@ -104,7 +105,11 @@ class SetPrimaryEmailView(APIView): # đặt 1 email làm mặc đinh
             )
         if email_obj.primary:
             return Response({"detail": "Already primary"},status=400)
-        email_obj.set_as_primary()
+        with transaction.atomic():
+            email_obj.set_as_primary()
+            user.email = email_obj.email
+            user.username = email_obj.email
+            user.save(update_fields=["username", "email"])
         return Response({"detail": "Primary email updated"},status=200)
 
 class DeleteEmailView(APIView):
