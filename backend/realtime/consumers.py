@@ -109,6 +109,19 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
             return
         if self.handle_pong(data): # lấy data server nhận đưa vào hàm kiểm tra có pong k, có true không false và false thì dừng
             return
+        # xử lý typing
+        if data.get('type') == 'typing':
+            await self.channel_layer.group_send(
+                    self.room_name,
+        {
+                    'type' : 'typing_indicator',
+                    'sender_id' : self.user.id,
+                    'sender' : self.user.username,
+                    'is_typing': data.get('is_typing', False), # lấy giá trị is_typing không thì default false, fe gửi is_typing=True  khi user nhập 
+                }
+            )
+            return
+
         message = data.get('message', '').strip() # lấy message và xóa khoảng trắng
         message_type = data.get('message_type', 'text') # mặc định là text
         reply_to_id = data.get('reply_to_id') # nhận vào id
@@ -205,7 +218,14 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
             'type': 'message_deleted',
             'id': event['id'],
         }))
-        
+    #=========TYPING========================
+    async def typing_indicator(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'typing',
+            'sender_id': event['sender_id'],
+            'sender': event['sender'],
+            'is_typing': event['is_typing'],
+        }))
     # ===== CHECK =====
     @database_sync_to_async
     def is_member(self): # check có phải thành viên conversation không
