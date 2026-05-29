@@ -66,6 +66,8 @@ class Profile(SafeDeleteModel):
         choices=(('local', 'Local'), ('google', 'Google')),
         default='local'
     )
+    phone_number_public = models.BooleanField(default=False)
+    date_of_birth_public = models.BooleanField(default=False)
 
     class Meta:
         indexes = [

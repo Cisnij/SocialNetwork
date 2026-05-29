@@ -12032,3 +12032,482 @@
 {"asctime": "2026-05-28 21:18:55,755", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
 {"asctime": "2026-05-28 21:18:55,756", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
 {"asctime": "2026-05-28 21:18:55,866", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 14c274db-64e8-42fa-85ec-5fcde3489f9a has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 18:50:35,047", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:35,047", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:35,047", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:35,056", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:35,056", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:35,056", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:35,072", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 18:50:35,076", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:35,076", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:35,076", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:35,077", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:35,077", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:35,077", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:35,078", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:35,078", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:35,078", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:35,078", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 18:50:35,755", "levelname": "WARNING", "name": "django.request", "message": "Not Found: /static/images/favicon.png", "status_code": 404, "request": "<ASGIRequest: GET '/static/images/favicon.png'>"}
+{"asctime": "2026-05-29 18:50:37,475", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:37,476", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:37,476", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:37,477", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:37,477", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:37,478", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:37,478", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 18:50:37,481", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:37,481", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:37,481", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:37,482", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:37,482", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:37,482", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:37,483", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:37,483", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:37,483", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:37,484", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 18:50:37,600", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a92bdd85-96d2-4bfe-915d-7e731521dc0b has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 18:50:38,651", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:38,651", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:38,651", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:38,652", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:38,652", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:38,653", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:38,653", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 18:50:38,656", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:38,656", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:38,656", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:38,657", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:38,657", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:38,657", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:38,658", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:38,658", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:38,659", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:38,659", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 18:50:38,660", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:50:38,660", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:50:38,661", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:50:38,843", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk f8bb3554-51a4-4b04-8c1c-136939d0419c has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 18:51:00,444", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:51:00,444", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:51:00,444", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:51:00,446", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:51:00,446", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:51:00,446", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:51:00,447", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 18:51:00,449", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:51:00,449", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:51:00,449", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:51:00,450", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:51:00,450", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:51:00,450", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:51:00,452", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:51:00,452", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:51:00,452", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:51:00,452", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 18:51:00,546", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk fa958ced-a8b5-4db7-bbd9-3393268ac09e has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 18:57:40,268", "levelname": "WARNING", "name": "django.request", "message": "Not Found: /api/auth/profile/userpage/<int:user>", "status_code": 404, "request": "<ASGIRequest: GET '/api/auth/profile/userpage/%3Cint:user%3E'>"}
+{"asctime": "2026-05-29 18:57:40,464", "levelname": "WARNING", "name": "django.request", "message": "Not Found: /favicon.ico", "status_code": 404, "request": "<ASGIRequest: GET '/favicon.ico'>"}
+{"asctime": "2026-05-29 18:57:49,278", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:57:49,278", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:57:49,279", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:57:49,280", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:57:49,280", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:57:49,280", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:57:49,291", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 18:57:49,294", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:57:49,294", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:57:49,294", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:57:49,295", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:57:49,295", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:57:49,295", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:57:49,296", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:57:49,296", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:57:49,297", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:57:49,297", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 18:57:49,417", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk f8c2a6b7-464f-41f3-ad36-8599ee7f7308 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 18:57:50,978", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:57:50,978", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:57:50,978", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:57:50,979", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:57:50,979", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:57:50,980", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:57:50,980", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 18:57:50,982", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:57:50,982", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:57:50,983", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:57:50,983", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:57:50,983", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:57:50,984", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:57:50,984", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:57:50,985", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:57:50,985", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:57:50,985", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 18:57:50,986", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 18:57:50,987", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 18:57:50,987", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 18:57:51,131", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 2e29cdff-44e5-4062-aad6-3fd9747c3665 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 18:58:33,558", "levelname": "WARNING", "name": "django.request", "message": "Not Found: /favicon.ico", "status_code": 404, "request": "<ASGIRequest: GET '/favicon.ico'>"}
+{"asctime": "2026-05-29 19:02:10,929", "levelname": "WARNING", "name": "django.request", "message": "Not Found: /favicon.ico", "status_code": 404, "request": "<ASGIRequest: GET '/favicon.ico'>"}
+{"asctime": "2026-05-29 19:02:44,087", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:44,087", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:44,088", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:44,089", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:44,089", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:44,089", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:44,101", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:02:44,105", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:44,105", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:44,106", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:44,107", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:44,107", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:44,108", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:44,109", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:44,110", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:44,110", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:44,110", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:02:44,144", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:44,146", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:44,146", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:44,149", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:44,149", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:44,149", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:44,150", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:02:44,152", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:44,152", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:44,152", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:44,153", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:44,153", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:44,154", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:44,154", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:44,155", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:44,155", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:44,155", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:02:44,281", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk f58ff2cb-d24f-469b-8fb1-97eae7f3b6ab has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:02:44,391", "levelname": "WARNING", "name": "django.request", "message": "Not Found: /static/images/favicon.png", "status_code": 404, "request": "<ASGIRequest: GET '/static/images/favicon.png'>"}
+{"asctime": "2026-05-29 19:02:46,245", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:46,245", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:46,245", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:46,246", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:46,246", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:46,247", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:46,247", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:02:46,250", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:46,250", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:46,250", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:46,252", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:46,252", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:46,252", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:46,253", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:46,253", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:46,254", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:46,254", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:02:46,255", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:46,255", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:46,256", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:46,355", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 20efa008-fda1-4897-81bb-85624dbdbb94 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:02:50,566", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:50,566", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:50,566", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:50,567", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:50,567", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:50,567", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:50,568", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:02:50,570", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:50,570", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:50,571", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:50,571", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:50,571", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:50,572", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:50,572", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:50,573", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:50,573", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:50,573", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:02:50,574", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:50,574", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:50,574", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:50,673", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a7184a9e-048f-4cf7-a434-5c00a6ac394b has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:02:59,826", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:59,827", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:59,827", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:59,828", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:59,828", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:59,829", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:59,829", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:02:59,831", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:59,831", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:59,831", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:59,832", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:59,832", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:59,832", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:59,833", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:59,833", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:59,833", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:59,834", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:02:59,836", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:02:59,836", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:02:59,836", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:02:59,924", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 021b8616-a100-464e-a458-b07352201f70 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:03:05,370", "levelname": "INFO", "name": "elastic_transport.transport", "message": "PUT http://localhost:9200/_bulk?refresh=true [status:200 duration:0.412s]"}
+{"asctime": "2026-05-29 19:03:07,309", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:03:07,309", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:03:07,309", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:03:07,310", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:03:07,311", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:03:07,311", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:03:07,311", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:03:07,313", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:03:07,314", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:03:07,314", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:03:07,315", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:03:07,315", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:03:07,316", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:03:07,320", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:03:07,322", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:03:07,326", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:03:07,327", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:03:07,433", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 9d046366-211e-4446-ae36-fdad56646e72 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:13:53,917", "levelname": "WARNING", "name": "django.request", "message": "Not Found: /api/user/private-profile/1", "status_code": 404, "request": "<ASGIRequest: GET '/api/user/private-profile/1'>"}
+{"asctime": "2026-05-29 19:13:57,275", "levelname": "WARNING", "name": "django.request", "message": "Not Found: /api/user/private-profile/1/", "status_code": 404, "request": "<ASGIRequest: GET '/api/user/private-profile/1/'>"}
+{"asctime": "2026-05-29 19:14:15,819", "levelname": "INFO", "name": "elastic_transport.transport", "message": "PUT http://localhost:9200/_bulk?refresh=true [status:200 duration:0.047s]"}
+{"asctime": "2026-05-29 19:14:20,472", "levelname": "INFO", "name": "elastic_transport.transport", "message": "PUT http://localhost:9200/_bulk?refresh=true [status:200 duration:0.026s]"}
+{"asctime": "2026-05-29 19:14:26,467", "levelname": "INFO", "name": "elastic_transport.transport", "message": "PUT http://localhost:9200/_bulk?refresh=true [status:200 duration:0.067s]"}
+{"asctime": "2026-05-29 19:14:34,562", "levelname": "INFO", "name": "elastic_transport.transport", "message": "PUT http://localhost:9200/_bulk?refresh=true [status:200 duration:0.071s]"}
+{"asctime": "2026-05-29 19:14:38,755", "levelname": "INFO", "name": "elastic_transport.transport", "message": "PUT http://localhost:9200/_bulk?refresh=true [status:200 duration:0.071s]"}
+{"asctime": "2026-05-29 19:14:40,673", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:40,674", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:40,674", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:40,677", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:40,677", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:40,677", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:40,687", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:14:40,693", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:40,693", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:40,693", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:40,694", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:40,694", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:40,694", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:40,695", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:40,695", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:40,695", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:40,696", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:14:40,834", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 36d65c17-ee1c-416a-90a5-6ac01d2a18bd has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:14:41,983", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:41,983", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:41,983", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:41,984", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:41,984", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:41,984", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:41,985", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:14:41,987", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:41,987", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:41,987", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:41,988", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:41,988", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:41,988", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:41,989", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:41,989", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:41,990", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:41,990", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:14:41,991", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:41,991", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:41,991", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:42,090", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 3f3a908e-ec32-4ffb-a2ac-315d4694d17b has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:14:45,416", "levelname": "INFO", "name": "elastic_transport.transport", "message": "PUT http://localhost:9200/_bulk?refresh=true [status:200 duration:0.066s]"}
+{"asctime": "2026-05-29 19:14:46,769", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:46,770", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:46,770", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:46,771", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:46,771", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:46,771", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:46,772", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:14:46,774", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:46,774", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:46,775", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:46,775", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:46,776", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:46,776", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:46,776", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:46,777", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:46,777", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:46,777", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:14:46,778", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:46,778", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:46,779", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:46,861", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 997c6441-d51e-4219-adde-0ec7b6a75ac9 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:14:47,653", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:47,653", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:47,653", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:47,654", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:47,654", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:47,655", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:47,655", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:14:47,658", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:47,658", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:47,658", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:47,659", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:47,659", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:47,659", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:47,660", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:47,660", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:47,660", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:47,660", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:14:47,662", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:47,662", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:47,663", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:47,739", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a024dcf3-3569-42dd-8210-88c99dbdd64e has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:14:49,989", "levelname": "INFO", "name": "elastic_transport.transport", "message": "PUT http://localhost:9200/_bulk?refresh=true [status:200 duration:0.070s]"}
+{"asctime": "2026-05-29 19:14:52,355", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:52,355", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:52,356", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:52,357", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:52,357", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:52,357", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:52,358", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:14:52,361", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:52,361", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:52,361", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:52,362", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:52,362", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:52,362", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:52,363", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:52,363", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:52,363", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:52,363", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:14:52,366", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:14:52,366", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:14:52,366", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:14:52,479", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 0cfa61df-127d-475e-9e10-34a1d8eff373 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:15:01,261", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:15:01,261", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:15:01,261", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:15:01,268", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:15:01,268", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:15:01,269", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:15:01,278", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:15:01,281", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:15:01,282", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:15:01,282", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:15:01,283", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:15:01,283", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:15:01,283", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:15:01,284", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:15:01,284", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:15:01,285", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:15:01,285", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:15:01,286", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:15:01,287", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:15:01,287", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:15:01,424", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk f0b2d3e5-9b6b-4a8e-b91b-f268a78328c4 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:22:11,493", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 41d56d5d-fac9-400c-91bd-249f0ae0e01f has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:22:11,507", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 60179e11-d8ee-4730-b4bd-443c1efdfd53 has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:22:11,552", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a948b453-9916-4c95-a3a7-459ef9dd62d4 has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:22:11,654", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 50624325-782a-4aec-afb8-e1dbc68d5f1b has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:22:19,912", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 2caf9dfd-a285-4b04-a5a3-14c82ebe0d6e has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:22:19,934", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 93d63a67-efd2-43e6-ac05-41b25cbcad19 has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:22:19,949", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a0e648df-bf3e-4248-afdd-778495f5a084 has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:22:20,015", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk dcc33e11-7e6a-4bcd-9a73-f909151428e2 has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:23:34,572", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a8339c9e-eb1b-4d63-9e53-4680056863dc has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:23:34,690", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 6670db98-4f86-424f-ad26-2e447fce346d has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:23:57,222", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 09bdbc65-ba87-4bf5-90b4-e59c74817d54 has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:24:00,340", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk d35b8d58-9bbe-4059-a3c1-3976669b2f32 has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:24:00,371", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 9aff8db1-cbb6-446f-b663-8c93a0b04de0 has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:24:00,432", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 2d116f7e-21ed-4970-bd2d-6603f2598370 has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:30:51,910", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk c555d9ba-f95b-4ef3-88c8-d23abf9433b0 has content type application/json but was unable to parse it"}
+{"asctime": "2026-05-29 19:32:21,198", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:21,198", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:21,199", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:21,200", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:21,200", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:21,200", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:21,201", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:32:21,203", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:21,208", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:21,209", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:21,210", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:21,210", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:21,210", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:21,211", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:21,211", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:21,211", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:21,211", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:32:21,300", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk bbdee785-e455-45b4-b011-c1b97b1389b4 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:32:22,291", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:22,291", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:22,291", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:22,292", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:22,292", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:22,292", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:22,293", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:32:22,295", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:22,295", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:22,295", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:22,296", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:22,296", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:22,296", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:22,297", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:22,297", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:22,297", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:22,298", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:32:22,299", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:22,300", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:22,300", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:22,424", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 31322969-c98f-43c7-9f15-aa725e698384 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:32:23,204", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:23,204", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:23,205", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:23,206", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:23,206", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:23,206", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:23,207", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:32:23,215", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:23,215", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:23,215", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:23,216", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:23,216", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:23,216", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:23,217", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:23,217", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:23,217", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:23,217", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:32:29,783", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:29,783", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:29,783", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:29,784", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:29,784", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:29,785", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:29,785", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:32:29,788", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:29,788", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:29,788", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:29,789", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:29,789", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:29,789", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:29,790", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:29,790", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:29,790", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:29,790", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:32:29,910", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk f079e6b0-6d2f-4488-8cda-840d0899237e has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:32:32,916", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:32,916", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:32,916", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:32,917", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:32,917", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:32,918", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:32,918", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-05-29 19:32:32,921", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:32,921", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:32,921", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:32,922", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:32,922", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:32,923", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:32,924", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:32,924", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:32,924", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:32,924", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-05-29 19:32:32,926", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 19:32:32,926", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 19:32:32,926", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 19:32:33,057", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk d416e612-e6f6-435f-835d-305bad96f70e has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-05-29 19:34:06,398", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/auth/web/logout/", "status_code": 401, "request": "<ASGIRequest: POST '/api/auth/web/logout/'>"}

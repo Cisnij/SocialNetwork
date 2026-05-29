@@ -69,6 +69,7 @@ urlpatterns = [
     path('api/activity/', include('actstream.urls')),
     #url cho xử lý người dùng
     path('api/user/profile/<int:pk>/',ProfileModify.as_view(),name='profile-modify'), #lấy ra infor ng dùng thêm sửa xóa
+    path('api/user/private-profile/<int:pk>/', PrivateProfileModify.as_view(),name='private-profile-modify'), #sửa thông tin mật ng dùng
     path('api/user/profile/',ProfileList.as_view(), name='profile-list'), #lấy tất cả user
     path('api/auth/profile/userpage/<int:user>', ProfileUser.as_view(), name='user-info'), #lấy ra thông tin userpage
     path('api/user/',ProfileView.as_view(),name='profile-view'), #lẩy ra thông tin user hiện tại
@@ -155,8 +156,8 @@ urlpatterns = [
     #search
     path('api/search/', SearchAPIView.as_view(),name='search'),# search api/search/?q=
     path('api/user/search-history/',SearchHistoryView.as_view(),name='search-history'), #lịch sủ tìm kiếm
-    path('search-history/delete/', SearchHistoryDeleteAllView.as_view(),name='search-history-delete-all'), #xóa tất cả search
-    path('search-history/<int:pk>/delete/', SearchHistoryDeleteView.as_view(),name='search-history-delete'), #xóa search bất kì
+    path('api/search-history/delete/', SearchHistoryDeleteAllView.as_view(),name='search-history-delete-all'), #xóa tất cả search
+    path('api/search-history/<int:pk>/delete/', SearchHistoryDeleteView.as_view(),name='search-history-delete'), #xóa search bất kì
     #friendsuggest
     path('api/user/friend-suggest/',FriendSuggestion.as_view(),name='friend-suggest'), # gợi ý bạn bè
     #v2-test full chức năng tạo post va ảnh trong 1 api

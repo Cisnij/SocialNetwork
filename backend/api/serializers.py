@@ -28,10 +28,11 @@ class ProfileSerializer(serializers.ModelSerializer):
     is_online=serializers.SerializerMethodField()
     user = serializers.IntegerField(source='user_id', read_only=True)
     picture = serializers.ImageField(required=False, allow_null=True) # nhận vòoo dạng imagefield để nhận file ảnh và để validate ảnh và lưu vào db
-
+    phone_number = serializers.SerializerMethodField()
+    date_of_birth = serializers.SerializerMethodField()
     class Meta:
         model=Profile
-        fields=['id', 'user', 'first_name', 'last_name', 'picture','bio','is_completed','created_at','auth_provider', 'is_online']
+        fields=['id', 'user', 'first_name', 'last_name', 'picture','bio','phone_number', 'date_of_birth','is_completed','created_at','auth_provider', 'is_online']
         extra_kwargs = {"user": {"read_only": True}} # loại trừ trường user là read only 
         
     def get_is_online(self,obj):
@@ -40,13 +41,31 @@ class ProfileSerializer(serializers.ModelSerializer):
             return obj.user_id in online_set # trả về user id trong ram, có thì trả về luôn
         return cache.get(f"online_user:{obj.user_id}") is not None # không có trong ram thì gọi get cache ram từng cái
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
+    def to_representation(self, instance): # cách để chỉnh sửa các trường hiển thị ra response
+        data = super().to_representation(instance) #lấy ra các response hiện tại và thay thế
         if instance.picture:
+
             data["picture"] = instance.picture.url
         else:
             data["picture"] = DEFAULT_PROFILE_PICTURE
         return data
+
+    def get_phone_number(self,obj): # logic là override 2 field phone và birth nếu 2 field đó đáp ứng thì hiển thị
+        request= self.context.get('request')
+        if request and (request.user == obj.user or obj.phone_number_public): #nếu là chủ profile hoặc profile có trường phone là public
+            return str(obj.phone_number) if obj.phone_number else None #phải dùng str để lấy ra phone
+        return None
+
+    def get_date_of_birth(self,obj):
+        request= self.context.get('request')
+        if request and (request.user == obj.user or obj.date_of_birth_public):
+            return obj.date_of_birth if obj.date_of_birth else None
+        return None
+
+class PrivateProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model =Profile
+        fields = ['phone_number', 'date_of_birth', 'date_of_birth_public', 'phone_number_public']
 
 class PendingProfileSerializer(serializers.ModelSerializer):
     class Meta:

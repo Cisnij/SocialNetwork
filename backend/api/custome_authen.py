@@ -20,7 +20,7 @@ class CustomRegisterSerializer(RegisterSerializer): # Sửa chức năng registe
     phone_number=serializers.CharField(required=True,allow_blank=False)
     birthday=serializers.DateField(required=True) #thêm ngày sinh
     
-    def get_cleaned_data(self): #sau khi xác thực thì lấy cái giá trị mới xác thực gán cho giá trị chính và lưu 
+    def get_cleaned_data(self): #sau khi xác thực thì lấy cái giá trị mới xác thực gán cho giá trị chính và lưu , cái này là chỉ gán các field có sẵn trong user, muốn thêm field tự custome thì overide save()
         clean_data=super().get_cleaned_data() #clean data là dữ liệu chính và được gán vào dữ liệu vừa validate
         clean_data['first_name'] = self.validated_data.get('firstname', '')
         clean_data['last_name'] = self.validated_data.get('lastname', '')
@@ -29,7 +29,7 @@ class CustomRegisterSerializer(RegisterSerializer): # Sửa chức năng registe
         clean_data['username'] = self.validated_data.get('email', '') #gán email vào username
         return clean_data
     
-    def save(self,request):
+    def save(self,request): #custome thêm các field muốn thêm
         user=super().save(request) #lưu user
         pending_profile, created = PendingProfile.objects.get_or_create(user=user)
         pending_profile.first_name=self.validated_data.get('firstname','')

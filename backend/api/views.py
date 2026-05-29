@@ -120,9 +120,12 @@ class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa prof
     def perform_update(self, serializer):
         picture = self.request.FILES.get("picture")
         if picture:
-            serializer.save(user=self.request.user, picture=picture)
+            instance= serializer.save(user=self.request.user, picture=picture)
         else:
-            serializer.save(user=self.request.user)
+            instance= serializer.save(user=self.request.user)
+        # check nếu đã có photo lần đầu thì update is_complete mãi mãi, còn chưa thì vẫn là false
+        if not instance.is_completed and instance.picture: # nếu không is_completed và có picture
+            Profile.objects.filter(pk=instance.pk).update(is_completed=True)
 
     def get_object(self): #nên dùng get object thay vì get querry vì ở đây cần lấy chỉ 1 đối tượng, get querryset thường dùng trả nhiều đối tượng 
         user = self.request.user 
@@ -134,6 +137,15 @@ class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa prof
             return get_object_or_404(Profile.objects.select_related('user','user__profile'), id=profile_id)
             
         return get_object_or_404(Profile.objects.select_related('user'), user=user)
+
+class PrivateProfileModify(generics.RetrieveUpdateAPIView):
+    permission_classes=[IsAuthenticated]
+    serializer_class= PrivateProfileSerializer
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='profile'
+    def get_object(self):
+        user =self.request.user
+        return get_object_or_404(Profile, user=user)
 
 class ProfileList(generics.ListAPIView):#List tất cả profile
     permission_classes=[IsAuthenticated]
