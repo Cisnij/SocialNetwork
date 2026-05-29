@@ -12511,3 +12511,14 @@
 {"asctime": "2026-05-29 19:32:32,926", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
 {"asctime": "2026-05-29 19:32:33,057", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk d416e612-e6f6-435f-835d-305bad96f70e has content type text/javascript but was unable to parse it"}
 {"asctime": "2026-05-29 19:34:06,398", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/auth/web/logout/", "status_code": 401, "request": "<ASGIRequest: POST '/api/auth/web/logout/'>"}
+{"asctime": "2026-05-29 20:01:06,189", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/user/profile/", "status_code": 401, "request": "<ASGIRequest: GET '/api/user/profile/'>"}
+{"asctime": "2026-05-29 20:01:09,673", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 20:01:09,673", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 20:01:09,674", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 20:01:13,995", "levelname": "WARNING", "name": "axes.handlers.database", "message": "AXES: New login failure by {username: \"********************\", ip_address: \"********************\", user_agent: \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\", path_info: \"/supremacy/admin/login/\"}. Created new record in the database."}
+{"asctime": "2026-05-29 20:01:14,024", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 20:01:14,025", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 20:01:14,025", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-05-29 20:15:40,205", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-05-29 20:15:40,205", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-05-29 20:15:40,205", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
