@@ -1984,3 +1984,9 @@ class FriendSuggestion(generics.ListAPIView):
         )
 
 
+class SupportTicketView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SupportTicketSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save(user=self.request.user)

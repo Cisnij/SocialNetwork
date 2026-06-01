@@ -1,4 +1,4 @@
-import { RedirectIfNotAuth, logout } from "./auth.js";
+import { RedirectIfNotAuth, logout, authFetch } from "./auth.js";
 
 RedirectIfNotAuth();
 
@@ -18,32 +18,18 @@ document.addEventListener("click", (event) => {
   }
 });
 
-document.getElementById("logoutLink")?.addEventListener("click", (e) => {
+document.getElementById("logoutLink")?.addEventListener("click", async (e) => {
   e.preventDefault();
-  // Get CSRF token
-    const getCSRFToken = () => {
-      const cookies = document.cookie.split(';');
-      for (let cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'csrftoken') {
-          return decodeURIComponent(value);
-        }
-      }
-      return null;
-    };
 
-    const headers = {};
-    const csrfToken = getCSRFToken();
-    if (csrfToken) {
-      headers['X-CSRFToken'] = csrfToken;
-    }
-
-    fetch("http://localhost:8000/api/auth/web/logout/", {
+  try {
+    await authFetch("http://localhost:8000/api/auth/web/logout/", {
       method: "POST",
-      credentials: "include",
-      headers: headers,
-    }).then(() => {
+    });
     localStorage.removeItem("accessToken");
     logout();
-  });
+  } catch (error) {
+    // Even if logout fails, clear local state and redirect
+    localStorage.removeItem("accessToken");
+    logout();
+  }
 });

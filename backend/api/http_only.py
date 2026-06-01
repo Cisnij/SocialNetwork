@@ -13,13 +13,13 @@ from .models import Profile,PendingProfile
 #-- Còn khi xây mobile sẽ dùng endpoint bth là api/auth/login để trả về token trong json
 
 
-class CookieLoginView(LoginView): #ghi đè hàm login để trả về token trong cookie http only và set refresh token vào cookie 
+class CookieLoginView(LoginView): #ghi đè hàm login để trả về token trong cookie http only và set refresh token vào cookie
     def get_response(self): # hàm mặc định của Login view sẽ trả về response sau khi login thành công
         original_response = super().get_response() #lấy về response gốc từ LoginView gồm user info...
         data=original_response.data
         #Lấy refresh token và set vào cookie
         refreshToken=data.pop('refresh', None) #xóa khỏi json trả về
-        if refreshToken:# nếu có refresh token thì set vào cookie và thêm vào response gốc 
+        if refreshToken:# nếu có refresh token thì set vào cookie và thêm vào response gốc
             original_response.set_cookie(
                 key='refreshToken',
                 value=refreshToken,
@@ -51,6 +51,9 @@ class CookieTokenRefreshView(TokenRefreshView): #ghi đè lấy refresh token t�
 
 class CookieLogoutView(LogoutView): #ghi đè hàm logout để xóa cookie
     def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get('refreshToken')
+        if refresh_token:
+            request.data['refresh'] = refresh_token
         response = super().post(request, *args, **kwargs) #lấy về response gốc từ LogoutView
         response.delete_cookie('refreshToken', path='/api/auth/web/') #xóa cookie refresh token
         return response
@@ -69,11 +72,11 @@ class CookieGoogleLoginView(SocialLoginView):#ghi đè hàm login google để t
 
         if original_response.status_code != 200:
             return original_response
-        
+
         user = self.user  # allauth đã gán sẵn
         social_account = user.socialaccount_set.filter(provider='google').first() # lọc ra social account của user trước sau đó lấy ra extra data
         extra = social_account.extra_data if social_account else {}
-        
+
         # Tạo profile nếu chưa có
         profile, created = Profile.objects.get_or_create(
             user=user,
@@ -82,8 +85,8 @@ class CookieGoogleLoginView(SocialLoginView):#ghi đè hàm login google để t
                 "first_name": extra.get("given_name"),
                 "last_name": extra.get("family_name"),
             }
-        ) 
-        # lấy extra data của google gán luôn vào profile, chỉ áp dụng với mới profile mới tạo ở trên, đã custome hay connect thì k đc 
+        )
+        # lấy extra data của google gán luôn vào profile, chỉ áp dụng với mới profile mới tạo ở trên, đã custome hay connect thì k đc
         if created:
             profile.first_name = extra.get("given_name")
             profile.last_name = extra.get("family_name")
@@ -100,7 +103,7 @@ class CookieGoogleLoginView(SocialLoginView):#ghi đè hàm login google để t
                 value=refreshToken,
                 httponly=True,
                 secure=False, #Sau này sửa lại True
-                samesite='Lax', 
+                samesite='Lax',
                 path='/api/auth/web/',
                 max_age=7*24*60*60
             )

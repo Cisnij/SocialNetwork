@@ -1,7 +1,9 @@
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from dj_rest_auth.serializers import LoginSerializer
 from django.contrib.auth import authenticate
+from django.core.mail import send_mail
 from django.db import transaction
+from django.core.cache import cache
 from rest_framework import serializers
 from allauth.account.models import EmailAddress
 from .models import PendingProfile, Profile
@@ -88,7 +90,7 @@ class AddEmailView(APIView): #Thêm 1 email khác vào tài khoản
        
         email_address.send_confirmation(request) #signup false để bảo đây là thêm chứ k phải đăng kí tài khoản mới
         return Response({'Email added successfully, please check your email'},status =200)
-        
+
 class SetPrimaryEmailView(APIView): # đặt 1 email làm mặc đinh
     permission_classes = [IsAuthenticated]
     def post(self, request, pk):
@@ -103,51 +105,80 @@ class SetPrimaryEmailView(APIView): # đặt 1 email làm mặc đinh
                 {"error": "Email not found or not verified"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        if email_obj.primary:
+        if email_obj.primary: # nếu là primary
             return Response({"detail": "Already primary"},status=400)
+
+
+        import random
+        otp = str(random.randint(100000, 999999))
+        cache.set(f"otp_change_primary:{user.id}", { #tạo otp lưu trong cache với user id. 1 là tên lưu và 2 là cặp key value lưu
+            'otp': otp,
+            'new_email_id': pk,
+        }, timeout=300)  # 5 phút
+
+        send_mail(
+            subject="Mã OTP đổi email chính",
+            message=f"Mã OTP của bạn là: {otp}. Có hiệu lực trong 5 phút. Nếu bạn không thay đổi email chính, vui lòng bỏ qua",
+            from_email="noreply@yourdomain.com",
+            recipient_list=[user.email],  # gửi về email CŨ
+        )
+        return Response({"detail": "OTP đã gửi về email cũ"}, status=200)
+
+class ConfirmChangePrimaryEmail(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        otp_input = request.data.get('otp')
+
+        data = cache.get(f"otp_change_primary:{user.id}")
+        if not data or data['otp'] != otp_input:
+            return Response({"error": "OTP không hợp lệ hoặc đã hết hạn"}, status=400)
+
+        email_obj = EmailAddress.objects.filter(
+            id=data['new_email_id'], user=user, verified=True
+        ).first()
+        if not email_obj:
+            return Response({"error": "Email not found"}, status=400)
+
         with transaction.atomic():
             email_obj.set_as_primary()
             user.email = email_obj.email
-            user.username = email_obj.email
-            user.save(update_fields=["username", "email"])
-        return Response({"detail": "Primary email updated"},status=200)
+            user.username = email_obj.email #đổi luôn tên user
+            user.save(update_fields=["email", "username"])
+
+        cache.delete(f"otp_change_primary:{user.id}")
+        return Response({"detail": "Đổi email chính thành công"}, status=200)
 
 class DeleteEmailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, pk):
         user = request.user
-        password= request.data.get("password")
-        if not password:
-            return Response({'error':"Please enter password"},status=400)
-        auth = authenticate(username=user.username,password=password)
-        if auth:
-            email_obj = EmailAddress.objects.filter(
-                id=pk,
-                user=user
-            ).first()
 
-            if not email_obj:
-                return Response(
-                    {"error": "Email not found"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            # Không cho xóa primary
-            if email_obj.primary:
-                return Response(
-                    {"error": "Cannot delete primary email"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            # Không cho xóa nếu là email duy nhất
-            if EmailAddress.objects.filter(user=user).count() <= 1:
-                return Response(
-                    {"error": "Cannot delete the only email"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        if user.has_usable_password(): # Nếu user có password vì register, dùng google login không có password nên bỏ qua
+            password = request.data.get("password")
+            if not password:
+                return Response({'error': "Please enter password"}, status=400)
+            if not authenticate(username=user.username, password=password):
+                return Response({'error': 'Wrong password'}, status=400)
 
-            email_obj.delete()
-            return Response({"detail": "Email deleted successfully"},status=200)
-        return Response({'error':'wrong password'},status=400)
+        email_obj = EmailAddress.objects.filter(id=pk, user=user).first()
+        if not email_obj:
+            return Response({"error": "Email not found"}, status=400)
+        if email_obj.primary: #là email primary
+            return Response({"error": "Cannot delete primary email"}, status=400)
+        if EmailAddress.objects.filter(user=user).count() <= 1: # nếu email chỉ có 1
+            return Response({"error": "Cannot delete the only email"}, status=400)
+
+        with transaction.atomic():
+            email_obj.delete() #xóa email
+            SocialAccount.objects.filter( #xóa acc google đã connect
+                user=user,
+                extra_data__email=email_obj.email
+            ).delete()
+
+        return Response({"detail": "Email deleted successfully"}, status=200)
     
 class UserEmail(generics.ListAPIView):
     permission_classes=[IsAuthenticated]

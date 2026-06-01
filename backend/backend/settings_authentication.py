@@ -23,7 +23,7 @@ REST_FRAMEWORK={ #Cấu hình token
         'register':'20/hour', # giới hạn đăng kí là 5 lần/giờ
         'cookie_refresh': '30/minute', # giới hạn làm mới cookie là 30 lần/phút
         'reset_password': '3/hour',  # giới hạn yêu cầu đặt lại mật khẩu là 3 lần/giờ
-        'google_login': '10/minute', # giới hạn đăng nhập bằng google là 10 lần/phút
+        'google_login': '100/minute', # giới hạn đăng nhập bằng google là 10 lần/phút
         'dj_rest_auth': '20/minute',
         'profile':'20/hour',
         'post':'100/minute',

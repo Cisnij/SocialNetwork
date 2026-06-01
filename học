@@ -692,6 +692,11 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
    - trình tự xử lý: api gọi, views.py xử lý theo chức năng crud trước, sau đó chạy serializer parse json và thực thi tới perform create.. mấy thứ ghi trong view sau đó thêm/lọc vào db
         -trình tự chi tiết, view gọi serializer get thì sẽ chạy sang từng fields, tới field nào tự custome thì thực thi logic custome
         - trình tự post: api gọi thì serializer lấy dâta validate và thêm vào db, xong sau đó trả ra theo fields
+        Gọi API
+        → View: get_object() → query DB → trả về model instance (object Python)
+        → View: get_serializer(instance) → serializer nhận object đó
+        → Serializer: convert từng field trong object → thành dict/JSON
+        → View: return Response(serializer.data)
    -form data trong js để dùng cho file gửi key value
    -out standing token là chứa token còn và hết hạn, blacklisst token chứa token bị thu hồi vì đăng xuất
    - Generic FK khác FK là nó liên kết với nhiều model hơn mà bảng chính không cần chứa nhiều dữ liệu. Ví dụ 1 bảng liên kết với nhiều bảng khác thì phải cần nhiều FK thì giờ chỉ cần chứa 2 field 

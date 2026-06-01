@@ -408,3 +408,15 @@ class PostReport(models.Model):
     reason= models.CharField(max_length=250)
     def __str__(self):
         return f"{self.post} | {self.reason}"
+
+class SupportTicket(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    content = models.TextField()
+    status = models.CharField(max_length=20, choices=[
+        ('pending', 'Pending'),
+        ('resolved', 'Resolved'),
+    ], default='pending')
+
+    def __str__(self):
+        return f"{self.user} | {self.status}"

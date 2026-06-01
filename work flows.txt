@@ -10,6 +10,12 @@ work flows
 	-Bước login google: nhấn vào login google, load tới trang https://account của gg có chứa google id và callback, sau đó load tới trang html call back tự tạo kèm theo đó là code, sau đó lấy code từ trang call back post tới google login(lưu ý khi đăng nhập gmail đã tồn tại thì gộp lại làm 1), sau khi backend post tới google qua adapter_class thì trả về access token và ta tự tạo refresh
 	-Bước accessToken và refreshToken: viết hàm fetch tới dùng refresh để đổi access sau đó lưu vào local, xây hàm để thông qua nó khi post put máy sẽ biết access hết hạn chưa và làm mới , hàm check login sẽ redirect về trang chủ nếu có access và refresh token
 	-Tạo file cookie để set vào cookie refresh token
+	-Bước thêm email:
+	    Nếu chỉ có 1 email google và login: Làm mất thì recover ở google
+	    Nếu có password và cả goole: mất google thì recover ở google và login bình thường bằng password
+	    Khi xóa email phụ nếu chỉ có google: xóa được
+	    Khi xóa email phụ nếu có password và gg: bắt buộc nhập password
+	    Khi hacker biết mật khẩu sẽ vào đổi email primary và password lúc này user sẽ mất hoàn toàn quyền. Nên tạo khi đổi email primary sẽ tạo cache otp code và gửi về mail, user phải vô mail cũ điền mới đc đổi và otp trong 5p
 4: Sau khi xây Authenticate thì xây serializers
 5. phân trang
 	data.next để lấy ra trang tiếp theo, phân các dữ liêu lớn thành nhỏ
@@ -65,4 +71,9 @@ work flows
 44. dùng structlog để ghi lại request
 45. dùng magic-bin để validate file khi nhận vào tránh file virus.exe mà đổi thành virus.png(vẫn bị bypass)
 46. Thêm preview card. Flow là khi người dùng nhấn share và paste vô messenger thì bot của Fb sẽ get html từ link(api ở be) về để load ra preview. Khi user ấn vào link(api ở be) nó sẽ check k phải bot thì redirect frontend và frontend gọi api load ra json bài viết, sau này đặt share là 1 domain riêng và đổi share.socialnetwork.com
+47. thêm xóa all và xóa từng search history, thêm pin post và thêm report post
+48.  thêm typing realtim, ng dùng nhập thì gọi ws type= typing
+49. Tách phone và birth ra khỏi response trả về vì bảo mật. Thêm vào profile 2 field là có đc public birth và phone, nếu được thì response serializer sẽ check và return không thì None. Thêm API để enable 2 field đó và sửa phone/birth
+50. Thêm khi update ảnh lần đầu thì is_complete=True, còn False thì hiện thông báo ở fe cho mn biết
+51. THêm support ticket user gửi yêu cầu và nhân viên sẽ hỗ trợ reply qua mail 
 =====================================================================================

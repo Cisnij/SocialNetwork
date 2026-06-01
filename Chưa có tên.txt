@@ -10,18 +10,28 @@ chưa xong
 
 
 
-thêm throttle
-sửa lại set email primary sẽ đổi username user, email user,
-thêm setting default post privacy
-xem tất cả các api được gọi ở 1 trang xem có thừa, test đủ các api và fe đã dùng đủ chức năng chưa và đúng logic chưa
-websocket bị lỗi, giải thích AI là có flow ping pong 
+-thêm throttle,signal
+-thêm setting default post privacy
+-thêm story 24h
+-tạo group và phân quyền chỉnh sửa bài viết trong group.
+-xây group chat
+
+- thêm 1 cái là upload video và thêm model PostVideo luôn làm y chang PostPhoto
+-dùng celery(dễ)
+ và luồng gmail
 
 
-
-
-
-2 api mới của search history
-
+4 api mới của
+    search history
+    pin post
+    report
+    ws typing
+    private/birth sdt profile
+    update fe nếu thấy is_complete=False thì hiện banner hoàn thiện profile(picture) của bạn ở trang của bạn, user sửa thông tin thì be tự đánh is_complete=True
+    xem tất cả các api được gọi ở 1 trang xem có thừa, test đủ các api và fe đã dùng đủ chức năng chưa và đúng logic chưa
+    websocket fe bị lỗi, giải thích AI là có flow ping pong
+    thêm luồng otp cho email 1 api, khi gửi lại otp fe phải có countdown tránh spam
+    thêm trang support để user gửi ticket lên
 
 
 

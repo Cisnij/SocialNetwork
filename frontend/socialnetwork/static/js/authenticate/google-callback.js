@@ -51,7 +51,7 @@
     })
     .catch(err => {
       console.error(err);
-      alert('Google login error');
+      alert('Lỗi đăng nhập google hoặc đây là tài khoản phụ đã xác thực');
       window.location.href = '/login';
     });
   });

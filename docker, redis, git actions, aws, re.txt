@@ -165,9 +165,8 @@ thì groupuser có field is_admin
 và khi list all post thì sẽ liệt kê user có trong group đó không, user có phải là admin không nếu không thì chỉ return, nếu có thì liệt kê ra hết post, serializer có field là is_admin để fe hiểu là đc chỉnh sửa
 tạo view cho list all post cho user riêng dùng generics List
 tạo view cho list và sửa cho admin dùng generic retrieveupdatedestroy và list của cái trên, nếu user là chủ bài viết cũng k đc chỉnh sửa
-
+api tạo group, api xóa group, api liệt kê các group cho user, api thêm member,api xóa member, api tạo post group,api xóa post group, api thêm quyền admin,api accept post,api reject post, api liệt kê post đã đc duyệt và api chưa được duyệt
 ==================================================================================================================================
-
 
 
 sau này triển khai nếu user nằm trong id này thì được xem, user nằm trong id này thì k đc xem(chức năng chỉ hiển thị với người này hoặc ẩn người này của fb)
@@ -251,4 +250,5 @@ class ConversationMember(models.Model):
             models.Index(fields=['conversation']),
             models.Index(fields=['conversation', 'role']),  # 🔥 quan trọng
         ]
+api thêm thành viên, api xóa thành viên, api out group sẽ chuyển admin cho user vào thứ 2, api thêm quyền cho user
 #==================================================================================================

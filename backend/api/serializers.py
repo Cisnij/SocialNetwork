@@ -441,3 +441,8 @@ class PostReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = PostReport
         fields = ['post','reason','created_at']
+
+class SupportTicketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SupportTicket
+        fields = ['id', 'content', 'created_at']

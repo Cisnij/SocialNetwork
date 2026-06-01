@@ -153,16 +153,19 @@ urlpatterns = [
     path('api/email/add/',AddEmailView.as_view(),name='add-email'), #add email
     path('api/email/set/<int:pk>/',SetPrimaryEmailView.as_view(),name='add-email'), #set làm email mặc đinh
     path('api/email/delete/<int:pk>/',DeleteEmailView.as_view(),name='delete-email'), #xóa email
+    path('email/confirm-change-primary/', ConfirmChangePrimaryEmail.as_view()),
     #search
     path('api/search/', SearchAPIView.as_view(),name='search'),# search api/search/?q=
     path('api/user/search-history/',SearchHistoryView.as_view(),name='search-history'), #lịch sủ tìm kiếm
     path('api/search-history/delete/', SearchHistoryDeleteAllView.as_view(),name='search-history-delete-all'), #xóa tất cả search
     path('api/search-history/<int:pk>/delete/', SearchHistoryDeleteView.as_view(),name='search-history-delete'), #xóa search bất kì
+    path('email/confirm-change-primary/', ConfirmChangePrimaryEmail.as_view()), #otp khi đổi email
     #friendsuggest
     path('api/user/friend-suggest/',FriendSuggestion.as_view(),name='friend-suggest'), # gợi ý bạn bè
     #v2-test full chức năng tạo post va ảnh trong 1 api
-    path('api/user/post/create/v2/',CreateFullPostView.as_view(),name='post-create-v2') #v2 của tạo post
-    
+    path('api/user/post/create/v2/',CreateFullPostView.as_view(),name='post-create-v2'), #v2 của tạo post
+    #support
+    path('api/support/', SupportTicketView.as_view()), #user gửi lên ticket và nhân viên check reply qua mail sau đó
     
 ] + router.urls
 
