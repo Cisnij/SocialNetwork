@@ -163,7 +163,7 @@ class DeleteEmailView(APIView):
             password = request.data.get("password")
             if not password:
                 return Response({'error': "Please enter password"}, status=400)
-            if not authenticate(username=user.username, password=password):
+            if not authenticate(request=request,username=user.username, password=password):
                 return Response({'error': 'Wrong password'}, status=400)
 
         email_obj = EmailAddress.objects.filter(id=pk, user=user).first()
@@ -195,7 +195,7 @@ class CheckPassword(APIView): #kiểm tra password khi thay đổi email mặc �
     permission_classes=[IsAuthenticated]
     def post(self,request):
         password=request.data.get("password")
-        user= authenticate(username=request.user.username,password=password)
+        user= authenticate(request=request,username=request.user.username,password=password)
         if user:
             return Response({'valid':True},status=200)
         return Response({'valid':False},status =400)
@@ -204,10 +204,16 @@ class HasPassword(APIView):
     permission_classes = [IsAuthenticated]
     def get(self,request):
         return Response({'has_password': request.user.has_usable_password()})
+
 class DeleteAccount(APIView):
     permission_classes=[IsAuthenticated]
-    def delete(self,request):
-        user=request.user
-        SocialAccount.objects.filter(user=user).delete()
+
+    def delete(self, request):
+        user = request.user
+
+        # xóa auditlog trước
+        from auditlog.models import LogEntry
+        LogEntry.objects.filter(actor=user).update(actor=None)  # set null thay vì xóa
+
         user.delete()
-        return Response({"detail":"success"},status=200)
+        return Response({"detail": "success"}, status=200)
