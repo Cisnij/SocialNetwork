@@ -65,7 +65,9 @@ INSTALLED_APPS = [
     'rules',
     #django-meta
     'meta',
-
+    #celery
+    'django_celery_beat',
+    'django_celery_results',
 
     # django cleanup, cuối
     "django_cleanup.apps.CleanupConfig",

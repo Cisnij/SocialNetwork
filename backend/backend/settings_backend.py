@@ -63,7 +63,6 @@ CACHEOPS = {
     'reaction.*': {'ops': 'all', 'timeout': 60 * 15},
 
 }
-# ==========================================================================================================================================================================================================
 
 
 # ==========================================================================================================================================================================================================
@@ -109,6 +108,7 @@ CACHES = {  # xài redis, set cache default là redis db 2
 # Channels  → DB 0
 # Caches redis  → DB 2
 # Cacheops  → DB 1
+# celery -> DB 3
 # ============================================================================================
 # django-extensions
 REST_FRAMEWORK_EXTENSIONS = {
@@ -265,11 +265,32 @@ LOGGING = {
         },
     },
 }
-#=================================META===================================
+#=================================META tạo preview card ===================================
 FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
 if DEBUG:
     META_SITE_PROTOCOL = 'https'
 META_USE_OG_PROPERTIES = True      # Facebook Open Graph
 META_USE_TWITTER_PROPERTIES = True  # Twitter Card
 META_USE_TITLE_TAG = True
-# META_DEFAULT_IMAGE = 'https://yourapp.com/static/default-thumbnail.jpg'
+#======================CELERY============================================
+CELERY_BROKER_URL = env('REDIS_URL', default='redis://localhost:6379/3') # Redis làm nơi chứa task chờ xử lý
+CELERY_RESULT_BACKEND = 'django-db' #lưu kết quả task vào Django DB
+
+# định dạng data khi truyền task
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Ho_Chi_Minh'
+
+# production — giới hạn task
+CELERY_TASK_TIME_LIMIT = 300        # task chạy tối đa 5 phút, quá 5p thì kill
+CELERY_TASK_SOFT_TIME_LIMIT = 240   # cảnh báo trước 1 phút trước khi kill task để cleanup
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # restart worker sau 1000 task tránh memory leak
+CELERY_TASK_ACKS_LATE = True        # chỉ xác nhận task sau khi chạy xong,nếu chưa xong mà lỗi thì retry, tránh mất task khi worker crash
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # mỗi worker chỉ lấy 1 task, tránh 1 worker ôm hết
+
+# queue riêng cho từng loại task
+CELERY_TASK_ROUTES = {
+    'api.tasks.push_notification_task': {'queue': 'notifications'},
+    'api.tasks.send_email_task': {'queue': 'emails'},
+}

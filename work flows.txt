@@ -75,5 +75,7 @@ work flows
 48.  thêm typing realtim, ng dùng nhập thì gọi ws type= typing
 49. Tách phone và birth ra khỏi response trả về vì bảo mật. Thêm vào profile 2 field là có đc public birth và phone, nếu được thì response serializer sẽ check và return không thì None. Thêm API để enable 2 field đó và sửa phone/birth
 50. Thêm khi update ảnh lần đầu thì is_complete=True, còn False thì hiện thông báo ở fe cho mn biết
-51. THêm support ticket user gửi yêu cầu và nhân viên sẽ hỗ trợ reply qua mail 
+51. THêm support ticket user gửi yêu cầu và nhân viên sẽ hỗ trợ reply qua mail
+52. Sửa lại email phụ không đăng nhập được google, chỉ email chính
+53. Thêm celery chạy các task ngầm như push notification qua firebase và sendmail, xóa ảnh softdelete theo n thời gian
 =====================================================================================

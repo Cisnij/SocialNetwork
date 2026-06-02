@@ -13,6 +13,10 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from .serializers import EmailSerializer
 from allauth.socialaccount.models import SocialAccount
+
+from .tasks import send_email_task
+
+
 class CustomRegisterSerializer(RegisterSerializer): # Sửa chức năng register nên RegisterSerializer
     username=None #Bỏ username đi
     firstname=serializers.CharField(required=True, allow_blank=False) #thêm first name
@@ -87,7 +91,7 @@ class AddEmailView(APIView): #Thêm 1 email khác vào tài khoản
         )
         if not created:
             return Response({'error': 'Email already added before'},status=400)
-       
+
         email_address.send_confirmation(request) #signup false để bảo đây là thêm chứ k phải đăng kí tài khoản mới
         return Response({'Email added successfully, please check your email'},status =200)
 
@@ -116,11 +120,10 @@ class SetPrimaryEmailView(APIView): # đặt 1 email làm mặc đinh
             'new_email_id': pk,
         }, timeout=300)  # 5 phút
 
-        send_mail(
+        send_email_task.delay(
             subject="Mã OTP đổi email chính",
             message=f"Mã OTP của bạn là: {otp}. Có hiệu lực trong 5 phút. Nếu bạn không thay đổi email chính, vui lòng bỏ qua",
-            from_email="noreply@yourdomain.com",
-            recipient_list=[user.email],  # gửi về email CŨ
+            recipient_list=[user.email],
         )
         return Response({"detail": "OTP đã gửi về email cũ"}, status=200)
 

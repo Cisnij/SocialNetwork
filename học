@@ -560,7 +560,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
     }
     {
         Thông báo, sự kiện:
-        +pip install django-celery: :xử lý tác vụ nền (ví dụ gửi email,thông báo mà ít ảnh hưởng hiệu năng)
+        +pip install celery redis django-celery-beat django-celery-results: xử lý tác vụ nền (ví dụ gửi email,thông báo mà ít ảnh hưởng hiệu năng)
         +pip install django-scheduler: để tạo các lịch hẹn, các event lặp lại
         #+pip install django-notification-hq: tạo thông báo, có hệ thống đọc/chưa đọc sẵn, có thể tích hợp channels
         # django.core.mail : thư viện gửi export_email

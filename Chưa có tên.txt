@@ -17,8 +17,19 @@ chưa xong
 -xây group chat
 
 - thêm 1 cái là upload video và thêm model PostVideo luôn làm y chang PostPhoto
--dùng celery(dễ)
- và luồng gmail
+-dùng celery(dễ), mai check các api nào cần dùng và test, trước là gửi otp 
+    Push Firebase notification — đang gọi trực tiếp trong WebSocket consumer, chậm và block
+    Gửi email — verify email, OTP, cảnh báo đổi email
+    Elasticsearch sync — index bài viết/profile sau khi save
+    Xóa dữ liệu cũ — token hết hạn, OTP cache, soft delete cũ
+    # terminal 2 — worker cho notification
+    celery -A backend worker -Q notifications --loglevel=info
+
+    # terminal 3 — worker cho email
+    celery -A backend worker -Q emails --loglevel=info
+
+    # terminal 4 — beat scheduler
+    celery -A backend beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseSchedule
 
 
 4 api mới của

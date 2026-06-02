@@ -12,13 +12,24 @@ class MySocialAccountAdapter(DefaultSocialAccountAdapter): #chỉnh sủa login 
         # Nếu user đã đăng nhập thì không làm gì (đã connect rồi)
         if request.user.is_authenticated:
             return
+        email = sociallogin.account.extra_data.get('email', '').strip().lower()  # lấy ra email vừa login google
 
-        # nếu social account đã tồn tại rồi thì return luôn, ví dụ user có 2 mail a và b thì đều gắn vào user đó không tạo acc mới
-        if sociallogin.is_existing: # chạy trước hàm này và tự động query, ví dụ gmail a đã connect và đc tạo trc đây thì return k cần phải connect lại
-            return
+        if sociallogin.is_existing:# chạy trước hàm này và tự động query, ví dụ gmail a đã connect và đc tạo trc đây thì return k cần phải connect lại, nếu acc phụ thì check
+            '''flow là khi user acc phụ login vào ,check thấy đã login với gg trước đó(sociallogin.is_existing), lấy ra user gắn với acc phụ đó lấy ra email và so
+                ,không trùng thì lỗi 400'''
+            existing_user = sociallogin.user #lấy ra user gắn với acc đã connect
+            if existing_user.email.lower() != email:  # email phụ → chặn
+                raise ImmediateHttpResponse(
+                    HttpResponseBadRequest(
+                        json.dumps({
+                            "error": "Email này là email phụ, vui lòng đăng nhập bằng email chính"
+                        }),
+                        content_type='application/json'
+                    )
+                )
+            return  # email chính → cho qua return
 
-        email = sociallogin.account.extra_data.get('email') # lấy ra email vừa login google
-        email = email.strip().lower()
+
         if not email:
             return
         print("google email =", repr(email))

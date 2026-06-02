@@ -30,11 +30,11 @@ group send và send luôn đi chung, 1 cái gửi tín hiệu và cái còn lạ
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from api.models import ConversationMember, Message, Conversation, Notification, MessageAttachment
+from api.models import ConversationMember, Message, Conversation, Notification, MessageAttachment, Profile
 from friendship.models import Block
 from django.utils import timezone
 from django.contrib.auth.models import User
-from api.firebase import push_to_user
+from api.tasks import push_notification_task
 
 class HeartbeatMixin:
     '''giúp tự kết nối khi bị ngắt, flow là server gửi ping sau 30s, client còn sống thì gửi pong. Nếu k gửi pong thì server disconnect và client k nhận ping cũng sẽ tự reconnect 3s chỉ sau khi server close'''
@@ -158,11 +158,15 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
             }
         )
 
-        # push notification sau cùng, tách hoàn toàn, lỗi firebase không ảnh hưởng message đã lưu và đã broadcast
-        member_ids, _ = await asyncio.gather(
-            self.get_member_ids(),
-            self.push_notifications(message)
-        )
+        member_ids = await self.get_member_ids()
+        sender_name = await self.get_sender_name()
+        for user_id in member_ids:
+            if user_id != self.user.id:
+                push_notification_task.delay(
+                    user_id=user_id,
+                    title=f'{sender_name} gửi tin nhắn' if message else f'{self.user.username} gửi file',
+                    body=message if message else 'File đính kèm'
+                )
         for user in member_ids:
             if user == self.user.id: # người nào gửi là người đó đang kết nối vô phòng, còn nếu đang ở đoạn chat sẵn thì fe bỏ qua cái này
                 continue
@@ -314,29 +318,14 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
             }
             for a in attachments
         ]
-    @database_sync_to_async
-    def push_notifications(self, message): # tách riêng, lỗi ở đây không ảnh hưởng gì cả
-        try:
-            # push notification cho các member khác
-            members = ConversationMember.objects.filter(
-                conversation_id=self.conversation_id
-            ).select_related('user')
-
-            for m in members:
-                if m.user_id == self.user.id:
-                    continue
-                push_to_user( # gọi firebase push
-                    m.user,
-                    title=f'{self.user.username} gửi tin nhắn' if message else f'{self.user.username} gửi file',
-                    body=message if message else 'File đính kèm'
-                )
-        except Exception as e:
-            print(f" Push notification error: {e}")
 
     @database_sync_to_async
     def get_member_ids(self):
         return list(ConversationMember.objects.filter(conversation_id=self.conversation_id).values_list('user_id', flat=True)) # chỉ lấy 1 field user_id
-
+    @database_sync_to_async
+    def get_sender_name(self):
+        profile = Profile.objects.filter(user=self.user).first()
+        return profile.full_name() if profile else self.user.username
 class NotificationConsumer(HeartbeatMixin,AsyncWebsocketConsumer): # chịu trách nhiệm kết nối khi vào app và đếm số count noti ngay khi vào app, khi nhấn vào noti sẽ broadcast từ signal qua và đặt lại 0
     async def connect(self):
         self.ping_task=None
