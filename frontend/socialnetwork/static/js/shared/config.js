@@ -66,6 +66,7 @@ export const API = {
   user: () => `${API_BASE_URL}/api/user/`,
   profile: (id) => `${API_BASE_URL}/api/user/profile/${id}/`,
   profileUserpage: (id) => `${API_BASE_URL}/api/auth/profile/userpage/${id}/`,
+  privateProfile: (id) => `${API_BASE_URL}/api/user/private-profile/${id}/`,
   relationship: (profileId) => `${API_BASE_URL}/api/relationship/${profileId}/`,
 
   comments: (postId) => `${API_BASE_URL}/api/user/comments/post/${postId}/`,
@@ -78,6 +79,8 @@ export const API = {
 
   postPrivacy: (postId) => `${API_BASE_URL}/api/post/${postId}/privacy-change/`,
   postShares: (postId) => `${API_BASE_URL}/api/posts/${postId}/share/`,
+  pinPost: (postId) => `${API_BASE_URL}/api/post/${postId}/pin/`,
+  reportPost: (postId) => `${API_BASE_URL}/api/post/${postId}/report/`,
   shareDelete: (id) => `${API_BASE_URL}/api/posts/share/${id}/delete/`,
   sharesFeed: () => `${API_BASE_URL}/api/posts/share/`,
   userShares: (profileId) => `${API_BASE_URL}/api/posts/user/${profileId}/share/`,
@@ -113,6 +116,8 @@ export const API = {
   search: (q, type = "all") =>
     `${API_BASE_URL}/api/search/?q=${encodeURIComponent(q)}&type=${type}`,
   searchHistory: () => `${API_BASE_URL}/api/user/search-history/`,
+  searchHistoryDelete: (id) => `${API_BASE_URL}/api/search-history/${id}/delete/`,
+  searchHistoryDeleteAll: () => `${API_BASE_URL}/api/search-history/delete/`,
 
   notifications: () => `${API_BASE_URL}/api/notifications/`,
   notificationsMarkRead: () => `${API_BASE_URL}/api/notifications/mark-read/`,
@@ -137,6 +142,7 @@ export const API = {
   setPrimaryEmail: (id) => `${API_BASE_URL}/api/email/set/${id}/`,
   deleteEmail: (id) => `${API_BASE_URL}/api/email/delete/${id}/`,
   deleteAccount: () => `${API_BASE_URL}/api/auth/delete-account/`,
+  supportTicket: () => `${API_BASE_URL}/api/support-ticket/`,
 
   wsChat: (convId) => {
     const token = localStorage.getItem("accessToken");

@@ -3,7 +3,9 @@ from django.core.mail import send_mail
 import logging
 from django.contrib.auth import get_user_model
 from api.firebase import push_to_user
-
+from django.utils import timezone
+from datetime import timedelta
+from api.models import Post
 logger = logging.getLogger(__name__)
 
 # shared_task: dùng được ở mọi app mà không cần import trực tiếp celery app
@@ -43,3 +45,8 @@ def cleanup_expired_tokens():
     from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
     from django.utils import timezone
     OutstandingToken.objects.filter(expires_at__lt=timezone.now()).delete()
+
+@shared_task
+def cleanup_soft_deleted_post(): #đăng kí để trang admin biết mà chọn
+    threshold = timezone.now() - timedelta(days=30) #mốc thời gian 30 ngày trước
+    Post.deleted_objects.filter(deleted_lt = threshold).delete() # ngày xóa < ngày bắt đầu tính thì xóa (ví dụ 15/4 < 1/5 tức là đã trừ 30 ngày còn 1/5 mà vẫn bé hơn thì xóa)

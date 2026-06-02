@@ -24,9 +24,30 @@ function setupBaseModal() {
   });
 
   if (openBtn && modal && submitBtn) {
+    // Inject privacy selector UI if not exists
+    const injectPrivacySelector = () => {
+      if (!document.getElementById("postPrivacy")) {
+        const imageSection = modal.querySelector('.border.dark\\:border-gray-600');
+        if (imageSection) {
+          const privacyDiv = document.createElement("div");
+          privacyDiv.className = "border dark:border-gray-600 rounded-lg p-3";
+          privacyDiv.innerHTML = `
+            <label class="text-sm font-medium text-gray-600 dark:text-gray-400">Quyền riêng tư</label>
+            <select id="postPrivacy" class="mt-2 w-full p-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 focus:outline-none">
+              <option value="public">🌍 Công khai</option>
+              <option value="friends">👥 Bạn bè</option>
+              <option value="private">🔒 Chỉ mình tôi</option>
+            </select>
+          `;
+          imageSection.after(privacyDiv);
+        }
+      }
+    };
+
     openBtn.addEventListener("click", () => {
       console.log("Opening post modal");
       modal.classList.remove("hidden");
+      injectPrivacySelector();
     });
 
     closeBtn?.addEventListener("click", () => modal.classList.add("hidden"));
@@ -46,6 +67,7 @@ function setupBaseModal() {
       console.log("Base modal submit clicked");
       const title = document.getElementById("postTitle")?.value.trim();
       const files = imageInput?.files || [];
+      const privacy = document.getElementById("postPrivacy")?.value || "public";
 
       if (!title && selectedFiles.length === 0) {
         showToast("⚠️ Vui lòng nhập tiêu đề hoặc thêm ảnh", "red");
@@ -54,6 +76,7 @@ function setupBaseModal() {
 
       const formData = new FormData();
       formData.append("title", title || "Bài viết mới");
+      formData.append("privacy", privacy);
       selectedFiles.forEach((file) => {
         formData.append("photos", file);
       });

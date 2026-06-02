@@ -1,0 +1,43 @@
+{% extends 'app/page-shell.html' %}
+{% load static %}
+{% block title %}Hỗ trợ{% endblock %}
+{% block page_content %}
+<div class="max-w-2xl mx-auto">
+  <h1 class="text-2xl font-bold mb-6 dark:text-[#e4e6eb]">Trung tâm hỗ trợ</h1>
+  
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6 mb-6">
+    <h2 class="font-bold text-lg mb-4 dark:text-[#e4e6eb]">Gửi yêu cầu hỗ trợ</h2>
+    <p class="text-gray-600 dark:text-fb-muted mb-4 text-sm">
+      Mô tả chi tiết vấn đề hoặc câu hỏi của bạn. Chúng tôi sẽ phản hồi trong thời gian sớm nhất.
+    </p>
+    
+    <textarea id="supportContent" rows="5" class="w-full p-4 rounded-lg bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb] resize-none" placeholder="Mô tả vấn đề hoặc câu hỏi của bạn..."></textarea>
+    
+    <button id="submitSupportBtn" type="button" class="mt-4 px-6 py-2.5 bg-fb-primary dark:bg-[#1877f2] hover:bg-fb-primary-hover dark:hover:bg-[#166fe5] text-white rounded-lg font-semibold">
+      Gửi yêu cầu
+    </button>
+  </div>
+  
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-6">
+    <h2 class="font-bold text-lg mb-4 dark:text-[#e4e6eb]">Các câu hỏi thường gặp</h2>
+    <div class="space-y-4">
+      <details class="border dark:border-fb-divider rounded-lg p-4">
+        <summary class="font-medium cursor-pointer dark:text-[#e4e6eb]">Làm cách nào để thay đổi mật khẩu?</summary>
+        <p class="mt-2 text-sm text-gray-600 dark:text-fb-muted">Bạn có thể thay đổi mật khẩu tại trang Cài đặt > Mật khẩu.</p>
+      </details>
+      <details class="border dark:border-fb-divider rounded-lg p-4">
+        <summary class="font-medium cursor-pointer dark:text-[#e4e6eb]">Làm thế nào để xóa tài khoản?</summary>
+        <p class="mt-2 text-sm text-gray-600 dark:text-fb-muted">Bạn có thể xóa tài khoản vĩnh viễn tại trang Cài đặt. Hành động này không thể hoàn tác.</p>
+      </details>
+      <details class="border dark:border-fb-divider rounded-lg p-4">
+        <summary class="font-medium cursor-pointer dark:text-[#e4e6eb]">Làm sao để báo cáo bài viết không phù hợp?</summary>
+        <p class="mt-2 text-sm text-gray-600 dark:text-fb-muted">Nhấn vào menu (⋯) trên bài viết và chọn "Báo cáo".</p>
+      </details>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block post_scripts %}
+<script type="module" src="{% static 'js/pages/support.js' %}"></script>
+{% endblock %}

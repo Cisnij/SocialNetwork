@@ -17,6 +17,8 @@ let pendingConv = false;
 let loadingMessages = false;
 let activeConvMeta = null;
 let firstMessageInConv = null;
+const pendingMessages = new Map();
+let tempIdCounter = 0;
 
 /** DOM refs — resolved on boot, not at import time */
 let convListEl;
@@ -447,10 +449,35 @@ function connectChatWs(convId) {
           return;
         }
         if (data.message != null || data.content != null) {
+          const messageContent = data.message ?? data.content;
+          const isMyMessage = Number(data.sender_id) === Number(myUserId) || Number(data.sender_id) === Number(myProfileId);
+          
+          // Kiểm tra xem có pending message trùng không (cho tin nhắn của chính mình)
+          if (isMyMessage && pendingMessages.size > 0) {
+            // Đơn giản hóa: lấy pending message đầu tiên (user thường chỉ gửi 1 message tại 1 thời điểm)
+            const [matchedTempId, pending] = pendingMessages.entries().next().value;
+            
+            if (matchedTempId) {
+              console.log('[chat] Matched pending message:', matchedTempId, 'with server message:', data.id);
+              
+              // Cancel timeout trước khi xóa pending message
+              if (pending?.timeoutId) {
+                clearTimeout(pending.timeoutId);
+              }
+              
+              // Replace pending message với message thực từ server
+              const pendingEl = document.querySelector(`[data-temp-id="${matchedTempId}"]`);
+              if (pendingEl) {
+                pendingEl.remove();
+              }
+              pendingMessages.delete(matchedTempId);
+            }
+          }
+          
           appendMessage(
             {
               id: data.id,
-              content: data.message ?? data.content,
+              content: messageContent,
               sender_id: data.sender_id,
               attachments: data.attachments,
             },
@@ -463,7 +490,17 @@ function connectChatWs(convId) {
             });
           }
         }
-      } catch (_) {}
+      } catch (err) {
+        console.error("[chat] WebSocket message error:", err);
+      }
+    };
+    
+    chatWs.onopen = () => {
+      console.log("[chat] WebSocket connected for conv", convId);
+    };
+    
+    chatWs.onerror = (err) => {
+      console.error("[chat] WebSocket error:", err);
     };
   } catch (e) {
     console.error("[chat] message ws", e);
@@ -489,7 +526,7 @@ async function loadMessages(reset) {
   }
 }
 
-function appendMessage(m, scroll = true) {
+function appendMessage(m, scroll = true, isPending = false) {
   const sid = m.sender?.id ?? m.sender_id;
   const mine =
     (myUserId != null && Number(sid) === Number(myUserId)) ||
@@ -498,6 +535,10 @@ function appendMessage(m, scroll = true) {
   const wrap = document.createElement("div");
   wrap.className = `flex ${mine ? "justify-end" : "justify-start"} mb-1`;
   wrap.dataset.msgId = m.id;
+  if (isPending) {
+    wrap.dataset.tempId = m.id;
+    wrap.classList.add('opacity-70');
+  }
 
   const bubble = document.createElement("div");
   bubble.className = `max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
@@ -545,7 +586,7 @@ function appendMessage(m, scroll = true) {
     bubble.appendChild(text);
   }
 
-  if (mine) {
+  if (mine && !isPending) {
     const actions = document.createElement("div");
     actions.className = "flex gap-2 mt-1 text-[10px] opacity-80 justify-end";
     const unsend = document.createElement("button");
@@ -574,7 +615,7 @@ function appendMessage(m, scroll = true) {
 
   const seen = document.createElement("p");
   seen.className = "msg-seen text-[10px] text-gray-400 mt-0.5 text-right";
-  seen.textContent = mine ? "⏳" : "";
+  seen.textContent = isPending ? "⏳ Đang gửi..." : (mine ? "⏳" : "");
   wrap.appendChild(bubble);
   if (mine) wrap.appendChild(seen);
   messagesEl.appendChild(wrap);
@@ -593,6 +634,37 @@ function bindEvents() {
       showToast("Không gửi được — kiểm tra kết nối", "red");
       return;
     }
+    
+    // Optimistic UI: hiển thị tin nhắn ngay với temp ID
+    const tempId = `temp_${++tempIdCounter}`;
+    const timeoutId = setTimeout(() => {
+      if (pendingMessages.has(tempId)) {
+        const pendingEl = document.querySelector(`[data-temp-id="${tempId}"]`);
+        if (pendingEl) {
+          const seenEl = pendingEl.querySelector('.msg-seen');
+          if (seenEl) {
+            seenEl.textContent = "❌ Gửi thất bại";
+            seenEl.classList.add('text-red-500');
+          }
+          pendingEl.classList.remove('opacity-70');
+          pendingEl.classList.add('opacity-50');
+        }
+        pendingMessages.delete(tempId);
+      }
+    }, 10000);
+    
+    pendingMessages.set(tempId, { content: text, timeoutId });
+    
+    appendMessage(
+      {
+        id: tempId,
+        content: text,
+        sender_id: myUserId || myProfileId,
+      },
+      true,
+      true  // isPending
+    );
+    
     chatWs.send(JSON.stringify({ message: text, message_type: "text" }));
     if (chatInput) chatInput.value = "";
     if (pendingConv && activeConvMeta && canSendWhilePending()) {
@@ -623,6 +695,38 @@ function bindEvents() {
 
     try {
       const ids = await uploadChatFiles(activeConvId, files);
+      
+      // Optimistic UI: hiển thị tin nhắn file ngay với temp ID
+      const tempId = `temp_file_${++tempIdCounter}`;
+      const fileName = files[0].name;
+      const timeoutId = setTimeout(() => {
+        if (pendingMessages.has(tempId)) {
+          const pendingEl = document.querySelector(`[data-temp-id="${tempId}"]`);
+          if (pendingEl) {
+            const seenEl = pendingEl.querySelector('.msg-seen');
+            if (seenEl) {
+              seenEl.textContent = "❌ Gửi thất bại";
+              seenEl.classList.add('text-red-500');
+            }
+            pendingEl.classList.remove('opacity-70');
+            pendingEl.classList.add('opacity-50');
+          }
+          pendingMessages.delete(tempId);
+        }
+      }, 15000);
+      
+      pendingMessages.set(tempId, { attachmentIds: ids, fileName, timeoutId });
+      
+      appendMessage(
+        {
+          id: tempId,
+          content: `📎 ${fileName}`,
+          sender_id: myUserId || myProfileId,
+        },
+        true,
+        true  // isPending
+      );
+      
       sendChatWsMessage(chatWs, { text: "", attachmentIds: ids });
       showToast("Đã gửi tệp đính kèm");
     } catch (err) {
@@ -707,6 +811,11 @@ async function initChat() {
 
   if (!convListEl) {
     console.error("[chat] #chatConvList not found — wrong page template?");
+    return;
+  }
+
+  if (!messagesEl) {
+    console.error("[chat] #chatMessages not found — wrong page template?");
     return;
   }
 

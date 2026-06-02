@@ -53,7 +53,8 @@ urlpatterns = [
     path('api/auth/google/connect/',GoogleConnect.as_view(), name='google_connect'),
     path("api/auth/google/disconnect/", GoogleDisconnect.as_view(), name="google_disconnect"),
     path("api/password/reset/confirm/<uidb64>/<token>/",auth_views.PasswordResetConfirmView.as_view(),name="password_reset_confirm",),
-    path('api/auth/check-email/',CheckPassword.as_view(),name='check-password'),
+    path('api/auth/check-password/',CheckPassword.as_view(),name='check-password'), #check password có đúng
+    path('api/auth/has-password/',HasPassword.as_view(),name='has-password'), #check có mật khẩu không(user google k có)
     path('api/auth/delete-account/',DeleteAccount.as_view(),name='delete-account'),
     path('api/auth/google/login/', GoogleLogin.as_view(), name='google_login'),
     #url spectacular
@@ -153,13 +154,12 @@ urlpatterns = [
     path('api/email/add/',AddEmailView.as_view(),name='add-email'), #add email
     path('api/email/set/<int:pk>/',SetPrimaryEmailView.as_view(),name='add-email'), #set làm email mặc đinh
     path('api/email/delete/<int:pk>/',DeleteEmailView.as_view(),name='delete-email'), #xóa email
-    path('email/confirm-change-primary/', ConfirmChangePrimaryEmail.as_view()),
+    path('api/email/confirm-change-primary/', ConfirmChangePrimaryEmail.as_view()), #otp khi đổi email
     #search
     path('api/search/', SearchAPIView.as_view(),name='search'),# search api/search/?q=
     path('api/user/search-history/',SearchHistoryView.as_view(),name='search-history'), #lịch sủ tìm kiếm
     path('api/search-history/delete/', SearchHistoryDeleteAllView.as_view(),name='search-history-delete-all'), #xóa tất cả search
     path('api/search-history/<int:pk>/delete/', SearchHistoryDeleteView.as_view(),name='search-history-delete'), #xóa search bất kì
-    path('email/confirm-change-primary/', ConfirmChangePrimaryEmail.as_view()), #otp khi đổi email
     #friendsuggest
     path('api/user/friend-suggest/',FriendSuggestion.as_view(),name='friend-suggest'), # gợi ý bạn bè
     #v2-test full chức năng tạo post va ảnh trong 1 api

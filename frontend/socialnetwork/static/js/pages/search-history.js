@@ -3,6 +3,7 @@ import { el, textEl } from "../shared/dom.js";
 import { showToast } from "../shared/toast.js";
 import { showEmpty } from "../shared/ui.js";
 import { fetchPage } from "../shared/paginated-list.js";
+import { authFetch } from "../authenticate/auth.js";
 
 const list = document.getElementById("searchHistoryList");
 const emptyState = document.getElementById("emptyState");
@@ -26,29 +27,52 @@ function formatTime(iso) {
 
 function renderRow(item) {
   const row = el(
-    "button",
-    "w-full flex items-center justify-between p-4 hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] transition text-left",
-    { type: "button" }
+    "div",
+    "w-full flex items-center justify-between p-4 hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] transition"
   );
 
-  const left = el("div", "flex items-center gap-3 min-w-0");
+  const left = el("div", "flex items-center gap-3 min-w-0 flex-1 cursor-pointer");
   left.appendChild(textEl("span", "text-xl shrink-0", "🔍"));
   left.appendChild(
     textEl("span", "dark:text-[#e4e6eb] truncate", item.content || "")
   );
-  row.append(left);
-  row.appendChild(
+  left.addEventListener("click", () => {
+    const q = (item.content || "").trim();
+    if (q) window.location.href = `/search/?q=${encodeURIComponent(q)}`;
+  });
+
+  const right = el("div", "flex items-center gap-2");
+  right.appendChild(
     textEl(
       "span",
-      "text-xs text-gray-500 dark:text-fb-muted shrink-0 ml-2",
+      "text-xs text-gray-500 dark:text-fb-muted shrink-0",
       formatTime(item.created_at)
     )
   );
 
-  row.addEventListener("click", () => {
-    const q = (item.content || "").trim();
-    if (q) window.location.href = `/search/?q=${encodeURIComponent(q)}`;
+  const deleteBtn = el("button", "text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20", { type: "button" });
+  deleteBtn.textContent = "×";
+  deleteBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    try {
+      const res = await authFetch(API.searchHistoryDelete(item.id), { method: "DELETE" });
+      if (res.ok) {
+        row.remove();
+        showToast("Đã xóa lịch sử tìm kiếm", "green");
+        if (list.children.length === 0) {
+          emptyState?.classList.remove("hidden");
+        }
+      } else {
+        showToast("Không thể xóa", "red");
+      }
+    } catch (err) {
+      console.error("Delete search history error:", err);
+      showToast("Lỗi mạng", "red");
+    }
   });
+
+  right.appendChild(deleteBtn);
+  row.append(left, right);
 
   return row;
 }
@@ -85,7 +109,23 @@ async function load(reset = false) {
 
 document.addEventListener("DOMContentLoaded", () => {
   const clearAllBtn = document.getElementById("clearAllBtn");
-  if (clearAllBtn) clearAllBtn.hidden = true;
+  if (clearAllBtn) {
+    clearAllBtn.hidden = false;
+    clearAllBtn.addEventListener("click", async () => {
+      try {
+        const res = await authFetch(API.searchHistoryDeleteAll(), { method: "DELETE" });
+        if (res.ok) {
+          showToast("Đã xóa tất cả lịch sử tìm kiếm", "green");
+          load(true);
+        } else {
+          showToast("Không thể xóa tất cả", "red");
+        }
+      } catch (err) {
+        console.error("Delete all search history error:", err);
+        showToast("Lỗi mạng", "red");
+      }
+    });
+  }
 
   const moreBtn = document.getElementById("loadMoreHistoryBtn");
   moreBtn?.addEventListener("click", () => load(false));

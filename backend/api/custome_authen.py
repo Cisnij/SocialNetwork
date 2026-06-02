@@ -199,7 +199,11 @@ class CheckPassword(APIView): #kiểm tra password khi thay đổi email mặc �
         if user:
             return Response({'valid':True},status=200)
         return Response({'valid':False},status =400)
-    
+
+class HasPassword(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self,request):
+        return Response({'has_password': request.user.has_usable_password()})
 class DeleteAccount(APIView):
     permission_classes=[IsAuthenticated]
     def delete(self,request):

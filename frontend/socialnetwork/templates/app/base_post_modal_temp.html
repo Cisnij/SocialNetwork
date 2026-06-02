@@ -1,0 +1,29 @@
+<!-- Create post modal -->
+<div id="postModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg">
+    <div class="flex justify-between items-center px-4 py-3 border-b dark:border-gray-700">
+      <h2 class="text-lg font-bold dark:text-[#e4e6eb]">Tạo bài viết</h2>
+      <button id="closePostModal" type="button" class="w-9 h-9 rounded-full bg-fb-secondary dark:bg-gray-700 hover:bg-gray-200 text-xl">&times;</button>
+    </div>
+    <div class="p-4 space-y-3">
+      <textarea id="postTitle" rows="3" placeholder="Bạn đang nghĩ gì?" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 focus:outline-none resize-none"></textarea>
+      <div class="border dark:border-gray-600 rounded-lg p-3">
+        <label class="text-sm font-medium text-gray-600 dark:text-gray-400">Thêm ảnh</label>
+        <input type="file" id="imageInput" accept="image/*" multiple class="mt-2 w-full text-sm">
+        <div id="imagePreview" class="grid grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto"></div>
+      </div>
+      <div class="border dark:border-gray-600 rounded-lg p-3">
+        <label class="text-sm font-medium text-gray-600 dark:text-gray-400">Quyền riêng tư</label>
+        <select id="postPrivacy" class="mt-2 w-full p-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 focus:outline-none">
+          <option value="public">🌍 Công khai</option>
+          <option value="friends">👥 Bạn bè</option>
+          <option value="private">🔒 Chỉ mình tôi</option>
+        </select>
+      </div>
+    </div>
+    <div class="px-4 pb-4">
+      <button id="submit" type="button" class="w-full py-2.5 bg-fb-primary dark:bg-[#1877f2] hover:bg-fb-primary-hover dark:hover:bg-[#166fe5] text-white font-semibold rounded-lg">Đăng</button>
+      <button id="closePostModal2" type="button" class="hidden">Hủy</button>
+    </div>
+  </div>
+</div>

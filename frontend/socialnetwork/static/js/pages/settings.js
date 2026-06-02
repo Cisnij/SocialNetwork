@@ -48,6 +48,9 @@ async function init() {
   setupEmailAdd();
   setupDeleteAccount();
   loadActivity(true);
+  
+  // Inject private profile UI
+  setupPrivateProfileUI();
 }
 
 async function loadProfileForm() {
@@ -178,9 +181,7 @@ async function loadEmails() {
       if (!e.primary && e.verified) {
         const primary = btn("Đặt làm chính", "text-xs px-2 py-1 rounded bg-fb-primary dark:bg-[#1877f2] text-white");
         primary.onclick = async () => {
-          if (!(await confirmDialog(`Đặt ${e.email} làm email chính?`))) return;
-          await authFetch(API.setPrimaryEmail(e.id), { method: "POST" });
-          loadEmails();
+          showOtpModal(e.id, e.email);
         };
         actions.appendChild(primary);
       }
@@ -212,12 +213,12 @@ function setupEmailAdd() {
   document.getElementById("addEmailBtn")?.addEventListener("click", async () => {
     const email = document.getElementById("newEmail").value.trim();
     if (!email) return;
-    
+
     // Check password first
     const password = await passwordPrompt("Nhập mật khẩu để xác nhận thêm email mới", "Xác nhận mật khẩu");
     if (!password) return;
-    
-    const checkRes = await authFetch("http://localhost:8000/api/auth/check-email/", {
+
+    const checkRes = await authFetch("http://localhost:8000/api/auth/check-password/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: password }),
@@ -371,4 +372,183 @@ function setupDeleteAccount() {
       showToast(data.detail || "Lỗi xóa tài khoản", "red");
     }
   });
+}
+
+// OTP Modal cho set primary email
+function showOtpModal(emailId, email) {
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4";
+  modal.id = "otpModal";
+
+  modal.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-bold dark:text-white">Xác nhận đổi email chính</h2>
+        <button type="button" class="text-2xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white" onclick="document.getElementById('otpModal')?.remove()">&times;</button>
+      </div>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        Mã OTP đã được gửi đến email hiện tại: <strong>${email}</strong>
+      </p>
+      <input type="text" id="otpInput" placeholder="Nhập mã OTP 6 số" maxlength="6" class="w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white mb-4">
+      <div class="flex justify-between items-center mb-4">
+        <button type="button" id="resendOtpBtn" class="text-fb-primary dark:text-[#1877f2] text-sm font-medium" disabled>Gửi lại mã (1:30)</button>
+        <button type="button" id="confirmOtpBtn" class="px-4 py-2 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg font-medium">Xác nhận</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  let countdown = 90; // 1:30 = 90 giây
+  const resendBtn = modal.querySelector("#resendOtpBtn");
+  const confirmBtn = modal.querySelector("#confirmOtpBtn");
+  const otpInput = modal.querySelector("#otpInput");
+
+  const countdownInterval = setInterval(() => {
+    countdown--;
+    const minutes = Math.floor(countdown / 60);
+    const seconds = countdown % 60;
+    resendBtn.textContent = `Gửi lại mã (${minutes}:${seconds.toString().padStart(2, '0')})`;
+    if (countdown <= 0) {
+      clearInterval(countdownInterval);
+      resendBtn.textContent = "Gửi lại mã";
+      resendBtn.disabled = false;
+    }
+  }, 1000);
+
+  resendBtn.addEventListener("click", async () => {
+    resendBtn.disabled = true;
+    countdown = 90;
+    clearInterval(countdownInterval);
+    const newInterval = setInterval(() => {
+      countdown--;
+      const minutes = Math.floor(countdown / 60);
+      const seconds = countdown % 60;
+      resendBtn.textContent = `Gửi lại mã (${minutes}:${seconds.toString().padStart(2, '0')})`;
+      if (countdown <= 0) {
+        clearInterval(newInterval);
+        resendBtn.textContent = "Gửi lại mã";
+        resendBtn.disabled = false;
+      }
+    }, 1000);
+
+    try {
+      const res = await authFetch(API.setPrimaryEmail(emailId), { method: "POST" });
+      if (res.ok) {
+        showToast("Đã gửi lại mã OTP", "green");
+      } else {
+        showToast("Không thể gửi lại mã", "red");
+      }
+    } catch (err) {
+      showToast("Lỗi mạng", "red");
+    }
+  });
+
+  confirmBtn.addEventListener("click", async () => {
+    const otp = otpInput.value.trim();
+    if (!otp || otp.length !== 6) {
+      showToast("Vui lòng nhập mã OTP 6 số", "red");
+      return;
+    }
+
+    try {
+      const res = await authFetch("http://localhost:8000/api/email/confirm-change-primary/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otp: otp }),
+      });
+
+      if (res.ok) {
+        showToast("Đã đổi email chính thành công", "green");
+        modal.remove();
+        loadEmails();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || "OTP không hợp lệ hoặc đã hết hạn", "red");
+      }
+    } catch (err) {
+      showToast("Lỗi mạng", "red");
+    }
+  });
+}
+
+// Inject private profile UI
+function setupPrivateProfileUI() {
+  const panelProfile = document.getElementById("panel-profile");
+  if (!panelProfile || document.getElementById("privateProfileSection")) return;
+
+  const privateSection = document.createElement("div");
+  privateSection.id = "privateProfileSection";
+  privateSection.className = "border-t dark:border-fb-divider mt-6 pt-6 space-y-4";
+
+  privateSection.innerHTML = `
+    <h3 class="font-bold text-lg dark:text-[#e4e6eb]">Thông tin riêng tư</h3>
+    <div>
+      <label class="block text-sm font-medium text-gray-600 dark:text-fb-muted mb-1">Số điện thoại</label>
+      <input id="privatePhone" type="tel" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb]" placeholder="+8490xxxxxxxxx">
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-600 dark:text-fb-muted mb-1">Ngày sinh</label>
+      <input id="privateBirthday" type="date" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb]">
+    </div>
+    <div class="flex items-center gap-2">
+      <input id="phonePublic" type="checkbox" class="w-4 h-4 rounded border-gray-300">
+      <label for="phonePublic" class="text-sm text-gray-600 dark:text-fb-muted">Cho người khác thấy số điện thoại</label>
+    </div>
+    <div class="flex items-center gap-2">
+      <input id="birthdayPublic" type="checkbox" class="w-4 h-4 rounded border-gray-300">
+      <label for="birthdayPublic" class="text-sm text-gray-600 dark:text-fb-muted">Cho người khác thấy ngày sinh</label>
+    </div>
+    <button id="savePrivateBtn" type="button" class="px-4 py-2.5 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg font-semibold hover:bg-fb-primary-hover dark:hover:bg-[#166fe5]">Lưu thông tin riêng tư</button>
+  `;
+
+  panelProfile.appendChild(privateSection);
+  loadPrivateProfile();
+  document.getElementById("savePrivateBtn")?.addEventListener("click", savePrivateProfile);
+}
+
+async function loadPrivateProfile() {
+  try {
+    const res = await authFetch(API.privateProfile(profileId));
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.phone_number) document.getElementById("privatePhone").value = data.phone_number;
+    if (data.date_of_birth) document.getElementById("privateBirthday").value = data.date_of_birth;
+    if (data.phone_number_public) document.getElementById("phonePublic").checked = true;
+    if (data.date_of_birth_public) document.getElementById("birthdayPublic").checked = true;
+  } catch (err) {
+    console.error("Load private profile error:", err);
+  }
+}
+
+async function savePrivateProfile() {
+  try {
+    const phone = document.getElementById("privatePhone").value.trim();
+    const birthday = document.getElementById("privateBirthday").value;
+    const phonePublic = document.getElementById("phonePublic").checked;
+    const birthdayPublic = document.getElementById("birthdayPublic").checked;
+
+    const res = await authFetch(API.privateProfile(profileId), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone_number: phone,
+        date_of_birth: birthday,
+        phone_number_public: phonePublic,
+        date_of_birth_public: birthdayPublic,
+      }),
+    });
+
+    if (res.ok) {
+      showToast("Đã lưu thông tin riêng tư", "green");
+      invalidateUserProfileCache();
+      await loadProfileForm();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      showToast(err.detail || "Không thể lưu", "red");
+    }
+  } catch (err) {
+    console.error("Save private profile error:", err);
+    showToast("Lỗi mạng", "red");
+  }
 }

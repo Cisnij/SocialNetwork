@@ -17,19 +17,11 @@ chưa xong
 -xây group chat
 
 - thêm 1 cái là upload video và thêm model PostVideo luôn làm y chang PostPhoto
--dùng celery(dễ), mai check các api nào cần dùng và test, trước là gửi otp 
-    Push Firebase notification — đang gọi trực tiếp trong WebSocket consumer, chậm và block
-    Gửi email — verify email, OTP, cảnh báo đổi email
+-dùng celery(dễ),
+
     Elasticsearch sync — index bài viết/profile sau khi save
     Xóa dữ liệu cũ — token hết hạn, OTP cache, soft delete cũ
-    # terminal 2 — worker cho notification
-    celery -A backend worker -Q notifications --loglevel=info
 
-    # terminal 3 — worker cho email
-    celery -A backend worker -Q emails --loglevel=info
-
-    # terminal 4 — beat scheduler
-    celery -A backend beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseSchedule
 
 
 4 api mới của
@@ -43,6 +35,7 @@ chưa xong
     websocket fe bị lỗi, giải thích AI là có flow ping pong
     thêm luồng otp cho email 1 api, khi gửi lại otp fe phải có countdown tránh spam
     thêm trang support để user gửi ticket lên
+    sửa lại ô box hiện khi callback
 
 
 
@@ -55,6 +48,39 @@ chưa xong
 
 
 
+** LÀM CHUẨN PRODUCTION VÀ ĐẸP Không rõ logic hay response gồm gì thi xem lại backend/api model,views,serializers...Tôi không chấp nhận làm sai đặc biệt là khi thêm tính năng mới thì sửa lại và khiến cái cũ bị sai làm mất thời gian cực kì. Tất cả gọi api dùng auth fetch
+
+REQUIREMENT: THÊM TẤT CẢ UI/UX Ở FE CÁC CÁI NÀY
+
+- hiện tại thì nhấn tạo post khi user chọn quyền riêng tư nào thì truyền vào cái đó và gọi tới backend set quyền riêng tư đó luôn, không rõ xem lại views.py
+
+- cái load message trong conversation đang bị lỗi nó hiện lum la, thay vì nó hiện từ cũ tới mới thì nó hiện tin cũ ở vị trí thứ 2 từ trên xuống, và thiếu phần ở dưới tin nhắn hiện đã xem, không hiểu xem lại consumer.py trong realtime
+
+-khi xóa đoạn hội thoại thì chỉ đơn giản là gọi api xóa. không gọi api thêm nó vào lưu trữ, hiện tôi xóa là sau khi nhắn tin nhắn đầu tiên nó cứ thêm vào đã ẩn
+
+- phần email khi nhập để thêm email nếu thêm và điền mật khẩu thì ở dưới có hiện chữ quên mật khẩu nhấp vào ra trang forgot-password/ để khi user thêm email nhập mật khẩu xác nhận mà nhập sai có thể forgot password, giống phần quên mật khẩu dưới login á, logic xem lại phần custome-authen.py.
+- Nhưng khi đăng nhập bằng google thì không hiện ô password ng dùng chỉ đăng nhập gg thì làm gì có mật khẩu, gọi api api/auth/has-password/ để check và nếu false thì không hiện ô điền cũng như ô reset password hoặc change password trong setting luôn
+
+	-flow email là khi người dùng thêm email, hiện ô box nhập password gọi api api/auth/check-password/ có chữ quên password ở dưới load ra trang 	forgot-password/. Thành công thì được phép thêm và hiện toast đã gửi thông báo về email để thêm, khi xóa thì cũng điền mật khẩu dùng lại box đó. Khi set primary thì hiện ô nhập otp và hiện thông báo đã gửi về, ở dưới có mục nhỏ 'gửi lại mã' và countdown ở fe 1p30s, sau đó bấm vào thì gọi lại chính api api/email/set/<int:pk>/, xác nhận otp thì gọi api/email/confirm-change-primary/
+
+- hiện websocket sửa lại hết là phải gửi ping-pong cho fe để biết mà retry, logic xem ở consumer.py
+
+
+
+- thêm report và pin post mới ở cái ô sửa post nhưng chỉ ở userpage thôi mới đc pin
+	api/post/<int:pin_id>/pin/
+	api/post/<int:post_id>/report/
+report thì fe ghi ra các mẫu lý do y fb nếu user chọn cái nào hoặc điền cái nào thì truyền vào reason gọi api, không rõ xem lại views.py
+
+-thêm websocket typing realtime, không rõ xem lại ws
+
+-hiện cái flow profile tôi đã ẩn ngày sinh và số điện thoại, nên là sẽ chia chỉnh sửa ra làm 2 phần 1 là phần bình thường 2 là phần ngày sinh và số điện thoại, nếu có gọi tới api để set public ngày sinh và số điện thoại và thay đổi nó api/user/private-profile/<int:pk>/
+-thực hiện sửa lại user page hiện ra thông tin kiểu fb có ngày sinh và sdt nếu gọi api profile mà có trả về
+- setting hiện 2 điền số điện thoại, chỉ giữ cái thông tin riêng tư còn ô sdt trên bỏ đi
+-flow của user/profile mà trả ra is_completed=False thì hiện ô thông báo gợi ý thêm avatar để mọi người biết đến bạn, khi is_completed=True thì k hiện
+
+- tạo trang support để user gửi ticket lên, không rõ thì xem lại logic views.py và model
+-hiện tại cái count notification không cần gọi api mà chỉ cần gọi 1 lần duy nhất khi vào web thôi,count realtime thì để websocket, không rõ đọc lại ws
 
 
 
