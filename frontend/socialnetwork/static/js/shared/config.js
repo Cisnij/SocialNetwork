@@ -141,8 +141,12 @@ export const API = {
   addEmail: () => `${API_BASE_URL}/api/email/add/`,
   setPrimaryEmail: (id) => `${API_BASE_URL}/api/email/set/${id}/`,
   deleteEmail: (id) => `${API_BASE_URL}/api/email/delete/${id}/`,
+  confirmPrimaryEmailOtp: () => `${API_BASE_URL}/api/email/confirm-change-primary/`,
+  checkPassword: () => `${API_BASE_URL}/api/auth/check-password/`,
+  hasPassword: () => `${API_BASE_URL}/api/auth/has-password/`,
+  passwordChange: () => `${API_BASE_URL}/api/auth/password/change/`,
   deleteAccount: () => `${API_BASE_URL}/api/auth/delete-account/`,
-  supportTicket: () => `${API_BASE_URL}/api/support-ticket/`,
+  supportTicket: () => `${API_BASE_URL}/api/support/`,
 
   wsChat: (convId) => {
     const token = localStorage.getItem("accessToken");

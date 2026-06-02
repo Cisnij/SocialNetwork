@@ -155,8 +155,28 @@ async function loadUserInfo() {
     bio.textContent = user.bio || "Chưa có giới thiệu.";
     bio.className =
       "text-sm text-gray-500 dark:text-[#b0b3b8] text-center mt-1 max-w-md";
+    const privateMeta = document.createElement("div");
+    privateMeta.className = "mt-3 text-sm text-gray-600 dark:text-[#b0b3b8] space-y-1 text-center";
+    if (user.date_of_birth) {
+      const birthday = document.createElement("p");
+      birthday.textContent = `🎂 ${new Date(user.date_of_birth).toLocaleDateString("vi-VN")}`;
+      privateMeta.appendChild(birthday);
+    }
+    if (user.phone_number) {
+      const phone = document.createElement("p");
+      phone.textContent = `📱 ${user.phone_number}`;
+      privateMeta.appendChild(phone);
+    }
+    const completeHint = document.createElement("div");
+    completeHint.className =
+      "mt-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-3 py-2 text-sm text-amber-700 dark:text-amber-200";
+    completeHint.textContent =
+      "Thêm ảnh đại diện để mọi người dễ nhận ra bạn hơn.";
+    completeHint.classList.toggle("hidden", !!user.is_completed);
 
     container.append(avatarWrap, statusRow, name, bio);
+    if (privateMeta.childElementCount) container.appendChild(privateMeta);
+    container.appendChild(completeHint);
 
     const me = await getCurrentUserId().catch(() => null);
     myProfileId = me;
@@ -298,6 +318,21 @@ async function loadIntroduce() {
     bio.className = "text-gray-700 dark:text-[#e4e6eb] whitespace-pre-wrap";
     bio.textContent = user.bio || "Chưa có giới thiệu.";
     card.append(title, bio);
+    if (user.date_of_birth || user.phone_number) {
+      const meta = document.createElement("div");
+      meta.className = "mt-3 space-y-1 text-sm text-gray-600 dark:text-[#b0b3b8]";
+      if (user.date_of_birth) {
+        const dob = document.createElement("p");
+        dob.textContent = `Ngày sinh: ${new Date(user.date_of_birth).toLocaleDateString("vi-VN")}`;
+        meta.appendChild(dob);
+      }
+      if (user.phone_number) {
+        const phone = document.createElement("p");
+        phone.textContent = `Số điện thoại: ${user.phone_number}`;
+        meta.appendChild(phone);
+      }
+      card.appendChild(meta);
+    }
     container.appendChild(card);
   } catch (err) {
     spinner.remove();

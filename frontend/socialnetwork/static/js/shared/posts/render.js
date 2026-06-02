@@ -27,6 +27,7 @@ import { reactToPost } from "./api.js";
 export function renderPostCard(post, options = {}) {
   const {
     currentUserId = null,
+    isUserPage = false,
     onDelete,
     onOpenReactions,
     onOpenPhotos,
@@ -75,7 +76,7 @@ export function renderPostCard(post, options = {}) {
   const isOwner =
     currentUserId != null && Number(post.user?.id) === Number(currentUserId);
 
-  if (isOwner) {
+  {
     const menuBtn = document.createElement("button");
     menuBtn.type = "button";
     menuBtn.className =
@@ -87,17 +88,19 @@ export function renderPostCard(post, options = {}) {
     menuDropdown.className =
       `absolute right-0 mt-2 w-44 ${cls.menu} rounded-lg shadow-lg hidden z-50`;
 
-    const editBtn = document.createElement("button");
-    editBtn.type = "button";
-    editBtn.className =
-      `block w-full text-left px-4 py-2 ${cls.text} ${cls.hoverRow}`;
-    editBtn.textContent = "✏️ Chỉnh sửa";
-
-    const deleteBtn = document.createElement("button");
-    deleteBtn.type = "button";
-    deleteBtn.className =
-      "block w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30";
-    deleteBtn.textContent = "🗑️ Xóa bài viết";
+    const appendItem = (label, className, onClick) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = className;
+      item.textContent = label;
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeMenu();
+        onClick?.();
+      });
+      menuDropdown.appendChild(item);
+      return item;
+    };
 
     menuBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -107,19 +110,56 @@ export function renderPostCard(post, options = {}) {
     const closeMenu = () => menuDropdown.classList.add("hidden");
     document.addEventListener("click", closeMenu, { once: false });
 
-    editBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeMenu();
-      openEditModal(post);
-    });
-
-    deleteBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeMenu();
-      onDelete?.(post.post_id);
-    });
-
-    menuDropdown.append(editBtn, deleteBtn);
+    if (isOwner) {
+      appendItem(
+        "✏️ Chỉnh sửa",
+        `block w-full text-left px-4 py-2 ${cls.text} ${cls.hoverRow}`,
+        () => openEditModal(post)
+      );
+      if (isUserPage) {
+        appendItem(
+          post.is_pinned ? "📌 Bỏ ghim bài" : "📌 Ghim bài",
+          `block w-full text-left px-4 py-2 ${cls.text} ${cls.hoverRow}`,
+          async () => {
+            try {
+              const res = await authFetch(API.pinPost(post.post_id), {
+                method: "PUT",
+              });
+              if (!res.ok) throw new Error("pin");
+              post.is_pinned = !post.is_pinned;
+              showToast("Đã cập nhật ghim bài", "green");
+            } catch {
+              showToast("Không thể ghim bài", "red");
+            }
+          }
+        );
+      }
+      appendItem(
+        "🗑️ Xóa bài viết",
+        "block w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30",
+        () => onDelete?.(post.post_id)
+      );
+    } else {
+      appendItem(
+        "🚩 Báo cáo bài viết",
+        "block w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30",
+        async () => {
+          const reason = prompt("Nhập lý do báo cáo");
+          if (!reason?.trim()) return;
+          try {
+            const res = await authFetch(API.reportPost(post.post_id), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reason: reason.trim() }),
+            });
+            if (!res.ok) throw new Error("report");
+            showToast("Đã gửi báo cáo", "green");
+          } catch {
+            showToast("Không thể gửi báo cáo", "red");
+          }
+        }
+      );
+    }
     menuWrapper.append(menuBtn, menuDropdown);
   }
 

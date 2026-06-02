@@ -77,6 +77,9 @@ def getFriendSuggest(request):
 def getSearchHistory(request):
     return render(request, 'app/search-history.html')
 
+def getSupport(request):
+    return render(request, 'app/support.html')
+
 def getRelationship(request, profile_id):
     return render(request, 'app/relationship.html', {'profile_id': profile_id})
 

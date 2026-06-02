@@ -31,5 +31,6 @@ urlpatterns = [
     path('activity/', views.getActivity, name='activity'),
     path('friend-suggest/', views.getFriendSuggest, name='friend-suggest'),
     path('search-history/', views.getSearchHistory, name='search-history'),
+    path('support/', views.getSupport, name='support'),
 
 ]

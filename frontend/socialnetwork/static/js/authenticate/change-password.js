@@ -1,4 +1,5 @@
 import { authFetch } from "./auth.js";
+import { API } from "../shared/config.js";
 
 const form = document.getElementById("change-password-form");
 const message = document.getElementById("message");
@@ -35,7 +36,7 @@ form.addEventListener("submit", async (e) => {
         const submitBtn = form.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
 
-        const res = await authFetch("http://localhost:8000/api/auth/password/change/", {
+        const res = await authFetch(API.passwordChange(), {
             method: "POST",
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

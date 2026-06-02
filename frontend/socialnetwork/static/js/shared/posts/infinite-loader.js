@@ -148,6 +148,7 @@ export class PostInfiniteLoader {
   _renderOne(post) {
     return renderPostCard(post, {
       currentUserId: this.currentUserId,
+      isUserPage: this.cacheKey.startsWith("userpage:"),
       onDelete: (id) => requestDeletePost(id, this.cacheKey),
       onOpenReactions: openReactionsModal,
       onOpenPhotos: openPhotoModal,

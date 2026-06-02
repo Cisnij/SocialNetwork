@@ -19,6 +19,8 @@ let activeConvMeta = null;
 let firstMessageInConv = null;
 const pendingMessages = new Map();
 let tempIdCounter = 0;
+let typingIndicatorTimeout = null;
+let typingStopTimeout = null;
 
 /** DOM refs — resolved on boot, not at import time */
 let convListEl;
@@ -399,6 +401,8 @@ async function openConversation(conv, titleName) {
   messagesEl.appendChild(loader);
   
   pendingBanner?.classList.add("hidden");
+  const typingIndicator = document.getElementById("chatTypingIndicator");
+  if (typingIndicator) typingIndicator.textContent = "";
   pendingConv = conv.status === "pending";
   firstMessageInConv = null;
 
@@ -432,9 +436,11 @@ function connectChatWs(convId) {
           return;
         }
         if (data.type === "seen_message") {
-          document.querySelectorAll(".msg-seen").forEach((el) => {
-            el.textContent = "Đã xem";
-          });
+          markSeenMessages(data.last_message_id);
+          return;
+        }
+        if (data.type === "typing") {
+          handleTypingEvent(data);
           return;
         }
         if (data.type === "message_deleted") {
@@ -481,7 +487,8 @@ function connectChatWs(convId) {
               sender_id: data.sender_id,
               attachments: data.attachments,
             },
-            true
+            true,
+            false
           );
           if (pendingConv && activeConvMeta && !firstMessageInConv) {
             fetchFirstMessage(activeConvId).then((m) => {
@@ -502,6 +509,12 @@ function connectChatWs(convId) {
     chatWs.onerror = (err) => {
       console.error("[chat] WebSocket error:", err);
     };
+    chatWs.onclose = () => {
+      if (Number(activeConvId) !== Number(convId)) return;
+      setTimeout(() => {
+        if (Number(activeConvId) === Number(convId)) connectChatWs(convId);
+      }, 3000);
+    };
   } catch (e) {
     console.error("[chat] message ws", e);
   }
@@ -517,16 +530,23 @@ async function loadMessages(reset) {
     const items = [...(data.results || [])].reverse();
     if (reset) {
       messagesEl.replaceChildren();
+      items.forEach((m) => appendMessage(m, false, false, false));
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    } else {
+      const prevHeight = messagesEl.scrollHeight;
+      for (let i = items.length - 1; i >= 0; i--) {
+        appendMessage(items[i], false, false, true);
+      }
+      const newHeight = messagesEl.scrollHeight;
+      messagesEl.scrollTop += newHeight - prevHeight;
     }
-    items.forEach((m) => appendMessage(m, false));
     messagesNext = data.next;
-    messagesEl.scrollTop = messagesEl.scrollHeight;
   } finally {
     loadingMessages = false;
   }
 }
 
-function appendMessage(m, scroll = true, isPending = false) {
+function appendMessage(m, scroll = true, isPending = false, prepend = false) {
   const sid = m.sender?.id ?? m.sender_id;
   const mine =
     (myUserId != null && Number(sid) === Number(myUserId)) ||
@@ -618,8 +638,51 @@ function appendMessage(m, scroll = true, isPending = false) {
   seen.textContent = isPending ? "⏳ Đang gửi..." : (mine ? "⏳" : "");
   wrap.appendChild(bubble);
   if (mine) wrap.appendChild(seen);
-  messagesEl.appendChild(wrap);
+  if (prepend) messagesEl.prepend(wrap);
+  else messagesEl.appendChild(wrap);
   if (scroll) messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function markSeenMessages(lastMessageId) {
+  const seenId = Number(lastMessageId);
+  if (!Number.isFinite(seenId)) return;
+  const mineEls = [...document.querySelectorAll('[data-msg-id]')].filter((node) => {
+    const bubble = node.querySelector(".msg-seen");
+    return !!bubble;
+  });
+  mineEls.forEach((node) => {
+    const id = Number(node.dataset.msgId);
+    const seenLabel = node.querySelector(".msg-seen");
+    if (!seenLabel || !Number.isFinite(id)) return;
+    seenLabel.textContent = id <= seenId ? "Đã xem" : "";
+  });
+}
+
+function ensureTypingIndicator() {
+  let indicator = document.getElementById("chatTypingIndicator");
+  if (indicator) return indicator;
+  indicator = document.createElement("p");
+  indicator.id = "chatTypingIndicator";
+  indicator.className = "px-4 pb-2 text-xs text-gray-500 dark:text-fb-muted";
+  indicator.textContent = "";
+  const form = document.getElementById("chatForm");
+  form?.parentElement?.insertBefore(indicator, form);
+  return indicator;
+}
+
+function handleTypingEvent(data) {
+  if (Number(data.sender_id) === Number(myUserId)) return;
+  const indicator = ensureTypingIndicator();
+  if (!indicator) return;
+  if (!data.is_typing) {
+    indicator.textContent = "";
+    return;
+  }
+  indicator.textContent = `${data.sender || "Người dùng"} đang nhập...`;
+  if (typingIndicatorTimeout) clearTimeout(typingIndicatorTimeout);
+  typingIndicatorTimeout = setTimeout(() => {
+    indicator.textContent = "";
+  }, 2500);
 }
 
 function bindEvents() {
@@ -666,6 +729,8 @@ function bindEvents() {
     );
     
     chatWs.send(JSON.stringify({ message: text, message_type: "text" }));
+    if (typingStopTimeout) clearTimeout(typingStopTimeout);
+    chatWs.send(JSON.stringify({ type: "typing", is_typing: false }));
     if (chatInput) chatInput.value = "";
     if (pendingConv && activeConvMeta && canSendWhilePending()) {
       fetchFirstMessage(activeConvId).then((m) => {
@@ -673,6 +738,17 @@ function bindEvents() {
         applyPendingUI(activeConvMeta);
       });
     }
+  });
+
+  chatInput?.addEventListener("input", () => {
+    if (!chatWs || chatWs.readyState !== WebSocket.OPEN || !activeConvId) return;
+    chatWs.send(JSON.stringify({ type: "typing", is_typing: true }));
+    if (typingStopTimeout) clearTimeout(typingStopTimeout);
+    typingStopTimeout = setTimeout(() => {
+      if (chatWs?.readyState === WebSocket.OPEN) {
+        chatWs.send(JSON.stringify({ type: "typing", is_typing: false }));
+      }
+    }, 1200);
   });
 
   $("chatFileInput")?.addEventListener("change", async (e) => {

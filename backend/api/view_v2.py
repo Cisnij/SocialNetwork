@@ -8,15 +8,18 @@ class CreateFullPostView(APIView):
     def post(self, request):
         title = request.data.get('title')
         photos = request.FILES.getlist('photos')
-
+        privacy = request.dât.get('privacy','public')
         if not title:
             return Response({"error": "Thiếu title"}, status=status.HTTP_400_BAD_REQUEST)
-
+        valid_privacy =['public','friends','private']
+        if privacy not in valid_privacy:
+            return Response({'error':'Privacy không hợp lệ'})
         try:
             with transaction.atomic():
                 new_post = Post.objects.create(
                     title=title,
-                    user=request.user
+                    user=request.user,
+                    privacy=privacy
                 )
                 for photo in photos:
                     PostPhoto.objects.create(post=new_post, photo=photo)

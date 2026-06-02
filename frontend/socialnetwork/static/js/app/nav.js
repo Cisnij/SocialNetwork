@@ -114,4 +114,3 @@ export async function markAllNotificationsRead() {
 
 refreshBadge();
 connectNotifWs();
-setInterval(refreshBadge, 120000);
