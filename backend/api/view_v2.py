@@ -2,18 +2,22 @@ from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Post, PostPhoto
 from .serializers import *
 class CreateFullPostView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
     def post(self, request):
         title = request.data.get('title')
         photos = request.FILES.getlist('photos')
-        privacy = request.dât.get('privacy','public')
+        privacy = request.data.get('privacy', 'public')
         if not title:
             return Response({"error": "Thiếu title"}, status=status.HTTP_400_BAD_REQUEST)
         valid_privacy =['public','friends','private']
         if privacy not in valid_privacy:
-            return Response({'error':'Privacy không hợp lệ'})
+            return Response({'error':'Privacy không hợp lệ'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             with transaction.atomic():
                 new_post = Post.objects.create(

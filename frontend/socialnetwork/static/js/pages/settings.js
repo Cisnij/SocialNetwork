@@ -240,7 +240,8 @@ function setupEmailAdd() {
         body: JSON.stringify({ password }),
       });
       if (!checkRes.ok) {
-        showToast("Mật khẩu không đúng", "red");
+        // Show forgot password CTA like login
+        await promptPasswordWithForgot("Mật khẩu không đúng");
         return;
       }
     }

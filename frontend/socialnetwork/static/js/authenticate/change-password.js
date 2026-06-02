@@ -4,6 +4,19 @@ import { API } from "../shared/config.js";
 const form = document.getElementById("change-password-form");
 const message = document.getElementById("message");
 
+async function ensureHasPasswordOrRedirect() {
+    try {
+        const res = await authFetch(API.hasPassword());
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && data.has_password === false) {
+            window.location.href = "/settings/";
+        }
+    } catch (_) {}
+}
+
+ensureHasPasswordOrRedirect();
+
 /**
  * Xử lý thông báo lỗi từ server
  * DRF thường trả về lỗi dạng: { old_password: ["Sai mật khẩu"], new_password1: ["Quá ngắn"] }

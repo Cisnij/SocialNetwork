@@ -1,6 +1,7 @@
 import { authFetch } from "../authenticate/auth.js";
 import { POST_ENDPOINTS } from "./config.js";
 import { showToast } from "./toast.js";
+import { injectPinReportButtons } from "./pin-report.js";
 
 function buildPhotoUrl(photoObj) {
   if (!photoObj) return null;
@@ -21,6 +22,12 @@ function buildPhotoUrl(photoObj) {
 export function openEditModal(post) {
   const modal = document.getElementById("editPostModal");
   if (!modal) return;
+
+  // (Userpage only) inject pin/report actions into edit modal
+  try {
+    const isUserPage = window.location.pathname.startsWith("/profile/");
+    injectPinReportButtons(post, { isUserPage });
+  } catch (_) {}
 
   const titleInput = document.getElementById("editPostTitle");
   const imageContainer = document.getElementById("editImageContainer");

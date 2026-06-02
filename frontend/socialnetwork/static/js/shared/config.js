@@ -149,18 +149,15 @@ export const API = {
   supportTicket: () => `${API_BASE_URL}/api/support/`,
 
   wsChat: (convId) => {
-    const token = localStorage.getItem("accessToken");
-    const base = `${WS_BASE_URL}/ws/chat/${convId}/`;
-    return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+    // Web: session cookie auth via AuthMiddlewareStack (no token param)
+    return `${WS_BASE_URL}/ws/chat/${convId}/`;
   },
   wsNotifications: () => {
-    const token = localStorage.getItem("accessToken");
-    const base = `${WS_BASE_URL}/ws/notifications/`;
-    return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+    // Web: session cookie auth via AuthMiddlewareStack (no token param)
+    return `${WS_BASE_URL}/ws/notifications/`;
   },
   wsConversations: () => {
-    const token = localStorage.getItem("accessToken");
-    const base = `${WS_BASE_URL}/ws/conversations/`;
-    return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+    // Web: session cookie auth via AuthMiddlewareStack (no token param)
+    return `${WS_BASE_URL}/ws/conversations/`;
   },
 };

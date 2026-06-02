@@ -17,10 +17,10 @@ let pendingConv = false;
 let loadingMessages = false;
 let activeConvMeta = null;
 let firstMessageInConv = null;
-const pendingMessages = new Map();
 let tempIdCounter = 0;
 let typingIndicatorTimeout = null;
 let typingStopTimeout = null;
+let typingSent = false;
 
 /** DOM refs — resolved on boot, not at import time */
 let convListEl;
@@ -456,30 +456,6 @@ function connectChatWs(convId) {
         }
         if (data.message != null || data.content != null) {
           const messageContent = data.message ?? data.content;
-          const isMyMessage = Number(data.sender_id) === Number(myUserId) || Number(data.sender_id) === Number(myProfileId);
-          
-          // Kiểm tra xem có pending message trùng không (cho tin nhắn của chính mình)
-          if (isMyMessage && pendingMessages.size > 0) {
-            // Đơn giản hóa: lấy pending message đầu tiên (user thường chỉ gửi 1 message tại 1 thời điểm)
-            const [matchedTempId, pending] = pendingMessages.entries().next().value;
-            
-            if (matchedTempId) {
-              console.log('[chat] Matched pending message:', matchedTempId, 'with server message:', data.id);
-              
-              // Cancel timeout trước khi xóa pending message
-              if (pending?.timeoutId) {
-                clearTimeout(pending.timeoutId);
-              }
-              
-              // Replace pending message với message thực từ server
-              const pendingEl = document.querySelector(`[data-temp-id="${matchedTempId}"]`);
-              if (pendingEl) {
-                pendingEl.remove();
-              }
-              pendingMessages.delete(matchedTempId);
-            }
-          }
-          
           appendMessage(
             {
               id: data.id,
@@ -487,8 +463,7 @@ function connectChatWs(convId) {
               sender_id: data.sender_id,
               attachments: data.attachments,
             },
-            true,
-            false
+            true
           );
           if (pendingConv && activeConvMeta && !firstMessageInConv) {
             fetchFirstMessage(activeConvId).then((m) => {
@@ -530,12 +505,12 @@ async function loadMessages(reset) {
     const items = [...(data.results || [])].reverse();
     if (reset) {
       messagesEl.replaceChildren();
-      items.forEach((m) => appendMessage(m, false, false, false));
+      items.forEach((m) => appendMessage(m, false, false));
       messagesEl.scrollTop = messagesEl.scrollHeight;
     } else {
       const prevHeight = messagesEl.scrollHeight;
       for (let i = items.length - 1; i >= 0; i--) {
-        appendMessage(items[i], false, false, true);
+        appendMessage(items[i], false, true);
       }
       const newHeight = messagesEl.scrollHeight;
       messagesEl.scrollTop += newHeight - prevHeight;
@@ -546,7 +521,7 @@ async function loadMessages(reset) {
   }
 }
 
-function appendMessage(m, scroll = true, isPending = false, prepend = false) {
+function appendMessage(m, scroll = true, prepend = false) {
   const sid = m.sender?.id ?? m.sender_id;
   const mine =
     (myUserId != null && Number(sid) === Number(myUserId)) ||
@@ -555,10 +530,6 @@ function appendMessage(m, scroll = true, isPending = false, prepend = false) {
   const wrap = document.createElement("div");
   wrap.className = `flex ${mine ? "justify-end" : "justify-start"} mb-1`;
   wrap.dataset.msgId = m.id;
-  if (isPending) {
-    wrap.dataset.tempId = m.id;
-    wrap.classList.add('opacity-70');
-  }
 
   const bubble = document.createElement("div");
   bubble.className = `max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
@@ -606,7 +577,7 @@ function appendMessage(m, scroll = true, isPending = false, prepend = false) {
     bubble.appendChild(text);
   }
 
-  if (mine && !isPending) {
+  if (mine) {
     const actions = document.createElement("div");
     actions.className = "flex gap-2 mt-1 text-[10px] opacity-80 justify-end";
     const unsend = document.createElement("button");
@@ -635,7 +606,8 @@ function appendMessage(m, scroll = true, isPending = false, prepend = false) {
 
   const seen = document.createElement("p");
   seen.className = "msg-seen text-[10px] text-gray-400 mt-0.5 text-right";
-  seen.textContent = isPending ? "⏳ Đang gửi..." : (mine ? "⏳" : "");
+  // Display is controlled by seen events (SeenMessage WS)
+  seen.textContent = "";
   wrap.appendChild(bubble);
   if (mine) wrap.appendChild(seen);
   if (prepend) messagesEl.prepend(wrap);
@@ -646,16 +618,16 @@ function appendMessage(m, scroll = true, isPending = false, prepend = false) {
 function markSeenMessages(lastMessageId) {
   const seenId = Number(lastMessageId);
   if (!Number.isFinite(seenId)) return;
-  const mineEls = [...document.querySelectorAll('[data-msg-id]')].filter((node) => {
-    const bubble = node.querySelector(".msg-seen");
-    return !!bubble;
-  });
-  mineEls.forEach((node) => {
+  let lastSeenNode = null;
+  [...document.querySelectorAll('[data-msg-id]')].forEach((node) => {
     const id = Number(node.dataset.msgId);
     const seenLabel = node.querySelector(".msg-seen");
     if (!seenLabel || !Number.isFinite(id)) return;
-    seenLabel.textContent = id <= seenId ? "Đã xem" : "";
+    seenLabel.textContent = "";
+    if (id <= seenId) lastSeenNode = node;
   });
+  const label = lastSeenNode?.querySelector(".msg-seen");
+  if (label) label.textContent = "Đã xem";
 }
 
 function ensureTypingIndicator() {
@@ -685,6 +657,22 @@ function handleTypingEvent(data) {
   }, 2500);
 }
 
+function setTyping(isTyping) {
+  if (!chatWs || chatWs.readyState !== WebSocket.OPEN) return;
+  if (isTyping && !typingSent) {
+    typingSent = true;
+    chatWs.send(JSON.stringify({ type: "typing", is_typing: true }));
+  }
+  if (typingStopTimeout) clearTimeout(typingStopTimeout);
+  typingStopTimeout = setTimeout(() => {
+    if (!chatWs || chatWs.readyState !== WebSocket.OPEN) return;
+    if (typingSent) {
+      typingSent = false;
+      chatWs.send(JSON.stringify({ type: "typing", is_typing: false }));
+    }
+  }, isTyping ? 1200 : 0);
+}
+
 function bindEvents() {
   chatForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -697,40 +685,10 @@ function bindEvents() {
       showToast("Không gửi được — kiểm tra kết nối", "red");
       return;
     }
-    
-    // Optimistic UI: hiển thị tin nhắn ngay với temp ID
-    const tempId = `temp_${++tempIdCounter}`;
-    const timeoutId = setTimeout(() => {
-      if (pendingMessages.has(tempId)) {
-        const pendingEl = document.querySelector(`[data-temp-id="${tempId}"]`);
-        if (pendingEl) {
-          const seenEl = pendingEl.querySelector('.msg-seen');
-          if (seenEl) {
-            seenEl.textContent = "❌ Gửi thất bại";
-            seenEl.classList.add('text-red-500');
-          }
-          pendingEl.classList.remove('opacity-70');
-          pendingEl.classList.add('opacity-50');
-        }
-        pendingMessages.delete(tempId);
-      }
-    }, 10000);
-    
-    pendingMessages.set(tempId, { content: text, timeoutId });
-    
-    appendMessage(
-      {
-        id: tempId,
-        content: text,
-        sender_id: myUserId || myProfileId,
-      },
-      true,
-      true  // isPending
-    );
-    
+
+    // No optimistic UI (production): only render when server broadcasts back
     chatWs.send(JSON.stringify({ message: text, message_type: "text" }));
-    if (typingStopTimeout) clearTimeout(typingStopTimeout);
-    chatWs.send(JSON.stringify({ type: "typing", is_typing: false }));
+    setTyping(false);
     if (chatInput) chatInput.value = "";
     if (pendingConv && activeConvMeta && canSendWhilePending()) {
       fetchFirstMessage(activeConvId).then((m) => {
@@ -742,13 +700,7 @@ function bindEvents() {
 
   chatInput?.addEventListener("input", () => {
     if (!chatWs || chatWs.readyState !== WebSocket.OPEN || !activeConvId) return;
-    chatWs.send(JSON.stringify({ type: "typing", is_typing: true }));
-    if (typingStopTimeout) clearTimeout(typingStopTimeout);
-    typingStopTimeout = setTimeout(() => {
-      if (chatWs?.readyState === WebSocket.OPEN) {
-        chatWs.send(JSON.stringify({ type: "typing", is_typing: false }));
-      }
-    }, 1200);
+    setTyping(true);
   });
 
   $("chatFileInput")?.addEventListener("change", async (e) => {
@@ -771,38 +723,8 @@ function bindEvents() {
 
     try {
       const ids = await uploadChatFiles(activeConvId, files);
-      
-      // Optimistic UI: hiển thị tin nhắn file ngay với temp ID
-      const tempId = `temp_file_${++tempIdCounter}`;
-      const fileName = files[0].name;
-      const timeoutId = setTimeout(() => {
-        if (pendingMessages.has(tempId)) {
-          const pendingEl = document.querySelector(`[data-temp-id="${tempId}"]`);
-          if (pendingEl) {
-            const seenEl = pendingEl.querySelector('.msg-seen');
-            if (seenEl) {
-              seenEl.textContent = "❌ Gửi thất bại";
-              seenEl.classList.add('text-red-500');
-            }
-            pendingEl.classList.remove('opacity-70');
-            pendingEl.classList.add('opacity-50');
-          }
-          pendingMessages.delete(tempId);
-        }
-      }, 15000);
-      
-      pendingMessages.set(tempId, { attachmentIds: ids, fileName, timeoutId });
-      
-      appendMessage(
-        {
-          id: tempId,
-          content: `📎 ${fileName}`,
-          sender_id: myUserId || myProfileId,
-        },
-        true,
-        true  // isPending
-      );
-      
+
+      // No optimistic UI: only render when server broadcasts back
       sendChatWsMessage(chatWs, { text: "", attachmentIds: ids });
       showToast("Đã gửi tệp đính kèm");
     } catch (err) {
