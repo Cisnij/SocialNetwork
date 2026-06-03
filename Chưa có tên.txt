@@ -15,7 +15,7 @@ chưa xong
 -thêm story 24h
 -tạo group và phân quyền chỉnh sửa bài viết trong group.
 -xây group chat
-
+- nhờ claude viết test toàn bộ gọi api để xem latency
 - thêm 1 cái là upload video và thêm model PostVideo luôn làm y chang PostPhoto
 -dùng celery(dễ),
 

@@ -86,14 +86,20 @@ function connectNotifPageWs() {
   notifWs.onmessage = (ev) => {
     try {
       const data = JSON.parse(ev.data);
+
+      // Ping-pong
       if (data.type === "ping") {
         notifWs.send(JSON.stringify({ type: "pong" }));
         return;
       }
-      if (data.notification) prependNotification(data.notification);
-      else if (data.message) {
+
+      // Backend signal gửi flat fields: { unread_count, id, message, actor_name, actor_avatar, post_id, ... }
+      // Chỉ hiện notification mới khi có message (nghĩa là có noti mới, không phải chỉ update count)
+      if (data.message) {
         prependNotification({
-          actor: data.actor,
+          id: data.id,
+          actor: data.actor_name,
+          actor_avatar: data.actor_avatar,
           message: data.message,
           post_id: data.post_id,
           created_at: new Date().toISOString(),

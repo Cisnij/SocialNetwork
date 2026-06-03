@@ -412,6 +412,7 @@ function setupDeleteAccount() {
     if (res.ok) {
       showToast("Đã xóa tài khoản. Đang chuyển hướng...", "green");
       setTimeout(() => {
+        localStorage.removeItem("accessToken"); // Xóa token để tránh redirect loop
         window.location.href = "/login/";
       }, 2000);
     } else {

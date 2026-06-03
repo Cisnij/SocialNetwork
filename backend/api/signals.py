@@ -318,7 +318,7 @@ def message_log(sender, instance, created, **kwargs):
                 "action_object_id": instance.pk,
                 "target_type": "Conversation",
                 "conversation_id": instance.conversation_id,
-                "content": instance.content[:50],
+                "content": (instance.content or '')[:50],
                 "action": verb,
             }
         )

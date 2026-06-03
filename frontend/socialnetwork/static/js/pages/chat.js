@@ -250,18 +250,18 @@ async function loadConversations() {
 function renderConvItem(c) {
   const other = otherMember(c);
   const name = other ? fullName(other) : "Nhóm";
-  const wrap = el("button", "w-full flex items-center gap-2 p-2 hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] cursor-pointer group relative text-left", {
+  const wrap = el("button", "w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors cursor-pointer group relative text-left mb-0.5", {
     type: "button",
   });
 
   wrap.append(
-    img(other?.picture || DEFAULT_AVATAR, "w-12 h-12 rounded-full object-cover shrink-0", "")
+    img(other?.picture || DEFAULT_AVATAR, "w-12 h-12 rounded-full object-cover shrink-0 shadow-sm border border-transparent dark:border-white/10", "")
   );
 
   const body = el("div", "flex-1 min-w-0 conv-body");
   body.append(
-    textEl("p", "font-semibold text-sm truncate dark:text-[#e4e6eb]", name),
-    textEl("p", "text-xs text-gray-500 dark:text-fb-muted truncate conv-preview", messagePreview(c))
+    textEl("p", "font-semibold text-sm truncate dark:text-slate-100", name),
+    textEl("p", "text-xs text-gray-500 dark:text-slate-400 truncate conv-preview", messagePreview(c))
   );
   wrap.append(body);
 
@@ -274,7 +274,7 @@ function renderConvItem(c) {
     wrap.appendChild(
       textEl(
         "span",
-        "bg-fb-primary dark:bg-[#1877f2] text-white text-xs px-2 rounded-full shrink-0",
+        "bg-fb-primary dark:bg-indigo-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 shadow-sm dark:shadow-indigo-500/30",
         String(c.unread_count)
       )
     );
@@ -485,15 +485,17 @@ async function openConversation(conv, titleName) {
   }
 
   try {
-    const seenRes = await authFetch(API.seenMessage(conv.id), { method: "POST" });
-    if (seenRes.ok) {
-      const seenData = await seenRes.json().catch(() => ({}));
-      if (seenData.last_read_message_id) {
-        markSeenMessages(seenData.last_read_message_id);
-      }
-    }
+    await authFetch(API.seenMessage(conv.id), { method: "POST" });
   } catch (e) {
     console.warn("[chat] seen", e);
+  }
+
+  // Khởi tạo trạng thái "Đã xem" dựa trên last_read_message của ĐỐI PHƯƠNG
+  const otherMem = (conv.members || []).find(
+    (m) => Number(m.user?.id) !== Number(myProfileId)
+  );
+  if (otherMem && otherMem.last_read_message) {
+    markSeenMessages(otherMem.last_read_message);
   }
 }
 
@@ -578,6 +580,11 @@ function connectChatWs(convId) {
               applyPendingUI(activeConvMeta);
             });
           }
+
+          // If the message is from the other person and we are actively viewing it, mark as seen
+          if (Number(data.sender_id) !== Number(myUserId) && !document.hidden) {
+            authFetch(API.seenMessage(activeConvId), { method: "POST" }).catch(() => {});
+          }
         }
       } catch (err) {
         console.error("[chat] WebSocket message error:", err);
@@ -643,20 +650,20 @@ function appendMessage(m, scroll = true, prepend = false) {
   wrap.dataset.msgId = m.id;
 
   const bubble = document.createElement("div");
-  bubble.className = `max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
+  bubble.className = `max-w-[75%] px-3 py-2 rounded-2xl text-sm transition-all ${
     mine
-      ? "bg-fb-primary dark:bg-[#1877f2] text-white rounded-br-sm"
-      : "bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb] rounded-bl-sm"
+      ? "bg-fb-primary dark:bg-gradient-to-br dark:from-blue-600 dark:to-indigo-600 dark:border dark:border-indigo-500/50 dark:shadow-lg dark:shadow-indigo-500/25 text-white rounded-br-sm"
+      : "bg-fb-secondary dark:bg-white/10 dark:backdrop-blur-md dark:border dark:border-white/10 dark:text-white dark:shadow-sm rounded-bl-sm"
   }`;
 
   // Reply quote bubble
   const replyContent = m.reply_to_id_content ?? m.reply_to?.content;
   if (replyContent) {
     const quote = document.createElement("div");
-    quote.className = `mb-1.5 px-2 py-1 rounded-lg border-l-2 text-xs opacity-70 ${
+    quote.className = `mb-1.5 px-2 py-1 rounded-lg border-l-2 text-xs opacity-80 ${
       mine
         ? "border-white/60 bg-white/10"
-        : "border-fb-primary/60 bg-gray-200 dark:bg-[#4a4b4c]"
+        : "border-fb-primary/60 dark:border-indigo-400 bg-gray-200 dark:bg-white/5"
     }`;
     quote.textContent = replyContent.length > 80 ? replyContent.slice(0, 80) + "…" : replyContent;
     bubble.appendChild(quote);
@@ -751,15 +758,21 @@ function markSeenMessages(lastMessageId) {
     el.classList.remove("seen-check");
   });
 
-  // Find the last message node with id <= seenId that belongs to me (has seen label)
+  // Tìm ngược từ dưới lên (từ tin nhắn mới nhất), cái nào <= seenId thì lấy và DỪNG LẠI luôn
   let lastSeenNode = null;
-  [...document.querySelectorAll("[data-msg-id]")].forEach((node) => {
+  const nodes = document.querySelectorAll("[data-msg-id]");
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const node = nodes[i];
     const id = Number(node.dataset.msgId);
-    if (!Number.isFinite(id)) return;
+    if (!Number.isFinite(id)) continue;
     const seenLabel = node.querySelector(".msg-seen");
-    if (!seenLabel) return; // only "mine" messages have this
-    if (id <= seenId) lastSeenNode = node;
-  });
+    if (!seenLabel) continue; // Chỉ quan tâm tin của mình
+
+    if (id <= seenId) {
+      lastSeenNode = node;
+      break; // Tìm thấy tin gần nhất thoả mãn -> DỪNG NGAY (tối ưu O(1))
+    }
+  }
 
   if (lastSeenNode) {
     const label = lastSeenNode.querySelector(".msg-seen");
@@ -883,6 +896,12 @@ function bindEvents() {
   chatInput?.addEventListener("input", () => {
     if (!chatWs || chatWs.readyState !== WebSocket.OPEN || !activeConvId) return;
     setTyping(true);
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && activeConvId && !pendingConv) {
+      authFetch(API.seenMessage(activeConvId), { method: "POST" }).catch(() => {});
+    }
   });
 
   $("chatFileInput")?.addEventListener("change", async (e) => {

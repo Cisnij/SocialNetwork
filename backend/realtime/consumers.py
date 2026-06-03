@@ -167,8 +167,6 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
                     body=message if message else 'File đính kèm'
                 )
         for user in member_ids:
-            if user == self.user.id: # người nào gửi là người đó đang kết nối vô phòng, còn nếu đang ở đoạn chat sẵn thì fe bỏ qua cái này
-                continue
             await self.channel_layer.group_send(
                 f'conv_list_{user}',
                 {
