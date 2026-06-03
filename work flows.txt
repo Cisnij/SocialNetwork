@@ -78,4 +78,7 @@ work flows
 51. THêm support ticket user gửi yêu cầu và nhân viên sẽ hỗ trợ reply qua mail
 52. Sửa lại email phụ không đăng nhập được google, chỉ email chính
 53. Thêm celery chạy các task ngầm như push notification qua firebase và sendmail, xóa ảnh softdelete theo n thời gian
+54. Thêm validator cho first_name, last_name, ngày sinh số điện thoại cho model và RegisterSerializer
+55. Khi vào profile mà is_completed =False thì hiện box báo là hãy cập nhật ảnh. Khi user update mà có ảnh thì đổi is_complete=True
+56. Mã hóa tin nhắn trong database dùng from encrypted_fields.fields import EncryptedTextField
 =====================================================================================

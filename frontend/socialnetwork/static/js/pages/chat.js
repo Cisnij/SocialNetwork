@@ -18,9 +18,38 @@ let loadingMessages = false;
 let activeConvMeta = null;
 let firstMessageInConv = null;
 let tempIdCounter = 0;
+
+// ========= TYPING STATE =========
 let typingIndicatorTimeout = null;
 let typingStopTimeout = null;
 let typingSent = false;
+
+// ========= WS RECONNECT GUARDS (Task 1 - spam fix) =========
+let chatWsReconnectTimer = null;
+let convWsReconnectTimer = null;
+let notifWsReconnectTimer = null;
+
+// ========= WS PING WATCHDOG (Task 5 - client-side watchdog) =========
+// If FE doesn't receive a ping from server in 70s, assume dead connection & reconnect
+const PING_WATCHDOG_MS = 70 * 1000;
+let chatPingWatchdog = null;
+let convPingWatchdog = null;
+
+function resetChatPingWatchdog(convId) {
+  if (chatPingWatchdog) clearTimeout(chatPingWatchdog);
+  chatPingWatchdog = setTimeout(() => {
+    console.warn("[chat] Ping watchdog fired — reconnecting chatWs");
+    if (Number(activeConvId) === Number(convId)) connectChatWs(convId);
+  }, PING_WATCHDOG_MS);
+}
+
+function resetConvPingWatchdog() {
+  if (convPingWatchdog) clearTimeout(convPingWatchdog);
+  convPingWatchdog = setTimeout(() => {
+    console.warn("[chat] Ping watchdog fired — reconnecting convWs");
+    connectConvListWs();
+  }, PING_WATCHDOG_MS);
+}
 
 /** DOM refs — resolved on boot, not at import time */
 let convListEl;
@@ -114,21 +143,48 @@ async function startChatWith(profileId, name) {
   openConversation(conv, name);
 }
 
+// ========= CONV LIST WS (Task 1 spam fix + Task 5 watchdog) =========
 function connectConvListWs() {
+  // Prevent duplicate timers
+  if (convWsReconnectTimer) {
+    clearTimeout(convWsReconnectTimer);
+    convWsReconnectTimer = null;
+  }
   try {
-    convWs?.close();
+    if (convWs) {
+      convWs.onclose = null; // detach old handler before closing
+      convWs.close();
+    }
     convWs = new WebSocket(API.wsConversations());
+
+    convWs.onopen = () => {
+      resetConvPingWatchdog();
+    };
+
     convWs.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
         if (data.type === "ping") {
           convWs.send(JSON.stringify({ type: "pong" }));
+          resetConvPingWatchdog(); // reset watchdog each ping
           return;
         }
         if (data.conversation_id) bumpConversation(data);
       } catch (_) {}
     };
-    convWs.onclose = () => setTimeout(connectConvListWs, 3000);
+
+    convWs.onclose = () => {
+      if (convPingWatchdog) clearTimeout(convPingWatchdog);
+      // Debounced retry — only one timer at a time
+      if (!convWsReconnectTimer) {
+        convWsReconnectTimer = setTimeout(() => {
+          convWsReconnectTimer = null;
+          connectConvListWs();
+        }, 3000);
+      }
+    };
+
+    convWs.onerror = (e) => console.error("[chat] convWs error", e);
   } catch (e) {
     console.error("[chat] conv ws", e);
   }
@@ -141,7 +197,15 @@ function bumpConversation(event) {
   if (item) {
     convListEl.prepend(item.el);
     const preview = item.el.querySelector(".conv-preview");
-    if (preview) preview.textContent = event.last_message || "Tin nhắn mới";
+    if (preview) {
+      // Show proper preview text based on message_type
+      const type = event.message_type;
+      if (type === "file" || (!event.last_message && type)) {
+        preview.textContent = "📎 File đính kèm";
+      } else {
+        preview.textContent = event.last_message || "Tin nhắn mới";
+      }
+    }
   } else {
     loadConversations();
   }
@@ -402,7 +466,10 @@ async function openConversation(conv, titleName) {
   
   pendingBanner?.classList.add("hidden");
   const typingIndicator = document.getElementById("chatTypingIndicator");
-  if (typingIndicator) typingIndicator.textContent = "";
+  if (typingIndicator) {
+    typingIndicator.textContent = "";
+    typingIndicator.classList.remove("typing-active");
+  }
   pendingConv = conv.status === "pending";
   firstMessageInConv = null;
 
@@ -418,35 +485,71 @@ async function openConversation(conv, titleName) {
   }
 
   try {
-    await authFetch(API.seenMessage(conv.id), { method: "POST" });
+    const seenRes = await authFetch(API.seenMessage(conv.id), { method: "POST" });
+    if (seenRes.ok) {
+      const seenData = await seenRes.json().catch(() => ({}));
+      if (seenData.last_read_message_id) {
+        markSeenMessages(seenData.last_read_message_id);
+      }
+    }
   } catch (e) {
     console.warn("[chat] seen", e);
   }
 }
 
+// ========= CHAT WS (Task 1 spam fix + Task 5 watchdog) =========
 function connectChatWs(convId) {
-  chatWs?.close();
+  // Cancel any pending reconnect for this slot
+  if (chatWsReconnectTimer) {
+    clearTimeout(chatWsReconnectTimer);
+    chatWsReconnectTimer = null;
+  }
+  // Detach old handlers before closing
+  if (chatWs) {
+    chatWs.onclose = null;
+    chatWs.onmessage = null;
+    chatWs.close();
+  }
+  if (chatPingWatchdog) clearTimeout(chatPingWatchdog);
+
   try {
     chatWs = new WebSocket(API.wsChat(convId));
+
+    chatWs.onopen = () => {
+      console.log("[chat] WebSocket connected for conv", convId);
+      resetChatPingWatchdog(convId);
+    };
+
     chatWs.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
+
+        // Ping-pong (Task 5)
         if (data.type === "ping") {
           chatWs.send(JSON.stringify({ type: "pong" }));
+          resetChatPingWatchdog(convId); // heartbeat received → reset watchdog
           return;
         }
+
         if (data.type === "seen_message") {
-          markSeenMessages(data.last_message_id);
+          // Only update "Đã xem" when THE OTHER person reads my messages
+          // user_id === myUserId means I just marked as read — skip
+          if (Number(data.user_id) !== Number(myUserId)) {
+            markSeenMessages(data.last_message_id);
+          }
           return;
         }
+
         if (data.type === "typing") {
           handleTypingEvent(data);
           return;
         }
+
         if (data.type === "message_deleted") {
           document.querySelector(`[data-msg-id="${data.id}"]`)?.remove();
           return;
         }
+
         if (data.type === "message_updated") {
           const el = document.querySelector(
             `[data-msg-id="${data.id}"] .msg-text`
@@ -454,14 +557,18 @@ function connectChatWs(convId) {
           if (el) el.textContent = `${data.content} (đã sửa)`;
           return;
         }
-        if (data.message != null || data.content != null) {
-          const messageContent = data.message ?? data.content;
+
+        // New chat message (no type field from backend)
+        if (data.id != null && (data.message != null || data.attachments != null)) {
           appendMessage(
             {
               id: data.id,
-              content: messageContent,
+              content: data.message ?? data.content ?? "",
+              message: data.message ?? "",
               sender_id: data.sender_id,
-              attachments: data.attachments,
+              attachments: data.attachments || [],
+              reply_to_id: data.reply_to_id,
+              reply_to_id_content: data.reply_to_id_content,
             },
             true
           );
@@ -477,18 +584,21 @@ function connectChatWs(convId) {
       }
     };
     
-    chatWs.onopen = () => {
-      console.log("[chat] WebSocket connected for conv", convId);
-    };
-    
     chatWs.onerror = (err) => {
       console.error("[chat] WebSocket error:", err);
     };
+
     chatWs.onclose = () => {
+      if (chatPingWatchdog) clearTimeout(chatPingWatchdog);
+      // Only retry if we're still watching this conversation
       if (Number(activeConvId) !== Number(convId)) return;
-      setTimeout(() => {
-        if (Number(activeConvId) === Number(convId)) connectChatWs(convId);
-      }, 3000);
+      // Debounced single retry
+      if (!chatWsReconnectTimer) {
+        chatWsReconnectTimer = setTimeout(() => {
+          chatWsReconnectTimer = null;
+          if (Number(activeConvId) === Number(convId)) connectChatWs(convId);
+        }, 3000);
+      }
     };
   } catch (e) {
     console.error("[chat] message ws", e);
@@ -522,7 +632,8 @@ async function loadMessages(reset) {
 }
 
 function appendMessage(m, scroll = true, prepend = false) {
-  const sid = m.sender?.id ?? m.sender_id;
+  // sender_id from WS = Django User ID; from REST m.sender.user = Django User ID
+  const sid = m.sender?.user ?? m.sender?.id ?? m.sender_id;
   const mine =
     (myUserId != null && Number(sid) === Number(myUserId)) ||
     (myProfileId != null && Number(sid) === Number(myProfileId));
@@ -537,6 +648,19 @@ function appendMessage(m, scroll = true, prepend = false) {
       ? "bg-fb-primary dark:bg-[#1877f2] text-white rounded-br-sm"
       : "bg-fb-secondary dark:bg-[#3a3b3c] dark:text-[#e4e6eb] rounded-bl-sm"
   }`;
+
+  // Reply quote bubble
+  const replyContent = m.reply_to_id_content ?? m.reply_to?.content;
+  if (replyContent) {
+    const quote = document.createElement("div");
+    quote.className = `mb-1.5 px-2 py-1 rounded-lg border-l-2 text-xs opacity-70 ${
+      mine
+        ? "border-white/60 bg-white/10"
+        : "border-fb-primary/60 bg-gray-200 dark:bg-[#4a4b4c]"
+    }`;
+    quote.textContent = replyContent.length > 80 ? replyContent.slice(0, 80) + "…" : replyContent;
+    bubble.appendChild(quote);
+  }
 
   const text = document.createElement("p");
   text.className = "msg-text whitespace-pre-wrap";
@@ -604,39 +728,87 @@ function appendMessage(m, scroll = true, prepend = false) {
     bubble.appendChild(actions);
   }
 
-  const seen = document.createElement("p");
-  seen.className = "msg-seen text-[10px] text-gray-400 mt-0.5 text-right";
-  // Display is controlled by seen events (SeenMessage WS)
-  seen.textContent = "";
+  // Task 2 - Seen label under each message (only for mine)
+  const seenLabel = document.createElement("p");
+  seenLabel.className = "msg-seen text-[10px] text-gray-400 dark:text-[#b0b3b8] mt-0.5 text-right";
+  seenLabel.textContent = "";
+
   wrap.appendChild(bubble);
-  if (mine) wrap.appendChild(seen);
+  if (mine) wrap.appendChild(seenLabel);
   if (prepend) messagesEl.prepend(wrap);
   else messagesEl.appendChild(wrap);
   if (scroll) messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
+// Task 2 — Mark seen: only show "Đã xem" on the LAST seen message
 function markSeenMessages(lastMessageId) {
   const seenId = Number(lastMessageId);
   if (!Number.isFinite(seenId)) return;
+
+  // Clear all existing seen labels first
+  document.querySelectorAll(".msg-seen").forEach((el) => {
+    el.textContent = "";
+    el.classList.remove("seen-check");
+  });
+
+  // Find the last message node with id <= seenId that belongs to me (has seen label)
   let lastSeenNode = null;
-  [...document.querySelectorAll('[data-msg-id]')].forEach((node) => {
+  [...document.querySelectorAll("[data-msg-id]")].forEach((node) => {
     const id = Number(node.dataset.msgId);
+    if (!Number.isFinite(id)) return;
     const seenLabel = node.querySelector(".msg-seen");
-    if (!seenLabel || !Number.isFinite(id)) return;
-    seenLabel.textContent = "";
+    if (!seenLabel) return; // only "mine" messages have this
     if (id <= seenId) lastSeenNode = node;
   });
-  const label = lastSeenNode?.querySelector(".msg-seen");
-  if (label) label.textContent = "Đã xem";
+
+  if (lastSeenNode) {
+    const label = lastSeenNode.querySelector(".msg-seen");
+    if (label) {
+      label.textContent = "✓ Đã xem";
+      label.classList.add("seen-check");
+    }
+  }
 }
 
+// ========= TYPING (Task 9 - animated dots) =========
 function ensureTypingIndicator() {
   let indicator = document.getElementById("chatTypingIndicator");
   if (indicator) return indicator;
-  indicator = document.createElement("p");
+  indicator = document.createElement("div");
   indicator.id = "chatTypingIndicator";
-  indicator.className = "px-4 pb-2 text-xs text-gray-500 dark:text-fb-muted";
-  indicator.textContent = "";
+  indicator.className = "px-4 pb-2 flex items-center gap-2 text-xs text-gray-500 dark:text-fb-muted typing-indicator-wrap";
+  indicator.style.minHeight = "20px";
+  indicator.innerHTML = `
+    <span class="typing-name"></span>
+    <span class="typing-dots hidden">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    </span>
+  `;
+
+  // Inject CSS for dots animation if not already present
+  if (!document.getElementById("typingDotsStyle")) {
+    const style = document.createElement("style");
+    style.id = "typingDotsStyle";
+    style.textContent = `
+      .typing-dots { display: inline-flex; gap: 3px; align-items: center; }
+      .typing-dots.hidden { display: none !important; }
+      .typing-dots .dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: currentColor; opacity: 0.4;
+        animation: typingBounce 1.2s infinite ease-in-out;
+      }
+      .typing-dots .dot:nth-child(1) { animation-delay: 0s; }
+      .typing-dots .dot:nth-child(2) { animation-delay: 0.2s; }
+      .typing-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+      @keyframes typingBounce {
+        0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+        30% { transform: translateY(-5px); opacity: 1; }
+      }
+      .msg-seen.seen-check { color: #1877f2; font-size: 10px; }
+    `;
+    document.head.appendChild(style);
+  }
+
   const form = document.getElementById("chatForm");
   form?.parentElement?.insertBefore(indicator, form);
   return indicator;
@@ -646,15 +818,25 @@ function handleTypingEvent(data) {
   if (Number(data.sender_id) === Number(myUserId)) return;
   const indicator = ensureTypingIndicator();
   if (!indicator) return;
+
+  const nameEl = indicator.querySelector(".typing-name");
+  const dotsEl = indicator.querySelector(".typing-dots");
+
   if (!data.is_typing) {
-    indicator.textContent = "";
+    if (nameEl) nameEl.textContent = "";
+    if (dotsEl) dotsEl.classList.add("hidden");
     return;
   }
-  indicator.textContent = `${data.sender || "Người dùng"} đang nhập...`;
+
+  if (nameEl) nameEl.textContent = `${data.sender || "Người dùng"} đang nhập`;
+  if (dotsEl) dotsEl.classList.remove("hidden");
+
+  // Auto-hide after 3s if no stop event received
   if (typingIndicatorTimeout) clearTimeout(typingIndicatorTimeout);
   typingIndicatorTimeout = setTimeout(() => {
-    indicator.textContent = "";
-  }, 2500);
+    if (nameEl) nameEl.textContent = "";
+    if (dotsEl) dotsEl.classList.add("hidden");
+  }, 3000);
 }
 
 function setTyping(isTyping) {

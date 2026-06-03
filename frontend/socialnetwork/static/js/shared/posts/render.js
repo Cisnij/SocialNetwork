@@ -6,6 +6,7 @@ import { formatRelativeTime, cls } from "../ui.js";
 import { openEditModal } from "../post-edit.js";
 import { openCommentsModal } from "../comments-panel.js";
 import { openShareModal } from "../share-modal.js";
+import { showReportModal } from "../pin-report.js";
 import {
   REACTIONS,
   createReactionBar,
@@ -21,6 +22,7 @@ import { reactToPost } from "./api.js";
  * @param {object} options
  * @param {number|null} options.currentUserId - Profile id of logged-in user
  * @param {(postId: number) => void} options.onDelete
+ * @param {(postId: number, isPinned: boolean, cardEl: HTMLElement) => void} [options.onPin]
  * @param {(postId: number) => void} options.onOpenReactions
  * @param {(urls: string[], index: number, caption: string) => void} options.onOpenPhotos
  */
@@ -29,6 +31,7 @@ export function renderPostCard(post, options = {}) {
     currentUserId = null,
     isUserPage = false,
     onDelete,
+    onPin,
     onOpenReactions,
     onOpenPhotos,
   } = options;
@@ -36,6 +39,7 @@ export function renderPostCard(post, options = {}) {
   const article = document.createElement("article");
   article.className = `post-card p-4 ${cls.card}`;
   article.dataset.postId = post.post_id;
+  const card = article; // alias for onPin callback
 
   // --- Header ---
   const header = document.createElement("div");
@@ -60,6 +64,18 @@ export function renderPostCard(post, options = {}) {
   name.textContent =
     `${post?.user?.first_name || ""} ${post?.user?.last_name || ""}`.trim() ||
     "Người dùng";
+
+  // Pin badge — always rendered on userpage, shown/hidden based on is_pinned
+  if (isUserPage) {
+    const pinBadge = document.createElement("span");
+    pinBadge.className =
+      "pin-badge inline-flex items-center gap-1 text-[10px] font-semibold " +
+      "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 " +
+      "rounded px-1.5 py-0.5 mb-0.5" +
+      (post.is_pinned ? "" : " hidden");
+    pinBadge.textContent = "📌 Đã ghim";
+    info.appendChild(pinBadge);
+  }
 
   const time = document.createElement("p");
   time.className = `text-xs ${cls.textMuted}`;
@@ -121,13 +137,20 @@ export function renderPostCard(post, options = {}) {
           post.is_pinned ? "📌 Bỏ ghim bài" : "📌 Ghim bài",
           `block w-full text-left px-4 py-2 ${cls.text} ${cls.hoverRow}`,
           async () => {
+            closeMenu();
             try {
               const res = await authFetch(API.pinPost(post.post_id), {
                 method: "PUT",
               });
               if (!res.ok) throw new Error("pin");
-              post.is_pinned = !post.is_pinned;
-              showToast("Đã cập nhật ghim bài", "green");
+              const data = await res.json();
+              const newPinState = data.is_pinned;
+              post.is_pinned = newPinState;
+              // Optimistic update: notify caller to handle DOM
+              if (typeof onPin === "function") {
+                onPin(post.post_id, newPinState, card);
+              }
+              showToast(newPinState ? "📌 Đã ghim bài viết" : "Bỏ ghim bài viết", "green");
             } catch {
               showToast("Không thể ghim bài", "red");
             }
@@ -140,24 +163,11 @@ export function renderPostCard(post, options = {}) {
         () => onDelete?.(post.post_id)
       );
     } else {
+      // Task 8: Use beautiful report modal instead of prompt()
       appendItem(
         "🚩 Báo cáo bài viết",
         "block w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30",
-        async () => {
-          const reason = prompt("Nhập lý do báo cáo");
-          if (!reason?.trim()) return;
-          try {
-            const res = await authFetch(API.reportPost(post.post_id), {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ reason: reason.trim() }),
-            });
-            if (!res.ok) throw new Error("report");
-            showToast("Đã gửi báo cáo", "green");
-          } catch {
-            showToast("Không thể gửi báo cáo", "red");
-          }
-        }
+        () => showReportModal(post.post_id)
       );
     }
     menuWrapper.append(menuBtn, menuDropdown);

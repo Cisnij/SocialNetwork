@@ -603,7 +603,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         +django-import-export: xuất file
         #+django-meta:chia sẻ link kiểu khi copy paste vô messenger sẽ hiện card preview, dùng cho fe
         #+django-structlog:theo dõi log của server(ip,lỗi)
-        
+        #django-fernet-encrypted-fields: dùng mã hóa tin nhắn trong db
     }
         Storage & Media:{
             #pip install django-storages || cloudinary  # lưu file lên S3, Google Cloud, Azure thay vì server

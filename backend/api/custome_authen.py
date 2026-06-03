@@ -16,14 +16,14 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from .serializers import EmailSerializer
 from allauth.socialaccount.models import SocialAccount
-
+from phonenumber_field.serializerfields import PhoneNumberField
 from .tasks import send_email_task
 
 '''khi người dùng nhập, gọi api nó sẽ lấy giá trị và validate sau đó mới lưu vào csdl là flow của serializer đúng k'''
 
 name_validator = RegexValidator(
-    regex=r'^[a-zA-ZÀ-ỹ\s]+$',
-    message='Tên chỉ được chứa chữ cái và khoảng trắng'
+    regex=r'^[a-zA-ZÀ-ỹ\s]+$', # check các kí tự này chỉ đc từ a-Z và dấu
+    message='Tên chỉ được chứa chữ cái và khoảng trắng' # báo lỗi
 )
 class CustomRegisterSerializer(RegisterSerializer): # Sửa chức năng register nên RegisterSerializer
     username=None #Bỏ username đi
@@ -31,7 +31,7 @@ class CustomRegisterSerializer(RegisterSerializer): # Sửa chức năng registe
     lastname=serializers.CharField(required=True, allow_blank=False, validators=[name_validator]) #thêm last name
    
     _has_phone_field = True #thêm số điện thoại
-    phone_number=serializers.CharField(required=True,allow_blank=False)
+    phone_number = PhoneNumberField(required=True)
     birthday=serializers.DateField(required=True) #thêm ngày sinh
 
     def validate_birthday(self, value):  # validate riêng cho birthday
@@ -41,12 +41,6 @@ class CustomRegisterSerializer(RegisterSerializer): # Sửa chức năng registe
             raise serializers.ValidationError('Ngày sinh không hợp lệ')
         return value
 
-    def validate_phone_number(self, value):  # validate phone, hiện chỉ chấp nhận VN, sau này thêm vào quốc tế dùng PhoneNumberSerializerField
-        import re
-        phone = value.strip()
-        if not re.match(r'^(\+84|0)[3-9]\d{8}$', value):
-            raise serializers.ValidationError('Số điện thoại không hợp lệ')
-        return value
 
     def get_cleaned_data(self): #sau khi xác thực thì lấy cái giá trị mới xác thực gán cho giá trị chính và lưu , cái này là chỉ gán các field có sẵn trong user, muốn thêm field tự custome thì overide save()
         clean_data=super().get_cleaned_data() #clean data là dữ liệu chính và được gán vào dữ liệu vừa validate
@@ -63,10 +57,6 @@ class CustomRegisterSerializer(RegisterSerializer): # Sửa chức năng registe
         pending_profile.first_name=self.validated_data.get('firstname','')
         pending_profile.last_name=self.validated_data.get('lastname','')
         phone = self.validated_data.get('phone_number', '')
-        if phone.startswith('0'):
-            phone = '+84' + phone[1:]  # 0937... -> +84937...
-        elif not phone.startswith('+84'):
-            phone = '+84' + phone      # 937... -> +84937...
         pending_profile.phone_number = phone
         pending_profile.date_of_birth = self.validated_data.get('birthday')
         pending_profile.save() 

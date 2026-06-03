@@ -294,3 +294,5 @@ CELERY_TASK_ROUTES = {
     'api.tasks.push_notification_task': {'queue': 'notifications'},
     'api.tasks.send_email_task': {'queue': 'emails'},
 }
+#====================django-fernet-encrypted-fields======================
+SALT_KEY = env('SALT_KEY')

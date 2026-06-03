@@ -4,88 +4,315 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Đăng ký</title>
+  <title>Đăng ký — SocialNetwork</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    .input-icon {
-      position: absolute;
-      left: 0.75rem;
-      top: 50%;
-      transform: translateY(-50%);
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'Inter', 'Segoe UI', sans-serif; }
+
+    /* ---- Base input ---- */
+    .field-wrap { position: relative; }
+    .field-icon {
+      position: absolute; left: .75rem; top: 50%;
+      transform: translateY(-50%); pointer-events: none;
+      font-size: .95rem; color: #6b7280;
+    }
+    .field-input {
+      width: 100%; padding: .65rem 1rem .65rem 2.4rem;
+      background: #1e1e1e; color: #f3f4f6;
+      border: 1.5px solid #374151; border-radius: .625rem;
+      outline: none; font-size: .9rem; transition: border-color .2s, box-shadow .2s;
+    }
+    .field-input:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px rgba(124,58,237,.18);
+    }
+    .field-input::placeholder { color: #6b7280; }
+    .field-input.no-icon { padding-left: 1rem; }
+
+    /* ---- Phone row ---- */
+    .phone-row { display: flex; gap: 8px; align-items: stretch; }
+    .cc-wrap { position: relative; flex: 0 0 130px; }
+    .cc-select {
+      width: 100%; height: 100%;
+      padding: .65rem 1.8rem .65rem .6rem;
+      background: #1e1e1e; color: #f3f4f6;
+      border: 1.5px solid #374151; border-radius: .625rem;
+      outline: none; appearance: none; font-size: .85rem;
+      cursor: pointer; transition: border-color .2s;
+    }
+    .cc-select:focus {
+      border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.18);
+    }
+    .cc-arrow {
+      position: absolute; right: .55rem; top: 50%;
+      transform: translateY(-50%); pointer-events: none;
+      color: #9ca3af; font-size: .65rem;
+    }
+
+    /* ---- Password toggle ---- */
+    .pw-toggle {
+      position: absolute; right: .75rem; top: 50%;
+      transform: translateY(-50%); background: none;
+      border: none; cursor: pointer; color: #9ca3af;
+      font-size: 1rem; padding: 0; line-height: 1;
+    }
+    .pw-toggle:hover { color: #d1d5db; }
+    .has-toggle { padding-right: 2.5rem !important; }
+
+    /* ---- Strength bar ---- */
+    .s-bar-bg { height: 4px; border-radius: 4px; background: #374151; overflow: hidden; margin-top: 4px; }
+    .s-bar { height: 100%; border-radius: 4px; transition: width .3s, background .3s; }
+
+    /* ---- Error ---- */
+    #regError {
+      display: none; background: rgba(239,68,68,.15);
+      border: 1px solid rgba(239,68,68,.4);
+      color: #fca5a5; border-radius: .625rem;
+      padding: .75rem 1rem; font-size: .875rem;
+      margin-bottom: .75rem; white-space: pre-line;
+    }
+    #regError.show { display: block; }
+
+    /* ---- Submit ---- */
+    .btn-submit {
+      width: 100%; padding: .75rem; border-radius: .625rem;
+      font-weight: 600; font-size: .95rem; cursor: pointer;
+      background: linear-gradient(135deg,#7c3aed,#6d28d9);
+      color: #fff; border: none;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn-submit:hover { opacity: .92; }
+    .btn-submit:active { transform: scale(.98); }
+    .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ---- Card ---- */
+    .card {
+      background: #141414;
+      border: 1px solid #1f2937;
+      border-radius: 1.25rem;
+      box-shadow: 0 0 80px rgba(109,40,217,.07), 0 24px 64px rgba(0,0,0,.5);
     }
   </style>
 </head>
-<body class="bg-[#0f0f0f] min-h-screen flex items-center justify-center px-4 py-10 text-white">
-  <div id="login-error" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-sm px-6 py-3 rounded shadow-lg z-50"></div>
+<body class="bg-[#0a0a0a] min-h-screen flex items-center justify-center px-4 py-10 text-white">
+  <div class="w-full max-w-md card p-8">
 
-  <div class="w-full max-w-md bg-[#1c1c1c] p-8 rounded-2xl shadow-lg backdrop-blur-sm">
-    <h2 class="text-3xl font-bold text-center mb-3 text-purple-400">Đăng ký tài khoản</h2>
-    <p class="text-center text-gray-400 mb-6 text-sm">Điền thông tin để tạo tài khoản mới</p>
-
-    <form class="space-y-5" id='register-form'>
-
-      <!-- First Name -->
-      <div class="relative">
-        <span class="input-icon text-gray-400">📝</span>
-        <input type="text" name="first_name" placeholder="Họ" id='first_name'
-               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+    <!-- Brand -->
+    <div class="text-center mb-7">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 mb-3 shadow-lg">
+        <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+          <circle cx="12" cy="8" r="4" fill="white"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
       </div>
+      <h1 class="text-2xl font-bold">Tạo tài khoản</h1>
+      <p class="text-gray-400 text-sm mt-1">Miễn phí · Nhanh chóng · Bảo mật</p>
+    </div>
 
-      <!-- Last Name -->
-      <div class="relative">
-        <span class="input-icon text-gray-400">📝</span>
-        <input type="text" name="last_name" placeholder="Tên" id='last_name'
-               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+    <!-- Error -->
+    <div id="regError" role="alert"></div>
+
+    <form id="registerForm" novalidate class="space-y-4">
+
+      <!-- Họ / Tên -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-gray-400 font-medium mb-1" for="rFirstName">Họ</label>
+          <div class="field-wrap">
+            <span class="field-icon">👤</span>
+            <input type="text" id="rFirstName" name="firstname" placeholder="Nguyễn"
+                   autocomplete="given-name" class="field-input" required>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 font-medium mb-1" for="rLastName">Tên</label>
+          <div class="field-wrap">
+            <span class="field-icon">👤</span>
+            <input type="text" id="rLastName" name="lastname" placeholder="Văn A"
+                   autocomplete="family-name" class="field-input" required>
+          </div>
+        </div>
       </div>
 
       <!-- Email -->
-      <div class="relative">
-        <span class="input-icon text-gray-400">📧</span>
-        <input type="email" name="email" placeholder="Email" id='email'
-               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      <div>
+        <label class="block text-xs text-gray-400 font-medium mb-1" for="rEmail">Email</label>
+        <div class="field-wrap">
+          <span class="field-icon">📧</span>
+          <input type="email" id="rEmail" name="email" placeholder="example@email.com"
+                 autocomplete="email" class="field-input" required>
+        </div>
       </div>
 
-      <!-- Phone Number -->
-      <div class="relative">
-        <span class="input-icon text-gray-400">📱</span>
-        <input type="tel" name="phone_number" placeholder="Số điện thoại" id='phone_number'
-               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      <!-- Số điện thoại — E.164 -->
+      <div>
+        <label class="block text-xs text-gray-400 font-medium mb-1">Số điện thoại</label>
+        <div class="phone-row">
+          <div class="cc-wrap">
+            <select id="rCountryCode" class="cc-select">
+              <!-- Châu Á -->
+              <optgroup label="─── Phổ biến ───">
+                <option value="+84"  data-flag="🇻🇳" data-len="9" selected>🇻🇳 +84</option>
+                <option value="+1"   data-flag="🇺🇸" data-len="10">🇺🇸 +1</option>
+                <option value="+44"  data-flag="🇬🇧" data-len="10">🇬🇧 +44</option>
+                <option value="+81"  data-flag="🇯🇵" data-len="10">🇯🇵 +81</option>
+                <option value="+82"  data-flag="🇰🇷" data-len="10">🇰🇷 +82</option>
+                <option value="+65"  data-flag="🇸🇬" data-len="8">🇸🇬 +65</option>
+              </optgroup>
+              <optgroup label="─── Đông Nam Á ───">
+                <option value="+60"  data-flag="🇲🇾" data-len="10">🇲🇾 +60</option>
+                <option value="+62"  data-flag="🇮🇩" data-len="11">🇮🇩 +62</option>
+                <option value="+63"  data-flag="🇵🇭" data-len="10">🇵🇭 +63</option>
+                <option value="+66"  data-flag="🇹🇭" data-len="9">🇹🇭 +66</option>
+              </optgroup>
+              <optgroup label="─── Đông Á ───">
+                <option value="+86"  data-flag="🇨🇳" data-len="11">🇨🇳 +86</option>
+                <option value="+852" data-flag="🇭🇰" data-len="8">🇭🇰 +852</option>
+                <option value="+886" data-flag="🇹🇼" data-len="9">🇹🇼 +886</option>
+              </optgroup>
+              <optgroup label="─── Châu Âu ───">
+                <option value="+33"  data-flag="🇫🇷" data-len="9">🇫🇷 +33</option>
+                <option value="+49"  data-flag="🇩🇪" data-len="11">🇩🇪 +49</option>
+                <option value="+39"  data-flag="🇮🇹" data-len="10">🇮🇹 +39</option>
+                <option value="+34"  data-flag="🇪🇸" data-len="9">🇪🇸 +34</option>
+              </optgroup>
+              <optgroup label="─── Khác ───">
+                <option value="+61"  data-flag="🇦🇺" data-len="9">🇦🇺 +61</option>
+                <option value="+91"  data-flag="🇮🇳" data-len="10">🇮🇳 +91</option>
+                <option value="+55"  data-flag="🇧🇷" data-len="11">🇧🇷 +55</option>
+                <option value="+7"   data-flag="🇷🇺" data-len="10">🇷🇺 +7</option>
+              </optgroup>
+            </select>
+            <span class="cc-arrow">▼</span>
+          </div>
+          <div class="field-wrap flex-1">
+            <input type="tel" id="rPhone" placeholder="901 234 567"
+                   autocomplete="tel-national"
+                   class="field-input no-icon" required>
+          </div>
+        </div>
+        <p id="phoneHint" class="text-xs text-gray-500 mt-1.5">
+          Nhập số <strong class="text-gray-400">không</strong> kèm mã quốc gia — VD: <span id="phoneExample">901 234 567</span>
+        </p>
       </div>
 
-      <!-- Birthday -->
-      <div class="relative">
-        <span class="input-icon text-gray-400">🎂</span>
-        <input type="date" name="birthday" id='birthday'
-               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      <!-- Ngày sinh -->
+      <div>
+        <label class="block text-xs text-gray-400 font-medium mb-1" for="rBirthday">Ngày sinh</label>
+        <div class="field-wrap">
+          <span class="field-icon">🎂</span>
+          <input type="date" id="rBirthday" name="birthday"
+                 max="{{ today }}" class="field-input" required>
+        </div>
       </div>
 
-      <!-- Password -->
-      <div class="relative">
-        <span class="input-icon text-gray-400">🔒</span>
-        <input type="password" name="password1" placeholder="Mật khẩu" id='password1'
-               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      <!-- Mật khẩu -->
+      <div>
+        <label class="block text-xs text-gray-400 font-medium mb-1" for="rPw1">Mật khẩu</label>
+        <div class="field-wrap">
+          <span class="field-icon">🔒</span>
+          <input type="password" id="rPw1" name="password1" placeholder="Tối thiểu 8 ký tự"
+                 autocomplete="new-password" class="field-input has-toggle" required>
+          <button type="button" class="pw-toggle" data-target="rPw1">👁️</button>
+        </div>
+        <div class="s-bar-bg"><div id="sBar" class="s-bar" style="width:0"></div></div>
+        <p id="sLabel" class="text-xs mt-1 text-gray-500 h-4"></p>
       </div>
 
-      <!-- Confirm Password -->
-      <div class="relative">
-        <span class="input-icon text-gray-400">🔒</span>
-        <input type="password" name="password2" placeholder="Nhập lại mật khẩu" id='password2'
-               class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] text-white border border-[#3f3f3f] rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"/>
+      <!-- Nhập lại -->
+      <div>
+        <label class="block text-xs text-gray-400 font-medium mb-1" for="rPw2">Nhập lại mật khẩu</label>
+        <div class="field-wrap">
+          <span class="field-icon">🔒</span>
+          <input type="password" id="rPw2" name="password2" placeholder="Nhập lại mật khẩu"
+                 autocomplete="new-password" class="field-input has-toggle" required>
+          <button type="button" class="pw-toggle" data-target="rPw2">👁️</button>
+        </div>
+        <p id="matchHint" class="text-xs mt-1 h-4"></p>
       </div>
 
-      <!-- Submit -->
-      <button type="submit"
-              class="w-full py-2 rounded-lg font-semibold bg-purple-600 hover:bg-purple-500 text-white transition">
-        Đăng ký
-      </button>
+      <button type="submit" id="submitBtn" class="btn-submit mt-2">Đăng ký</button>
     </form>
 
-    <p class="text-center text-sm text-gray-400 mt-4">
+    <p class="text-center text-sm text-gray-500 mt-5">
       Đã có tài khoản?
-      <a href="/login" class="text-purple-400 hover:underline">Đăng nhập</a>
+      <a href="/login" class="text-violet-400 hover:text-violet-300 font-semibold hover:underline">Đăng nhập</a>
     </p>
   </div>
-  <script type='module' src="{% static 'js/authenticate/register.js' %}"></script>
+
+  <script type="module" src="{% static 'js/authenticate/register.js' %}"></script>
+
+  <script>
+    /* ===== UX helpers (inline, no auth logic) ===== */
+
+    // Password visibility toggle
+    document.querySelectorAll('.pw-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inp = document.getElementById(btn.dataset.target);
+        if (!inp) return;
+        inp.type = inp.type === 'password' ? 'text' : 'password';
+        btn.textContent = inp.type === 'password' ? '👁️' : '🙈';
+      });
+    });
+
+    // Password strength
+    const pw1El = document.getElementById('rPw1');
+    const sBar  = document.getElementById('sBar');
+    const sLabel = document.getElementById('sLabel');
+    const STRENGTHS = [
+      { pct: '20%', color: '#ef4444', label: 'Rất yếu' },
+      { pct: '40%', color: '#f97316', label: 'Yếu' },
+      { pct: '60%', color: '#eab308', label: 'Trung bình' },
+      { pct: '80%', color: '#22c55e', label: 'Mạnh' },
+      { pct:'100%', color: '#10b981', label: 'Rất mạnh' },
+    ];
+    function calcStrength(v) {
+      let s = 0;
+      if (v.length >= 8)  s++;
+      if (v.length >= 12) s++;
+      if (/[A-Z]/.test(v)) s++;
+      if (/[0-9]/.test(v)) s++;
+      if (/[^A-Za-z0-9]/.test(v)) s++;
+      return Math.min(s, 4);
+    }
+    pw1El.addEventListener('input', () => {
+      const v = pw1El.value;
+      if (!v) { sBar.style.width = '0'; sLabel.textContent = ''; return; }
+      const st = STRENGTHS[calcStrength(v)];
+      sBar.style.width = st.pct; sBar.style.background = st.color;
+      sLabel.textContent = st.label; sLabel.style.color = st.color;
+    });
+
+    // Match hint
+    const pw2El = document.getElementById('rPw2');
+    const matchHint = document.getElementById('matchHint');
+    pw2El.addEventListener('input', () => {
+      if (!pw2El.value) { matchHint.textContent = ''; return; }
+      const ok = pw1El.value === pw2El.value;
+      matchHint.textContent = ok ? '✓ Mật khẩu khớp' : '✗ Chưa khớp';
+      matchHint.style.color  = ok ? '#22c55e' : '#ef4444';
+    });
+
+    // Country code → update phone placeholder/hint
+    const ccSel = document.getElementById('rCountryCode');
+    const phoneInp = document.getElementById('rPhone');
+    const phoneExample = document.getElementById('phoneExample');
+    const EXAMPLES = {
+      '+84': '901 234 567', '+1': '(201) 555-0123', '+44': '7911 123456',
+      '+81': '90-1234-5678', '+82': '10-1234-5678', '+65': '8123 4567',
+      '+60': '12-3456789',  '+62': '812-3456789',   '+63': '917 123 4567',
+      '+66': '81 234 5678', '+86': '138 0013 8000', '+852': '5123 4567',
+      '+886': '912 345 678','+33': '6 12 34 56 78',  '+49': '151 12345678',
+      '+39': '320 123 4567','+34': '612 345 678',    '+61': '412 345 678',
+      '+91': '98765 43210', '+55': '11 91234-5678',  '+7': '912 345-67-89',
+    };
+    ccSel.addEventListener('change', () => {
+      const ex = EXAMPLES[ccSel.value] || '912 345 678';
+      phoneExample.textContent = ex;
+      phoneInp.placeholder = ex;
+    });
+  </script>
 </body>
 </html>

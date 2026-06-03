@@ -169,14 +169,20 @@ async function loadUserInfo() {
     }
     const completeHint = document.createElement("div");
     completeHint.className =
-      "mt-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-3 py-2 text-sm text-amber-700 dark:text-amber-200";
-    completeHint.textContent =
-      "Thêm ảnh đại diện để mọi người dễ nhận ra bạn hơn.";
-    completeHint.classList.toggle("hidden", !!user.is_completed);
+      "mt-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-4 py-3 text-sm text-amber-700 dark:text-amber-200 flex items-start gap-2";
+    completeHint.innerHTML = `
+      <span class="text-xl flex-shrink-0">📸</span>
+      <div>
+        <p class="font-semibold mb-0.5">Hồ sơ chưa hoàn chỉnh</p>
+        <p>Thêm ảnh đại diện để mọi người dễ nhận ra bạn hơn. 
+          <a href="/settings/" class="underline font-semibold">Cập nhật ngay →</a>
+        </p>
+      </div>
+    `;
+    // will be conditionally appended after isOwnProfile is resolved
 
     container.append(avatarWrap, statusRow, name, bio);
     if (privateMeta.childElementCount) container.appendChild(privateMeta);
-    container.appendChild(completeHint);
 
     const me = await getCurrentUserId().catch(() => null);
     myProfileId = me;
@@ -184,6 +190,10 @@ async function loadUserInfo() {
     if (isOwnProfile) {
       document.getElementById("tabFollowing")?.classList.remove("hidden");
       document.getElementById("tabFollowers")?.classList.remove("hidden");
+      // Task 10: only show hint for own profile when not completed
+      if (!user.is_completed) {
+        container.appendChild(completeHint);
+      }
     }
 
     const relBar = document.createElement("div");

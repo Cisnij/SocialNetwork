@@ -20,7 +20,8 @@ from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKe
 from safedelete.models import SafeDeleteModel  # thay thế models.model để có thể kế thừa khi xóa mềm
 from safedelete.models import SOFT_DELETE_CASCADE, \
     SOFT_DELETE  # delete cascade tức là khi xóa cha thì con cũng bị xóa mềm theo, còn soft delete là chỉ xóa mềm model đó thôi không ảnh hưởng đến các model liên quan
-
+#django-fernet-encrypted-fields
+from encrypted_fields.fields import EncryptedTextField
 
 def vi_slugify(value):  # chuyển slug thành tiếng việt
     return slugify(unidecode(value))
@@ -274,7 +275,7 @@ class Message(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
-    content = models.TextField(null=True,blank=True)
+    content = EncryptedTextField(null=True, blank=True)
     message_type = models.CharField(  # ô chọn
         max_length=20,
         choices=(('text', 'Text'), ('image', 'Image'), ('file', 'File')),

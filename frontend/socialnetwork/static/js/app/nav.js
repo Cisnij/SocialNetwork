@@ -4,6 +4,22 @@ import { API } from "../shared/config.js";
 const badge = document.getElementById("notifBadge");
 let notifWs = null;
 
+// ======= WS RECONNECT GUARD (Task 1 spam fix) =======
+let notifWsReconnectTimer = null;
+
+// ======= PING WATCHDOG (Task 5) =======
+// If no ping received in 70s → assume dead connection → reconnect
+const PING_WATCHDOG_MS = 70 * 1000;
+let notifPingWatchdog = null;
+
+function resetNotifPingWatchdog() {
+  if (notifPingWatchdog) clearTimeout(notifPingWatchdog);
+  notifPingWatchdog = setTimeout(() => {
+    console.warn("[nav] Notification WS ping watchdog fired — reconnecting");
+    connectNotifWs();
+  }, PING_WATCHDOG_MS);
+}
+
 async function refreshBadge() {
   if (!badge) return;
   try {
@@ -19,26 +35,63 @@ async function refreshBadge() {
 }
 
 function connectNotifWs() {
-  if (notifWs?.readyState === WebSocket.OPEN) return;
-  notifWs = new WebSocket(API.wsNotifications());
-  notifWs.onmessage = (ev) => {
-    try {
-      const data = JSON.parse(ev.data);
-      if (data.type === "ping") {
-        notifWs.send(JSON.stringify({ type: "pong" }));
-        return;
+  // Cancel any pending reconnect timer first
+  if (notifWsReconnectTimer) {
+    clearTimeout(notifWsReconnectTimer);
+    notifWsReconnectTimer = null;
+  }
+  // Detach old handlers before closing
+  if (notifWs) {
+    notifWs.onclose = null;
+    notifWs.close();
+  }
+  if (notifPingWatchdog) clearTimeout(notifPingWatchdog);
+
+  try {
+    notifWs = new WebSocket(API.wsNotifications());
+
+    notifWs.onopen = () => {
+      resetNotifPingWatchdog();
+    };
+
+    notifWs.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+
+        // Ping-pong (Task 5)
+        if (data.type === "ping") {
+          notifWs.send(JSON.stringify({ type: "pong" }));
+          resetNotifPingWatchdog(); // reset watchdog on each server ping
+          return;
+        }
+
+        if (typeof data.unread_count === "number") {
+          if (data.unread_count > 0) {
+            badge.textContent = data.unread_count > 99 ? "99+" : data.unread_count;
+            badge.classList.remove("hidden");
+          } else badge.classList.add("hidden");
+        }
+      } catch (_) {}
+    };
+
+    notifWs.onclose = () => {
+      if (notifPingWatchdog) clearTimeout(notifPingWatchdog);
+      // Debounced single retry — no spam
+      if (!notifWsReconnectTimer) {
+        notifWsReconnectTimer = setTimeout(() => {
+          notifWsReconnectTimer = null;
+          connectNotifWs();
+        }, 3000);
       }
-      if (typeof data.unread_count === "number") {
-        if (data.unread_count > 0) {
-          badge.textContent = data.unread_count > 99 ? "99+" : data.unread_count;
-          badge.classList.remove("hidden");
-        } else badge.classList.add("hidden");
-      }
-    } catch (_) {}
-  };
-  notifWs.onclose = () => setTimeout(connectNotifWs, 3000);
+    };
+
+    notifWs.onerror = (err) => console.error("[nav] notifWs error", err);
+  } catch (e) {
+    console.error("[nav] notifWs connect error", e);
+  }
 }
 
+// ======= Search history =======
 const searchInput = document.getElementById("globalSearchInput");
 const searchDropdown = document.getElementById("searchHistoryDropdown");
 

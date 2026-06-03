@@ -22,7 +22,7 @@ DEFAULT_PROFILE_PICTURE = (
     "https://res.cloudinary.com/dec8t19tm/image/upload/v1779183832/default.jpg"
 )
 
-
+'''Dùng ModelSerializer sẽ tự gọi validate bên Model và k cần phải validate lại bên đây như serializer.Serializer'''
 class ProfileSerializer(serializers.ModelSerializer):
     #friends = serializers.PrimaryKeyRelatedField(many=True, read_only=True) #cách tạo serializer của many to many field
     is_online=serializers.SerializerMethodField()
@@ -440,7 +440,7 @@ class PostShareSerializer(serializers.ModelSerializer):
 class PostReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = PostReport
-        fields = ['post','reason','created_at']
+        fields = ['reason','created_at']
 
 class SupportTicketSerializer(serializers.ModelSerializer):
     class Meta:

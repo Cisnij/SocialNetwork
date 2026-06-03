@@ -124,7 +124,7 @@ class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa prof
         else:
             instance= serializer.save(user=self.request.user)
         # check nếu đã có photo lần đầu thì update is_complete mãi mãi, còn chưa thì vẫn là false
-        if not instance.is_completed and instance.picture: # nếu không is_completed và có picture
+        if not instance.is_completed and instance.picture: # nếu không is_completed và có picture truyền vào 
             Profile.objects.filter(pk=instance.pk).update(is_completed=True)
 
     def get_object(self): #nên dùng get object thay vì get querry vì ở đây cần lấy chỉ 1 đối tượng, get querryset thường dùng trả nhiều đối tượng 

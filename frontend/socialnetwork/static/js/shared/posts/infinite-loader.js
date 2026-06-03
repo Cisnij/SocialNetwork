@@ -150,9 +150,63 @@ export class PostInfiniteLoader {
       currentUserId: this.currentUserId,
       isUserPage: this.cacheKey.startsWith("userpage:"),
       onDelete: (id) => requestDeletePost(id, this.cacheKey),
+      onPin: (postId, isPinned, cardEl) => this._handlePin(postId, isPinned, cardEl),
       onOpenReactions: openReactionsModal,
       onOpenPhotos: openPhotoModal,
     });
+  }
+
+  /**
+   * Optimistic pin update:
+   * - Pin:   move card to top of container immediately + update cache
+   * - Unpin: re-insert at correct position by created_at (descending)
+   */
+  _handlePin(postId, isPinned, cardEl) {
+    const store = postListCache.get(this.cacheKey);
+    if (!store) return;
+
+    // Update cache
+    const postIdx = store.posts.findIndex((p) => Number(p.post_id) === Number(postId));
+    if (postIdx !== -1) {
+      // Un-pin old pinned post first
+      store.posts.forEach((p) => { p.is_pinned = false; });
+      store.posts[postIdx].is_pinned = isPinned;
+    }
+
+    // Update pinned badge on the card itself
+    const badge = cardEl.querySelector(".pin-badge");
+    if (badge) badge.classList.toggle("hidden", !isPinned);
+
+    if (isPinned) {
+      // Move this card to very top
+      // Also clear pin badge on any previously pinned card
+      this.container.querySelectorAll(".pin-badge").forEach((b) => b.classList.add("hidden"));
+      if (badge) badge.classList.remove("hidden");
+      const sentinel = this.container.querySelector(".post-list-sentinel");
+      const firstCard = this.container.querySelector(".post-card");
+      if (firstCard && firstCard !== cardEl) {
+        this.container.insertBefore(cardEl, firstCard);
+      }
+    } else {
+      // Unpin: re-sort by created_at descending in DOM
+      // Collect all cards and their dates
+      const cards = [...this.container.querySelectorAll(".post-card")];
+      const withDates = cards.map((c) => {
+        const pid = Number(c.dataset.postId);
+        const post = store.posts.find((p) => Number(p.post_id) === pid);
+        return { el: c, created_at: post?.created_at || "" };
+      });
+      withDates.sort((a, b) => {
+        // pinned always first (none after unpin), then by created_at desc
+        if (a.el.dataset.postId === String(postId)) return 1; // moved card goes to its time position
+        return b.created_at.localeCompare(a.created_at);
+      });
+      // Re-insert in sorted order
+      const sentinel = this.container.querySelector(".post-list-sentinel");
+      withDates.forEach(({ el }) => {
+        this.container.insertBefore(el, sentinel || null);
+      });
+    }
   }
 
   _renderFromCache(store) {

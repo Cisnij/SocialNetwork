@@ -49,25 +49,7 @@ chưa xong
 
 
 
-** LÀM CHUẨN PRODUCTION VÀ ĐẸP Không rõ logic hay response gồm gì thi xem lại backend/api model,views,serializers...Tôi không chấp nhận làm sai đặc biệt là khi thêm tính năng mới thì sửa lại và khiến cái cũ bị sai làm mất thời gian cực kì. Tất cả gọi api dùng auth fetch
 
-REQUIREMENT: THÊM TẤT CẢ UI/UX Ở FE CÁC CÁI NÀY
-
-1. hiện tại websocket chưa tối ưu nó bị spam liên tục
-2. thiếu phần ở dưới tin nhắn hiện đã xem, không hiểu xem lại consumer.py trong realtime
-3. phần email khi nhập để thêm email sẽ phải điền mật khẩu thì ở dưới có hiện chữ quên mật khẩu nhấp vào ra trang forgot-password/
-4. khi bấm đặt làm chính phải gọi api api/email/set/<int:pk>/
-5. hiện websocket sửa lại hết là phải gửi ping-pong cho fe để biết mà retry, logic xem ở consumer.py
-6. cái hiện điền mật khẩu hiện ở 1 số chỗ, hiện box điền vào nhưng lại k gọi api check-password để gọi api khác nếu true(ví dụ xóa tài khoản, xóa email... kiểm tra lại hết
-7.pin post ở user page, trên tên có hiện chữ đã ghim nếu bài viết đó được ghim
-8. report cần truyền vào id post và có ô model đẹp ở giữa, report thì UI hiện ghi ra các mẫu lý do mẫu ở model y fb nếu user chọn cái nào hoặc điền cái nào thì truyền vào reason gọi api và có 1 ô tự điền, không rõ xem lại views.py
-9.thêm websocket typing realtime, không rõ xem lại ws
-10.flow của user/profile mà trả ra is_completed=False thì hiện ô thông báo gợi ý thêm avatar để mọi người biết đến bạn, khi is_completed=True thì k hiện, và chỉ hiện cho chính user không đc hiện cho người khác
-
-
-
-
-test lại tất cả websocket dùng postman bao gồm gửi tin nhắn, đẩy conv, update,seen, notification có nhảy...
 
 
 

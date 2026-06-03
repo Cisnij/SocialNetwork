@@ -25,8 +25,15 @@ export function confirmDialog(message, title = "Xác nhận") {
   });
 }
 
-/** Password prompt modal — returns Promise<string | null> */
-export function passwordPrompt(message, title = "Xác nhận mật khẩu") {
+/**
+ * Password prompt modal — returns Promise<string | null>
+ * @param {string} message
+ * @param {string} title
+ * @param {object} [options]
+ * @param {string} [options.forgotPasswordUrl] — if provided, shows "Quên mật khẩu?" link below input
+ */
+export function passwordPrompt(message, title = "Xác nhận mật khẩu", options = {}) {
+  const { forgotPasswordUrl } = options;
   return new Promise((resolve) => {
     // Remove existing modal if any
     const existing = document.getElementById("passwordModal");
@@ -56,7 +63,7 @@ export function passwordPrompt(message, title = "Xác nhận mật khẩu") {
 
     // Input container
     const inputContainer = document.createElement("div");
-    inputContainer.className = "relative mb-4";
+    inputContainer.className = "relative mb-1";
 
     // Password input
     const input = document.createElement("input");
@@ -72,6 +79,20 @@ export function passwordPrompt(message, title = "Xác nhận mật khẩu") {
     toggleBtn.type = "button";
     toggleBtn.className = "absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200";
     toggleBtn.textContent = "👁️";
+
+    inputContainer.appendChild(input);
+    inputContainer.appendChild(toggleBtn);
+
+    // Forgot password link (Task 3) — shown inline below input
+    const forgotRow = document.createElement("div");
+    forgotRow.className = "flex justify-end mb-3";
+    if (forgotPasswordUrl) {
+      const forgotLink = document.createElement("a");
+      forgotLink.href = forgotPasswordUrl;
+      forgotLink.className = "text-xs text-fb-primary dark:text-[#1877f2] hover:underline font-medium";
+      forgotLink.textContent = "Quên mật khẩu?";
+      forgotRow.appendChild(forgotLink);
+    }
 
     // Error message
     const errorEl = document.createElement("div");
@@ -95,11 +116,10 @@ export function passwordPrompt(message, title = "Xác nhận mật khẩu") {
     okBtn.textContent = "Xác nhận";
 
     // Assemble elements
-    inputContainer.appendChild(input);
-    inputContainer.appendChild(toggleBtn);
     modalBody.appendChild(titleEl);
     modalBody.appendChild(msgEl);
     modalBody.appendChild(inputContainer);
+    modalBody.appendChild(forgotRow);
     modalBody.appendChild(errorEl);
     btnContainer.appendChild(cancelBtn);
     btnContainer.appendChild(okBtn);

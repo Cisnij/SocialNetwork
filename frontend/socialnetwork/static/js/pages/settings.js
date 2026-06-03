@@ -195,6 +195,14 @@ async function loadEmails() {
       if (!e.primary && e.verified) {
         const primary = btn("Đặt làm chính", "text-xs px-2 py-1 rounded bg-fb-primary dark:bg-[#1877f2] text-white");
         primary.onclick = async () => {
+          // Task 4: Trigger OTP immediately, then show modal to enter it
+          const triggerRes = await authFetch(API.setPrimaryEmail(e.id), { method: "POST" });
+          if (!triggerRes.ok) {
+            const err = await triggerRes.json().catch(() => ({}));
+            showToast(err.error || err.detail || "Không thể gửi OTP", "red");
+            return;
+          }
+          showToast("Mã OTP đã gửi về email hiện tại", "green");
           showOtpModal(e.id, e.email);
         };
         actions.appendChild(primary);
@@ -204,14 +212,31 @@ async function loadEmails() {
         del.onclick = async () => {
           const pw = await promptPasswordWithForgot("Nhập mật khẩu để xóa email");
           if (hasPassword && !pw) return;
+          // Task 6: verify password before proceeding
+          if (hasPassword && pw) {
+            const checkRes = await authFetch(API.checkPassword(), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password: pw }),
+            });
+            if (!checkRes.ok) {
+              showToast("Mật khẩu không đúng", "red");
+              return;
+            }
+          }
           if (!(await confirmDialog("Xóa email này?"))) return;
           const r = await authFetch(API.deleteEmail(e.id), {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(hasPassword ? { password: pw } : {}),
           });
-          showToast(r.ok ? "Đã xóa" : "Lỗi", r.ok ? "green" : "red");
-          loadEmails();
+          if (r.ok) {
+            showToast("Đã xóa email", "green");
+            loadEmails();
+          } else {
+            const err = await r.json().catch(() => ({}));
+            showToast(err.error || err.detail || "Xóa thất bại", "red");
+          }
         };
         actions.appendChild(del);
       }
@@ -354,15 +379,34 @@ init();
 
 function setupDeleteAccount() {
   document.getElementById("deleteAccountBtn")?.addEventListener("click", async () => {
-    const password = await passwordPrompt("Nhập mật khẩu để xác nhận xóa tài khoản. Hành động này không thể hoàn tác.", "Xác nhận xóa tài khoản");
+    if (!hasPassword) {
+      showToast("Tài khoản này đăng nhập qua mạng xã hội, không cần mật khẩu để xóa.", "red");
+      return;
+    }
+    const password = await passwordPrompt(
+      "Nhập mật khẩu để xác nhận xóa tài khoản. Hành động này không thể hoàn tác.",
+      "Xác nhận xóa tài khoản",
+      { forgotPasswordUrl: "/forgot-password/" }
+    );
     if (!password) return;
-    
-    if (!(await confirmDialog("Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác."))) return;
+
+    // Task 6: verify password via API before proceeding
+    const checkRes = await authFetch(API.checkPassword(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (!checkRes.ok) {
+      showToast("Mật khẩu không đúng, không thể xóa tài khoản", "red");
+      return;
+    }
+
+    if (!(await confirmDialog("Bạn có chắc chắn muốn xóa tài khoản? Hành động này KHÔNG THỂ hoàn tác!"))) return;
     
     const res = await authFetch(API.deleteAccount(), {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: password }),
+      body: JSON.stringify({ password }),
     });
     
     if (res.ok) {
@@ -435,15 +479,19 @@ function showOtpModal(emailId, email) {
       }
     }, 1000);
 
+    // Task 4: resend = trigger OTP again
     try {
       const res = await authFetch(API.setPrimaryEmail(emailId), { method: "POST" });
       if (res.ok) {
         showToast("Đã gửi lại mã OTP", "green");
       } else {
-        showToast("Không thể gửi lại mã", "red");
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || err.detail || "Không thể gửi lại mã", "red");
+        resendBtn.disabled = false;
       }
     } catch (err) {
       showToast("Lỗi mạng", "red");
+      resendBtn.disabled = false;
     }
   });
 
@@ -475,38 +523,14 @@ function showOtpModal(emailId, email) {
   });
 }
 
+// Task 3: Show password prompt with inline "Quên mật khẩu?" link
 async function promptPasswordWithForgot(title = "Xác nhận mật khẩu") {
   if (!hasPassword) return "";
-  const pw = await passwordPrompt(title, "Xác nhận mật khẩu");
-  if (pw) return pw;
-  return new Promise((resolve) => {
-    const modal = document.createElement("div");
-    modal.className =
-      "fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4";
-    modal.innerHTML = `
-      <div class="bg-white dark:bg-[#242526] rounded-xl w-full max-w-md shadow-xl p-6">
-        <h3 class="text-lg font-bold dark:text-[#e4e6eb] mb-2">Không nhập mật khẩu</h3>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Nếu quên mật khẩu, bạn có thể đặt lại ngay.</p>
-        <div class="flex gap-2">
-          <a href="/forgot-password/" class="flex-1 px-4 py-2 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg font-semibold text-center hover:opacity-90">Quên mật khẩu?</a>
-          <button type="button" id="closeForgotPasswordPrompt" class="flex-1 px-4 py-2 rounded-lg bg-gray-200 dark:bg-[#3a3b3c] text-gray-900 dark:text-[#e4e6eb] font-semibold hover:opacity-90">Đóng</button>
-        </div>
-      </div>
-    `;
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        modal.remove();
-        resolve(null);
-      }
-    });
-    document.body.appendChild(modal);
-    modal
-      .querySelector("#closeForgotPasswordPrompt")
-      ?.addEventListener("click", () => {
-        modal.remove();
-        resolve(null);
-      });
+  // Use the enhanced passwordPrompt with forgotPasswordUrl option
+  const pw = await passwordPrompt(title, "Xác nhận mật khẩu", {
+    forgotPasswordUrl: "/forgot-password/",
   });
+  return pw || null;
 }
 
 // Inject private profile UI
