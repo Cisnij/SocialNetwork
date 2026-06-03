@@ -324,7 +324,7 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
     @database_sync_to_async
     def get_sender_name(self):
         profile = Profile.objects.filter(user=self.user).first()
-        return profile.full_name() if profile else self.user.username
+        return profile.full_name if profile else self.user.username
     
 class NotificationConsumer(HeartbeatMixin,AsyncWebsocketConsumer): # chịu trách nhiệm kết nối khi vào app và đếm số count noti ngay khi vào app, khi nhấn vào noti sẽ broadcast từ signal qua và đặt lại 0
     async def connect(self):

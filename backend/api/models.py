@@ -6,12 +6,12 @@ from django.contrib.auth.models import User
 from autoslug import AutoSlugField  # pip install django-autoslug
 from django.utils.text import slugify
 from django.utils import timezone
-from django.core.validators import FileExtensionValidator  # validator ảnh để k cho gửi các file khác
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator, RegexValidator  # validator ảnh để k cho gửi các file khác
 import json
 # Create your models here.
 import uuid
 from phonenumber_field.modelfields import PhoneNumberField
-from pyasn1_modules.rfc5126 import ContentType
 from unidecode import unidecode
 # reactions
 from reaction.models import Reaction
@@ -45,17 +45,28 @@ def chat_upload_path(instance, filename):  # Ảnh chat → media/chat/conv_1/pi
 def generate_shared_code(): # hàm đổi sang base64
     return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
 
+def validate_birth_date(value): # hàm validate ngày sinh
+    from django.utils import timezone
+    if value > timezone.now().date():
+        raise ValidationError('Ngày sinh không thể là tương lai')
+    if value.year < 1900:
+        raise ValidationError('Ngày sinh không hợp lệ')
 
+
+name_validator = RegexValidator(
+    regex=r'^[a-zA-ZÀ-ỹ\s]+$',
+    message='Tên chỉ được chứa chữ cái và khoảng trắng'
+)
 class Profile(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE  # khi xóa profile thì chỉ xóa mềm profile thôi k ảnh hưởng đến user
     id = models.BigAutoField(primary_key=True, editable=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE)  # chỉ đc 1 profile-user k có 2
-    first_name = models.CharField(max_length=50, null=True)
-    last_name = models.CharField(max_length=50, null=True)
+    first_name = models.CharField(max_length=50, null=True, validators=[name_validator])
+    last_name = models.CharField(max_length=50, null=True, validators=[name_validator])
     picture = models.ImageField(upload_to=profile_upload_path, null=True, blank=True, validators=[
         FileExtensionValidator(['jpg', 'jpeg', 'png',
                                 'webp'])])  # ví dụ post ảnh 123.png lên, nó sẽ chạy hàm sửa tên lấy ra chữ png và đổi tên file lại user_1_abc_9349832.png
-    date_of_birth = models.DateField(null=True)
+    date_of_birth = models.DateField(null=True,validators=[validate_birth_date])
     phone_number = PhoneNumberField(null=True, blank=True)  # ,unique=True)
     bio = models.CharField(max_length=50, null=True, blank=True)
     # friends=models.ManyToManyField('self', blank=True,symmetrical=True)#symmetrical=True (mặc định): Nếu A là bạn B → B tự động là bạn A, di voi self, self là quan hệ đi với profile vì là manytomany
@@ -84,9 +95,9 @@ class Profile(SafeDeleteModel):
 class PendingProfile(models.Model):
     id = models.BigAutoField(primary_key=True, editable=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    first_name = models.CharField(max_length=50, null=True)
-    last_name = models.CharField(max_length=50, null=True)
-    date_of_birth = models.DateField(null=True)
+    first_name = models.CharField(max_length=50, null=True,validators=[name_validator])
+    last_name = models.CharField(max_length=50, null=True,validators=[name_validator])
+    date_of_birth = models.DateField(null=True, validators=[validate_birth_date])
     phone_number = PhoneNumberField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
 
@@ -170,7 +181,7 @@ class Comment(SafeDeleteModel):
     is_pinned = models.BooleanField(default=False)
     tagged_users = models.ManyToManyField(User, blank=True,
                                           related_name='tagged_in_comments')  # thay vì FK chỉ có thể tag 1 user trong comment thì MnM Field cho tag 2 3 usser trong 1 comment
-    content = models.CharField(max_length=200, null=False)
+    content = models.CharField(max_length=1000, null=False)
     created_at = models.DateTimeField(auto_now_add=True)
     reactions = GenericRelation(Reaction)
 
@@ -377,7 +388,8 @@ class SearchHistory(SafeDeleteModel):
         return f"Search user_id={self.user_id} | {self.content[:30]}"
 
 #==============================================================================
-class PostShare(models.Model):
+class PostShare(SafeDeleteModel):
+    _safedelete_policy = SOFT_DELETE
     PRIVACY_CHOICES=[
         ('public', 'Công khai'),
         ('friends', 'Bạn bè'),
@@ -408,6 +420,8 @@ class PostReport(models.Model):
     reason= models.CharField(max_length=250)
     def __str__(self):
         return f"{self.post} | {self.reason}"
+    class Meta:
+        unique_together = ['post', 'user']
 
 class SupportTicket(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

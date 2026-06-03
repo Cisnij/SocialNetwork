@@ -1,7 +1,10 @@
+from django.utils import timezone
+
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from dj_rest_auth.serializers import LoginSerializer
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
+from django.core.validators import RegexValidator
 from django.db import transaction
 from django.core.cache import cache
 from rest_framework import serializers
@@ -16,16 +19,35 @@ from allauth.socialaccount.models import SocialAccount
 
 from .tasks import send_email_task
 
+'''khi người dùng nhập, gọi api nó sẽ lấy giá trị và validate sau đó mới lưu vào csdl là flow của serializer đúng k'''
 
+name_validator = RegexValidator(
+    regex=r'^[a-zA-ZÀ-ỹ\s]+$',
+    message='Tên chỉ được chứa chữ cái và khoảng trắng'
+)
 class CustomRegisterSerializer(RegisterSerializer): # Sửa chức năng register nên RegisterSerializer
     username=None #Bỏ username đi
-    firstname=serializers.CharField(required=True, allow_blank=False) #thêm first name
-    lastname=serializers.CharField(required=True, allow_blank=False) #thêm last name
+    firstname=serializers.CharField(required=True, allow_blank=False,validators=[name_validator]) #thêm first name
+    lastname=serializers.CharField(required=True, allow_blank=False, validators=[name_validator]) #thêm last name
    
     _has_phone_field = True #thêm số điện thoại
     phone_number=serializers.CharField(required=True,allow_blank=False)
     birthday=serializers.DateField(required=True) #thêm ngày sinh
-    
+
+    def validate_birthday(self, value):  # validate riêng cho birthday
+        if value > timezone.now().date():
+            raise serializers.ValidationError('Ngày sinh không thể là tương lai')
+        if value.year < 1900:
+            raise serializers.ValidationError('Ngày sinh không hợp lệ')
+        return value
+
+    def validate_phone_number(self, value):  # validate phone, hiện chỉ chấp nhận VN, sau này thêm vào quốc tế dùng PhoneNumberSerializerField
+        import re
+        phone = value.strip()
+        if not re.match(r'^(\+84|0)[3-9]\d{8}$', value):
+            raise serializers.ValidationError('Số điện thoại không hợp lệ')
+        return value
+
     def get_cleaned_data(self): #sau khi xác thực thì lấy cái giá trị mới xác thực gán cho giá trị chính và lưu , cái này là chỉ gán các field có sẵn trong user, muốn thêm field tự custome thì overide save()
         clean_data=super().get_cleaned_data() #clean data là dữ liệu chính và được gán vào dữ liệu vừa validate
         clean_data['first_name'] = self.validated_data.get('firstname', '')
@@ -49,7 +71,7 @@ class CustomRegisterSerializer(RegisterSerializer): # Sửa chức năng registe
         pending_profile.date_of_birth = self.validated_data.get('birthday')
         pending_profile.save() 
         return user
-    
+
 class CustomeLoginSerializer(LoginSerializer): #Sửa chức năng login nên LoginSerializer
     username=None #bỏ username đi
     def validate(self, attrs):
