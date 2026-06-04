@@ -147,6 +147,7 @@ urlpatterns = [
     path("api/notifications/", NotificationListView.as_view(), name="notification-list"), #thống báo user
     path("api/notifications/mark-read/",NotificationMarkReadView.as_view(),name="notification-mark-read"),
     path("api/notifications/count/",NotificationUnreadCountView.as_view(),name="notification-unread-count"),
+    path("api/notification/<int:pk>/delete/", NotificationDelete.as_view(), name="notification-delete"),#delete notification bất kì
     #check mqh
     path('api/relationship/<int:profile_id>/',ProfileRelationship.as_view(),name='relationship'), # check mqh
     #thay đổi email 

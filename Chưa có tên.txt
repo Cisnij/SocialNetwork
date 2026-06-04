@@ -21,7 +21,7 @@ chưa xong
 
     Elasticsearch sync — index bài viết/profile sau khi save
     Xóa dữ liệu cũ — token hết hạn, OTP cache, soft delete cũ
-
+- 1 API xóa notification theo id
 
 
 4 api mới của

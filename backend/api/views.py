@@ -1777,6 +1777,15 @@ class NotificationUnreadCountView(generics.GenericAPIView):
             is_read=False
         ).count()
         return Response({'count': count})
+
+class NotificationDelete(generics.DestroyAPIView):
+     permission_classes = [IsAuthenticated]
+     serializer_class = NotificationSerializer
+     def destroy(self, request, pk, *args, **kwargs):
+         deleted, _ =  Notification.objects.filter(id=pk, reciever=request.user).delete()
+         if not deleted:
+             return Response({'detail': 'Not found'}, status=404)
+         return Response(status=204)
 # ===========================Firebase=======================================
 class SaveFCMTokenView(APIView):
     permission_classes = [IsAuthenticated]
