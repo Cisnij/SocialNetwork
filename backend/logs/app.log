@@ -21148,3 +21148,187 @@
 {"asctime": "2026-06-05 19:58:20,088", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk f266c99d-fb19-42cc-9330-1d440590c997 has content type application/json but was unable to parse it"}
 {"asctime": "2026-06-05 19:58:20,130", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 3576f135-0314-4de7-859e-c45d501abe25 has content type application/json but was unable to parse it"}
 {"asctime": "2026-06-05 19:58:21,469", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk e6ec7d00-01d7-492b-952f-a37c82ee6d8b has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:00:13,893", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 17351471-cf57-4fe0-a506-a42f260565ed has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:00:14,086", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 68376eb4-9fd9-448b-9601-ff3a797ee937 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:00:14,098", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 3115dcec-5b8f-4b67-87e7-06a1947ec7ac has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:00:14,318", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 55f78160-cde8-48df-9170-761aaa328c3f has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:00:15,671", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 69c9eb87-24be-4e5d-8b87-36d6e1a0a004 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:00:30,390", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 70cb8fc2-83b7-4009-9740-a706532dd195 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:00:30,405", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 64aa5056-73b3-450c-b071-0059e007f838 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:00:30,457", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk c6a65e67-28bc-4484-ab5d-38a3634502bb has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:00:30,568", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk c19189eb-340a-4521-85e6-e6ef49ea383b has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:00:31,192", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 0df1eeac-fdd6-487a-8f43-b4de79c8b65f has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:01:42,958", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk ae86656f-6902-4b7d-9c3b-8d2a289e5577 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:01:46,228", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk adc957a9-6d32-4986-af86-68a5ee39b69b has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:01:46,314", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk c00d8fe4-d757-4fdc-93d2-cefed89de372 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:01:46,327", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 23db1db5-8b48-40aa-9d16-1d798bec6ea6 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:01:46,379", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a32d5466-9eaa-4922-a1e6-140b7987f320 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:04,201", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 66c92c7b-a90f-494c-9bf1-fa942c931578 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:04,221", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk d12f846b-9730-4312-aef0-553a4d19181e has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:05,389", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 3fe5ff1f-2fe6-4759-8b10-801d82a3b392 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:06,277", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk fb65cf45-0d61-4f64-9e93-da7436b0dfd3 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:06,278", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 2338406b-84d1-4d08-9856-4707e6b89f1e has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:06,349", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 2b86390c-1873-4af9-993a-f6f9bc986522 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:06,520", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk d529b374-510e-4ceb-b11f-eb2c12a44805 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:06,653", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a80e348d-893f-4f27-81a4-e6cab62a876d has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:10,533", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk e5ec08a0-e210-4e9d-a366-fd5a6fa10399 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:10,568", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk cd84bfc7-52e2-4c3f-8afb-cc79d8111144 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:10,678", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 7fba5cde-8e08-4c91-8f96-8cb433c1bfde has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:10,781", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 04925334-d1bd-4e03-8697-aa089f286fff has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:12,969", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 44ca6242-ca3e-457a-8f49-304a0b6e4749 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:13,003", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk b96f9290-947a-4db7-8bf9-d95937dd9d4f has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:13,143", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 24ff9c93-bf8f-4fa8-863d-e70375b62959 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:13,230", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 9d2a4539-2a19-41e4-bf6b-8942d968e1e7 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:13,671", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk e3ba6518-9fbf-4a2d-9d1c-1d7f465da6d4 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:13,683", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a68f71a9-fcf3-4bd3-8976-3b4b32527bec has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:14,727", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk b7f6fc83-9cc1-4084-8dce-be182d633ab7 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:14,967", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk c80ba9e9-961e-40c5-9ca2-ecc8f54a51b2 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:15,269", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 280c0fd4-71e4-4726-9641-d9a10f011aad has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:15,282", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 89e458c5-d397-440d-ae45-9c1f4dc92e3f has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:15,309", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk cdeade5a-c1a4-4ba1-b9f7-749b6998a15e has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:18,175", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 7ff8d9c2-698a-46af-8f8d-b0c625f0c394 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:20,123", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 27182097-968a-4852-bd87-9a65d73b947a has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:21,951", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk d2f613e3-492f-4d8f-a0a9-beea14fa815c has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:25,806", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 518302d6-9363-456b-9d7d-e3d99cc4a55b has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:25,809", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 3384dce4-4ca3-428a-98d8-bd7c38f1f3ec has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:25,826", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk b4996218-0f40-4871-8072-45d237edc900 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:26,835", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk d0ce21c9-96aa-47f0-9d86-6965147f466a has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:36,574", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 57cc10c6-8a9b-41d8-baaf-b4c61e9b22bd has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:02:38,840", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 94085594-a25a-47da-8ca4-204d035d97e3 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:14,840", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 23e0067c-0201-4696-b93d-f92c3962f05c has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:17,944", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a7585461-c0ef-4fcb-8011-5f2aa078db3b has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:17,944", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk bddec487-1031-4251-8f34-234a836dd7da has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:18,058", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 2c8c9ee7-cfed-4722-9d9f-29a841bd2a67 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:19,732", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk e8f5c8ee-5ece-409d-9eda-ec57d79c192e has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:19,746", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk ec73aecb-3954-4809-9989-f0eff93c7759 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:19,854", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk ce68bc7e-d37a-4dd6-abef-b9b0e92c04e8 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:44,281", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 055d231a-a3a6-4224-8b1d-73efe28a7db9 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:44,314", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 509c054d-6168-433c-982f-370501099b0c has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:44,645", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 538a2c5c-7534-4a8c-8fdb-283d6642f808 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:48,941", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 7a8e288c-dd39-4837-b4de-a9997b9b8bf0 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:50,130", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk c3fbd899-482c-429e-895b-53ce52174585 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:50,145", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 8664611f-7b09-4438-9386-faa7a0630b28 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:50,195", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 3bc3cecf-b05d-4413-a335-e36d2bafd6c4 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:51,186", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 620f9a99-162c-4cf3-b8e3-df69b0ab4f04 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:58,268", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a5a0fb90-cfc8-4b2f-9d41-7a74e328ddb6 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:58,276", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk a26bbba6-2787-49a3-85a3-6c4d71a1fab8 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:03:59,221", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 370c7f43-c95a-47d3-b861-82430cb7afb3 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:04:01,558", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 47344a52-5303-4970-b682-6620a1212af2 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:04:05,540", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 122aa89a-7585-462b-aca2-01e59defa0af has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:04:08,479", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 231c1f7c-b119-4418-b8fe-3ec1dda57b9b has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:04:08,517", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 29e2fbe1-187b-4d63-a21a-062fbadc9c3a has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:04:08,540", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 44498a2c-75f9-4613-85d1-c921d25fb329 has content type application/json but was unable to parse it"}
+{"asctime": "2026-06-05 20:16:57,900", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/post/32/report/", "status_code": 401, "request": "<ASGIRequest: POST '/api/post/32/report/'>"}
+{"asctime": "2026-06-05 20:17:31,774", "levelname": "WARNING", "name": "django.request", "message": "Not Found: /favicon.ico", "status_code": 404, "request": "<ASGIRequest: GET '/favicon.ico'>"}
+{"asctime": "2026-06-05 20:17:36,446", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:36,446", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:36,446", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:36,447", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:36,447", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:36,448", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:36,463", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-06-05 20:17:36,466", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:36,466", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:36,467", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:36,468", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:36,468", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:36,468", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:36,469", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:36,469", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:36,470", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:36,470", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-06-05 20:17:37,185", "levelname": "WARNING", "name": "django.request", "message": "Not Found: /static/images/favicon.png", "status_code": 404, "request": "<ASGIRequest: GET '/static/images/favicon.png'>"}
+{"asctime": "2026-06-05 20:17:39,689", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:39,690", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:39,690", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:39,691", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:39,691", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:39,691", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:39,692", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-06-05 20:17:39,694", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:39,694", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:39,695", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:39,695", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:39,696", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:39,696", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:39,697", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:39,697", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:39,697", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:39,697", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-06-05 20:17:39,829", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk e986fad1-c3f6-483f-bc8e-7de5de154660 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-06-05 20:17:41,925", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:41,925", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:41,926", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:41,927", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:41,927", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:41,927", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:41,927", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-06-05 20:17:41,929", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:41,930", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:41,930", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:41,931", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:41,931", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:41,931", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:41,932", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:41,932", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:41,932", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:41,932", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-06-05 20:17:41,934", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:41,935", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:41,935", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:42,075", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk be298b91-1152-4b2d-ab41-043349b7284d has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-06-05 20:17:45,297", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:45,298", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:45,298", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:45,299", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:45,299", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:45,299", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:45,300", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-06-05 20:17:45,302", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:45,303", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:45,303", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:45,304", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:45,304", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:45,304", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:45,305", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:45,305", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:45,305", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:45,305", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-06-05 20:17:46,431", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:46,431", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:46,431", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:46,433", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:46,433", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:46,433", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:46,434", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-06-05 20:17:46,436", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:46,436", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:46,436", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:46,437", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:46,437", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:46,437", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:46,438", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:46,438", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:46,438", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:46,438", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}
+{"asctime": "2026-06-05 20:17:46,440", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:46,440", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:46,441", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:46,555", "levelname": "WARNING", "name": "silk.model_factory", "message": "Response to request with pk 17508555-ef47-4ee6-ac33-7d43f73316b8 has content type text/javascript but was unable to parse it"}
+{"asctime": "2026-06-05 20:17:48,187", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:48,187", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:48,187", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:48,188", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:48,189", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:48,189", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:48,189", "levelname": "WARNING", "name": "jazzmin.utils", "message": "socialnetwork not found when generating links"}
+{"asctime": "2026-06-05 20:17:48,192", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:48,192", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:48,192", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:48,193", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:48,193", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:48,193", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:48,194", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.post"}
+{"asctime": "2026-06-05 20:17:48,194", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.profile"}
+{"asctime": "2026-06-05 20:17:48,194", "levelname": "WARNING", "name": "jazzmin.utils", "message": "Could not reverse url from socialnetwork.comment"}
+{"asctime": "2026-06-05 20:17:48,194", "levelname": "WARNING", "name": "jazzmin.templatetags.jazzmin", "message": "Avatar field must be an ImageField/URLField on the user model, or a callable"}

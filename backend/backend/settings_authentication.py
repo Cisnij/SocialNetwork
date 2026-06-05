@@ -30,10 +30,35 @@ REST_FRAMEWORK={ #Cấu hình token
         'post_article':'100/minute',
         'comment':'30/minute',
         'setting':'20/minute',
-        'add_friend':'100/hour',
         'create_post':'30/hour',
-        'follow_user': '100/minute',
-        'block_user': '50/minute'
+        'pin_post': '60/hour',
+        'change_post_privacy': '60/hour',
+        'post_user_share_delete': '120/hour',
+        'change_post_share_privacy': '60/hour',
+
+        'pin_comment': '60/hour',
+
+        'send_friend_request': '30/hour',
+        'accept_friend_request': '120/hour',
+        'reject_friend_request': '120/hour',
+        'cancel_friend_request': '120/hour',
+        'unfriend': '100/hour',
+
+        'follow': '120/hour',
+        'unfollow': '120/hour',
+
+        'block': '60/hour',
+
+        'start_conv': '30/hour',
+        'accept_msg_request': '120/hour',
+        'reject_msg_request': '120/hour',
+        'delete_conv': '60/hour',
+        'hide_chat': '200/hour',
+
+        'delete_notification': '500/hour',
+
+        'suport_ticket_create': '5/day',
+
     },
     "DEFAULT_PARSER_CLASSES": [ #dùng cho phép nhận nhiều định dạng dữ liệu khác nhau 
         'drf_orjson_renderer.parsers.ORJSONParser', #dungg orjson để chuyển qua json qua python nhanh hơn khi input

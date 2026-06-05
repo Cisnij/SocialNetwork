@@ -422,7 +422,7 @@ class PostReport(models.Model):
     def __str__(self):
         return f"{self.post} | {self.reason}"
     class Meta:
-        unique_together = ['post', 'user']
+        unique_together = ('post','user')
 
 class SupportTicket(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

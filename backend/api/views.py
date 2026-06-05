@@ -388,7 +388,8 @@ class PostListAll(generics.ListAPIView):
 class PinPostView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = PostSerializer
-
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'pin_post'
     def get_object(self):
         post = get_object_or_404(Post, pk=self.kwargs.get('pin_id'))
         if post.user != self.request.user:
@@ -471,6 +472,8 @@ class PostShareDetailView(generics.RetrieveAPIView): # khi fe redirect thì load
 
 class ChangePostPrivacy(APIView):
     permission_classes = [IsAuthenticated,PostViewPermission]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'change_post_privacy'
     def patch(self,request,post_id):
         post= get_object_or_404(Post,post_id=post_id)
         self.check_object_permissions(request, post)
@@ -532,6 +535,8 @@ class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 b
 
 class PostUserShareDelete(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'post_user_share_delete'
     # xóa nên k cần truyền serializer
     def get_object(self): # dùng get_objecct cho destroy để k cần phải xử lý dài như .delete() và response
         return get_object_or_404(PostShare, id=self.kwargs.get('pk'), user=self.request.user)
@@ -617,6 +622,8 @@ class PostFriendShare(generics.ListAPIView): # tất cả share của bạn bè
 
 class ChangePostSharePrivacy(APIView):
     permission_classes = [IsAuthenticated,PostViewPermission]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='change_post_share_privacy'
     def patch(self,request,share_id):
         post_share= get_object_or_404(PostShare,id=share_id,user=request.user)
         privacy_type=request.data.get("privacy_type")
@@ -632,6 +639,7 @@ class ChangePostSharePrivacy(APIView):
 class PostReportView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = PostReportSerializer
+
     def perform_create(self, serializer):
         post_id= self.kwargs.get('post_id')
         post = get_object_or_404(Post,post_id=post_id)
@@ -795,7 +803,8 @@ class NestedCommentList(generics.ListAPIView):
 class PinCommentView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CommentSerializer
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='pin_comment'
     def get_object(self):
         comment = get_object_or_404(
             Comment.objects.select_related('post'),
@@ -815,7 +824,6 @@ class PinCommentView(generics.RetrieveUpdateAPIView):
             comment.is_pinned = True
         comment.save(update_fields=['is_pinned'])
         return Response({'is_pinned': comment.is_pinned}, status=status.HTTP_200_OK)
-
 
 
 
@@ -930,7 +938,8 @@ class LogList(generics.ListAPIView):  # Danh sách log hoạt động
 class SendFriendRequestView(generics.CreateAPIView):  # tạo lời mời kết bạn
     permission_classes = [IsAuthenticated]
     serializer_class = FriendShipRequestSerializer
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='send_friend_request'
     def create(self, request, *args, **kwargs):
         to_user_id = self.kwargs.get("pk")  # Lấy từ URL
 
@@ -992,7 +1001,8 @@ class AcceptFriendRequestView(generics.UpdateAPIView):  # đồng ý lời mời
     permission_classes = [IsAuthenticated]
     serializer_class = FriendShipRequestSerializer
     queryset = FriendshipRequest.objects.all()
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='accept_friend_request'
     def update(self, request, *args, **kwargs):
         fr_id = self.kwargs.get('pk')
         if not fr_id:
@@ -1014,7 +1024,8 @@ class RejectFriendRequestView(generics.UpdateAPIView):  # từ chối lời mờ
     permission_classes = [IsAuthenticated]
     serializer_class = FriendShipRequestSerializer
     queryset = FriendshipRequest.objects.all()
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='reject_friend_request'
     def update(self, request, *args, **kwargs):
         fr_id = self.kwargs.get('pk')
         if not fr_id:
@@ -1036,7 +1047,8 @@ class CancelFriendRequestView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = FriendShipRequestSerializer
     queryset = FriendshipRequest.objects.all()  # dùng cho DRF generic
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='cancel_friend_request'
     def destroy(self, request, *args, **kwargs):
         # Lấy ID lời mời từ URL
         fr_id = self.kwargs.get('pk')
@@ -1056,7 +1068,8 @@ class CancelFriendRequestView(generics.DestroyAPIView):
 
 class UnfriendView(generics.DestroyAPIView):  # hủy kết bạn
     permission_classes = [IsAuthenticated]
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='unfriend'
     # chỉ cần trả về thành công thôi k cần serializer, chỉ cần serizer khi muốn json hóa dữ liệu theo fields bên serializer
 
     def destroy(self, request, *args, **kwargs):
@@ -1112,7 +1125,8 @@ class FriendUser(generics.ListAPIView): #ds bạn bè cụ thể
 class FollowView(generics.CreateAPIView):  # theo dõi người dùng
     permission_classes = [IsAuthenticated]
     serializer_class = FollowSerializer
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='follow'
     def create(self, request, *args, **kwargs):
         profile_id = self.kwargs.get("pk")
         profile = get_object_or_404(Profile.objects.select_related("user"), id=profile_id)
@@ -1136,7 +1150,8 @@ class FollowView(generics.CreateAPIView):  # theo dõi người dùng
 
 class UnfollowView(generics.DestroyAPIView):  # hủy follow
     permission_classes = [IsAuthenticated]
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='unfollow'
     def destroy(self, request, *args, **kwargs):
         profile_id = self.kwargs.get("pk")
         profile = get_object_or_404(Profile.objects.select_related("user"), id=profile_id)
@@ -1177,7 +1192,8 @@ class FollowingListView(generics.ListAPIView):  # người mình đang theo dõi
 class BlockView(generics.CreateAPIView):  # chặn người dùng
     permission_classes = [IsAuthenticated]
     serializer_class = BlockSerializer
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='block'
     def create(self, request, *args, **kwargs):
         id = self.kwargs.get('pk')
         profile = get_object_or_404(Profile.objects.select_related("user"), id=id)
@@ -1206,7 +1222,8 @@ class BlockView(generics.CreateAPIView):  # chặn người dùng
 
 class UnblockView(generics.DestroyAPIView):  # bỏ chặn người dùng
     permission_classes = [IsAuthenticated]
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='unblock'
     def destroy(self, request, *args, **kwargs):
         id = self.kwargs.get('pk')
         profile = get_object_or_404(Profile.objects.select_related("user"), id=id)
@@ -1289,7 +1306,8 @@ class StartConversationAPIView(
     generics.GenericAPIView):  # bấm chat với ai đó sẽ get_or_create cuộc trò chuyện với ng đó, truyền vào id user đó,GenericAPIView có các tiện ích như query, paginate và tự custome, APIView k có tiện ích, generics thì tích hợp sẵn crud
     permission_classes = [IsAuthenticated]
     serializer_class = ConversationSerializer
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='start_conv'
     def post(self, request, user_id):  # hàm post sẽ tự lấy tham số truyền vào từ url là post_id
         target_profile = get_object_or_404(Profile.objects.select_related("user"), id=user_id)  # láy ra profile từ id
         target_user = target_profile.user  # lấy ra user từ profile
@@ -1340,7 +1358,8 @@ class StartConversationAPIView(
 
 class AcceptMessageRequest(APIView):
     permission_classes = [IsAuthenticated]
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='accept_msg_request'
     def post(self, request, conv_id):
         conv = get_object_or_404(Conversation, pk=conv_id)
 
@@ -1389,7 +1408,8 @@ class AcceptMessageRequest(APIView):
 
 class RejectMessageRequest(APIView):
     permission_classes = [IsAuthenticated]
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='reject_msg_request'
     def post(self, request, conv_id):
         conv = get_object_or_404(Conversation, pk=conv_id)
         if conv.is_group:
@@ -1571,6 +1591,8 @@ class UpdateMessage(APIView):
 
 class DeleteConversationOneSide(APIView): # nếu xóa conv thì sẽ lấy thời gian tại mốc tin nhắn cuối, chỉ load ra từ sau đó
     permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='delete_conv'
     def patch(self,request,pk):
         conv=get_object_or_404(Conversation,pk=pk)
         member= ConversationMember.objects.filter(conversation=conv,user=request.user).first()
@@ -1587,7 +1609,8 @@ class DeleteConversationOneSide(APIView): # nếu xóa conv thì sẽ lấy th�
 
 class ToogleHideConversation(APIView):
     permission_classes = [IsAuthenticated]
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='hide_chat'
     def patch(self, request, pk):
         member = get_object_or_404(
             ConversationMember,
@@ -1783,6 +1806,8 @@ class NotificationUnreadCountView(generics.GenericAPIView):
 class NotificationDelete(generics.DestroyAPIView):
      permission_classes = [IsAuthenticated]
      serializer_class = NotificationSerializer
+     throttle_classes = [ScopedRateThrottle]
+     throttle_scope = 'delete_notification'
      def destroy(self, request, pk, *args, **kwargs):
          deleted, _ =  Notification.objects.filter(id=pk, reciever=request.user).delete()
          if not deleted:
@@ -1998,6 +2023,7 @@ class FriendSuggestion(generics.ListAPIView):
 class SupportTicketView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = SupportTicketSerializer
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='suport_ticket_create'
     def perform_create(self, serializer):
         instance = serializer.save(user=self.request.user)
