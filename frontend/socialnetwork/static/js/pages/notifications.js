@@ -12,6 +12,7 @@ const markAll = document.getElementById("markAllReadBtn");
 let nextUrl = buildListUrl(API.notifications(), 20);
 let loading = false;
 let notifWs = null;
+let notifWsReconnectTimer = null;
 
 function notificationTarget(n) {
   if (n.post_id) return `/post/${n.post_id}/`;
@@ -24,14 +25,24 @@ function notificationTarget(n) {
 
 function prependNotification(n) {
   if (!list) return;
+  // Remove empty state placeholder if present
   list.querySelector(".text-center")?.remove();
-  list.prepend(buildCard(n));
+  const card = buildCard(n);
+  list.prepend(card);
+  // Brief highlight animation to draw attention
+  card.style.transition = "background 0.4s";
+  card.style.background = "rgba(24,119,242,0.08)";
+  setTimeout(() => { card.style.background = ""; }, 1200);
 }
 
 function buildCard(n) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "relative mb-3";
+  wrapper.dataset.notifId = n.id;
+
   const card = document.createElement("button");
   card.type = "button";
-  card.className = `w-full text-left p-4 rounded-xl shadow-sm mb-3 flex gap-3 transition hover:bg-fb-secondary dark:hover:bg-fb-hover ${
+  card.className = `w-full text-left p-4 rounded-xl shadow-sm flex gap-3 transition hover:bg-fb-secondary dark:hover:bg-fb-hover ${
     n.is_read
       ? "bg-white dark:bg-[#242526]"
       : "bg-blue-50 dark:bg-[#263951] border border-blue-100 dark:border-blue-900/40"
@@ -41,9 +52,7 @@ function buildCard(n) {
   img.src = n.actor_avatar || DEFAULT_AVATAR;
   img.className = "w-12 h-12 rounded-full object-cover shrink-0 border-2 border-white dark:border-fb-card";
   img.alt = "";
-  img.onerror = () => {
-    img.src = DEFAULT_AVATAR;
-  };
+  img.onerror = () => { img.src = DEFAULT_AVATAR; };
 
   const body = document.createElement("div");
   body.className = "flex-1 min-w-0";
@@ -60,17 +69,48 @@ function buildCard(n) {
   card.onclick = async () => {
     await authFetch(API.notificationsMarkRead(), { method: "POST" });
     card.classList.remove(
-      "bg-blue-50",
-      "dark:bg-[#263951]",
-      "border",
-      "border-blue-100",
-      "dark:border-blue-900/40"
+      "bg-blue-50", "dark:bg-[#263951]", "border",
+      "border-blue-100", "dark:border-blue-900/40"
     );
     card.classList.add("bg-white", "dark:bg-[#242526]");
     const href = notificationTarget(n);
     if (href) window.location.href = href;
   };
-  return card;
+
+  // ─── Delete button (X) ───────────────────────────────────────────
+  const delBtn = document.createElement("button");
+  delBtn.type = "button";
+  delBtn.title = "Xóa thông báo";
+  delBtn.className =
+    "absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full " +
+    "bg-gray-200 dark:bg-[#3a3b3c] text-gray-500 dark:text-fb-muted " +
+    "hover:bg-red-100 dark:hover:bg-red-900/40 hover:text-red-500 " +
+    "text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity";
+  delBtn.textContent = "✕";
+  delBtn.onclick = async (e) => {
+    e.stopPropagation();
+    if (!n.id) return;
+    delBtn.disabled = true;
+    try {
+      const res = await authFetch(API.notificationDelete(n.id), { method: "DELETE" });
+      if (res.ok || res.status === 204) {
+        wrapper.remove();
+        if (!list.querySelector("[data-notif-id]")) {
+          showEmpty(list, "Không có thông báo.");
+        }
+      } else {
+        showToast("Không xóa được thông báo", "red");
+        delBtn.disabled = false;
+      }
+    } catch {
+      showToast("Lỗi mạng", "red");
+      delBtn.disabled = false;
+    }
+  };
+
+  wrapper.classList.add("group");
+  wrapper.append(card, delBtn);
+  return wrapper;
 }
 
 markAll?.addEventListener("click", async () => {
@@ -81,8 +121,19 @@ markAll?.addEventListener("click", async () => {
   load(true);
 });
 
+// ─── WebSocket: real-time new notifications on /notifications/ page ──
 function connectNotifPageWs() {
+  if (notifWsReconnectTimer) {
+    clearTimeout(notifWsReconnectTimer);
+    notifWsReconnectTimer = null;
+  }
+  if (notifWs) {
+    notifWs.onclose = null;
+    notifWs.close();
+  }
+
   notifWs = new WebSocket(API.wsNotifications());
+
   notifWs.onmessage = (ev) => {
     try {
       const data = JSON.parse(ev.data);
@@ -93,22 +144,35 @@ function connectNotifPageWs() {
         return;
       }
 
-      // Backend signal gửi flat fields: { unread_count, id, message, actor_name, actor_avatar, post_id, ... }
-      // Chỉ hiện notification mới khi có message (nghĩa là có noti mới, không phải chỉ update count)
-      if (data.message) {
+      // Backend sends: { unread_count, id, type, message, object_id,
+      //                  post_id, actor_id, actor_name, actor_avatar }
+      // Only prepend when a real new notification arrives (has message field)
+      if (data.message && data.id) {
         prependNotification({
           id: data.id,
           actor: data.actor_name,
           actor_avatar: data.actor_avatar,
           message: data.message,
+          type: data.type,
           post_id: data.post_id,
+          object_id: data.object_id,
           created_at: new Date().toISOString(),
           is_read: false,
         });
       }
     } catch (_) {}
   };
-  notifWs.onclose = () => setTimeout(connectNotifPageWs, 3000);
+
+  notifWs.onclose = () => {
+    if (!notifWsReconnectTimer) {
+      notifWsReconnectTimer = setTimeout(() => {
+        notifWsReconnectTimer = null;
+        connectNotifPageWs();
+      }, 3000);
+    }
+  };
+
+  notifWs.onerror = () => {};
 }
 
 async function load(initial = false) {

@@ -591,15 +591,18 @@ class PostFriendShare(generics.ListAPIView): # tất cả share của bạn bè
         return (PostShare.objects.filter(
             # share của mình
             Q(user=user) |
-            #post share của bạn và following
+            #post share của bạn bè
             Q(user_id__in=friend_ids, privacy='public') |
-            Q(user_id__in=friend_ids, privacy='friends')
+            Q(user_id__in=friend_ids, privacy='friends') |
+            #post share của following
+            Q(user_id__in=following_ids, privacy='public')
         )
         .filter(
             #check post gốc
+            Q(post__user=user) |
             Q(post__privacy='public') | # lọc ra post gốc là public
             Q(post__user_id__in=friend_ids, post__privacy='friends') | # lọc ra post gốc là của friends và privacy là friends
-            Q(post__user_id__in=following_ids, post__privacy='public') # lọc ra post gốc là của following và public
+            Q(post__user_id__in=following_ids, post__privacy='public')  # lọc ra post gốc là của following và public
         )
         .exclude(
             #loại trừ block từ user post gốc
@@ -608,7 +611,6 @@ class PostFriendShare(generics.ListAPIView): # tất cả share của bạn bè
             Q(user_id__in=blocked_ids) | #check block người share
             Q(user_id__in=blocking_ids)
         )
-        .filter(privacy__in=['public', 'friends']) #lọc share public và friends
         .select_related('user__profile', 'post__user__profile')
         .prefetch_related('post__photos')
         .order_by('-created_at'))

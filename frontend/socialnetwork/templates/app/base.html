@@ -1,17 +1,24 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}SocialNetwork{% endblock title %}</title>
   <script src="{% static 'js/shared/theme-boot.js' %}"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+          },
           colors: {
             fb: {
               bg: '#f0f2f5',
@@ -23,8 +30,113 @@
               text: '#e4e6eb',
               muted: '#b0b3b8',
               divider: '#3e4042',
+            },
+            'oklch': {
+              primary: 'oklch(0.65 0.19 250)',
+              secondary: 'oklch(0.85 0.05 250)',
+              accent: 'oklch(0.7 0.15 320)',
+              success: 'oklch(0.7 0.17 142)',
+              warning: 'oklch(0.8 0.15 85)',
+              error: 'oklch(0.65 0.2 25)',
             }
-          }
+          },
+          animation: {
+            'gradient-x': 'gradient-x 15s ease infinite',
+            'gradient-y': 'gradient-y 15s ease infinite',
+            'gradient-xy': 'gradient-xy 15s ease infinite',
+            'float': 'float 6s ease-in-out infinite',
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'bounce-slow': 'bounce 2s infinite',
+            'spin-slow': 'spin 3s linear infinite',
+            'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+            'slide-up': 'slideUp 0.5s ease-out',
+            'slide-down': 'slideDown 0.5s ease-out',
+            'slide-left': 'slideLeft 0.5s ease-out',
+            'slide-right': 'slideRight 0.5s ease-out',
+            'scale-in': 'scaleIn 0.3s ease-out',
+            'scale-out': 'scaleOut 0.3s ease-out',
+            'fade-in': 'fadeIn 0.3s ease-in',
+            'fade-out': 'fadeOut 0.3s ease-out',
+            'shake': 'shake 0.5s ease-in-out',
+            'checkmark': 'checkmark 0.5s ease-in-out',
+          },
+          keyframes: {
+            'gradient-x': {
+              '0%, 100%': {
+                'background-size': '200% 200%',
+                'background-position': 'left center'
+              },
+              '50%': {
+                'background-size': '200% 200%',
+                'background-position': 'right center'
+              },
+            },
+            'gradient-y': {
+              '0%, 100%': {
+                'background-size': '200% 200%',
+                'background-position': 'center top'
+              },
+              '50%': {
+                'background-size': '200% 200%',
+                'background-position': 'center bottom'
+              },
+            },
+            'gradient-xy': {
+              '0%, 100%': {
+                'background-size': '400% 400%',
+                'background-position': 'left center'
+              },
+              '50%': {
+                'background-size': '400% 400%',
+                'background-position': 'right center'
+              },
+            },
+            'float': {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-20px)' },
+            },
+            'slideUp': {
+              '0%': { transform: 'translateY(20px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' },
+            },
+            'slideDown': {
+              '0%': { transform: 'translateY(-20px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' },
+            },
+            'slideLeft': {
+              '0%': { transform: 'translateX(20px)', opacity: '0' },
+              '100%': { transform: 'translateX(0)', opacity: '1' },
+            },
+            'slideRight': {
+              '0%': { transform: 'translateX(-20px)', opacity: '0' },
+              '100%': { transform: 'translateX(0)', opacity: '1' },
+            },
+            'scaleIn': {
+              '0%': { transform: 'scale(0.9)', opacity: '0' },
+              '100%': { transform: 'scale(1)', opacity: '1' },
+            },
+            'scaleOut': {
+              '0%': { transform: 'scale(1)', opacity: '1' },
+              '100%': { transform: 'scale(0.9)', opacity: '0' },
+            },
+            'fadeIn': {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+            'fadeOut': {
+              '0%': { opacity: '1' },
+              '100%': { opacity: '0' },
+            },
+            'shake': {
+              '0%, 100%': { transform: 'translateX(0)' },
+              '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-5px)' },
+              '20%, 40%, 60%, 80%': { transform: 'translateX(5px)' },
+            },
+            'checkmark': {
+              '0%': { 'stroke-dashoffset': '100' },
+              '100%': { 'stroke-dashoffset': '0' },
+            },
+          },
         }
       }
     }
@@ -33,211 +145,999 @@
     try {
       var _fbDark = localStorage.getItem('fb_darkmode') === '1';
       document.documentElement.classList.toggle('dark', _fbDark);
-    } catch (e) {}
+    } catch (e) { }
   </script>
   <style>
-    .fb-nav-icon { @apply w-10 h-10 rounded-full flex items-center justify-center hover:bg-fb-secondary dark:hover:bg-gray-700 transition; }
-    .fb-nav-icon.active { @apply bg-fb-secondary dark:bg-gray-700; }
-    .fb-nav-icon.active svg { color: #1877f2; }
-    .scrollbar-thin::-webkit-scrollbar { width: 6px; }
-    .scrollbar-thin::-webkit-scrollbar-thumb { background: #bcc0c4; border-radius: 3px; }
-    .dark .scrollbar-thin::-webkit-scrollbar-thumb { background: #4e4f50; }
-    .dark { color-scheme: dark; }
+    /* ===== 2026 DESIGN SYSTEM ===== */
+    
+    /* Base styles */
+    * {
+      box-sizing: border-box;
+    }
+    
+    html {
+      scroll-behavior: smooth;
+    }
+    
+    body {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Dark mode color scheme */
+    .dark {
+      color-scheme: dark;
+    }
+    
+    /* ===== GRADIENT MESH BACKGROUND ===== */
+    .gradient-mesh-bg {
+      background: 
+        radial-gradient(at 40% 20%, hsla(228, 100%, 74%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 80% 0%, hsla(189, 100%, 56%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 0% 50%, hsla(355, 100%, 93%, 0.2) 0px, transparent 50%),
+        radial-gradient(at 80% 50%, hsla(340, 100%, 76%, 0.2) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, hsla(269, 100%, 77%, 0.2) 0px, transparent 50%),
+        radial-gradient(at 80% 100%, hsla(240, 100%, 70%, 0.2) 0px, transparent 50%),
+        radial-gradient(at 0% 0%, hsla(343, 100%, 76%, 0.2) 0px, transparent 50%);
+      background-size: 100% 100%;
+      animation: gradient-xy 15s ease infinite;
+    }
+    
+    .dark .gradient-mesh-bg {
+      background: 
+        radial-gradient(at 40% 20%, hsla(228, 100%, 20%, 0.4) 0px, transparent 50%),
+        radial-gradient(at 80% 0%, hsla(189, 100%, 15%, 0.4) 0px, transparent 50%),
+        radial-gradient(at 0% 50%, hsla(355, 100%, 10%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 80% 50%, hsla(340, 100%, 15%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, hsla(269, 100%, 20%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 80% 100%, hsla(240, 100%, 15%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 0% 0%, hsla(343, 100%, 15%, 0.3) 0px, transparent 50%);
+    }
+    
+    /* ===== GLASSMORPHISM ===== */
+    .glass {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .dark .glass {
+      background: rgba(30, 30, 30, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .glass-strong {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    
+    .dark .glass-strong {
+      background: rgba(30, 30, 30, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+    
+    .dark .glass-card {
+      background: rgba(30, 30, 30, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* ===== NEUMORPHISM ===== */
+    .neumorphic {
+      background: #f0f2f5;
+      box-shadow: 
+        8px 8px 16px rgba(0, 0, 0, 0.1),
+        -8px -8px 16px rgba(255, 255, 255, 0.8);
+      border-radius: 16px;
+    }
+    
+    .dark .neumorphic {
+      background: #242526;
+      box-shadow: 
+        8px 8px 16px rgba(0, 0, 0, 0.4),
+        -8px -8px 16px rgba(255, 255, 255, 0.05);
+    }
+    
+    .neumorphic-inset {
+      background: #f0f2f5;
+      box-shadow: 
+        inset 4px 4px 8px rgba(0, 0, 0, 0.1),
+        inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+      border-radius: 12px;
+    }
+    
+    .dark .neumorphic-inset {
+      background: #242526;
+      box-shadow: 
+        inset 4px 4px 8px rgba(0, 0, 0, 0.4),
+        inset -4px -4px 8px rgba(255, 255, 255, 0.05);
+    }
+    
+    /* ===== MICRO-INTERACTIONS ===== */
+    .hover-lift {
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                  box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .hover-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+    
+    .dark .hover-lift:hover {
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+    
+    .hover-scale {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .hover-scale:hover {
+      transform: scale(1.05);
+    }
+    
+    .hover-glow {
+      transition: box-shadow 0.3s ease;
+    }
+    
+    .hover-glow:hover {
+      box-shadow: 0 0 20px rgba(24, 119, 242, 0.4);
+    }
+    
+    /* Ripple effect */
+    .ripple {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .ripple::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      background-image: radial-gradient(circle, rgba(255, 255, 255, 0.3) 10%, transparent 10.01%);
+      background-repeat: no-repeat;
+      background-position: 50%;
+      transform: scale(10, 10);
+      opacity: 0;
+      transition: transform 0.5s, opacity 1s;
+    }
+    
+    .ripple:active::after {
+      transform: scale(0, 0);
+      opacity: 0.3;
+      transition: 0s;
+    }
+    
+    /* Magnetic button effect */
+    .magnetic-btn {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* ===== TYPOGRAPHY ===== */
+    .text-fluid-xs {
+      font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+    }
+    
+    .text-fluid-sm {
+      font-size: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+    }
+    
+    .text-fluid-base {
+      font-size: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+    }
+    
+    .text-fluid-lg {
+      font-size: clamp(1.125rem, 1rem + 0.75vw, 1.25rem);
+    }
+    
+    .text-fluid-xl {
+      font-size: clamp(1.25rem, 1.1rem + 1vw, 1.5rem);
+    }
+    
+    .text-fluid-2xl {
+      font-size: clamp(1.5rem, 1.3rem + 1.5vw, 2rem);
+    }
+    
+    .text-fluid-3xl {
+      font-size: clamp(2rem, 1.7rem + 2vw, 2.5rem);
+    }
+    
+    /* ===== 8PX GRID SYSTEM ===== */
+    .space-grid-1 { gap: 8px; }
+    .space-grid-2 { gap: 16px; }
+    .space-grid-3 { gap: 24px; }
+    .space-grid-4 { gap: 32px; }
+    .space-grid-5 { gap: 40px; }
+    .space-grid-6 { gap: 48px; }
+    
+    .p-grid-1 { padding: 8px; }
+    .p-grid-2 { padding: 16px; }
+    .p-grid-3 { padding: 24px; }
+    .p-grid-4 { padding: 32px; }
+    .p-grid-5 { padding: 40px; }
+    .p-grid-6 { padding: 48px; }
+    
+    /* ===== INPUT FOCUS GLOW ===== */
+    .input-glow:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.2),
+                  0 0 20px rgba(24, 119, 242, 0.1);
+    }
+    
+    .dark .input-glow:focus {
+      box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.3),
+                  0 0 20px rgba(24, 119, 242, 0.2);
+    }
+    
+    /* ===== CARD HOVER EFFECTS ===== */
+    .card-hover {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .card-hover:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    }
+    
+    .dark .card-hover:hover {
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    }
+    
+    /* ===== AVATAR WITH ONLINE INDICATOR ===== */
+    .avatar-container {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .avatar-online::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 12px;
+      height: 12px;
+      background: #22c55e;
+      border: 2px solid white;
+      border-radius: 50%;
+      animation: pulse-slow 2s infinite;
+    }
+    
+    .dark .avatar-online::after {
+      border-color: #242526;
+    }
+    
+    .avatar-away::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 12px;
+      height: 12px;
+      background: #f59e0b;
+      border: 2px solid white;
+      border-radius: 50%;
+    }
+    
+    .dark .avatar-away::after {
+      border-color: #242526;
+    }
+    
+    .avatar-offline::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 12px;
+      height: 12px;
+      background: #6b7280;
+      border: 2px solid white;
+      border-radius: 50%;
+    }
+    
+    .dark .avatar-offline::after {
+      border-color: #242526;
+    }
+    
+    /* ===== BADGE NOTIFICATION BOUNCE ===== */
+    .badge-bounce {
+      animation: bounce-slow 2s infinite;
+    }
+    
+    /* ===== PROGRESS BAR GRADIENT ===== */
+    .progress-gradient {
+      background: linear-gradient(90deg, #1877f2, #8b5cf6, #ec4899);
+      background-size: 200% 100%;
+      animation: gradient-x 3s ease infinite;
+    }
+    
+    /* ===== TOOLTIP ===== */
+    .tooltip {
+      position: relative;
+    }
+    
+    .tooltip::before {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      font-size: 12px;
+      white-space: nowrap;
+      border-radius: 8px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      z-index: 1000;
+    }
+    
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      border: 6px solid transparent;
+      border-top-color: rgba(0, 0, 0, 0.9);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      z-index: 1000;
+    }
+    
+    .tooltip:hover::before,
+    .tooltip:hover::after {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .dark .tooltip::before {
+      background: rgba(255, 255, 255, 0.95);
+      color: #1a1a1a;
+    }
+    
+    .dark .tooltip::after {
+      border-top-color: rgba(255, 255, 255, 0.95);
+    }
+    
+    /* ===== SKELETON LOADING ===== */
+    .skeleton {
+      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+      border-radius: 8px;
+    }
+    
+    .dark .skeleton {
+      background: linear-gradient(90deg, #3a3b3c 25%, #4e4f50 50%, #3a3b3c 75%);
+    }
+    
+    @keyframes skeleton-loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    /* ===== SUCCESS ANIMATION ===== */
+    .checkmark-circle {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #22c55e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: scale-in 0.3s ease-out;
+    }
+    
+    .checkmark-svg {
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      animation: checkmark 0.5s ease-in-out 0.3s forwards;
+    }
+    
+    /* ===== NUMBER COUNTER ANIMATION ===== */
+    .counter {
+      display: inline-block;
+      transition: all 0.3s ease;
+    }
+    
+    .counter.updated {
+      animation: scale-in 0.3s ease-out;
+    }
+    
+    /* ===== STAGGER ANIMATION ===== */
+    .stagger-item {
+      opacity: 0;
+      animation: slide-up 0.5s ease-out forwards;
+    }
+    
+    .stagger-item:nth-child(1) { animation-delay: 0ms; }
+    .stagger-item:nth-child(2) { animation-delay: 100ms; }
+    .stagger-item:nth-child(3) { animation-delay: 200ms; }
+    .stagger-item:nth-child(4) { animation-delay: 300ms; }
+    .stagger-item:nth-child(5) { animation-delay: 400ms; }
+    .stagger-item:nth-child(6) { animation-delay: 500ms; }
+    .stagger-item:nth-child(7) { animation-delay: 600ms; }
+    .stagger-item:nth-child(8) { animation-delay: 700ms; }
+    .stagger-item:nth-child(9) { animation-delay: 800ms; }
+    .stagger-item:nth-child(10) { animation-delay: 900ms; }
+    
+    /* ===== INFINITE SCROLL INDICATOR ===== */
+    .infinite-scroll-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    
+    .infinite-scroll-indicator::before,
+    .infinite-scroll-indicator::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #1877f2;
+      margin: 0 4px;
+      animation: bounce-slow 1.5s infinite;
+    }
+    
+    .infinite-scroll-indicator::after {
+      animation-delay: 0.3s;
+    }
+    
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      text-align: center;
+    }
+    
+    .empty-state-icon {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 24px;
+      opacity: 0.5;
+    }
+    
+    /* ===== ERROR STATE ===== */
+    .error-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      text-align: center;
+    }
+    
+    .error-state-icon {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 16px;
+      color: #ef4444;
+    }
+    
+    /* ===== PARALLAX EFFECT ===== */
+    .parallax {
+      transform-style: preserve-3d;
+      perspective: 1000px;
+    }
+    
+    .parallax-layer {
+      transform: translateZ(var(--parallax-depth, 0));
+    }
+    
+    /* ===== CUSTOM SCROLLBAR ===== */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: transparent;
+      border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #cbd5e1, #94a3b8);
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #94a3b8, #64748b);
+    }
+    
+    .dark ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #475569, #334155);
+    }
+    
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #334155, #1e293b);
+    }
+    
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #bcc0c4;
+      border-radius: 3px;
+    }
+    
+    .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #4e4f50;
+    }
+    
+    /* ===== TOAST NOTIFICATION ===== */
+    .toast {
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 16px 24px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      animation: slide-up 0.3s ease-out;
+    }
+    
+    .dark .toast {
+      background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .toast-success {
+      border-left: 4px solid #22c55e;
+    }
+    
+    .toast-error {
+      border-left: 4px solid #ef4444;
+    }
+    
+    .toast-warning {
+      border-left: 4px solid #f59e0b;
+    }
+    
+    .toast-info {
+      border-left: 4px solid #3b82f6;
+    }
+    
+    /* ===== MODAL BACKDROP ===== */
+    .modal-backdrop {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    
+    /* ===== RESPONSIVE BREAKPOINTS ===== */
+    @media (min-width: 320px) {
+      .text-responsive-xs { font-size: 0.75rem; }
+    }
+    
+    @media (min-width: 768px) {
+      .text-responsive-sm { font-size: 0.875rem; }
+    }
+    
+    @media (min-width: 1024px) {
+      .text-responsive-base { font-size: 1rem; }
+    }
+    
+    @media (min-width: 1440px) {
+      .text-responsive-lg { font-size: 1.125rem; }
+    }
+    
+    /* ===== TOUCH-FRIENDLY ===== */
+    @media (pointer: coarse) {
+      button, a, input, select, textarea {
+        min-height: 44px;
+        min-width: 44px;
+      }
+    }
+    
+    /* ===== REDUCED MOTION ===== */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      
+      .gradient-mesh-bg {
+        animation: none;
+      }
+    }
+    
+    /* ===== EXISTING STYLES PRESERVED ===== */
+    .fb-nav-icon {
+      @apply w-10 h-10 rounded-full flex items-center justify-center hover:bg-fb-secondary dark:hover:bg-gray-700 transition;
+    }
+
+    .fb-nav-icon.active {
+      @apply bg-fb-secondary dark:bg-gray-700;
+    }
+
+    .fb-nav-icon.active svg {
+      color: #1877f2;
+    }
+    
     .dark #globalSearchInput,
     .dark #postTitle,
     .dark #commentInput,
     .dark #shareContent,
     .dark #editPostTitle,
     .dark select,
-    .dark textarea { color: #e4e6eb; }
-    .dark h1, .dark h2, .dark h3 { color: #e4e6eb; }
-    .dark .post-card { background-color: #242526; }
+    .dark textarea {
+      color: #e4e6eb;
+    }
+
+    .dark h1,
+    .dark h2,
+    .dark h3 {
+      color: #e4e6eb;
+    }
+
+    .dark .post-card {
+      background-color: #242526;
+    }
+
     .dark button:not(.fb-nav-icon):not([class*="bg-fb"]):not([class*="bg-indigo"]):not([class*="bg-red"]):not([class*="bg-green"]):not([class*="bg-gray"]):not([class*="bg-\\["]) {
       background-color: #3a3b3c;
       color: #e4e6eb;
     }
+    
+    /* Better focus states */
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.3);
+    }
+    
+    /* Smooth transitions for interactive elements */
+    button, a, input, textarea, select {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
   </style>
 </head>
-<body class="bg-fb-bg dark:bg-[#18191a] min-h-screen text-gray-900 dark:text-[#e4e6eb]">
 
-<!-- Top navbar (Facebook-style) -->
-<header class="sticky top-0 z-50 bg-white dark:bg-[#242526] shadow-sm px-2 sm:px-4 h-14 flex items-center justify-between border-b border-transparent dark:border-fb-divider">
-  <div class="flex items-center gap-2 flex-1 max-w-[320px]">
-    <a href="/" class="shrink-0">
-      <div class="w-10 h-10 rounded-full bg-fb-primary dark:bg-[#1877f2] flex items-center justify-center text-white font-bold text-xl">f</div>
-    </a>
-    <div class="relative flex-1 hidden sm:block">
-      <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input id="globalSearchInput" type="search" autocomplete="off" placeholder="Tìm kiếm trên SocialNetwork"
-        class="w-full pl-10 pr-3 py-2 rounded-full bg-fb-secondary dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-fb-primary">
-      <div id="searchHistoryDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-xl shadow-xl border dark:border-gray-700 py-2 z-50 max-h-64 overflow-y-auto"></div>
-    </div>
-  </div>
+<body class="bg-fb-bg dark:bg-[#18191a] min-h-screen text-gray-900 dark:text-[#e4e6eb] gradient-mesh-bg">
 
-  <nav class="flex items-center justify-center gap-1 sm:gap-2 flex-1 max-w-xl">
-    <a href="/" data-nav="home" class="fb-nav-icon active" title="Trang chủ">
-      <svg class="w-7 h-7 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-    </a>
-    <a href="/create-article/" data-nav="articles" class="fb-nav-icon" title="Bài viết dài">
-      <svg class="w-7 h-7 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-    </a>
-    <a href="/shares/" data-nav="shares" class="fb-nav-icon" title="Bài chia sẻ">
-      <svg class="w-7 h-7 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
-    </a>
-    <a href="/friends/" data-nav="friends" class="fb-nav-icon hidden sm:flex" title="Bạn bè">
-      <svg class="w-7 h-7 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 2.05 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-    </a>
-  </nav>
-
-  <div class="flex items-center justify-end gap-1 sm:gap-2 flex-1 max-w-[320px]">
-    <button id="openPostModal" type="button" class="hidden sm:flex items-center gap-2 px-3 py-2 bg-fb-secondary dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium">
-      <span class="text-fb-primary font-bold text-lg">+</span> Tạo bài viết
-    </button>
-    <a id="navChatLink" href="/chat/" class="fb-nav-icon relative" title="Messenger">
-      <svg class="w-6 h-6 text-fb-primary" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
-    </a>
-    <a id="navNotifLink" href="/notifications/" class="fb-nav-icon relative" title="Thông báo">
-      <svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V9c0-3.07-1.63-5.64-4.5-6.32V2h-3v.68C7.63 3.36 6 5.92 6 9v7l-2 2v1h16v-1l-2-2zm-2 1H8V9c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v8z"/></svg>
-      <span id="notifBadge" class="hidden absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full font-bold">0</span>
-    </a>
-    <div class="relative">
-      <img id="avatarBtn" src="/static/default-avatar.png" alt="" class="w-9 h-9 rounded-full cursor-pointer border-2 border-transparent hover:border-fb-primary object-cover">
-      <div id="dropdownMenu" class="hidden absolute right-0 mt-2 w-60 bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden z-50 border dark:border-gray-700">
-        <div class="flex items-center gap-3 px-4 py-3 border-b dark:border-gray-700">
-          <img id="dropdownAvatar" src="/static/default-avatar.png" class="w-10 h-10 rounded-full object-cover">
-          <div class="min-w-0">
-            <p id="dropdownName" class="font-semibold truncate"></p>
-            <a id="profileLink" href="#" class="text-sm text-fb-primary hover:underline">Xem trang cá nhân</a>
-          </div>
+  <!-- Top navbar (Facebook-style) -->
+  <header
+    class="sticky top-0 z-50 glass shadow-sm px-2 sm:px-4 h-14 flex items-center justify-between border-b border-transparent dark:border-fb-divider">
+    <div class="flex items-center gap-2 flex-1 max-w-[320px]">
+      <a href="/" class="shrink-0">
+        <div
+          class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+          <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/>
+          </svg>
         </div>
-        <a href="/settings/" class="block px-4 py-2.5 hover:bg-fb-secondary dark:hover:bg-gray-700">Cài đặt & quyền riêng tư</a>
-        <a href="" id="logoutLink" class="block px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700">Đăng xuất</a>
+      </a>
+      <button id="mobileSearchBtn" type="button" class="sm:hidden shrink-0 w-9 h-9 rounded-full bg-fb-secondary dark:bg-gray-700 flex items-center justify-center hover-scale ripple">
+        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8" />
+          <path d="M21 21l-4.35-4.35" />
+        </svg>
+      </button>
+      <div class="relative flex-1 hidden sm:block">
+        <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor"
+          viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8" />
+          <path d="M21 21l-4.35-4.35" />
+        </svg>
+        <input id="globalSearchInput" type="search" autocomplete="off" placeholder="Tìm kiếm trên SocialNetwork"
+          class="w-full pl-10 pr-3 py-2 rounded-full bg-fb-secondary dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-fb-primary input-glow">
+        <div id="searchHistoryDropdown"
+          class="hidden absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-xl shadow-xl border dark:border-gray-700 py-2 z-50 max-h-64 overflow-y-auto">
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex items-center justify-center gap-1 sm:gap-2 flex-1 max-w-xl">
+      <a href="/" data-nav="home" class="fb-nav-icon active hover-scale" title="Trang chủ">
+        <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+        </svg>
+      </a>
+      <a href="/create-article/" data-nav="articles" class="fb-nav-icon hover-scale" title="Bài viết dài">
+        <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </a>
+      <a href="/shares/" data-nav="shares" class="fb-nav-icon hover-scale" title="Bài chia sẻ">
+        <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+        </svg>
+      </a>
+      <a href="/friends/" data-nav="friends" class="fb-nav-icon hidden sm:flex hover-scale" title="Bạn bè">
+        <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+        </svg>
+      </a>
+    </nav>
+
+    <div class="flex items-center justify-end gap-1 sm:gap-2 flex-1 max-w-[320px]">
+      <button id="openPostModal" type="button"
+        class="hidden sm:flex items-center gap-2 px-3 py-2 bg-fb-secondary dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium hover-lift ripple">
+        <span class="text-fb-primary font-bold text-lg">+</span> Tạo bài viết
+      </button>
+      <!-- Mobile create post button (shown only on mobile) -->
+      <button id="openPostModalMobile" type="button"
+        class="sm:hidden shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 hover-scale ripple">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+      </button>
+      <a id="navChatLink" href="/chat/" class="fb-nav-icon relative hover-scale" title="Messenger">
+        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-fb-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
+      </a>
+      <a id="navNotifLink" href="/notifications/" class="fb-nav-icon relative hover-scale" title="Thông báo">
+        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+        <span id="notifBadge"
+          class="hidden absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full font-bold badge-bounce">0</span>
+      </a>
+      <button id="mobileMenuBtn" type="button" class="sm:hidden fb-nav-icon hover-scale">
+        <svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+      <div class="relative hidden sm:block">
+        <div class="avatar-container">
+          <img id="avatarBtn" src="/static/default-avatar.png" alt=""
+            class="w-9 h-9 rounded-full cursor-pointer border-2 border-transparent hover:border-fb-primary object-cover avatar-online">
+        </div>
+        <div id="dropdownMenu"
+          class="hidden absolute right-0 mt-2 w-60 glass-card rounded-xl shadow-xl overflow-hidden z-50 border dark:border-gray-700 animate-slide-up">
+          <div class="flex items-center gap-3 px-4 py-3 border-b dark:border-gray-700">
+            <img id="dropdownAvatar" src="/static/default-avatar.png" class="w-10 h-10 rounded-full object-cover">
+            <div class="min-w-0">
+              <p id="dropdownName" class="font-semibold truncate"></p>
+              <a id="profileLink" href="#" class="text-sm text-fb-primary hover:underline">Xem trang cá nhân</a>
+            </div>
+          </div>
+          <a href="/settings/" class="block px-4 py-2.5 hover:bg-fb-secondary dark:hover:bg-gray-700">Cài đặt & quyền
+            riêng tư</a>
+          <a href="" id="logoutLink" class="block px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700">Đăng
+            xuất</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile menu -->
+  <div id="mobileMenu" class="hidden fixed inset-0 modal-backdrop z-50 sm:hidden">
+    <div class="absolute right-0 top-0 h-full w-64 glass-strong shadow-xl p-4 animate-slide-right">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="font-bold text-lg dark:text-white">Menu</h3>
+        <button id="closeMobileMenu" type="button" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+          <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <nav class="space-y-2">
+        <a href="/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+          Trang chủ
+        </a>
+        <a href="/create-article/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Bài viết dài
+        </a>
+        <a href="/shares/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+          </svg>
+          Bài chia sẻ
+        </a>
+        <a href="/friends/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+          Bạn bè
+        </a>
+        <hr class="border-gray-200 dark:border-gray-700 my-2">
+        <a href="/profile/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          Trang cá nhân
+        </a>
+        <a href="/settings/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Cài đặt
+        </a>
+        <hr class="border-gray-200 dark:border-gray-700 my-2">
+        <button id="mobileLogoutBtn" type="button" class="flex items-center gap-3 p-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 w-full">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+          Đăng xuất
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  {% block main_content %}{% endblock main_content %}
+  {% block profile %}{% endblock profile %}
+
+  <!-- Create post modal -->
+  <div id="postModal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center z-[60] p-4">
+    <div class="glass-card rounded-xl shadow-2xl w-full max-w-lg animate-scale-in">
+      <div class="flex justify-between items-center px-4 py-3 border-b dark:border-gray-700">
+        <h2 class="text-lg font-bold dark:text-[#e4e6eb]">Tạo bài viết</h2>
+        <button id="closePostModal" type="button"
+          class="w-9 h-9 rounded-full bg-fb-secondary dark:bg-gray-700 hover:bg-gray-200 text-xl">&times;</button>
+      </div>
+      <div class="p-4 space-y-3">
+        <textarea id="postTitle" rows="3" placeholder="Bạn đang nghĩ gì?"
+          class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 focus:outline-none resize-none input-glow"></textarea>
+        <div class="border dark:border-gray-600 rounded-lg p-3">
+          <label class="text-sm font-medium text-gray-600 dark:text-gray-400">Thêm ảnh</label>
+          <input type="file" id="imageInput" accept="image/*" multiple class="mt-2 w-full text-sm">
+          <div id="imagePreview" class="grid grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto"></div>
+        </div>
+      </div>
+      <div class="px-4 pb-4">
+        <button id="submit" type="button"
+          class="w-full py-2.5 bg-fb-primary dark:bg-[#1877f2] hover:bg-fb-primary-hover dark:hover:bg-[#166fe5] text-white font-semibold rounded-lg">Đăng</button>
+        <button id="closePostModal2" type="button" class="hidden">Hủy</button>
       </div>
     </div>
   </div>
-</header>
 
-{% block main_content %}{% endblock main_content %}
-{% block profile %}{% endblock profile %}
+  <!-- Photo viewer -->
+  <div id="photoModal" class="hidden fixed inset-0 bg-black/95 z-[60] flex items-center justify-center modal-backdrop">
+    <button id="closeModal" type="button" class="absolute top-4 right-4 text-white text-4xl z-10 hover-scale">&times;</button>
+    <button id="prevPhoto" type="button" class="absolute left-4 text-white text-5xl z-10 hover-scale">‹</button>
+    <img id="photoModalImg" alt="" class="max-h-[90vh] max-w-[90vw] object-contain animate-fade-in">
+    <button id="nextPhoto" type="button" class="absolute right-4 text-white text-5xl z-10 hover-scale">›</button>
+    <p id="photoModalCaption" class="absolute bottom-6 text-white text-center w-full"></p>
+  </div>
 
-<!-- Create post modal -->
-<div id="postModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg">
-    <div class="flex justify-between items-center px-4 py-3 border-b dark:border-gray-700">
-      <h2 class="text-lg font-bold dark:text-[#e4e6eb]">Tạo bài viết</h2>
-      <button id="closePostModal" type="button" class="w-9 h-9 rounded-full bg-fb-secondary dark:bg-gray-700 hover:bg-gray-200 text-xl">&times;</button>
-    </div>
-    <div class="p-4 space-y-3">
-      <textarea id="postTitle" rows="3" placeholder="Bạn đang nghĩ gì?" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 focus:outline-none resize-none"></textarea>
-      <div class="border dark:border-gray-600 rounded-lg p-3">
-        <label class="text-sm font-medium text-gray-600 dark:text-gray-400">Thêm ảnh</label>
-        <input type="file" id="imageInput" accept="image/*" multiple class="mt-2 w-full text-sm">
-        <div id="imagePreview" class="grid grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto"></div>
+  <!-- Reactions list -->
+  <div id="reactionsModal" class="hidden fixed inset-0 modal-backdrop flex justify-center items-center z-[70] p-4">
+    <div class="glass-card w-full max-w-md max-h-[80vh] rounded-xl overflow-hidden flex flex-col animate-scale-in">
+      <div class="flex justify-between p-4 border-b dark:border-gray-700">
+        <h2 class="font-bold">Cảm xúc</h2><button id="closeReactionsModal" type="button"
+          class="text-2xl hover-scale">&times;</button>
       </div>
-    </div>
-    <div class="px-4 pb-4">
-      <button id="submit" type="button" class="w-full py-2.5 bg-fb-primary dark:bg-[#1877f2] hover:bg-fb-primary-hover dark:hover:bg-[#166fe5] text-white font-semibold rounded-lg">Đăng</button>
-      <button id="closePostModal2" type="button" class="hidden">Hủy</button>
+      <div id="reactionsList" class="overflow-y-auto p-4 space-y-2 flex-1"></div>
     </div>
   </div>
-</div>
 
-<!-- Photo viewer -->
-<div id="photoModal" class="hidden fixed inset-0 bg-black/95 z-[60] flex items-center justify-center">
-  <button id="closeModal" type="button" class="absolute top-4 right-4 text-white text-4xl z-10">&times;</button>
-  <button id="prevPhoto" type="button" class="absolute left-4 text-white text-5xl z-10">‹</button>
-  <img id="photoModalImg" alt="" class="max-h-[90vh] max-w-[90vw] object-contain">
-  <button id="nextPhoto" type="button" class="absolute right-4 text-white text-5xl z-10">›</button>
-  <p id="photoModalCaption" class="absolute bottom-6 text-white text-center w-full"></p>
-</div>
-
-<!-- Reactions list -->
-<div id="reactionsModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-center z-[70] p-4">
-  <div class="bg-white dark:bg-gray-800 w-full max-w-md max-h-[80vh] rounded-xl overflow-hidden flex flex-col">
-    <div class="flex justify-between p-4 border-b dark:border-gray-700"><h2 class="font-bold">Cảm xúc</h2><button id="closeReactionsModal" type="button" class="text-2xl">&times;</button></div>
-    <div id="reactionsList" class="overflow-y-auto p-4 space-y-2 flex-1"></div>
+  <!-- Delete post -->
+  <div id="deleteModal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center z-[60] p-4">
+    <div class="glass-card rounded-xl p-6 max-w-sm w-full text-center shadow-xl animate-scale-in">
+      <h3 class="font-bold text-lg mb-2">Xóa bài viết?</h3>
+      <p class="text-gray-500 text-sm mb-4">Hành động này không thể hoàn tác.</p>
+      <div class="flex gap-2"><button id="cancelDelete" type="button"
+          class="flex-1 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb] hover-lift">Hủy</button><button
+          id="confirmDelete" type="button" class="flex-1 py-2 rounded-lg bg-red-600 text-white hover-lift">Xóa</button></div>
+    </div>
   </div>
-</div>
 
-<!-- Delete post -->
-<div id="deleteModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm w-full text-center shadow-xl">
-    <h3 class="font-bold text-lg mb-2">Xóa bài viết?</h3>
-    <p class="text-gray-500 text-sm mb-4">Hành động này không thể hoàn tác.</p>
-    <div class="flex gap-2"><button id="cancelDelete" type="button" class="flex-1 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb]">Hủy</button><button id="confirmDelete" type="button" class="flex-1 py-2 rounded-lg bg-red-600 text-white">Xóa</button></div>
-  </div>
-</div>
-
-<!-- Comments -->
-<div id="commentsModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-end sm:items-center z-[60] p-0 sm:p-4">
-  <div class="bg-white dark:bg-gray-800 w-full sm:max-w-lg sm:rounded-xl max-h-[90vh] flex flex-col shadow-2xl">
-    <div class="flex justify-between p-4 border-b dark:border-gray-700"><h2 class="font-bold">Bình luận</h2><button id="closeCommentsModal" type="button" class="text-2xl">&times;</button></div>
-    <div id="commentsList" class="flex-1 overflow-y-auto p-4 scrollbar-thin min-h-[200px]"></div>
-    <div id="commentsSentinel" class="h-2"></div>
-    <div class="p-3 border-t dark:border-gray-700">
-      <p id="commentParentHint" class="text-xs text-fb-primary mb-1"></p>
-      <input type="hidden" id="commentParentId" value="">
-      <div class="flex gap-2">
-        <textarea id="commentInput" rows="1" placeholder="Viết bình luận..." class="flex-1 rounded-full px-4 py-2 bg-fb-secondary dark:bg-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-fb-primary"></textarea>
-        <button id="submitCommentBtn" type="button" class="px-4 py-2 bg-fb-primary dark:bg-[#1877f2] text-white rounded-full text-sm font-semibold">Gửi</button>
+  <!-- Comments -->
+  <div id="commentsModal"
+    class="hidden fixed inset-0 modal-backdrop flex justify-center items-end sm:items-center z-[60] p-0 sm:p-4">
+    <div class="glass-card w-full sm:max-w-lg sm:rounded-xl max-h-[90vh] flex flex-col shadow-2xl animate-slide-up">
+      <div class="flex justify-between p-4 border-b dark:border-gray-700">
+        <h2 class="font-bold">Bình luận</h2><button id="closeCommentsModal" type="button"
+          class="text-2xl hover-scale">&times;</button>
+      </div>
+      <div id="commentsList" class="flex-1 overflow-y-auto p-4 scrollbar-thin min-h-[200px]"></div>
+      <div id="commentsSentinel" class="h-2"></div>
+      <div class="p-3 border-t dark:border-gray-700">
+        <p id="commentParentHint" class="text-xs text-fb-primary mb-1"></p>
+        <input type="hidden" id="commentParentId" value="">
+        <div class="flex gap-2">
+          <textarea id="commentInput" rows="1" placeholder="Viết bình luận..."
+            class="flex-1 rounded-full px-4 py-2 bg-fb-secondary dark:bg-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-fb-primary input-glow"></textarea>
+          <button id="submitCommentBtn" type="button"
+            class="px-4 py-2 bg-fb-primary dark:bg-[#1877f2] text-white rounded-full text-sm font-semibold hover-lift ripple">Gửi</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Share post modal -->
-<div id="shareModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-center z-[60] p-4">
-  <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-xl p-4 shadow-xl">
-    <div class="flex justify-between mb-3"><h2 class="font-bold">Chia sẻ lên dòng thời gian</h2><button id="closeShareModal" type="button" class="text-2xl">&times;</button></div>
-    <textarea id="shareContent" rows="3" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 mb-3" placeholder="Viết gì đó về bài này..."></textarea>
-    <select id="sharePrivacy" class="w-full p-2 rounded-lg border dark:border-gray-600 mb-3 text-sm"><option value="public">Công khai</option><option value="friends">Bạn bè</option><option value="private">Chỉ mình tôi</option></select>
-    <button id="confirmShareBtn" type="button" class="w-full py-2.5 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg font-semibold">Đăng chia sẻ</button>
+  <!-- Share post modal -->
+  <div id="shareModal" class="hidden fixed inset-0 modal-backdrop flex justify-center items-center z-[60] p-4">
+    <div class="glass-card w-full max-w-md rounded-xl p-4 shadow-xl animate-scale-in">
+      <div class="flex justify-between mb-3">
+        <h2 class="font-bold">Chia sẻ lên dòng thời gian</h2><button id="closeShareModal" type="button"
+          class="text-2xl hover-scale">&times;</button>
+      </div>
+      <textarea id="shareContent" rows="3" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 mb-3 input-glow"
+        placeholder="Viết gì đó về bài này..."></textarea>
+      <select id="sharePrivacy" class="w-full p-2 rounded-lg border dark:border-gray-600 mb-3 text-sm input-glow">
+        <option value="public">Công khai</option>
+        <option value="friends">Bạn bè</option>
+        <option value="private">Chỉ mình tôi</option>
+      </select>
+      <button id="confirmShareBtn" type="button"
+        class="w-full py-2.5 bg-fb-primary dark:bg-[#1877f2] text-white rounded-lg font-semibold hover-lift ripple">Đăng chia sẻ</button>
+    </div>
   </div>
-</div>
 
-<!-- Post sharers list -->
-<div id="sharersModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-center z-[60] p-4">
-  <div class="bg-white dark:bg-gray-800 w-full max-w-md max-h-[70vh] rounded-xl flex flex-col">
-    <div class="flex justify-between p-4 border-b"><h2 class="font-bold">Người đã chia sẻ</h2><button id="closeSharersModal" type="button" class="text-2xl">&times;</button></div>
-    <div id="sharersList" class="overflow-y-auto p-4 flex-1"></div>
+  <!-- Post sharers list -->
+  <div id="sharersModal" class="hidden fixed inset-0 modal-backdrop flex justify-center items-center z-[60] p-4">
+    <div class="glass-card w-full max-w-md max-h-[70vh] rounded-xl flex flex-col animate-scale-in">
+      <div class="flex justify-between p-4 border-b">
+        <h2 class="font-bold">Người đã chia sẻ</h2><button id="closeSharersModal" type="button"
+          class="text-2xl hover-scale">&times;</button>
+      </div>
+      <div id="sharersList" class="overflow-y-auto p-4 flex-1"></div>
+    </div>
   </div>
-</div>
 
-<!-- Edit post -->
-<div id="editPostModal" class="hidden fixed inset-0 bg-black/50 flex justify-center items-center z-[60] p-4">
-  <div class="bg-white dark:bg-gray-800 w-full max-w-lg rounded-xl p-4 shadow-xl">
-    <h2 class="font-bold mb-3">Chỉnh sửa bài viết</h2>
-    <textarea id="editPostTitle" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 mb-3"></textarea>
-    <div id="editImageContainer" class="flex flex-wrap gap-2 mb-3"></div>
-    <input id="editNewImages" type="file" multiple accept="image/*" class="mb-4 w-full text-sm">
-    <div class="flex gap-2 justify-end"><button id="cancelEditPost" type="button" class="px-4 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb]">Hủy</button><button id="savePostChanges" type="button" class="px-4 py-2 rounded-lg bg-fb-primary dark:bg-[#1877f2] text-white">Lưu</button></div>
+  <!-- Edit post -->
+  <div id="editPostModal" class="hidden fixed inset-0 modal-backdrop flex justify-center items-center z-[60] p-4">
+    <div class="glass-card w-full max-w-lg rounded-xl p-4 shadow-xl animate-scale-in">
+      <h2 class="font-bold mb-3">Chỉnh sửa bài viết</h2>
+      <textarea id="editPostTitle" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 mb-3 input-glow"></textarea>
+      <div id="editImageContainer" class="flex flex-wrap gap-2 mb-3"></div>
+      <input id="editNewImages" type="file" multiple accept="image/*" class="mb-4 w-full text-sm">
+      <div class="flex gap-2 justify-end"><button id="cancelEditPost" type="button"
+          class="px-4 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb] hover-lift">Hủy</button><button
+          id="savePostChanges" type="button"
+          class="px-4 py-2 rounded-lg bg-fb-primary dark:bg-[#1877f2] text-white hover-lift ripple">Lưu</button></div>
+    </div>
   </div>
-</div>
 
-<!-- Confirm dialog -->
-<div id="confirmModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-  <div class="bg-white dark:bg-gray-800 rounded-xl p-5 max-w-sm w-full shadow-xl">
-    <h3 id="confirmModalTitle" class="font-bold text-lg mb-2">Xác nhận</h3>
-    <p id="confirmModalMessage" class="text-gray-600 dark:text-gray-400 text-sm mb-4"></p>
-    <div class="flex gap-2"><button id="confirmModalCancel" type="button" class="flex-1 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb]">Hủy</button><button id="confirmModalOk" type="button" class="flex-1 py-2 rounded-lg bg-fb-primary dark:bg-[#1877f2] text-white">OK</button></div>
+  <!-- Confirm dialog -->
+  <div id="confirmModal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center z-[70] p-4">
+    <div class="glass-card rounded-xl p-5 max-w-sm w-full shadow-xl animate-scale-in">
+      <h3 id="confirmModalTitle" class="font-bold text-lg mb-2">Xác nhận</h3>
+      <p id="confirmModalMessage" class="text-gray-600 dark:text-gray-400 text-sm mb-4"></p>
+      <div class="flex gap-2"><button id="confirmModalCancel" type="button"
+          class="flex-1 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb] hover-lift">Hủy</button><button
+          id="confirmModalOk" type="button"
+          class="flex-1 py-2 rounded-lg bg-fb-primary dark:bg-[#1877f2] text-white hover-lift ripple">OK</button></div>
+    </div>
   </div>
-</div>
 
-<div id="toast" class="fixed bottom-5 right-5 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg hidden z-[80] max-w-sm"></div>
+  <div id="toast"
+    class="fixed bottom-5 right-5 toast toast-info px-4 py-3 rounded-lg shadow-lg hidden z-[80] max-w-sm"></div>
 
-<script>window.user_id = "{{ user_id|default:'' }}";</script>
-<script type="module" src="{% static 'js/authenticate/base.js' %}"></script>
-<script type="module" src="{% static 'js/app/profile.js' %}"></script>
-<script type="module" src="{% static 'js/app/nav.js' %}"></script>
-<script type="module" src="{% static 'js/app/theme-init.js' %}"></script>
-{% block post_scripts %}{% endblock post_scripts %}
+  <script>window.user_id = "{{ user_id|default:'' }}";</script>
+  <script type="module" src="{% static 'js/authenticate/base.js' %}"></script>
+  <script type="module" src="{% static 'js/app/profile.js' %}"></script>
+  <script type="module" src="{% static 'js/app/nav.js' %}"></script>
+  <script type="module" src="{% static 'js/app/theme-init.js' %}"></script>
+  {% block post_scripts %}{% endblock post_scripts %}
 </body>
-</html>
 
 </html>
-
-
-
-
-
-

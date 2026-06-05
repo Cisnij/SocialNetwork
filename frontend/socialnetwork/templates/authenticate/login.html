@@ -1,95 +1,499 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng nhập — SocialNetwork</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            primary: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              200: '#ddd6fe',
+              300: '#c4b5fd',
+              400: '#a78bfa',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+              800: '#5b21b6',
+              900: '#4c1d95',
+            },
+            'oklch': {
+              primary: 'oklch(0.65 0.19 250)',
+              secondary: 'oklch(0.85 0.05 250)',
+              accent: 'oklch(0.7 0.15 320)',
+              success: 'oklch(0.7 0.17 142)',
+              warning: 'oklch(0.8 0.15 85)',
+              error: 'oklch(0.65 0.2 25)',
+            }
+          },
+          animation: {
+            'gradient-x': 'gradient-x 15s ease infinite',
+            'gradient-y': 'gradient-y 15s ease infinite',
+            'gradient-xy': 'gradient-xy 15s ease infinite',
+            'float': 'float 6s ease-in-out infinite',
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'bounce-slow': 'bounce 2s infinite',
+            'slide-up': 'slideUp 0.5s ease-out',
+            'scale-in': 'scaleIn 0.3s ease-out',
+            'fade-in': 'fadeIn 0.3s ease-in',
+            'shake': 'shake 0.5s ease-in-out',
+          },
+          keyframes: {
+            'gradient-x': {
+              '0%, 100%': {
+                'background-size': '200% 200%',
+                'background-position': 'left center'
+              },
+              '50%': {
+                'background-size': '200% 200%',
+                'background-position': 'right center'
+              },
+            },
+            'gradient-y': {
+              '0%, 100%': {
+                'background-size': '200% 200%',
+                'background-position': 'center top'
+              },
+              '50%': {
+                'background-size': '200% 200%',
+                'background-position': 'center bottom'
+              },
+            },
+            'gradient-xy': {
+              '0%, 100%': {
+                'background-size': '400% 400%',
+                'background-position': 'left center'
+              },
+              '50%': {
+                'background-size': '400% 400%',
+                'background-position': 'right center'
+              },
+            },
+            'float': {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-20px)' },
+            },
+            'slideUp': {
+              '0%': { transform: 'translateY(20px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' },
+            },
+            'scaleIn': {
+              '0%': { transform: 'scale(0.9)', opacity: '0' },
+              '100%': { transform: 'scale(1)', opacity: '1' },
+            },
+            'fadeIn': {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+            'shake': {
+              '0%, 100%': { transform: 'translateX(0)' },
+              '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-5px)' },
+              '20%, 40%, 60%, 80%': { transform: 'translateX(5px)' },
+            },
+          },
+        }
+      }
+    }
+  </script>
+  <script>
+    try {
+      var _fbDark = localStorage.getItem('fb_darkmode') === '1';
+      document.documentElement.classList.toggle('dark', _fbDark);
+    } catch (e) { }
+  </script>
   <style>
+    /* ===== 2026 DESIGN SYSTEM ===== */
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    html {
+      scroll-behavior: smooth;
+    }
+    
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    .dark {
+      color-scheme: dark;
+    }
+    
+    /* ===== GRADIENT MESH BACKGROUND ===== */
+    .gradient-mesh-bg {
+      background: 
+        radial-gradient(at 40% 20%, hsla(228, 100%, 74%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 80% 0%, hsla(189, 100%, 56%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 0% 50%, hsla(355, 100%, 93%, 0.2) 0px, transparent 50%),
+        radial-gradient(at 80% 50%, hsla(340, 100%, 76%, 0.2) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, hsla(269, 100%, 77%, 0.2) 0px, transparent 50%),
+        radial-gradient(at 80% 100%, hsla(240, 100%, 70%, 0.2) 0px, transparent 50%),
+        radial-gradient(at 0% 0%, hsla(343, 100%, 76%, 0.2) 0px, transparent 50%);
+      background-size: 100% 100%;
+      animation: gradient-xy 15s ease infinite;
+    }
+    
+    .dark .gradient-mesh-bg {
+      background: 
+        radial-gradient(at 40% 20%, hsla(228, 100%, 20%, 0.4) 0px, transparent 50%),
+        radial-gradient(at 80% 0%, hsla(189, 100%, 15%, 0.4) 0px, transparent 50%),
+        radial-gradient(at 0% 50%, hsla(355, 100%, 10%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 80% 50%, hsla(340, 100%, 15%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, hsla(269, 100%, 20%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 80% 100%, hsla(240, 100%, 15%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 0% 0%, hsla(343, 100%, 15%, 0.3) 0px, transparent 50%);
+    }
+    
+    /* ===== GLASSMORPHISM ===== */
+    .glass {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .dark .glass {
+      background: rgba(30, 30, 30, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+    
+    .dark .glass-card {
+      background: rgba(30, 30, 30, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* ===== NEUMORPHISM ===== */
+    .neumorphic {
+      background: #f0f2f5;
+      box-shadow: 
+        8px 8px 16px rgba(0, 0, 0, 0.1),
+        -8px -8px 16px rgba(255, 255, 255, 0.8);
+      border-radius: 16px;
+    }
+    
+    .dark .neumorphic {
+      background: #242526;
+      box-shadow: 
+        8px 8px 16px rgba(0, 0, 0, 0.4),
+        -8px -8px 16px rgba(255, 255, 255, 0.05);
+    }
+    
+    /* ===== MICRO-INTERACTIONS ===== */
+    .hover-lift {
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                  box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .hover-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+    
+    .dark .hover-lift:hover {
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+    
+    .hover-scale {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .hover-scale:hover {
+      transform: scale(1.05);
+    }
+    
+    .hover-glow {
+      transition: box-shadow 0.3s ease;
+    }
+    
+    .hover-glow:hover {
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
+    }
+    
+    /* Ripple effect */
+    .ripple {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .ripple::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      background-image: radial-gradient(circle, rgba(255, 255, 255, 0.3) 10%, transparent 10.01%);
+      background-repeat: no-repeat;
+      background-position: 50%;
+      transform: scale(10, 10);
+      opacity: 0;
+      transition: transform 0.5s, opacity 1s;
+    }
+    
+    .ripple:active::after {
+      transform: scale(0, 0);
+      opacity: 0.3;
+      transition: 0s;
+    }
+    
+    /* ===== INPUT FOCUS GLOW ===== */
+    .input-glow:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2),
+                  0 0 20px rgba(124, 58, 237, 0.1);
+    }
+    
+    .dark .input-glow:focus {
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.3),
+                  0 0 20px rgba(124, 58, 237, 0.2);
+    }
+    
+    /* ===== CUSTOM SCROLLBAR ===== */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: transparent;
+      border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #cbd5e1, #94a3b8);
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #94a3b8, #64748b);
+    }
+    
+    .dark ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #475569, #334155);
+    }
+    
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #334155, #1e293b);
+    }
+    
+    /* ===== RESPONSIVE BREAKPOINTS ===== */
+    @media (min-width: 320px) {
+      .text-responsive-xs { font-size: 0.75rem; }
+    }
+    
+    @media (min-width: 768px) {
+      .text-responsive-sm { font-size: 0.875rem; }
+    }
+    
+    @media (min-width: 1024px) {
+      .text-responsive-base { font-size: 1rem; }
+    }
+    
+    @media (min-width: 1440px) {
+      .text-responsive-lg { font-size: 1.125rem; }
+    }
+    
+    /* ===== TOUCH-FRIENDLY ===== */
+    @media (pointer: coarse) {
+      button, a, input, select, textarea {
+        min-height: 44px;
+        min-width: 44px;
+      }
+    }
+    
+    /* ===== REDUCED MOTION ===== */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      
+      .gradient-mesh-bg {
+        animation: none;
+      }
+    }
+    
+    /* ===== EXISTING STYLES ===== */
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-glow {
+      animation: glow 2.5s infinite ease-in-out;
     }
 
     @keyframes glow {
       0%, 100% {
-        box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+        box-shadow: 0 0 10px rgba(124, 58, 237, 0.3);
       }
       50% {
-        box-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
+        box-shadow: 0 0 25px rgba(124, 58, 237, 0.5);
       }
     }
 
-    .glow {
-      animation: glow 2.5s infinite ease-in-out;
+    /* Theme toggle */
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 50;
+      padding: .5rem;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #e5e7eb;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .dark .theme-toggle {
+      background: rgba(31, 41, 55, 0.9);
+      border-color: #374151;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.1);
     }
   </style>
 </head>
-<body class="bg-[#0f0f0f] min-h-screen flex items-center justify-center px-4 py-8">
-  <div id="login-error" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-sm px-6 py-3 rounded shadow-lg z-50">
-  <!-- Nội dung lỗi sẽ được chèn tự động -->
+
+<body class="bg-gray-100 dark:bg-[#0f0f0f] min-h-screen flex items-center justify-center px-4 py-8 transition-colors gradient-mesh-bg">
+  <!-- Theme Toggle -->
+  <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle theme">
+    <svg class="w-6 h-6 text-gray-700 dark:text-yellow-400" id="themeIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+    </svg>
+  </button>
+
+  <div id="login-error"
+    class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-sm px-6 py-3 rounded shadow-lg z-50 animate-fade-in">
+    <!-- Nội dung lỗi sẽ được chèn tự động -->
   </div>
 
-  <div class="w-full max-w-4xl mx-auto bg-[#1c1c1c] rounded-2xl glow shadow-xl flex flex-col-reverse md:flex-row overflow-hidden">
+  <div
+    class="w-full max-w-5xl mx-auto glass-card rounded-2xl animate-glow shadow-xl flex flex-col-reverse md:flex-row overflow-hidden animate-fade-in">
 
     <!-- Left: Form -->
-    <div class="w-full md:w-1/2 p-8 md:p-12 text-white">
-      <h2 class="text-3xl font-semibold mb-6">Welcome back 👋</h2>
-      <p class="text-gray-400 mb-8 text-sm">Login to your dashboard</p>
+    <div class="w-full md:w-1/2 p-8 md:p-12 text-gray-900 dark:text-white">
+      <div class="mb-6">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 mb-4 shadow-lg shadow-violet-500/30">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/>
+          </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Chào mừng trở lại! 👋</h2>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">Đăng nhập để tiếp tục kết nối</p>
+      </div>
 
       <form class="space-y-5" id='login-form'>
         <div>
-          <label class="block text-sm mb-1 text-gray-300" autocomplete="email" >Email</label>
-          <input type="email" id="email" class="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="you@example.com">
+          <label class="block text-sm mb-2 text-gray-600 dark:text-gray-300 font-medium" for="email">Email</label>
+          <div class="relative">
+            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            <input type="email" id="email"
+              class="w-full p-3 pl-10 bg-gray-50 dark:bg-[#2a2a2a] border border-gray-200 dark:border-[#3a3a3a] rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-transparent transition-all input-glow"
+              placeholder="you@example.com" autocomplete="email">
+          </div>
         </div>
 
-        <div class="relative">
-          <label class="block text-sm mb-1 text-gray-300" autocomplete="current-password">Password</label>
-          <input type="password" id="password" class="w-full p-3 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="••••••••">
-          <button
-            type="button"
-            id="togglePassword"
-            class="absolute right-3 top-[38px] text-gray-400 hover:text-purple-600"
-            aria-label="Toggle password visibility"
-          >👁️</button>
+        <div>
+          <label class="block text-sm mb-2 text-gray-600 dark:text-gray-300 font-medium" for="password">Mật khẩu</label>
+          <div class="relative">
+            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+            <input type="password" id="password"
+              class="w-full p-3 pl-10 pr-12 bg-gray-50 dark:bg-[#2a2a2a] border border-gray-200 dark:border-[#3a3a3a] rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-transparent transition-all input-glow"
+              placeholder="••••••••" autocomplete="current-password">
+            <button type="button" id="togglePassword"
+              class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-violet-600 transition-colors"
+              aria-label="Toggle password visibility">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 transition text-white py-3 rounded-lg font-semibold">
-          Log In
+        <button type="submit"
+          class="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 transition-all text-white py-3 rounded-lg font-semibold shadow-lg shadow-violet-500/30 hover:shadow-violet-500/40 transform hover:scale-[1.02] hover-lift ripple">
+          Đăng nhập
         </button>
-        
-         <p class="text-center text-sm text-gray-400 mt-2">
-          <a href="/forgot-password" class="text-purple-400 hover:underline">Forgot password?</a>
+
+        <p class="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+          <a href="/forgot-password" class="text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium hover:underline transition-colors">Quên mật khẩu?</a>
         </p>
 
-        <p class="text-center text-sm text-gray-400 mt-4">
-          Don't have an account?
-          <a href="/register" class="text-purple-400 hover:underline">Register here</a>
+        <p class="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+          Chưa có tài khoản?
+          <a href="/register" class="text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium hover:underline transition-colors">Đăng ký ngay</a>
         </p>
       </form>
 
-      <div class="mt-8 space-y-3">
+      <div class="mt-8 space-y-4">
         <div class="flex items-center justify-between">
-          <hr class="w-1/3 border-gray-700">
-          <span class="text-gray-500 text-sm">or</span>
-          <hr class="w-1/3 border-gray-700">
+          <hr class="w-1/3 border-gray-200 dark:border-gray-700">
+          <span class="text-gray-400 dark:text-gray-600 text-sm">hoặc</span>
+          <hr class="w-1/3 border-gray-200 dark:border-gray-700">
         </div>
 
         <div onclick="loginWithGoogle()" class="flex justify-center">
-          <button class="w-full max-w-[220px] flex items-center justify-center border border-gray-600 rounded-lg py-2 bg-[#2a2a2a] hover:bg-[#333]">
+          <button
+            class="w-full max-w-[280px] flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-lg py-2.5 bg-white dark:bg-[#2a2a2a] hover:bg-gray-50 dark:hover:bg-[#333] transition-all hover:border-gray-300 dark:hover:border-gray-600 hover-lift">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5 mr-2">
-            <span class="text-white text-sm">Google</span>
+            <span class="text-gray-700 dark:text-white text-sm font-medium">Tiếp tục với Google</span>
           </button>
         </div>
       </div>
     </div>
 
     <!-- Right: Illustration / background -->
-    <div class="w-full md:w-1/2 bg-cover bg-center relative hidden md:block" style="background-image: url('https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80');">
-      <div class="w-full h-full bg-black/50 flex flex-col items-center justify-center p-10 text-center text-white">
-        <h3 class="text-2xl font-semibold">Your Space. Your Flow.</h3>
-        <p class="text-sm text-gray-300 mt-2">Seamless login experience, modern & secure.</p>
+    <div class="w-full md:w-1/2 bg-cover bg-center relative hidden md:block"
+      style="background-image: url('https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80');">
+      <div class="w-full h-full bg-gradient-to-br from-violet-900/70 to-purple-900/70 flex flex-col items-center justify-center p-10 text-center text-white">
+        <div class="glass rounded-2xl p-8 border border-white/20 animate-float">
+          <h3 class="text-3xl font-bold mb-3">Kết nối · Chia sẻ</h3>
+          <p class="text-sm text-gray-200 mt-2">Tham gia cộng đồng và trải nghiệm kết nối hiện đại.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -102,10 +506,35 @@
       toggleBtn.addEventListener('click', () => {
         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
         passwordInput.setAttribute('type', type);
-        toggleBtn.textContent = type === 'password' ? '👁️' : '🙈';
+        
+        // Toggle icon
+        const svgPath = toggleBtn.querySelector('path');
+        if (type === 'password') {
+          svgPath.setAttribute('d', 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z');
+        } else {
+          svgPath.setAttribute('d', 'M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21');
+        }
       });
+    });
+
+    // Theme toggle
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    
+    themeToggle?.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      localStorage.setItem('fb_darkmode', isDark ? '1' : '0');
+      
+      // Update icon
+      if (isDark) {
+        themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>';
+      } else {
+        themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>';
+      }
     });
   </script>
   <script type="module" src="{%static 'js/authenticate/login.js' %}"></script>
 </body>
+
 </html>

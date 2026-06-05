@@ -19,18 +19,20 @@ let activeConvMeta = null;
 let firstMessageInConv = null;
 let tempIdCounter = 0;
 
+// ========= REPLY STATE =========
+let replyToId = null;
+let replyToContent = null;
+
 // ========= TYPING STATE =========
 let typingIndicatorTimeout = null;
 let typingStopTimeout = null;
 let typingSent = false;
 
-// ========= WS RECONNECT GUARDS (Task 1 - spam fix) =========
+// ========= WS RECONNECT GUARDS =========
 let chatWsReconnectTimer = null;
 let convWsReconnectTimer = null;
-let notifWsReconnectTimer = null;
 
-// ========= WS PING WATCHDOG (Task 5 - client-side watchdog) =========
-// If FE doesn't receive a ping from server in 70s, assume dead connection & reconnect
+// ========= WS PING WATCHDOG =========
 const PING_WATCHDOG_MS = 70 * 1000;
 let chatPingWatchdog = null;
 let convPingWatchdog = null;
@@ -51,7 +53,7 @@ function resetConvPingWatchdog() {
   }, PING_WATCHDOG_MS);
 }
 
-/** DOM refs — resolved on boot, not at import time */
+/** DOM refs */
 let convListEl;
 let friendsStrip;
 let messagesEl;
@@ -59,9 +61,54 @@ let chatTitle;
 let chatForm;
 let chatInput;
 let pendingBanner;
+let replyPreviewBar;
+let replyPreviewText;
+let cancelReplyBtn;
 
 function $(id) {
   return document.getElementById(id);
+}
+
+// ========= REPLY HELPERS =========
+function setReply(msgId, content) {
+  replyToId = msgId;
+  replyToContent = content;
+  if (replyPreviewBar) {
+    replyPreviewBar.classList.remove("hidden");
+    replyPreviewBar.classList.add("flex");
+  }
+  if (replyPreviewText) {
+    replyPreviewText.textContent =
+      content && content.length > 100 ? content.slice(0, 100) + "…" : content || "";
+  }
+  chatInput?.focus();
+}
+
+function clearReply() {
+  replyToId = null;
+  replyToContent = null;
+  if (replyPreviewBar) {
+    replyPreviewBar.classList.add("hidden");
+    replyPreviewBar.classList.remove("flex");
+  }
+  if (replyPreviewText) replyPreviewText.textContent = "";
+}
+
+// ========= SCROLL HELPERS =========
+function scrollToBottom(smooth = false) {
+  if (!messagesEl) return;
+  if (smooth) {
+    messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: "smooth" });
+  } else {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+}
+
+function scrollToBottomDeferred() {
+  // Two-frame defer so DOM is fully painted before measuring scrollHeight
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => scrollToBottom(false));
+  });
 }
 
 function messagePreview(conv) {
@@ -115,16 +162,16 @@ async function loadFriendsStrip() {
     btn.type = "button";
     btn.className = "flex flex-col items-center gap-1 shrink-0 w-16 group";
     btn.title = fullName(profile);
-    const img = document.createElement("img");
-    img.src = profile.picture || DEFAULT_AVATAR;
-    img.className =
+    const imgEl = document.createElement("img");
+    imgEl.src = profile.picture || DEFAULT_AVATAR;
+    imgEl.className =
       "w-14 h-14 rounded-full object-cover ring-2 ring-fb-primary ring-offset-2 dark:ring-offset-[#242526] group-hover:scale-105 transition";
-    img.alt = "";
+    imgEl.alt = "";
     const label = document.createElement("span");
     label.className =
       "text-[10px] text-gray-600 dark:text-fb-muted truncate w-full text-center";
     label.textContent = (profile.first_name || "").split(" ")[0] || "Bạn";
-    btn.append(img, label);
+    btn.append(imgEl, label);
     btn.onclick = () => startChatWith(profile.id, fullName(profile));
     friendsStrip.appendChild(btn);
   });
@@ -143,16 +190,15 @@ async function startChatWith(profileId, name) {
   openConversation(conv, name);
 }
 
-// ========= CONV LIST WS (Task 1 spam fix + Task 5 watchdog) =========
+// ========= CONV LIST WS =========
 function connectConvListWs() {
-  // Prevent duplicate timers
   if (convWsReconnectTimer) {
     clearTimeout(convWsReconnectTimer);
     convWsReconnectTimer = null;
   }
   try {
     if (convWs) {
-      convWs.onclose = null; // detach old handler before closing
+      convWs.onclose = null;
       convWs.close();
     }
     convWs = new WebSocket(API.wsConversations());
@@ -166,7 +212,7 @@ function connectConvListWs() {
         const data = JSON.parse(ev.data);
         if (data.type === "ping") {
           convWs.send(JSON.stringify({ type: "pong" }));
-          resetConvPingWatchdog(); // reset watchdog each ping
+          resetConvPingWatchdog();
           return;
         }
         if (data.conversation_id) bumpConversation(data);
@@ -175,7 +221,6 @@ function connectConvListWs() {
 
     convWs.onclose = () => {
       if (convPingWatchdog) clearTimeout(convPingWatchdog);
-      // Debounced retry — only one timer at a time
       if (!convWsReconnectTimer) {
         convWsReconnectTimer = setTimeout(() => {
           convWsReconnectTimer = null;
@@ -198,7 +243,6 @@ function bumpConversation(event) {
     convListEl.prepend(item.el);
     const preview = item.el.querySelector(".conv-preview");
     if (preview) {
-      // Show proper preview text based on message_type
       const type = event.message_type;
       if (type === "file" || (!event.last_message && type)) {
         preview.textContent = "📎 File đính kèm";
@@ -226,11 +270,11 @@ async function loadConversations() {
   convMap.clear();
 
   const items = data.results || [];
-    if (!items.length) {
-      convListEl.appendChild(
-        textEl("p", "text-sm text-gray-400 p-4 text-center", "Chưa có tin nhắn")
-      );
-    } else {
+  if (!items.length) {
+    convListEl.appendChild(
+      textEl("p", "text-sm text-gray-400 p-4 text-center", "Chưa có tin nhắn")
+    );
+  } else {
     items.forEach((c) => convListEl.appendChild(renderConvItem(c)));
   }
 
@@ -431,39 +475,27 @@ async function openConversation(conv, titleName) {
   if (!messagesEl) return;
   activeConvId = conv.id;
   activeConvMeta = conv;
+  clearReply();
+
   const panel = $("chatPanel");
   panel?.classList.remove("hidden");
   panel?.classList.add("flex");
   if (chatTitle) chatTitle.textContent = titleName || getConvTitle(conv);
 
-  let back = $("chatBackBtn");
-  if (!back && chatTitle?.parentElement) {
-    back = document.createElement("button");
-    back.id = "chatBackBtn";
-    back.type = "button";
-    back.className = "md:hidden text-fb-primary font-semibold text-sm mr-2";
-    back.textContent = "←";
-    back.onclick = () => {
-      panel?.classList.add("hidden");
-      panel?.classList.remove("flex");
-    };
-    chatTitle.parentElement.insertBefore(back, chatTitle);
-  }
-
   messagesEl.replaceChildren();
-  
+
   // Show loading indicator
   const loader = document.createElement("div");
   loader.className = "flex items-center justify-center h-full gap-2";
   const spinner = document.createElement("div");
   spinner.className = "w-5 h-5 border-3 border-fb-primary border-t-transparent rounded-full animate-spin";
   loader.appendChild(spinner);
-  const text = document.createElement("p");
-  text.className = "text-sm text-gray-500 dark:text-fb-muted";
-  text.textContent = "Đang tải...";
-  loader.appendChild(text);
+  const loadText = document.createElement("p");
+  loadText.className = "text-sm text-gray-500 dark:text-fb-muted";
+  loadText.textContent = "Đang tải...";
+  loader.appendChild(loadText);
   messagesEl.appendChild(loader);
-  
+
   pendingBanner?.classList.add("hidden");
   const typingIndicator = document.getElementById("chatTypingIndicator");
   if (typingIndicator) {
@@ -490,7 +522,7 @@ async function openConversation(conv, titleName) {
     console.warn("[chat] seen", e);
   }
 
-  // Khởi tạo trạng thái "Đã xem" dựa trên last_read_message của ĐỐI PHƯƠNG
+  // Init "Đã xem" state based on OTHER member's last_read_message
   const otherMem = (conv.members || []).find(
     (m) => Number(m.user?.id) !== Number(myProfileId)
   );
@@ -499,14 +531,12 @@ async function openConversation(conv, titleName) {
   }
 }
 
-// ========= CHAT WS (Task 1 spam fix + Task 5 watchdog) =========
+// ========= CHAT WS =========
 function connectChatWs(convId) {
-  // Cancel any pending reconnect for this slot
   if (chatWsReconnectTimer) {
     clearTimeout(chatWsReconnectTimer);
     chatWsReconnectTimer = null;
   }
-  // Detach old handlers before closing
   if (chatWs) {
     chatWs.onclose = null;
     chatWs.onmessage = null;
@@ -526,16 +556,14 @@ function connectChatWs(convId) {
       try {
         const data = JSON.parse(ev.data);
 
-        // Ping-pong (Task 5)
         if (data.type === "ping") {
           chatWs.send(JSON.stringify({ type: "pong" }));
-          resetChatPingWatchdog(convId); // heartbeat received → reset watchdog
+          resetChatPingWatchdog(convId);
           return;
         }
 
         if (data.type === "seen_message") {
-          // Only update "Đã xem" when THE OTHER person reads my messages
-          // user_id === myUserId means I just marked as read — skip
+          // Only update when OTHER person reads (not myself)
           if (Number(data.user_id) !== Number(myUserId)) {
             markSeenMessages(data.last_message_id);
           }
@@ -553,14 +581,14 @@ function connectChatWs(convId) {
         }
 
         if (data.type === "message_updated") {
-          const el = document.querySelector(
+          const elUpdated = document.querySelector(
             `[data-msg-id="${data.id}"] .msg-text`
           );
-          if (el) el.textContent = `${data.content} (đã sửa)`;
+          if (elUpdated) elUpdated.textContent = `${data.content} (đã sửa)`;
           return;
         }
 
-        // New chat message (no type field from backend)
+        // New chat message
         if (data.id != null && (data.message != null || data.attachments != null)) {
           appendMessage(
             {
@@ -581,7 +609,7 @@ function connectChatWs(convId) {
             });
           }
 
-          // If the message is from the other person and we are actively viewing it, mark as seen
+          // If from other person and we're actively viewing → mark seen
           if (Number(data.sender_id) !== Number(myUserId) && !document.hidden) {
             authFetch(API.seenMessage(activeConvId), { method: "POST" }).catch(() => {});
           }
@@ -590,16 +618,14 @@ function connectChatWs(convId) {
         console.error("[chat] WebSocket message error:", err);
       }
     };
-    
+
     chatWs.onerror = (err) => {
       console.error("[chat] WebSocket error:", err);
     };
 
     chatWs.onclose = () => {
       if (chatPingWatchdog) clearTimeout(chatPingWatchdog);
-      // Only retry if we're still watching this conversation
       if (Number(activeConvId) !== Number(convId)) return;
-      // Debounced single retry
       if (!chatWsReconnectTimer) {
         chatWsReconnectTimer = setTimeout(() => {
           chatWsReconnectTimer = null;
@@ -623,7 +649,8 @@ async function loadMessages(reset) {
     if (reset) {
       messagesEl.replaceChildren();
       items.forEach((m) => appendMessage(m, false, false));
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      // Scroll to bottom after full paint
+      scrollToBottomDeferred();
     } else {
       const prevHeight = messagesEl.scrollHeight;
       for (let i = items.length - 1; i >= 0; i--) {
@@ -639,15 +666,32 @@ async function loadMessages(reset) {
 }
 
 function appendMessage(m, scroll = true, prepend = false) {
-  // sender_id from WS = Django User ID; from REST m.sender.user = Django User ID
+  // sender_id from WS = Django User ID; REST m.sender.user = Django User ID
   const sid = m.sender?.user ?? m.sender?.id ?? m.sender_id;
   const mine =
     (myUserId != null && Number(sid) === Number(myUserId)) ||
     (myProfileId != null && Number(sid) === Number(myProfileId));
 
   const wrap = document.createElement("div");
-  wrap.className = `flex ${mine ? "justify-end" : "justify-start"} mb-1`;
+  wrap.className = `flex ${mine ? "justify-end" : "justify-start"} mb-1 chat-msg-wrap`;
   wrap.dataset.msgId = m.id;
+
+  // ─── Reply button (visible on hover) ─────────────────────────────
+  const replyBtn = document.createElement("button");
+  replyBtn.type = "button";
+  replyBtn.title = "Trả lời";
+  replyBtn.className =
+    "chat-reply-btn self-center shrink-0 mx-1 " +
+    "transition-opacity text-gray-400 dark:text-fb-muted hover:text-fb-primary " +
+    "dark:hover:text-indigo-400 text-base leading-none";
+  replyBtn.textContent = "↩";
+  const msgContent = m.content || m.message || "";
+  replyBtn.onclick = () => setReply(m.id, msgContent);
+
+  // Show/hide reply button on hover
+  wrap.addEventListener("mouseenter", () => { replyBtn.style.opacity = "1"; });
+  wrap.addEventListener("mouseleave", () => { replyBtn.style.opacity = "0"; });
+  replyBtn.style.opacity = "0";
 
   const bubble = document.createElement("div");
   bubble.className = `max-w-[75%] px-3 py-2 rounded-2xl text-sm transition-all ${
@@ -656,16 +700,29 @@ function appendMessage(m, scroll = true, prepend = false) {
       : "bg-fb-secondary dark:bg-white/10 dark:backdrop-blur-md dark:border dark:border-white/10 dark:text-white dark:shadow-sm rounded-bl-sm"
   }`;
 
-  // Reply quote bubble
+  // ─── Reply quote bubble ──────────────────────────────────────────
   const replyContent = m.reply_to_id_content ?? m.reply_to?.content;
   if (replyContent) {
     const quote = document.createElement("div");
-    quote.className = `mb-1.5 px-2 py-1 rounded-lg border-l-2 text-xs opacity-80 ${
+    quote.className = `mb-1.5 px-2 py-1 rounded-lg border-l-2 text-xs opacity-75 cursor-pointer ${
       mine
-        ? "border-white/60 bg-white/10"
-        : "border-fb-primary/60 dark:border-indigo-400 bg-gray-200 dark:bg-white/5"
+        ? "border-white/60 bg-white/10 hover:bg-white/20"
+        : "border-fb-primary/60 dark:border-indigo-400 bg-gray-200 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10"
     }`;
-    quote.textContent = replyContent.length > 80 ? replyContent.slice(0, 80) + "…" : replyContent;
+    quote.textContent =
+      replyContent.length > 80 ? replyContent.slice(0, 80) + "…" : replyContent;
+    // Click quote → scroll to original message
+    if (m.reply_to_id) {
+      quote.onclick = () => {
+        const target = document.querySelector(`[data-msg-id="${m.reply_to_id}"]`);
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+          target.style.transition = "background 0.3s";
+          target.style.background = "rgba(24,119,242,0.12)";
+          setTimeout(() => { target.style.background = ""; }, 1000);
+        }
+      };
+    }
     bubble.appendChild(quote);
   }
 
@@ -684,8 +741,9 @@ function appendMessage(m, scroll = true, prepend = false) {
     ) {
       const image = document.createElement("img");
       image.src = a.file_url;
-      image.className = "max-w-full rounded-lg mt-1";
+      image.className = "max-w-full rounded-lg mt-1 cursor-pointer";
       image.alt = a.file_name || "";
+      image.onclick = () => window.open(a.file_url, "_blank");
       bubble.appendChild(image);
     } else if (a.file_type === "video" || a.file_type?.startsWith("video/")) {
       const video = document.createElement("video");
@@ -735,55 +793,56 @@ function appendMessage(m, scroll = true, prepend = false) {
     bubble.appendChild(actions);
   }
 
-  // Task 2 - Seen label under each message (only for mine)
+  // Seen label (only for my messages)
   const seenLabel = document.createElement("p");
   seenLabel.className = "msg-seen text-[10px] text-gray-400 dark:text-[#b0b3b8] mt-0.5 text-right";
   seenLabel.textContent = "";
 
-  wrap.appendChild(bubble);
+  // Assemble: [replyBtn] [bubble] for mine, [bubble] [replyBtn] for theirs
+  if (mine) {
+    wrap.append(replyBtn, bubble);
+  } else {
+    wrap.append(bubble, replyBtn);
+  }
   if (mine) wrap.appendChild(seenLabel);
+
   if (prepend) messagesEl.prepend(wrap);
   else messagesEl.appendChild(wrap);
-  if (scroll) messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  if (scroll) {
+    scrollToBottom(false);
+  }
 }
 
-// Task 2 — Mark seen: only show "Đã xem" on the LAST seen message
+// ─── Seen: only show "Đã xem" on the last message seen by other ──
 function markSeenMessages(lastMessageId) {
   const seenId = Number(lastMessageId);
   if (!Number.isFinite(seenId)) return;
 
-  // Clear all existing seen labels first
+  // Clear all existing seen labels
   document.querySelectorAll(".msg-seen").forEach((el) => {
     el.textContent = "";
     el.classList.remove("seen-check");
   });
 
-  // Tìm ngược từ dưới lên (từ tin nhắn mới nhất), cái nào <= seenId thì lấy và DỪNG LẠI luôn
-  let lastSeenNode = null;
+  // Walk backwards to find the last MY message that's been seen
   const nodes = document.querySelectorAll("[data-msg-id]");
   for (let i = nodes.length - 1; i >= 0; i--) {
     const node = nodes[i];
     const id = Number(node.dataset.msgId);
     if (!Number.isFinite(id)) continue;
-    const seenLabel = node.querySelector(".msg-seen");
-    if (!seenLabel) continue; // Chỉ quan tâm tin của mình
+    const seenLabelEl = node.querySelector(".msg-seen");
+    if (!seenLabelEl) continue; // only my messages have .msg-seen
 
     if (id <= seenId) {
-      lastSeenNode = node;
-      break; // Tìm thấy tin gần nhất thoả mãn -> DỪNG NGAY (tối ưu O(1))
-    }
-  }
-
-  if (lastSeenNode) {
-    const label = lastSeenNode.querySelector(".msg-seen");
-    if (label) {
-      label.textContent = "✓ Đã xem";
-      label.classList.add("seen-check");
+      seenLabelEl.textContent = "✓ Đã xem";
+      seenLabelEl.classList.add("seen-check");
+      break;
     }
   }
 }
 
-// ========= TYPING (Task 9 - animated dots) =========
+// ========= TYPING =========
 function ensureTypingIndicator() {
   let indicator = document.getElementById("chatTypingIndicator");
   if (indicator) return indicator;
@@ -798,7 +857,6 @@ function ensureTypingIndicator() {
     </span>
   `;
 
-  // Inject CSS for dots animation if not already present
   if (!document.getElementById("typingDotsStyle")) {
     const style = document.createElement("style");
     style.id = "typingDotsStyle";
@@ -844,7 +902,6 @@ function handleTypingEvent(data) {
   if (nameEl) nameEl.textContent = `${data.sender || "Người dùng"} đang nhập`;
   if (dotsEl) dotsEl.classList.remove("hidden");
 
-  // Auto-hide after 3s if no stop event received
   if (typingIndicatorTimeout) clearTimeout(typingIndicatorTimeout);
   typingIndicatorTimeout = setTimeout(() => {
     if (nameEl) nameEl.textContent = "";
@@ -881,16 +938,30 @@ function bindEvents() {
       return;
     }
 
-    // No optimistic UI (production): only render when server broadcasts back
-    chatWs.send(JSON.stringify({ message: text, message_type: "text" }));
+    const payload = { message: text, message_type: "text" };
+    if (replyToId) payload.reply_to_id = replyToId;
+
+    chatWs.send(JSON.stringify(payload));
     setTyping(false);
+    clearReply();
     if (chatInput) chatInput.value = "";
+
     if (pendingConv && activeConvMeta && canSendWhilePending()) {
       fetchFirstMessage(activeConvId).then((m) => {
         firstMessageInConv = m;
         applyPendingUI(activeConvMeta);
       });
     }
+  });
+
+  cancelReplyBtn?.addEventListener("click", clearReply);
+
+  // Mobile back button
+  const backToChatList = $("backToChatList");
+  const chatPanel = $("chatPanel");
+  backToChatList?.addEventListener("click", () => {
+    if (chatPanel) chatPanel.classList.add("hidden");
+    if (chatPanel) chatPanel.classList.remove("flex");
   });
 
   chatInput?.addEventListener("input", () => {
@@ -924,8 +995,6 @@ function bindEvents() {
 
     try {
       const ids = await uploadChatFiles(activeConvId, files);
-
-      // No optimistic UI: only render when server broadcasts back
       sendChatWsMessage(chatWs, { text: "", attachmentIds: ids });
       showToast("Đã gửi tệp đính kèm");
     } catch (err) {
@@ -954,14 +1023,14 @@ function bindEvents() {
         const item = document.createElement("div");
         item.className =
           "flex items-center justify-between p-3 hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] rounded-lg dark:text-[#e4e6eb]";
-        
+
         const name = document.createElement("span");
         name.className = "flex-1";
         name.textContent = getConvTitle(c);
-        
+
         const actions = document.createElement("div");
         actions.className = "flex gap-2";
-        
+
         const unhideBtn = document.createElement("button");
         unhideBtn.type = "button";
         unhideBtn.className =
@@ -973,7 +1042,7 @@ function bindEvents() {
           showToast("Đã hiện lại đoạn chat");
           loadConversations();
         };
-        
+
         const openBtn = document.createElement("button");
         openBtn.type = "button";
         openBtn.className = "text-fb-primary text-sm font-semibold hover:underline";
@@ -982,7 +1051,7 @@ function bindEvents() {
           modal?.classList.add("hidden");
           openConversation(c);
         };
-        
+
         actions.appendChild(unhideBtn);
         actions.appendChild(openBtn);
         item.appendChild(name);
@@ -1007,6 +1076,9 @@ async function initChat() {
   chatForm = $("chatForm");
   chatInput = $("chatInput");
   pendingBanner = $("chatPendingBanner");
+  replyPreviewBar = $("replyPreviewBar");
+  replyPreviewText = $("replyPreviewText");
+  cancelReplyBtn = $("cancelReplyBtn");
 
   if (!convListEl) {
     console.error("[chat] #chatConvList not found — wrong page template?");
@@ -1028,15 +1100,15 @@ async function initChat() {
     console.error("[chat] init failed", e);
     showToast("Không tải được Messenger", "red");
     if (convListEl) {
-    const errBox = el("div", "text-sm text-red-500 p-4 text-center");
-    errBox.appendChild(textEl("p", "", "Lỗi tải dữ liệu."));
-    const retry = el("button", "underline text-fb-primary mt-2", {
-      type: "button",
-      text: "Thử lại",
-    });
-    retry.addEventListener("click", () => initChat());
-    errBox.appendChild(retry);
-    convListEl.appendChild(errBox);
+      const errBox = el("div", "text-sm text-red-500 p-4 text-center");
+      errBox.appendChild(textEl("p", "", "Lỗi tải dữ liệu."));
+      const retry = el("button", "underline text-fb-primary mt-2", {
+        type: "button",
+        text: "Thử lại",
+      });
+      retry.addEventListener("click", () => initChat());
+      errBox.appendChild(retry);
+      convListEl.appendChild(errBox);
     }
   }
 }

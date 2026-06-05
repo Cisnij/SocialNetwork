@@ -165,5 +165,55 @@ export async function markAllNotificationsRead() {
   return res.ok;
 }
 
+// ======= Mobile Menu =======
+const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+const closeMobileMenu = document.getElementById("closeMobileMenu");
+const mobileMenu = document.getElementById("mobileMenu");
+const mobileLogoutBtn = document.getElementById("mobileLogoutBtn");
+const logoutLink = document.getElementById("logoutLink");
+
+mobileMenuBtn?.addEventListener("click", () => {
+  mobileMenu?.classList.remove("hidden");
+});
+
+closeMobileMenu?.addEventListener("click", () => {
+  mobileMenu?.classList.add("hidden");
+});
+
+mobileMenu?.addEventListener("click", (e) => {
+  if (e.target === mobileMenu) {
+    mobileMenu?.classList.add("hidden");
+  }
+});
+
+mobileLogoutBtn?.addEventListener("click", () => {
+  if (logoutLink) logoutLink.click();
+});
+
+// ======= Mobile Create Post Button =======
+const openPostModal = document.getElementById("openPostModal");
+const openPostModalMobile = document.getElementById("openPostModalMobile");
+
+openPostModalMobile?.addEventListener("click", () => {
+  if (openPostModal) openPostModal.click();
+});
+
+// ======= Mobile Search =======
+const mobileSearchBtn = document.getElementById("mobileSearchBtn");
+mobileSearchBtn?.addEventListener("click", () => {
+  searchInput?.focus();
+  // On mobile, we could show a modal or expand search
+  // For now, just focus the search input if it's visible
+  if (searchInput && window.innerWidth >= 640) {
+    searchInput.focus();
+  } else {
+    // On mobile, show a simple prompt or redirect to search page
+    const query = prompt("Tìm kiếm:");
+    if (query) {
+      window.location.href = `/search/?q=${encodeURIComponent(query)}`;
+    }
+  }
+});
+
 refreshBadge();
 connectNotifWs();

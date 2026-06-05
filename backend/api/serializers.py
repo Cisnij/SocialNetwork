@@ -347,7 +347,8 @@ class MessageSerializer(serializers.ModelSerializer):
             "message_type",
             "attachments",
             "created_at",
-            "reply_to"
+            "reply_to",
+            "reply_to_id"
         ]
         read_only_fields = [ # định nghĩa các trường chỉ đọc
             "id",
@@ -363,7 +364,7 @@ class MessageSerializer(serializers.ModelSerializer):
             return None
         return {
             "id": obj.reply_to.id,
-            'content_reply': obj.reply_to.content,
+            'content': obj.reply_to.content,
             "sender_id": obj.reply_to.sender_id,
         }
 #==========================in-app noti ===============================

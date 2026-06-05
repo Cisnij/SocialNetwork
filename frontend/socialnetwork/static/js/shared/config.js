@@ -122,6 +122,7 @@ export const API = {
   notifications: () => `${API_BASE_URL}/api/notifications/`,
   notificationsMarkRead: () => `${API_BASE_URL}/api/notifications/mark-read/`,
   notificationsCount: () => `${API_BASE_URL}/api/notifications/count/`,
+  notificationDelete: (id) => `${API_BASE_URL}/api/notification/${id}/delete/`,
   fcmToken: () => `${API_BASE_URL}/api/fcm-token/`,
 
   conversations: () => `${API_BASE_URL}/api/chat/conversations/`,
