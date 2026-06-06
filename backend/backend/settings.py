@@ -77,7 +77,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware', # các header bảo mật
     'django_structlog.middlewares.RequestMiddleware', #structlog
     'whitenoise.middleware.WhiteNoiseMiddleware',  # whitenoise
-    "silk.middleware.SilkyMiddleware",#silk, nên tắt khi lên production
+    # "silk.middleware.SilkyMiddleware",#silk, nên tắt khi lên production
     'django.middleware.gzip.GZipMiddleware', # nén file truyền qua internet để nhẹ
     "csp.middleware.CSPMiddleware",#csp
     'corsheaders.middleware.CorsMiddleware',# corsheader
@@ -129,10 +129,10 @@ DATABASES = {
 
         # Connection pool dùng để tái sử dụng các connection mà k cần tạo mới mỗi request
         "POOL_OPTIONS": { #số pool có sẵn là 20, khi chưa dùng hết thì dùng lại, khi hết thì mở thêm và tối đa mở 30
-            "POOL_SIZE": 24,  # số connection pool
-            "MAX_OVERFLOW": 10,  # connection thêm khi pool đầy
-            "RECYCLE": 1800,  # recycle connection sau 5 phút
-            "TIMEOUT": 10,  # chờ tối đa 30s lấy connection từ pool
+            "POOL_SIZE": 300,  # số connection pool
+            "MAX_OVERFLOW": 250,  # connection thêm khi pool đầy
+            "RECYCLE": 3600,  # recycle connection sau 5 phút
+            "TIMEOUT": 60,  # chờ tối đa 30s lấy connection từ pool
             "POOL_PRE_PING": True, #check xem connection còn sống không
         },
 

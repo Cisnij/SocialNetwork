@@ -6,6 +6,10 @@ from api.firebase import push_to_user
 from django.utils import timezone
 from datetime import timedelta
 from api.models import Post
+import subprocess
+import os
+from datetime import datetime
+from django.conf import settings
 logger = logging.getLogger(__name__)
 
 # shared_task: dùng được ở mọi app mà không cần import trực tiếp celery app
@@ -50,3 +54,35 @@ def cleanup_expired_tokens():
 def cleanup_soft_deleted_post(): #đăng kí để trang admin biết mà chọn
     threshold = timezone.now() - timedelta(days=30) #mốc thời gian 30 ngày trước
     Post.deleted_objects.filter(deleted_lt = threshold).delete() # ngày xóa < ngày bắt đầu tính thì xóa (ví dụ 15/4 < 1/5 tức là đã trừ 30 ngày còn 1/5 mà vẫn bé hơn thì xóa)
+
+#backup db
+@shared_task
+def backup_database():
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S') # năm/tháng/ngày_ /h/phút/giây
+    backup_dir = 'backups/'
+    os.makedirs(backup_dir, exist_ok=True) #tạo dir
+    filename = f"{backup_dir}backup_{timestamp}.sql"
+
+    db = settings.DATABASES['default'] # lấy db default
+
+    # chạy mysqldump trong container Percona
+    command = [
+        'docker', 'exec', 'percona',  # tên container của bạn
+        'mysqldump',
+        f"-u{db['USER']}",
+        f"-p{db['PASSWORD']}",
+        db['NAME'],
+        '--single-transaction',  # backup không lock table
+        '--quick',
+        '--routines',
+    ]
+
+    with open(filename, 'w') as f:
+        subprocess.run(command, stdout=f, check=True)
+
+    # xóa backup cũ hơn 7 ngày
+    cutoff = datetime.now().timestamp() - 7 * 24 * 60 * 60
+    for file in os.listdir(backup_dir):
+        path = os.path.join(backup_dir, file)
+        if os.path.getmtime(path) < cutoff:
+            os.remove(path)

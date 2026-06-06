@@ -13,3 +13,12 @@ logic: khi kết bạn nhất chat sẽ tạo conversation, gọi api startconve
 
 
 
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.tokens import RefreshToken
+
+User = get_user_model()
+user = User.objects.get(email='trannghi16724@gmail.com')  # thay email thật vào
+token = RefreshToken.for_user(user)
+print(f"Access: {str(token.access_token)}")
+print(f"Refresh: {str(token)}")
+

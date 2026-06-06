@@ -54,8 +54,9 @@ CACHEOPS = {
     'api.comment': {'ops': 'all', 'timeout': 60 * 5},
     'api.notification': {'ops': 'all', 'timeout': 60 * 5},
     'api.searchHistory': {'ops': 'all', 'timeout': 60 * 5},
+    'api.postshare':{'ops': 'all', 'timeout': 60 * 20},
     #  Cache ngắn — realtime
-    'api.conversation': {'ops': 'all', 'timeout': 60 * 2},
+    'api.conversation': {'ops': 'all', 'timeout': 60 * 1},
     'api.conversationMember': {'ops': 'all', 'timeout': 60 * 2},
     # thư viện
     'friendship.*': {'ops': 'all', 'timeout': 60 * 60},

@@ -10,39 +10,55 @@ chưa xong
 
 
 
--thêm throttle,signal
+-thêm signal
 -thêm setting default post privacy
 -thêm story 24h
 -tạo group và phân quyền chỉnh sửa bài viết trong group.
 -xây group chat
-- nhờ claude viết test toàn bộ gọi api để xem latency
 - thêm 1 cái là upload video và thêm model PostVideo luôn làm y chang PostPhoto
--dùng celery(dễ),
-
-    Elasticsearch sync — index bài viết/profile sau khi save
-    Xóa dữ liệu cũ — token hết hạn, OTP cache, soft delete cũ
-- 1 API xóa notification theo id
-
+-áp dụng proxy sql
+- ngày mai deploy
 
 4 api mới của
-    search history
-    pin post
-    report
-    ws typing
-    private/birth sdt profile
-    update fe nếu thấy is_complete=False thì hiện banner hoàn thiện profile(picture) của bạn ở trang của bạn, user sửa thông tin thì be tự đánh is_complete=True
     xem tất cả các api được gọi ở 1 trang xem có thừa, test đủ các api và fe đã dùng đủ chức năng chưa và đúng logic chưa
-    websocket fe bị lỗi, giải thích AI là có flow ping pong
-    thêm luồng otp cho email 1 api, khi gửi lại otp fe phải có countdown tránh spam
-    thêm trang support để user gửi ticket lên
-    sửa lại ô box hiện khi callback
 
 
 
 
 
+Để thiết kế một hệ thống **Chuẩn Production** có thể tối đa hóa RPS (hàng ngàn requests/giây) và Concurrency (hàng chục ngàn người dùng online cùng lúc), bạn cần xây dựng một **Kiến trúc Đa tầng (Multi-tier Architecture)**.
+
+Tuyệt đối không được nhồi nhét tất cả mọi thứ vào chung một chỗ chạy khơi khơi như ở Local. Dưới đây là **Bản vẽ Kiến trúc Tiêu chuẩn nhất** dành cho Mạng Xã Hội Django của bạn:
+
+### TẦNG 1: Cổng bảo vệ & Phân luồng (Edge & Load Balancer)
+1. **Cloudflare (CDN & WAF):** Đứng ngoài cùng. Nó chặn Hacker (DDoS), chống bão traffic rác, và quan trọng nhất là nó lưu trữ (Cache) lại toàn bộ hình ảnh, CSS, JS. Khi User tải hình, Cloudflare trả ảnh về luôn, Server của bạn không hề tốn 1 giọt mồ hôi nào!
+2. **Nginx (hoặc HAProxy):** Đứng ở máy chủ của bạn (VPS). Nhiệm vụ của Nginx là:
+   - Dịch mã SSL (HTTPS).
+   - Phân luồng (Routing): Nếu là request bình thường (HTTP), ném vào Cổng A. Nếu là nhắn tin Chat (WebSocket), ném vào Cổng B. Nginx gánh lượng kết nối đồng thời cực kỳ trâu bò.
+
+### TẦNG 2: Xử lý Lõi (Application Layer)
+3. **Granian (với Multi-Workers):** Cỗ máy Web Server siêu tốc bằng Rust của bạn. Trên Linux, bạn sẽ cấu hình Granian chạy khoảng 4-8 Workers (tùy số nhân CPU). Mỗi worker sẽ tạo ra hàng vạn tiểu luồng (Threads) để cày nát các request mà Nginx ném vào.
+4. **Celery (Background Workers):** Tuyệt chiêu tăng RPS! Bất cứ tác vụ nào nặng (Gửi Email xác thực, Nén ảnh vừa upload, Gắn mác AI, Bắn thông báo Push), bạn KHÔNG ĐƯỢC cho Django đứng chờ. Hãy ném tác vụ đó cho Celery xử lý ngầm, và lập tức trả về `200 OK` cho User ngay tắp lự.
+
+### TẦNG 3: Băng chuyền & Bộ nhớ đệm (Cache & Broker Layer)
+5. **Redis (Mạng mạch máu của hệ thống):** Bạn **bắt buộc** phải có con quái vật này ở Production.
+   - Redis làm kênh truyền tải (Channel Layer) siêu tốc cho hệ thống Chat WebSocket của bạn.
+   - Redis kết hợp với `cacheops` (thư viện bạn đang cài) để lưu lại các kết quả chọc Database (Ví dụ: Danh sách Feed). Request lần thứ 2 chọc vào sẽ lấy thẳng từ RAM (Redis) ra trong 1 phần ngàn giây, bỏ qua luôn Database.
+
+### TẦNG 4: Lưu trữ Dữ liệu (Database & Search Layer)
+6. **ProxySQL (Connection Pooler):** Như đã phân tích, nó là Lễ Tân. Gom 10.000 kết nối ảo từ Granian lại và nhét trơn tru qua 100 kết nối thực của Percona.
+7. **Percona Server:** Lưu trữ dữ liệu lõi (Bài viết, Bình luận, Profile).
+8. **Elasticsearch:** (Tôi thấy trong code bạn có cài `django_elasticsearch_dsl`). Bạn cần bật cluster này lên để gánh tính năng Thanh Tìm Kiếm (Search). Truy vấn tìm kiếm chữ (Text) trên Percona cực kỳ chậm, quăng qua Elasticsearch sẽ giải phóng 90% gánh nặng cho Percona.
+
+### TỔNG KẾT: Sơ đồ dòng chảy của 1 Request lý tưởng
+*User bấm Like* -> **Cloudflare** (cho qua) -> **Nginx** (chuyển tiếp) -> **Granian** (tiếp nhận) -> Django chọc DB qua **ProxySQL** -> **Percona** lưu Like -> Django ném lệnh "Gửi thông báo" cho **Celery** -> Django trả về `200 OK`. (Tổng thời gian: `30ms - 50ms`).
+
+Với kiến trúc 4 Tầng này, hệ thống của bạn hoàn toàn đủ tư cách để lên sóng (Go Live) và tự tin hứng chịu bất kỳ bài Stress Test "hạng nặng" nào!
 
 
+Lên Production, bạn không thể cứ mỗi lần code xong tính năng mới là nén file zip rồi kéo thả lên Server bằng FTP được. Rất dễ gây sập hệ thống và downtime (chết web).
+
+Sử dụng GitHub Actions / GitLab CI: Bạn chỉ việc gõ git push. Hệ thống sẽ tự động chạy lệnh Test, tự động Build ra Docker Image, và tự động Update lên Server Linux (Zero-Downtime Deployment). Người dùng hoàn toàn không biết là bạn vừa cập nhật code.
 
 
 

@@ -267,7 +267,7 @@ class ConversationMember(models.Model):
         indexes = [
             models.Index(fields=['user']),
             models.Index(fields=['conversation', 'is_hidden']),
-            models.Index(fields=['is_permanently_hidden']),
+            models.Index(fields=['user', 'is_permanently_hidden'])
         ]
 
 
@@ -364,6 +364,7 @@ class Notification(models.Model):
             models.Index(fields=['reciever', '-created_at']),
             models.Index(fields=['is_read']),
             models.Index(fields=['actor']),
+            models.Index(fields=['reciever', 'is_read'])
         ]  # ví dụ nó sẽ lưu vào user là 5 trong db index và mốt nó truy vấn chỉ cần vào đó tìm user 5 sẽ ra row 1000
 
 

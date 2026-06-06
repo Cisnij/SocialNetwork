@@ -77,6 +77,7 @@ urlpatterns = [
     path('api/user/pending-profile/',PendingProfileList.as_view(), name='pending-profile-list'), #lấy ra tất cả pending profile
     #url liên qua post
     path('api/user/post-photo/<int:post_id>/',PostPhotoListCreate.as_view(),name='post-photo'), #thêm lấy ra ảnh của post cụ thể \
+    path('api/user/post-photo/',PostPhotoUser.as_view(),name='photo-user'), #lấy ra ảnh tất cả user
     path('api/user/delete-photo/<int:pk>/',PostPhotoDelete.as_view(),name='post-photo-delete'), #xóa ảnh cụ thể phục vụ chức năng chỉnh sửa post 
     path('api/user/post/<int:pk>/',PostModify.as_view(), name='post-modify'), #sửa xóa post cụ thể
     path('api/user/post/show/', PostFriend.as_view(), name='post-friend'), #Láy ra post của bạn bè

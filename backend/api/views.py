@@ -28,7 +28,7 @@ from .filters import UserReactionFilter
 from rest_framework.response import Response
 #friendship xay dựng hệ thống follow bạn bè
 from friendship.models import Friend
-# broadcast channels 
+# broadcast channels
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 # elastic
@@ -50,7 +50,7 @@ def get_online_set(queryset):  # custome để gọi get user online 1 lần tha
     return {uid for uid in ids if f"online_user:{uid}" in hits}  # nếu các user online đang lưu trong redís nằm trong queryset thì trả ra các user đó
 
 #===========================================================================================================================================================================================
-class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa profile 
+class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa profile
     permission_classes=[IsAuthenticated]
     serializer_class=ProfileSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -58,7 +58,7 @@ class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa prof
     throttle_scope='profile'
     #def perform_update(self, serializer): # dùng để resize và cắt ảnh avatar
     #     picture = self.request.FILES.get('picture')
-        
+
     #     if picture:
     #         # lấy thông số crop/resize từ request
     #         crop_x = self.request.data.get('crop_x')
@@ -124,18 +124,18 @@ class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa prof
         else:
             instance= serializer.save(user=self.request.user)
         # check nếu đã có photo lần đầu thì update is_complete mãi mãi, còn chưa thì vẫn là false
-        if not instance.is_completed and instance.picture: # nếu không is_completed và có picture truyền vào 
+        if not instance.is_completed and instance.picture: # nếu không is_completed và có picture truyền vào
             Profile.objects.filter(pk=instance.pk).update(is_completed=True)
 
-    def get_object(self): #nên dùng get object thay vì get querry vì ở đây cần lấy chỉ 1 đối tượng, get querryset thường dùng trả nhiều đối tượng 
-        user = self.request.user 
+    def get_object(self): #nên dùng get object thay vì get querry vì ở đây cần lấy chỉ 1 đối tượng, get querryset thường dùng trả nhiều đối tượng
+        user = self.request.user
         profile_id= self.kwargs.get('pk') #cách lấy ra từ urlS dược định nghĩa trong url
 
         if user.is_superuser or user.is_staff:
             if not profile_id:
                 raise NotFound("Admin cần truyền ID profile để truy cập.")
             return get_object_or_404(Profile.objects.select_related('user','user__profile'), id=profile_id)
-            
+
         return get_object_or_404(Profile.objects.select_related('user'), user=user)
 
 class PrivateProfileModify(generics.RetrieveUpdateAPIView):
@@ -151,9 +151,9 @@ class ProfileList(generics.ListAPIView):#List tất cả profile
     permission_classes=[IsAuthenticated]
     serializer_class=ProfileSerializer
     filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
-    filterset_fields=['first_name','last_name','phone_number','date_of_birth'] # các trường để tìm kiếm theo trường đó 
+    filterset_fields=['first_name','last_name','phone_number','date_of_birth'] # các trường để tìm kiếm theo trường đó
     search_fields=['first_name','last_name','phone_number'] #tìm kiếm
-    ordering_fields=['id','created_at'] #sắp xếp theo thứ tự tăng giảm dần 
+    ordering_fields=['id','created_at'] #sắp xếp theo thứ tự tăng giảm dần
     pagination_class = LargePagePagination
 
     def get_queryset(self):
@@ -170,7 +170,7 @@ class ProfileList(generics.ListAPIView):#List tất cả profile
             objs=self.get_queryset() # gọi query set lại
         context['online_set'] = get_online_set(objs) # truyền tất cả profile vào và lấy ra tất cả status onl
         return context
-    
+
 class ProfileUser(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ProfileSerializer
@@ -223,7 +223,7 @@ class PostPhotoListCreate(generics.ListCreateAPIView):
     def perform_create(self, serializer): #trước khi lưu ảnh vào postphoto thì gán post id vào cùng
         post_id = self.kwargs.get("post_id")
         serializer.save(post_id=post_id) # gán id vào
-    
+
     def post(self, request, *args, **kwargs): #gọi hàm post để thêm nhiều ảnh vào 1 post
         post_id=self.kwargs.get('post_id')
         post=get_object_or_404(Post.objects.select_related("user"),pk=post_id) #pk ở đây là bí danh alias cho primary key ở tất cả bảng, vì v khi gọi pk thì dùng pk luôn k cần tên
@@ -239,6 +239,15 @@ class PostPhotoListCreate(generics.ListCreateAPIView):
         except Exception:
             return Response({'error': 'upload failed'},status=500)
 
+class PostPhotoUser(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostPhotoSerializer
+    pagination_class = LargePagePagination
+
+    def get_queryset(self):
+        return PostPhoto.objects.filter(
+            post__user=self.request.user
+        )
 
 class PostPhotoDelete(generics.DestroyAPIView):  # xóa ảnh (chức năng của sửa post)
     permission_classes = [IsAuthenticated]
@@ -451,7 +460,7 @@ class PostShareView(MetadataMixin, DetailView): #  có preview card cho các thi
         content = self.object.title or ''
         return content[:100]
     def get_meta_image(self, context=None): # hiện ảnh preview
-        first_photo = self.object.photos.first() 
+        first_photo = self.object.photos.first()
         if first_photo:
             return self.request.build_absolute_uri(first_photo.image.url)
         return None
@@ -943,7 +952,7 @@ class SendFriendRequestView(generics.CreateAPIView):  # tạo lời mời kết 
     def create(self, request, *args, **kwargs):
         to_user_id = self.kwargs.get("pk")  # Lấy từ URL
 
-        # Lấy user từ Profile 
+        # Lấy user từ Profile
         profile = get_object_or_404(Profile.objects.select_related("user"), id=to_user_id)
         to_user = profile.user
 
@@ -1084,7 +1093,7 @@ class UnfriendView(generics.DestroyAPIView):  # hủy kết bạn
         with transaction.atomic():
             Friend.objects.remove_friend(request.user, friend_user)
             unfriended_log.send(  # hook thẳng signal vào view
-                sender=self.__class__,  # gửi class hiện tại làm sender 
+                sender=self.__class__,  # gửi class hiện tại làm sender
                 user=request.user,
                 target=friend_user,
                 verb="unfriended", )
@@ -1764,7 +1773,7 @@ class NotificationListView(generics.ListAPIView):
         return Notification.objects.filter(
             reciever=self.request.user
         ).select_related('actor__profile').order_by("-created_at")
-    
+
     # def list(self,request,*args,**kwargs): # chạy sau khi list ra, có tác dụng thêm logic trước/sau khi trả response, bên trong nó tự gọi get_queryset
     #     response = super().list(request, *args, **kwargs) #kế thừa gọi get queryset, filter,pagination...
     #     return response
@@ -1777,7 +1786,7 @@ class NotificationMarkReadView(APIView):
             is_read=False
         ).update(is_read=True)
         invalidate_model(Notification) # dùng cái này vì update k kích hoạt xóa cacheops khi thay đổi dữ liệu như th khác nên thủ công xóa cache(bulk_create,bulk_update,update,filter().delete() sẽ k chạy phát hiẹn thay đổi nên phải thủ công)
-        
+
         try: # khi gọi api mark read tức là đang ở trang notification sẽ đánh read count = 0, k kết nối ws sẽ pass
             channel_layer=get_channel_layer()
             async_to_sync(channel_layer.group_send)(
@@ -1789,7 +1798,7 @@ class NotificationMarkReadView(APIView):
             )
         except Exception:
             pass
-        
+
         return Response({'detail': f'{updated} marked as read'})
 
 
