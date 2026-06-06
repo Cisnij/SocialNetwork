@@ -14,7 +14,7 @@ def get_reactions_post_context(queryset, user):
     reactions = (
         Reaction.objects.filter(content_type=ct, object_id__in=post_ids) # trong từng post thì lấy ra total
         .select_related('settings')
-        .values('object_id', 'settings__name') # lấy ra 2 fields này dạng dict
+        .values('object_id', 'settings__name') # lấy ra 2 fields này dạng dict, groupby theo post và loại cảm xúc
         .annotate(total=Count('reactions')) #group by theo 2 field trên và đếm , annotate tính toán ở db nên nhanh hơn, trả ra field total (tính băng related name của user reaction là reactions)
     ) # trả dữ liệu kiểu like:1 love:2 ...của từng post
 
@@ -75,6 +75,56 @@ def get_reactions_comment_context(queryset,user):
     user_reactions_map={
         r['reaction__object_id']: r['reaction__settings__name'] for r in user_reaction
     }
+    return {
+        'reactions_map': dict(reactions_map),
+        'user_reactions_map': user_reactions_map,
+    }
+
+
+def get_reactions_share_context(share_objs, user):
+    """
+    Trích xuất danh sách các đối tượng Post gốc và lấy ra reaction tránh N+1 trong serializer
+    """
+    # lấy ra post gốc từ post share nếu có
+    post_ids = [item.post_id for item in share_objs if hasattr(item, 'post') and item.post]
+
+    # Nếu danh sách rỗng, trả về luôn để tránh lỗi query
+    if not post_ids:
+        return {'reactions_map': {}, 'user_reactions_map': {}}
+
+    # 2. Lấy ContentType
+    ct = ContentType.objects.get_for_model(Post)
+
+    # 3. Lấy tất cả reactions (Sử dụng trực tiếp list post_ids)
+    reactions = (
+        Reaction.objects.filter(content_type=ct, object_id__in=post_ids)
+        .select_related('settings')
+        .values('object_id', 'settings__name')
+        .annotate(total=Count('reactions'))
+    )
+
+    reactions_map = defaultdict(list)
+    for r in reactions:
+        reactions_map[r['object_id']].append({
+            'settings__name': r['settings__name'],
+            'total': r['total']
+        })
+
+    # 4. Lấy reaction của user hiện tại
+    user_reactions = (
+        UserReaction.objects.filter(
+            user=user,
+            reaction__content_type=ct,
+            reaction__object_id__in=post_ids
+        )
+        .select_related('reaction__settings')
+        .values('reaction__object_id', 'reaction__settings__name')
+    )
+    user_reactions_map = {
+        r['reaction__object_id']: r['reaction__settings__name']
+        for r in user_reactions
+    }
+
     return {
         'reactions_map': dict(reactions_map),
         'user_reactions_map': user_reactions_map,

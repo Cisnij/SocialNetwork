@@ -41,45 +41,37 @@ REST_FRAMEWORK={ #Cấu hình token
     ],
 
     'DEFAULT_THROTTLE_RATES': {
-        'register': '2000/hour',
-        'cookie_refresh': '3000/minute',
-        'reset_password': '1000/hour',
-        'google_login': '10000/minute',
-        'dj_rest_auth': '5000/minute',
-
-        'profile': '2000/hour',
-        'post': '2000/minute',
-        'post_article': '20000/minute',
-        'comment': '10000/minute',
-        'setting': '5000/minute',
-
-        'create_post': '5000/hour',
-        'pin_post': '10000/hour',
-        'change_post_privacy': '10000/hour',
-        'post_user_share_delete': '20000/hour',
-        'change_post_share_privacy': '10000/hour',
-
-        'pin_comment': '10000/hour',
-
-        'send_friend_request': '5000/hour',
-        'accept_friend_request': '10000/hour',
-        'reject_friend_request': '10000/hour',
-        'cancel_friend_request': '10000/hour',
-        'unfriend': '10000/hour',
-
-        'follow': '20000/hour',
-        'unfollow': '20000/hour',
-        'block': '10000/hour',
-
-        'start_conv': '5000/hour',
-        'accept_msg_request': '10000/hour',
-        'reject_msg_request': '10000/hour',
-        'delete_conv': '10000/hour',
-        'hide_chat': '20000/hour',
-
-        'delete_notification': '50000/hour',
-        'suport_ticket_create': '2000/day',
-
+        'register':'20/hour', # giới hạn đăng kí là 5 lần/giờ
+        'cookie_refresh': '30/minute', # giới hạn làm mới cookie là 30 lần/phút
+        'reset_password': '3/hour',  # giới hạn yêu cầu đặt lại mật khẩu là 3 lần/giờ
+        'google_login': '100/minute', # giới hạn đăng nhập bằng google là 10 lần/phút
+        'dj_rest_auth': '20/minute',
+        'profile':'20/hour',
+        'post':'100/minute',
+        'post_article':'100/minute',
+        'comment':'30/minute',
+        'setting':'20/minute',
+        'create_post':'30/hour',
+        'pin_post': '60/hour',
+        'change_post_privacy': '60/hour',
+        'post_user_share_delete': '120/hour',
+        'change_post_share_privacy': '60/hour',
+        'pin_comment': '60/hour',
+        'send_friend_request': '30/hour',
+        'accept_friend_request': '120/hour',
+        'reject_friend_request': '120/hour',
+        'cancel_friend_request': '120/hour',
+        'unfriend': '100/hour',
+        'follow': '120/hour',
+        'unfollow': '120/hour',
+        'block': '60/hour',
+        'start_conv': '30/hour',
+        'accept_msg_request': '120/hour',
+        'reject_msg_request': '120/hour',
+        'delete_conv': '60/hour',
+        'hide_chat': '200/hour',
+        'delete_notification': '500/hour',
+        'suport_ticket_create': '5/day',
     },
 
     "DEFAULT_PARSER_CLASSES": [ #dùng cho phép nhận nhiều định dạng dữ liệu khác nhau 

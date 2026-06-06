@@ -20,7 +20,7 @@ from django.db.models import Q, Prefetch, prefetch_related_objects, F
 from .permissions import IsConversationMember, PostViewPermission
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
-from .utils import get_reactions_post_context,get_reactions_comment_context
+from .utils import get_reactions_post_context,get_reactions_comment_context,get_reactions_share_context
 #filter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter,OrderingFilter
@@ -316,7 +316,7 @@ class PostModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa post
 
     def get_object(self):
         post_id = self.kwargs.get('pk')
-        post = get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'),post_id=post_id)
+        post = get_object_or_404(Post.objects.select_related('user','user__profile').prefetch_related('photos'),post_id=post_id)
         self.check_object_permissions(self.request, post)  #  rules chạy ở đây, nó sẽ check post public hay friends và có đc xem,edit
         return post
 
@@ -340,13 +340,13 @@ class PostUser(generics.ListAPIView):  # List tất cả post của user
                 raise PermissionDenied("Cannot see posts of this user")
             #là chính mình thì lấy tất cả
             if user==target_user:
-                self._qs= Post.objects.filter(user=target_user).select_related('user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
+                self._qs= Post.objects.filter(user=target_user).select_related('user','user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
             # là bạn thì lấy post public và friend
             elif Friend.objects.are_friends(user,target_user):
-                self._qs= Post.objects.filter(user=target_user,privacy__in=['public','friends']).select_related('user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
+                self._qs= Post.objects.filter(user=target_user,privacy__in=['public','friends']).select_related('user','user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
             # là người lạ thì chỉ lấy public
             else:
-                self._qs = Post.objects.filter(user=target_user,privacy='public').select_related('user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
+                self._qs = Post.objects.filter(user=target_user,privacy='public').select_related('user','user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
         return self._qs
 
     def get_serializer_context(self):
@@ -381,7 +381,7 @@ class PostListAll(generics.ListAPIView):
 
     def get_queryset(self):
         if not hasattr(self, '_qs'):
-            self._qs = Post.objects.all().select_related('user__profile').prefetch_related('photos').order_by(
+            self._qs = Post.objects.all().select_related('user','user__profile').prefetch_related('photos').order_by(
                 '-created_at')
         return self._qs
 
@@ -400,7 +400,7 @@ class PinPostView(generics.UpdateAPIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'pin_post'
     def get_object(self):
-        post = get_object_or_404(Post, pk=self.kwargs.get('pin_id'))
+        post = get_object_or_404(Post.objects.select_for_update(), pk=self.kwargs.get('pin_id'))
         if post.user != self.request.user:
             raise PermissionDenied('You are not the post owner')
         return post
@@ -427,7 +427,7 @@ class PostShareView(MetadataMixin, DetailView): #  có preview card cho các thi
 
     def get_object(self):
         share_code=self.kwargs.get('share_code')
-        post = get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'), share_code=share_code)
+        post = get_object_or_404(Post.objects.select_related('user','user__profile').prefetch_related('photos'), share_code=share_code)
          #check thủ công xem post đc share thì user có đc xem
         if not PostViewPermission().has_object_permission(self.request,self,post):
             raise PermissionDenied() # 403 fe sẽ tự load không thể xem, 404 là lỗi thật
@@ -475,7 +475,7 @@ class PostShareDetailView(generics.RetrieveAPIView): # khi fe redirect thì load
 
     def get_object(self):
         share_code=self.kwargs.get('share_code')
-        post = get_object_or_404(Post.objects.select_related('user__profile').prefetch_related('photos'), share_code=share_code)
+        post = get_object_or_404(Post.objects.select_related('user','user__profile').prefetch_related('photos'), share_code=share_code)
         self.check_object_permissions(self.request, post) #check xem post đc share thì user có đc xem
         return post
 
@@ -524,7 +524,7 @@ class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 b
                 Q(privacy='public')                                 # người lạ chỉ thấy public
             )
             .exclude(Q(user_id__in=blocked_ids) | Q(user_id__in=blocking_ids))
-            .select_related('user__profile', 'post__user__profile')
+            .select_related('user','user__profile','post','post__user', 'post__user__profile')
             .prefetch_related('post__photos')
             .order_by('-created_at')
         )
@@ -534,13 +534,23 @@ class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 b
         privacy = self.request.data.get('privacy', 'public') #key nhận là privacy và default là public
         if privacy not in ['public', 'friends', 'private']:
             return Response({'error': 'privacy không hợp lệ'}, status=400)
-        post=get_object_or_404(Post.objects.select_related('user__profile'),post_id=post_id)
+        post=get_object_or_404(Post.objects.select_related('user','user__profile'),post_id=post_id)
         self.check_object_permissions(self.request, post)
         PostShare.objects.create(post=post,user=self.request.user,content=content,privacy=privacy)
         post.share_count += 1
         post.save(update_fields=['share_count'])  # update_fields để patch update 1 phần thay vì toàn bộ
         return Response({'message': 'Share thành công'}, status=status.HTTP_201_CREATED)
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # Lấy danh sách PostShare đã được phân trang ("nấu chín")
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs = self.get_queryset()
+
+        # Nạp map reaction của các bài viết gốc vào context chung
+        context.update(get_reactions_share_context(objs, self.request.user))
+        return context
 
 class PostUserShareDelete(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
@@ -587,11 +597,21 @@ class PostUserShare(generics.ListAPIView): #tất cả share của 1 user
             )
             .exclude(Q(post__user_id__in=blocked_ids) | Q(post__user_id__in=blocking_ids)) #check block post gốc, xóa nếu nó share bài của ng mình block
             .filter(user=target_user, **privacy_filter)
-            .select_related('user__profile', 'post__user__profile')
+            .select_related('user','user__profile','post__user','post', 'post__user__profile')
             .prefetch_related('post__photos')
             .order_by('-created_at')
         )
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # Lấy danh sách PostShare đã được phân trang ("nấu chín")
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs = self.get_queryset()
+
+        # Nạp map reaction của các bài viết gốc vào context chung
+        context.update(get_reactions_share_context(objs, self.request.user))
+        return context
 class PostFriendShare(generics.ListAPIView): # tất cả share của bạn bè
     permission_classes = [IsAuthenticated]
     serializer_class = PostShareSerializer
@@ -625,10 +645,20 @@ class PostFriendShare(generics.ListAPIView): # tất cả share của bạn bè
             Q(user_id__in=blocked_ids) | #check block người share
             Q(user_id__in=blocking_ids)
         )
-        .select_related('user__profile', 'post__user__profile')
+        .select_related('user','user__profile','post__user','post', 'post__user__profile')
         .prefetch_related('post__photos')
         .order_by('-created_at'))
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # Lấy danh sách PostShare đã được phân trang ("nấu chín")
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs = self.get_queryset()
+
+        # Nạp map reaction của các bài viết gốc vào context chung
+        context.update(get_reactions_share_context(objs, self.request.user))
+        return context
 class ChangePostSharePrivacy(APIView):
     permission_classes = [IsAuthenticated,PostViewPermission]
     throttle_classes=[ScopedRateThrottle]
@@ -669,9 +699,9 @@ class PostArticleListCreate(generics.ListCreateAPIView):  # List tất cả post
     def get_queryset(self):
         user = self.request.user
         if user.is_superuser or user.is_staff:
-            return PostArticle.objects.all().select_related('user__profile')
+            return PostArticle.objects.all().select_related('user','user__profile')
         else:
-            return PostArticle.objects.filter(user=user).select_related('user__profile')
+            return PostArticle.objects.filter(user=user).select_related('user','user__profile')
 
     def perform_create(self, serializer):  # gán user khi tạo post article
         serializer.save(user=self.request.user)
@@ -713,7 +743,7 @@ class CommentListCreate(generics.ListCreateAPIView):  # thêm list comment
             # if user.is_superuser or user.is_staff:
             #     return Comment.objects.all()
             #lọc ra và count các replies con bên trong cmt cha parent is null=True
-            self._qs = Comment.objects.filter(post_id=post_id, parent__isnull=True).exclude(Q(user_id__in=blocked_ids)| Q(user_id__in=blocking_ids)).select_related('user__profile','post').prefetch_related('tagged_users__profile').annotate(reply_count=Count('replies')).order_by('-is_pinned','-created_at')#count related fields của parent là replies
+            self._qs = Comment.objects.filter(post_id=post_id, parent__isnull=True).exclude(Q(user_id__in=blocked_ids)| Q(user_id__in=blocking_ids)).select_related('user','user__profile','post').prefetch_related('tagged_users__profile').annotate(reply_count=Count('replies')).order_by('-is_pinned','-created_at')#count related fields của parent là replies
             # ví dụ lấy ra comment c, join với comment r ON r.parent_id=c.id và count cái r.id
         return self._qs
 
@@ -797,7 +827,7 @@ class NestedCommentList(generics.ListAPIView):
                 parent=comment,
             ).exclude(
                 Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)
-            ).select_related('user__profile').prefetch_related('tagged_users')
+            ).select_related('user','user__profile').prefetch_related('tagged_users')
         return self._qs
 
     def get_serializer_context(self):
@@ -879,7 +909,7 @@ class UserReactionPostList(generics.ListAPIView):  # Danh sách reaction của u
         user = self.request.user
         blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
         blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True) #lazy tức là chưa query ngay mà db xử lý trực tiếp
-        return UserReaction.objects.filter(reaction__object_id=post_id,reaction__content_type=post_ct).exclude(Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)).select_related('user__profile','reaction__settings', 'react')
+        return UserReaction.objects.filter(reaction__object_id=post_id,reaction__content_type=post_ct).exclude(Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)).select_related('user','user__profile','reaction__settings', 'react')
 
 class UserReactionCommentList(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -895,7 +925,7 @@ class UserReactionCommentList(generics.ListAPIView):
         user = self.request.user
         blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
         blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
-        return UserReaction.objects.filter(reaction__object_id=comment_id,reaction__content_type=comment_ct).exclude(Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)).select_related('user__profile','reaction__settings', 'react')
+        return UserReaction.objects.filter(reaction__object_id=comment_id,reaction__content_type=comment_ct).exclude(Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)).select_related('user','user__profile','reaction__settings', 'react')
 
 
 #===============ACTIVITY==========================
@@ -995,7 +1025,9 @@ class IncomingFriendRequestsView(generics.ListAPIView):  # danh sách lời mờ
     serializer_class = FriendShipRequestSerializer
     pagination_class = LargePagePagination
     def get_queryset(self):
-        return Friend.objects.requests(user=self.request.user)
+        return FriendshipRequest.objects.filter(
+            to_user=self.request.user
+        ).select_related('from_user__profile')
 
 
 class OutgoingFriendRequestsView(generics.ListAPIView):  # danh sách yêu cầu đã gửi kết bạn
@@ -1003,7 +1035,9 @@ class OutgoingFriendRequestsView(generics.ListAPIView):  # danh sách yêu cầu
     serializer_class = FriendShipRequestSerializer
     pagination_class = LargePagePagination
     def get_queryset(self):
-        return Friend.objects.sent_requests(user=self.request.user)
+        return FriendshipRequest.objects.filter(
+            from_user=self.request.user
+        ).select_related('to_user__profile')
 
 
 class AcceptFriendRequestView(generics.UpdateAPIView):  # đồng ý lời mời kết bạn
@@ -1462,7 +1496,7 @@ class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ 
             Prefetch( #lấy ra đoạn chat có user và prefetch lấy ra các user trong đó đoạn chat đó luôn (select convmember in conv)
                 'conversationmember_set',  # conversationmember có FK với conversation nên phải lấy tham chiếu là set
                 queryset=ConversationMember.objects.select_related(  # tùy chỉnh thêm field muốn lấy
-                    'user__profile',  # JOIN user và profile (1-1)
+                    'user','user__profile',  # JOIN user và profile (1-1)
                 )
             ),
             # load messages mới nhất trong 1 query IN riêng
@@ -1501,7 +1535,7 @@ class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò c
         qs=(
             Message.objects
             .filter(conversation_id=convo_id)  # lọc theo cuộc trò chuyên
-            .select_related("sender__profile")  # lấy ra profile của sender để hiển thị thông tin người gửi đồng thời với message(1-1 với sender)
+            .select_related("sender__profile","reply_to")  # lấy ra profile của sender để hiển thị thông tin người gửi đồng thời với message(1-1 với sender)
             .prefetch_related("attachments")  # lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments n-n)
             .order_by("-created_at")
         )
@@ -1646,7 +1680,7 @@ class ListHideConversation(generics.ListAPIView):
                 # lấy ra đoạn chat có user và prefetch lấy ra các user trong đó đoạn chat đó luôn (select convmember in conv)
                 'conversationmember_set',  # conversationmember có FK với conversation nên phải lấy tham chiếu là set
                 queryset=ConversationMember.objects.select_related(  # tùy chỉnh thêm field muốn lấy
-                    'user__profile',  # JOIN user và profile (1-1)
+                    'user','user__profile',  # JOIN user và profile (1-1)
                 )
             ),
             # load messages mới nhất trong 1 query IN riêng
@@ -1937,7 +1971,7 @@ class SearchAPIView(APIView):
                     Q(privacy='friends', user=user) | # privacy friend và bài mình
                     Q(privacy='private', user=user) # bài mình nếu private
                 )
-                .select_related('user__profile').prefetch_related('photos'))
+                .select_related('user','user__profile').prefetch_related('photos'))
                 # sắp xếp lại theo thứ tự relevance của ES vì Django filter không giữ thứ tự
                 posts_dict = {str(p.post_id): p for p in posts_qs}
                 posts = [posts_dict[pid] for pid in post_ids if pid in posts_dict]
