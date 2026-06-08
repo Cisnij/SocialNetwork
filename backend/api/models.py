@@ -290,7 +290,8 @@ class Message(SafeDeleteModel):
     class Meta:
         indexes = [models.Index(fields=['conversation', '-created_at']),
                    models.Index(fields=['sender']),
-                   ]
+                   models.Index(fields=['reply_to']),
+        ]
 
 
 class MessageAttachment(models.Model):
@@ -364,7 +365,7 @@ class Notification(models.Model):
             models.Index(fields=['reciever', '-created_at']),
             models.Index(fields=['is_read']),
             models.Index(fields=['actor']),
-            models.Index(fields=['reciever', 'is_read'])
+            models.Index(fields=['reciever', 'is_read','-created_at'])
         ]  # ví dụ nó sẽ lưu vào user là 5 trong db index và mốt nó truy vấn chỉ cần vào đó tìm user 5 sẽ ra row 1000
 
 

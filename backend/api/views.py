@@ -1806,7 +1806,7 @@ class NotificationListView(generics.ListAPIView):
     def get_queryset(self):
         return Notification.objects.filter(
             reciever=self.request.user
-        ).select_related('actor__profile').order_by("-created_at")
+        ).select_related('actor__profile','actor').order_by("-created_at")
 
     # def list(self,request,*args,**kwargs): # chạy sau khi list ra, có tác dụng thêm logic trước/sau khi trả response, bên trong nó tự gọi get_queryset
     #     response = super().list(request, *args, **kwargs) #kế thừa gọi get queryset, filter,pagination...

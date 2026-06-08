@@ -212,25 +212,11 @@ class ActionSerializer(serializers.ModelSerializer):
 class FriendShipRequestSerializer(serializers.ModelSerializer):
     sender = ProfileSerializer(source='from_user.profile', read_only=True)
     receiver = ProfileSerializer(source='to_user.profile', read_only=True)
-    status = serializers.SerializerMethodField()
 
     class Meta:
         model = FriendshipRequest
-        fields = ['id', 'sender', 'receiver', 'created', 'status']
+        fields = ['id', 'sender', 'receiver', 'created']
 
-    def get_status(self, obj): #object tức là lấy cái bản ghi FriendRequest trong db
-        user = self.context['request'].user
-
-        if obj.rejected: #nếu có bản ghi rejected tức là đã bị từ chối return 'rejected'
-            return 'rejected'
-        elif Friend.objects.are_friends(obj.from_user, obj.to_user): #nếu đã là bạn bè thì return accept
-            return 'accepted'
-        elif obj.from_user == user: #nếu ng gửi là user thì return đang chờ gửi
-            return 'pending_sent'
-        elif obj.to_user == user: #nếu ng nhận là user thì return đang chờ nhận
-            return 'pending_received'
-        else:
-            return 'pending'
 
 class FriendSerializer(serializers.ModelSerializer): #danh sách bạn bè, vì friendship sẽ tạo bản ghi 2 chiều
     user = ProfileSerializer(source='to_user.profile', read_only=True)#profile và user 1-1 nên sẽ truy vấn được và lấy ra các field theo profile
