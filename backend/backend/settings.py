@@ -120,7 +120,7 @@ DATABASES = {
         "NAME": env("DB_NAME"),
         "USER": env("DB_USER"),
         "PASSWORD": env('DB_PASSWORD'),
-        "HOST": env('DB_HOST'),
+        "HOST": env('DB_HOST', default='localhost'),
         "PORT": env('DB_PORT', default='3306'),
 
         # Performance, pool options lo nên tắt hết
@@ -129,8 +129,8 @@ DATABASES = {
 
         # Connection pool dùng để tái sử dụng các connection mà k cần tạo mới mỗi request
         "POOL_OPTIONS": { #số pool có sẵn là 20, khi chưa dùng hết thì dùng lại, khi hết thì mở thêm và tối đa mở 30
-            "POOL_SIZE": 300,  # số connection pool
-            "MAX_OVERFLOW": 250,  # connection thêm khi pool đầy
+            "POOL_SIZE": 20,  # số connection pool
+            "MAX_OVERFLOW": 10,  # connection thêm khi pool đầy
             "RECYCLE": 3600,  # recycle connection sau 5 phút
             "TIMEOUT": 60,  # chờ tối đa 30s lấy connection từ pool
             "POOL_PRE_PING": True, #check xem connection còn sống không

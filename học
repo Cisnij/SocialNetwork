@@ -608,7 +608,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         Storage & Media:{
             #pip install django-storages || cloudinary  # lưu file lên S3, Google Cloud, Azure thay vì server
             # pip install Pillow            # xử lý ảnh, bắt buộc nếu dùng ImageField
-            # pip install python-magic-bin     # validate đúng loại file upload (tránh upload file độc)
+            # pip install python-magic trên win || magic-bin trên linux     # validate đúng loại file upload (tránh upload file độc)
     }
 
     {
@@ -824,3 +824,12 @@ Authfetch sẽ truyền vào đó 1 là url, 2 là method là post put hay delet
     Khi truyền url vào chạy sẽ check accessToken xem có trong local không, nếu không thì tạo mới RefreshAccessToken
                                                                           , nếu có thì fetch kèm theo accessToken đó,  không lỗi thì chưa hết hạn và trả data, nếu lỗi thì là hết hạn và chạy RefreshAccessToken tạo mới và chạy lại fetch lần nữa không đc thì login lại luôn
                                                                           Nếu mà RefreshAccess token k được chứng tỏ là không Refresh hết hạn thì login lại
+===================================================================================================================================
+Docker-compose: để xây các container service như redis,celery,elastic hay percona
+Dockerfile dùng để build 1 app , chạy các thư viện requirements , cài Python và đóng gói lại chạy đâu cũng đc
+nginx:
+    dùng để che dấu cấu trúc nội bộ private server. Ví dụ có backend chạy trên server api.socialnetwork.com/redis/elastic thì khi user truy cập sẽ chuyển hướng về lại fe
+    đọc file static và trả về ngay
+    load balancing điều phối tải vào các server sau khi tất cả worker đầy
+    mã hóa https
+    rate limit và chặn tại cổng và cache trả về respone tiết kiệm tài nguyên

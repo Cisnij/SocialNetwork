@@ -67,12 +67,13 @@ def backup_database():
 
     # chạy mysqldump trong container Percona
     command = [
-        'docker', 'exec', 'percona',  # tên container của bạn
         'mysqldump',
         f"-u{db['USER']}",
         f"-p{db['PASSWORD']}",
+        f"-h{db['HOST']}",
+        f"-P{db['PORT']}",
         db['NAME'],
-        '--single-transaction',  # backup không lock table
+        '--single-transaction',
         '--quick',
         '--routines',
     ]

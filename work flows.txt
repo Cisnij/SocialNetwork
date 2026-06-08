@@ -82,4 +82,5 @@ work flows
 55. Khi vào profile mà is_completed =False thì hiện box báo là hãy cập nhật ảnh. Khi user update mà có ảnh thì đổi is_complete=True
 56. Mã hóa tin nhắn trong database dùng from encrypted_fields.fields import EncryptedTextField
 57. Thêm api xóa notification
+58 deploy và đẩy project thành container trong docker
 =====================================================================================

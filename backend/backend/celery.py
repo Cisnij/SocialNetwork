@@ -22,6 +22,7 @@ app.autodiscover_tasks()
 
 
 # # beat scheduler chạy task định kỳ
+#celery beat để lên lich và celery workers để triển khai lịch khi nhận tín hiệu từ beat
 # celery -A backend beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 
 # Clocked — lên lịch chạy đúng 1 lần vào thời điểm cụ thể, ví dụ 2024-12-31 23:59:00

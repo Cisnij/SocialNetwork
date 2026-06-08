@@ -25,10 +25,13 @@ ACTSTREAM_SETTINGS = {
 # cacheops
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_CACHE_ALIAS = "default"
+REDIS_HOST = env("REDIS_HOST", default="127.0.0.1")
+
 CACHEOPS_REDIS = {
-    'host': 'localhost',
+    'host': REDIS_HOST,
     'port': 6379,
     'db': 1,  # db 1
+    'password' : env('REDIS_PASSWORD', default=''),
     'socket_timeout': 3,
 }
 CACHEOPS_DEFAULTS = {
@@ -76,7 +79,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],  # db 0
+            "hosts": [f"redis://:{env('REDIS_PASSWORD', default='')}@{REDIS_HOST}:6379/0"],  # db 0
             "capacity": 1500,  # Giới hạn hàng đợi tin nhắn
             "expiry": 30,     # Tin nhắn chờ trong 30s nếu ko ai nhận thì hủy
             "symmetric_encryption_keys": [env('SECRET_KEY')], # bảo mật dữ liệu
@@ -89,7 +92,7 @@ CHANNEL_LAYERS = {
 CACHES = {  # xài redis, set cache default là redis db 2
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/2",
+        "LOCATION": f"redis://:{env('REDIS_PASSWORD', default='')}@{REDIS_HOST}:6379/2",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "IGNORE_EXCEPTIONS": True, #  Redis sập web vẫn sống
@@ -136,7 +139,7 @@ STORAGES = {
 #Elastic search
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': 'http://localhost:9200'
+        'hosts': env('ELASTICSEARCH_URL', default='http://localhost:9200')
     }
 }
 #=============sửa cấu hình spectacular lấy thằng api lỗi luôn=========================
@@ -274,7 +277,7 @@ META_USE_OG_PROPERTIES = True      # Facebook Open Graph
 META_USE_TWITTER_PROPERTIES = True  # Twitter Card
 META_USE_TITLE_TAG = True
 #======================CELERY============================================
-CELERY_BROKER_URL = env('REDIS_URL', default='redis://localhost:6379/3') # Redis làm nơi chứa task chờ xử lý
+CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/3') # Redis làm nơi chứa task chờ xử lý
 CELERY_RESULT_BACKEND = 'django-db' #lưu kết quả task vào Django DB
 
 # định dạng data khi truyền task

@@ -13743,3 +13743,14 @@
 {"asctime": "2026-06-06 20:23:11,265", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/notifications/count/", "status_code": 401, "request": "<ASGIRequest: GET '/api/notifications/count/'>"}
 {"asctime": "2026-06-08 12:10:43,189", "levelname": "WARNING", "name": "silk.profiling.profiler", "message": "Cannot execute silk_profile as silk is not installed correctly."}
 {"asctime": "2026-06-08 12:10:52,259", "levelname": "WARNING", "name": "silk.profiling.profiler", "message": "Cannot execute silk_profile as silk is not installed correctly."}
+{"asctime": "2026-06-08 12:19:45,686", "levelname": "WARNING", "name": "silk.profiling.profiler", "message": "Cannot execute silk_profile as silk is not installed correctly."}
+{"asctime": "2026-06-08 12:19:45,704", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/notifications/count/", "status_code": 401, "request": "<ASGIRequest: GET '/api/notifications/count/'>"}
+{"asctime": "2026-06-08 12:19:45,705", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/user/", "status_code": 401, "request": "<ASGIRequest: GET '/api/user/'>"}
+{"asctime": "2026-06-08 12:19:45,705", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/user/setting/", "status_code": 401, "request": "<ASGIRequest: GET '/api/user/setting/'>"}
+{"asctime": "2026-06-08 12:19:45,721", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/user/", "status_code": 401, "request": "<ASGIRequest: GET '/api/user/'>"}
+{"asctime": "2026-06-08 14:14:29,314", "levelname": "WARNING", "name": "silk.profiling.profiler", "message": "Cannot execute silk_profile as silk is not installed correctly."}
+{"asctime": "2026-06-08 14:14:41,506", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/user/setting/", "status_code": 401, "request": "<ASGIRequest: GET '/api/user/setting/'>"}
+{"asctime": "2026-06-08 14:14:41,510", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/notifications/count/", "status_code": 401, "request": "<ASGIRequest: GET '/api/notifications/count/'>"}
+{"asctime": "2026-06-08 14:14:41,518", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/user/", "status_code": 401, "request": "<ASGIRequest: GET '/api/user/'>"}
+{"asctime": "2026-06-08 14:14:41,562", "levelname": "WARNING", "name": "django.request", "message": "Unauthorized: /api/user/", "status_code": 401, "request": "<ASGIRequest: GET '/api/user/'>"}
+{"asctime": "2026-06-08 14:14:53,356", "levelname": "WARNING", "name": "silk.profiling.profiler", "message": "Cannot execute silk_profile as silk is not installed correctly."}

@@ -12,9 +12,9 @@ REST_FRAMEWORK={ #Cấu hình token
 
         'drf_orjson_renderer.renderers.ORJSONRenderer',# dùng orjson để response nhanh hơn vì viết bằng rust
 
-        'rest_framework.renderers.BrowsableAPIRenderer',  # Để debug trực tiếp bằng trình duyệt bằng spectacular, production nên tắt 
-
+        *(['rest_framework.renderers.BrowsableAPIRenderer'] if DEBUG else []),  # Để debug trực tiếp bằng trình duyệt bằng spectacular, production nên tắt
     ),
+
 
     'DEFAULT_AUTHENTICATION_CLASSES':[
 
@@ -198,7 +198,7 @@ ACCOUNT_CONFIRM_EMAIL_ON_GET=False
 
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1 #Thời hạn hết hạn verify
 
-ACCOUNT_RATE_LIMITS={'confirm_email':'180/m'} # Thời gian cool down sau mỗi lần resend link  
+ACCOUNT_RATE_LIMITS={'confirm_email':'5/m'} # Thời gian cool down sau mỗi lần resend link
 
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION=True #đăng nhập luôn sau khi confirm email
 
@@ -394,7 +394,7 @@ CONTENT_SECURITY_POLICY = {
 
         "img-src": [SELF, "data:","res.cloudinary.com"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
 
-        "connect-src": [SELF,"wss://localhost:8000","accounts.google.com", "oauth2.googleapis.com",'http://localhost:8000', "apis.google.com",],  #  Cho phép fetch/xhr từ chính server
+        "connect-src": [SELF,f"wss://{env('DOMAIN', default='localhost')}","accounts.google.com", "oauth2.googleapis.com",'http://localhost:8000', "apis.google.com",],  #  Cho phép fetch/xhr từ chính server
 
         "form-action": [SELF],  # ✅ Không cho gửi form ra ngoài
 
