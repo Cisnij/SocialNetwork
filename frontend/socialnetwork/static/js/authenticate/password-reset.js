@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
       headers['X-CSRFToken'] = csrfToken;
     }
 
-    fetch('http://localhost:8000/api/auth/password/reset/confirm/', {
+    fetch('http://localhost:80/api/auth/password/reset/confirm/', {
       method: 'POST',
       headers: headers,
       credentials:'include',

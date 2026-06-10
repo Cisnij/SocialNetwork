@@ -28,7 +28,7 @@
       headers['X-CSRFToken'] = csrfToken;
     }
 
-    fetch('http://localhost:8000/api/auth/web/google/login/', {
+    fetch('http://localhost:80/api/auth/web/google/login/', {
       method: 'POST',
       credentials: 'include',
       headers: headers,

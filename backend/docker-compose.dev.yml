@@ -1,0 +1,42 @@
+services:
+  django:
+    volumes:
+      - .:/app
+      - static-files:/app/staticfiles
+      - logs-data:/app/logs
+    ports:
+      - "127.0.0.1:8000:8000"
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput &&
+        granian --interface asginl --host 0.0.0.0 --port 8000
+        --workers 1 --runtime-threads 2 --reload
+        backend.asgi:application
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s --max-time 3 http://localhost:8000 > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  celery-worker:
+    volumes:
+      - .:/app
+    command: celery -A backend worker -Q celery --loglevel=info --concurrency=2
+
+  celery-worker-notifications:
+    volumes:
+      - .:/app
+    command: celery -A backend worker -Q notifications --loglevel=info --concurrency=1
+
+  celery-worker-emails:
+    volumes:
+      - .:/app
+    command: celery -A backend worker -Q emails --loglevel=info --concurrency=1
+
+  celery-beat:
+    volumes:
+      - .:/app

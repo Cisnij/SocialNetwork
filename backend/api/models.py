@@ -235,6 +235,9 @@ class Log(SafeDeleteModel):
 class Conversation(models.Model):
     id = models.BigAutoField(primary_key=True, editable=False)
     is_group = models.BooleanField(default=False)
+    name = models.CharField(max_length=50, null=True, blank= True)
+    avatar_url = models.URLField(max_length=500, null=True, blank=True)
+    create_by = models.ForeignKey(User, on_delete=models.CASCADE,null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=(('pending', 'Pending'), ('accept', 'Accept')), default='pending')
     updated_at = models.DateTimeField(auto_now=True)
@@ -251,8 +254,13 @@ class Conversation(models.Model):
 
 
 class ConversationMember(models.Model):
+    ROLE_CHOICES = [
+        ('admin','Admin'),
+        ('member','Member'),
+    ]
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='member')
     last_read_message = models.PositiveBigIntegerField(null=True, blank=True)
     joined_at = models.DateTimeField(auto_now_add=True)
     deleted_at_message_id = models.PositiveBigIntegerField(null=True, blank=True)
@@ -267,7 +275,8 @@ class ConversationMember(models.Model):
         indexes = [
             models.Index(fields=['user']),
             models.Index(fields=['conversation', 'is_hidden']),
-            models.Index(fields=['user', 'is_permanently_hidden'])
+            models.Index(fields=['user', 'is_permanently_hidden']),
+            models.Index(fields=['conversation', 'user','role']),
         ]
 
 
@@ -416,15 +425,19 @@ class PostShare(SafeDeleteModel):
 
 #=============================================================================================================
 
-class PostReport(models.Model):
-    post=models.ForeignKey(Post, on_delete=models.CASCADE)
+class Report(models.Model):
+    post=models.ForeignKey(Post, on_delete=models.CASCADE,null=True,blank=True)
+    comment=models.ForeignKey(Comment, on_delete=models.CASCADE,null=True,blank=True)
     user=models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     reason= models.CharField(max_length=250)
     def __str__(self):
-        return f"{self.post} | {self.reason}"
+        return f"{self.post} |{self.comment} | {self.reason}"
     class Meta:
-        unique_together = ('post','user')
+        unique_together = (
+            ('post','user'),
+            ('comment', 'user'),
+        )
 
 class SupportTicket(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -437,3 +450,4 @@ class SupportTicket(models.Model):
 
     def __str__(self):
         return f"{self.user} | {self.status}"
+

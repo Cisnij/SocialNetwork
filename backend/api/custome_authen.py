@@ -178,7 +178,7 @@ class DeleteEmailView(APIView):
             if not authenticate(request=request,username=user.username, password=password):
                 return Response({'error': 'Wrong password'}, status=400)
 
-        email_obj = EmailAddress.objects.filter(id=pk, user=user).first()
+        email_obj = EmailAddress.objects.filter(id=pk, user=user,verified=True).first()
         if not email_obj:
             return Response({"error": "Email not found"}, status=400)
         if email_obj.primary: #là email primary
@@ -222,10 +222,32 @@ class DeleteAccount(APIView):
 
     def delete(self, request):
         user = request.user
+        import random
+        otp = str(random.randint(100000, 999999))
+        cache.set(f"otp_delete_account:{user.id}", { #tạo otp lưu trong cache với user id. 1 là tên lưu và 2 là cặp key value lưu
+            'otp': otp
+        }, timeout=300)  # 5 phút
+        send_email_task.delay(
+            subject="Mã OTP xóa Account",
+            message=f"Mã OTP của bạn là: {otp}. Có hiệu lực trong 5 phút. Nếu bạn không thay đổi email chính, vui lòng bỏ qua",
+            recipient_list=[user.email],
+        )
+        return Response({"detail": "success"}, status=200)
 
-        # xóa auditlog trước
+class ConfirmDeleteAccount(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        otp_input = request.data.get('otp')
+
+        data = cache.get(f"otp_delete_account:{user.id}")
+        if not data or data['otp'] != otp_input:
+            return Response({"error": "OTP không hợp lệ hoặc đã hết hạn"}, status=400)
+
         from auditlog.models import LogEntry
         LogEntry.objects.filter(actor=user).update(actor=None)  # set null thay vì xóa
-
         user.delete()
-        return Response({"detail": "success"}, status=200)
+
+        cache.delete(f"otp_delete_account:{user.id}")
+        return Response({"detail": "Xóa Account thành công"}, status=200)

@@ -203,25 +203,11 @@ LOGGING = {
             'formatter': 'plain' if DEBUG else 'json',
         },
 
-        # file log
-        'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-
-            'filename': 'logs/app.log',
-
-            'maxBytes': 10 * 1024 * 1024,  # 10MB
-
-            'backupCount': 5,
-
-            'formatter': 'json',
-
-            'encoding': 'utf-8',
-        },
     },
 
     # global root logger
     'root': {
-        'handlers': ['console', 'file'],
+        'handlers': ['console'],
         'level': LOG_LEVEL,
     },
 
@@ -229,35 +215,35 @@ LOGGING = {
 
         # django request log
         'django.request': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'WARNING',
             'propagate': False,
         },
 
         # django server log
         'django.server': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'WARNING',
             'propagate': False,
         },
 
         # django structlog
         'django_structlog': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': LOG_LEVEL,
             'propagate': False,
         },
 
         # axes spam
         'axes': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'WARNING',
             'propagate': False,
         },
 
         # cloudinary spam reduction
         'cloudinary': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'WARNING',
             'propagate': False,
         },

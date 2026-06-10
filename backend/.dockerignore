@@ -9,5 +9,4 @@ logs/
 media/
 staticfiles/
 *.log
-db.sqlite3
 logs/

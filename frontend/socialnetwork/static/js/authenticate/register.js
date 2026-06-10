@@ -108,7 +108,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
   if (btn) { btn.disabled = true; btn.textContent = 'Đang xử lý...'; }
 
   try {
-    const res = await fetch('http://localhost:8000/api/auth/registration/', {
+    const res = await fetch('http://localhost:80/api/auth/registration/', {
       method: 'POST',
       credentials: 'include',
       headers: {

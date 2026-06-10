@@ -2,13 +2,15 @@
 
 networks:
   prod-network:
-    driver: bridge
+    driver: bridge # bridge dùng để các container gọi nhau qua tên ở mạng nội bộ và cô lập mạng bên ngoài để bảo mật
 
+#ổ đĩa để xóa container không mất data
 volumes:
   percona_data:
-    external: true
+    external: true # voulums có sẵn và chỉ dùng
   esdata:
     external: true
+  # tự tạo volumes lần chạy đầu tiên
   redis-data:
   static-files:
   logs-data:
@@ -17,18 +19,25 @@ volumes:
 services:
 
   percona:
-    image: percona/percona-server:8.4
+    image: percona/percona-server:8.4 # tải bản 8.4
     container_name: percona
-    restart: unless-stopped
+    restart: unless-stopped # tự khởi động nếu bị lỗi
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    deploy: #giới hạn cpu ram cho container
+      resources:
+        limits:
+          cpus: '2' # giới hạn cpu
+          memory: 1500m # giới hạn ram
+        reservations:
+          memory: 512m # ram tối thiểu docker luôn có cho container
     volumes:
-      - percona_data:/var/lib/mysql
+      - percona_data:/var/lib/mysql # gán ổ đĩa vĩnh viễn
     networks:
-      - prod-network
+      - prod-network # tham gia mạng nội bộ
     ports:
-      - "127.0.0.1:3306:3306"
-    healthcheck:
+      - "127.0.0.1:3306:3306" #cổng nội bộ chỉ máy gốc mới vào đc
+    healthcheck: # kiểm tra sức khỏe 10s 1 lần và không phản hồi sau 5s là lỗi, lỗi 5 lần là unhealthy
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
              "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
@@ -41,15 +50,22 @@ services:
     restart: unless-stopped
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=true
+      - xpack.security.enabled=true # yêu cầu bảo mật
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - ES_JAVA_OPTS=-Xms512m -Xmx1g #giơi hạn ram
+    deploy: # giới hạn cpu ram cho container
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1500m
+        reservations:
+          memory: 512m
     volumes:
       - esdata:/usr/share/elasticsearch/data
     networks:
       - prod-network
     ports:
-      - "127.0.0.1:9200:9200"
+      - "127.0.0.1:9200:9200" #cổng nội bộ chỉ máy gốc mới vào đc
     healthcheck:
       test: ["CMD-SHELL",
              "curl -sf -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health || exit 1"]
@@ -61,11 +77,18 @@ services:
     image: redis:latest
     container_name: redis
     restart: unless-stopped
-    command: >
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1200m  # maxmemory 1gb + overhead
+        reservations:
+          memory: 128m
+    command: > # yêu cầu pass, giới hạn ram và khi đầy sẽ tự xóa 
       redis-server
-      --requirepass ${REDIS_PASSWORD}
-      --maxmemory 512mb
-      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}  
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru 
       --appendonly yes
     volumes:
       - redis-data:/data
@@ -83,37 +106,53 @@ services:
     image: nginx:alpine
     container_name: nginx
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 64m
+        reservations:
+          memory: 32m
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - static-files:/app/staticfiles:ro
+      - static-files:/app/staticfiles:ro # đọc thư mục file static
     ports:
       - "127.0.0.1:80:80"
     networks:
       - prod-network
     depends_on:
-      - django
+      django:
+        condition: service_healthy
 
   # ─── Django ──────────────────────────────────────────
   django:
     build:
-      context: .
+      context: . # Tìm vị trí Dockerfile ở thư mục hiện tại
       dockerfile: Dockerfile
     container_name: django
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 800m
+        reservations:
+          memory: 256m
     env_file:
-      - .env
+      - .env # nạp file env vào
+    command: granian --interface asgi --host 0.0.0.0 --port 8000 --workers 3 --runtime-threads 6 --backlog 2048 --http 1 backend.asgi:application
     volumes:
-      - static-files:/app/staticfiles
-      - logs-data:/app/logs
+      - static-files:/app/staticfiles # Nơi Django đẩy file tĩnh ra ngoài sau lệnh collectstatic
+      - logs-data:/app/logs # sau dấu : tức là đem vào app/logs trong container 
     networks:
       - prod-network
     depends_on:
       percona:
-        condition: service_healthy
+        condition: service_healthy # Django chỉ khởi động khi MySQL ĐÃ THỰC SỰ KHỎE MẠNH (pass qua vòng healthcheck)
       elasticsearch:
-        condition: service_healthy
+        condition: service_healthy # Django chỉ khởi động khi Elasticsearch ĐÃ THỰC SỰ KHỎE MẠNH
       redis:
-        condition: service_healthy
+        condition: service_healthy # Django chỉ khởi động khi redis ĐÃ THỰC SỰ KHỎE MẠNH
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s
@@ -121,12 +160,20 @@ services:
       retries: 3
 
   # ─── Celery Worker ───────────────────────────────────
-  celery-worker:
+  celery-worker: # khối celery xử lý chung tất cả
     build:
-      context: .
+      context: . # Tìm vị trí Dockerfile ở thư mục hiện tại
       dockerfile: Dockerfile
     container_name: celery-worker
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 400m
+        reservations:
+          memory: 128m
+    entrypoint: []
     command: celery -A backend worker -Q celery --loglevel=info --concurrency=4
     env_file:
       - .env
@@ -136,14 +183,23 @@ services:
     networks:
       - prod-network
     depends_on:
-      - django
+      django:
+        condition: service_healthy
 
-  celery-worker-notifications:
+  celery-worker-notifications: #khối chỉ xử lý notification
     build:
-      context: .
+      context: . # Tìm vị trí Dockerfile ở thư mục hiện tại
       dockerfile: Dockerfile
     container_name: celery-worker-notifications
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256m
+        reservations:
+          memory: 64m
+    entrypoint: []
     command: celery -A backend worker -Q notifications --loglevel=info --concurrency=2
     env_file:
       - .env
@@ -153,14 +209,23 @@ services:
     networks:
       - prod-network
     depends_on:
-      - django
+      django:
+        condition: service_healthy
 
-  celery-worker-emails:
+  celery-worker-emails: #khối chỉ xử lý email
     build:
-      context: .
+      context: . # Tìm vị trí Dockerfile ở thư mục hiện tại
       dockerfile: Dockerfile
     container_name: celery-worker-emails
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256m
+        reservations:
+          memory: 64m
+    entrypoint: []
     command: celery -A backend worker -Q emails --loglevel=info --concurrency=2
     env_file:
       - .env
@@ -170,15 +235,24 @@ services:
     networks:
       - prod-network
     depends_on:
-      - django
+      django:
+        condition: service_healthy
 
   # ─── Celery Beat ─────────────────────────────────────
-  celery-beat:
+  celery-beat: # chịu trách nhiệm kích hoạt worker khi tới lịch
     build:
       context: .
       dockerfile: Dockerfile
     container_name: celery-beat
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128m
+        reservations:
+          memory: 64m
+    entrypoint: []
     command: celery -A backend beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file:
       - .env
@@ -187,4 +261,5 @@ services:
     networks:
       - prod-network
     depends_on:
-      - django
+      django:
+        condition: service_healthy

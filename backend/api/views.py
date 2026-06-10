@@ -1,9 +1,9 @@
 import uuid
 from itertools import chain
+
 from django.db.models.expressions import Window
 from django.db.models.functions import RowNumber
 from django.views.generic import DetailView
-from urllib3 import request
 
 from backend import settings_backend
 from .serializers import *
@@ -677,16 +677,29 @@ class ChangePostSharePrivacy(APIView):
 
 class PostReportView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = PostReportSerializer
+    serializer_class = ReportSerializer
 
     def perform_create(self, serializer):
         post_id= self.kwargs.get('post_id')
         post = get_object_or_404(Post,post_id=post_id)
         if post.user == self.request.user:
             raise ValidationError('Cannot report your own post') # perform create chỉ dùng đc ValidationError
+        if Report.objects.filter(post=post, user=self.request.user).exists():
+            raise ValidationError({"error": "Bạn đã gửi báo cáo cho bài viết này rồi"})
         serializer.save(post=post,user=self.request.user)
 
+class CommentReportView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ReportSerializer
 
+    def perform_create(self, serializer):
+        comment_id= self.kwargs.get('comment_id')
+        comment = get_object_or_404(Comment,id=comment_id)
+        if comment.user == self.request.user:
+            raise ValidationError('Cannot report your own post') # perform create chỉ dùng đc ValidationError
+        if Report.objects.filter(comment=comment, user=self.request.user).exists():
+            raise ValidationError({"error": "Bạn đã gửi báo cáo cho bài viết này rồi"})
+        serializer.save(comment=comment,user=self.request.user)
 #===================POSTARTICLE===============================
 class PostArticleListCreate(generics.ListCreateAPIView):  # List tất cả post
     permission_classes = [IsAuthenticated]
@@ -1143,8 +1156,12 @@ class FriendListView(generics.ListAPIView):  # danh sách bạn bè của mình
     search_fields=['to_user__profile__first_name','to_user__profile__last_name'] #tìm kiếm
     ordering_fields=['id','created'] #sắp xếp theo thứ tự tăng giảm dần
     def get_queryset(self):
-        return Friend.objects.filter(from_user=self.request.user).select_related('to_user__profile')
-
+        exclude_group_id = self.request.query_params.get('exclude_group_id') #chức năng lấy ra các thành viên chưa thêm vào group nếu có truyền
+        queryset = Friend.objects.filter(from_user=self.request.user).select_related('to_user__profile')
+        if exclude_group_id:
+            existing_user=ConversationMember.objects.filter(conversation_id=exclude_group_id).values_list("user_id", flat=True)
+            queryset = queryset.exclude(to_user_id__in=existing_user)
+        return queryset
 
 class FriendUser(generics.ListAPIView): #ds bạn bè cụ thể
     permission_classes = [IsAuthenticated]
@@ -1397,7 +1414,6 @@ class StartConversationAPIView(
             # get_serializer là hàm của GenericAPIView để lấy serializer đã khai báo ở trên
             status=status.HTTP_200_OK
         )
-
 
 class AcceptMessageRequest(APIView):
     permission_classes = [IsAuthenticated]
@@ -2070,3 +2086,86 @@ class SupportTicketView(generics.CreateAPIView):
     throttle_scope='suport_ticket_create'
     def perform_create(self, serializer):
         instance = serializer.save(user=self.request.user)
+
+#===================================GROUP===========================================
+class CreateGroupConversation(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='create_group'
+    def post(self,request):
+        name = request.data.get('name')
+        member_ids= request.data.get('members',[]) # mặc định list rỗng
+        if not name:
+            return Response({'error':'Tên nhóm không được rỗng'},status=400)
+        if len(member_ids) <2:
+            return Response({'error':'Nhóm cần ít nhất 2 thành viên'},status=400)
+        conversation = Conversation.objects.create(
+            is_group=True,
+            name=name,
+            create_by=request.user,
+            status='accept'
+        )
+        ConversationMember.objects.create(
+            conversation=conversation,
+            user=request.user,
+            role='admin'
+        )
+        members= User.objects.filter(id__in=member_ids)
+        ConversationMember.objects.bulk_create([
+            ConversationMember(conversation=conversation, user=u, role='member')
+            for u in members
+        ])
+        serializer = ConversationSerializer(conversation, context={'request': request})
+        return Response(serializer.data,status=200)
+
+class TransferAdmin(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='transfer_admin'
+    def post(self,request,conv_id):
+        new_admin_id = request.data.get('new_admin_id')
+
+        try: #check user hiện tại có phải admin
+            membership= ConversationMember.objects.get(conversation=conv_id, user=request.user, role='admin')
+        except ConversationMember.DoesNotExist:
+            return Response({"error": "Bạn không có quyền"}, status=403)
+
+        try: #check người được trao admin có trong nhóm
+            new_admin= ConversationMember.objects.filter(conversation=conv_id, user=new_admin_id).first()
+        except ConversationMember.DoesNotExist:
+            return Response({"error": "Người dùng không trong nhóm"}, status=404)
+
+        with transaction.atomic():
+            membership.role='member'
+            membership.save(update_fields=['role'])
+            new_admin.role='admin'
+            new_admin.save(update_fields=['role'])
+
+        return Response({"new_admin": new_admin_id}, status=200)
+
+class AddMemberGroup(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='add_member_group'
+    def post(self,request,conv_id):
+        new_member_ids= request.data.get('new_members',[])
+
+        if ConversationMember.objects.filter(conversation=conv_id, user=request.user).exists(): #check user có trong nhóm k
+            return Response({"error": "Bạn không trong nhóm"}, status=403)
+
+        if not new_member_ids:
+            return Response({"error": "Danh sách thành viên không được để trống"}, status=400)
+
+        new_member_ids= list(set(new_member_ids)) # thêm vào set tránh bị lặp thành viên
+        new_members= ConversationMember.objects.filter(conversation=conv_id, user_id__in=new_member_ids).values_list('user_id',flat=True) #láy ra các thành viên đã ở sẵn trong group rồi
+        validate_new_member = [u_id for u_id in new_member_ids if u_id not in new_members] # lấy ra thành viên chưa có trong group
+
+        if not validate_new_member: # nếu trừ đi mà 0 còn thành viên nào thì chứng tỏ dã có trong gr sẵn r
+            return Response({"detail": "Tất cả các thành viên đã có trong nhóm."}, status=200)
+
+        ConversationMember.objects.bulk_create([
+            ConversationMember(conversation=conv_id, user=u, role='member')
+            for u in new_member_ids
+        ])
+        return Response({"error": "Thêm thành công"}, status=200)
+

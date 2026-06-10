@@ -28,7 +28,7 @@ async function refreshAccessToken() {
   }
 
   const res = await fetch(
-    "http://localhost:8000/api/auth/web/token/refresh/",
+    "http://localhost:80/api/auth/web/token/refresh/",
     {
       method: "POST",
       credentials: "include",

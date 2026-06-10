@@ -1,6 +1,6 @@
 const search = new URLSearchParams(window.location.search)
 const email = search.get('email')
-const url= 'http://localhost:8000/api/auth/registration/resend-email/'
+const url= 'http://localhost:80/api/auth/registration/resend-email/'
 
 document.getElementById('resend-email-btn').addEventListener('click',()=>{
     const msg = document.getElementById('resend-message');

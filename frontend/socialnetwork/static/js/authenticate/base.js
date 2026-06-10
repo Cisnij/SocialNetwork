@@ -22,7 +22,7 @@ document.getElementById("logoutLink")?.addEventListener("click", async (e) => {
   e.preventDefault();
 
   try {
-    await authFetch("http://localhost:8000/api/auth/web/logout/", {
+    await authFetch("http://localhost:80/api/auth/web/logout/", {
       method: "POST",
     });
     localStorage.removeItem("accessToken");

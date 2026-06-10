@@ -1,6 +1,6 @@
 import { authFetch } from '../authenticate/auth.js';
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "http://localhost:80";
 const DEFAULT_AVATAR = "https://res.cloudinary.com/dec8t19tm/image/upload/v1779183832/default.jpg";
 
 /**

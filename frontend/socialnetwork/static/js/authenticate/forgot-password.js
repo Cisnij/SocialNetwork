@@ -10,7 +10,7 @@ document.getElementById('forgot-form').addEventListener('submit', function (e) {
         return;
     }
 
-    fetch('http://localhost:8000/api/auth/password/reset/', {
+    fetch('http://localhost:80/api/auth/password/reset/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })

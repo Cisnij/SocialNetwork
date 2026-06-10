@@ -251,6 +251,7 @@ class ConversationMemberSerializer(serializers.ModelSerializer):
         model = ConversationMember
         fields = [
             "user",
+            "role",
             "joined_at",
             "last_read_message",
         ]
@@ -268,6 +269,9 @@ class ConversationSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "is_group",
+            "name",
+            "avatar_url",
+            "created_by",
             "status",
             "created_at",
             "members",
@@ -424,9 +428,9 @@ class PostShareSerializer(serializers.ModelSerializer):
         model =PostShare
         fields = '__all__'
 #================================================================================
-class PostReportSerializer(serializers.ModelSerializer):
+class ReportSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PostReport
+        model = Report
         fields = ['reason','created_at']
 
 class SupportTicketSerializer(serializers.ModelSerializer):

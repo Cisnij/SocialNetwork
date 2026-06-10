@@ -1,6 +1,6 @@
 /** Shared API and UI constants (single source of truth). */
 export const API_BASE_URL =
-  window.APP_CONFIG?.API_BASE_URL || "http://localhost:8000";
+  window.APP_CONFIG?.API_BASE_URL || "http://localhost:80";
 
 export const FRONTEND_URL =
   window.APP_CONFIG?.FRONTEND_URL || "http://localhost:3000";

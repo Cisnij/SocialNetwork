@@ -825,11 +825,48 @@ Authfetch sẽ truyền vào đó 1 là url, 2 là method là post put hay delet
                                                                           , nếu có thì fetch kèm theo accessToken đó,  không lỗi thì chưa hết hạn và trả data, nếu lỗi thì là hết hạn và chạy RefreshAccessToken tạo mới và chạy lại fetch lần nữa không đc thì login lại luôn
                                                                           Nếu mà RefreshAccess token k được chứng tỏ là không Refresh hết hạn thì login lại
 ===================================================================================================================================
-Docker-compose: để xây các container service như redis,celery,elastic hay percona
-Dockerfile dùng để build 1 app , chạy các thư viện requirements , cài Python và đóng gói lại chạy đâu cũng đc
-nginx:
+- Docker-compose: để xây các container service như redis,celery,elastic hay percona
+- Dockerfile dùng để build 1 app , chạy các thư viện requirements , cài Python và đóng gói lại chạy đâu cũng đc
+- Ví dụ docker file sẽ chạy trước để chạy các bản thiết kế như cần thư viện gì,image...sau đó chạy docker compose up để chạy các image ra container và volumes
+- Dockerfile->image->docker compose->container->volumes
+- nginx:
     dùng để che dấu cấu trúc nội bộ private server. Ví dụ có backend chạy trên server api.socialnetwork.com/redis/elastic thì khi user truy cập sẽ chuyển hướng về lại fe
     đọc file static và trả về ngay
-    load balancing điều phối tải vào các server sau khi tất cả worker đầy
+    load balancing điều phối tải vào các server sau khi tất cả worker đầy. Khi granian đầy sẽ báo nginx để chia ra các server hoặc báo badgateway
     mã hóa https
     rate limit và chặn tại cổng và cache trả về respone tiết kiệm tài nguyên
+
+- cloudfare -> nginx -> granian server -> app -> redis/container khác
+- Cloudflare: Hứng toàn bộ traffic từ người dùng. Lọc bot, chặn DDoS, và mã hóa.
+    LUỒNG ĐI:
+        Cloudflare Edge (Vòng ngoài cùng): Lọc bot, chặn DDoS, kiểm tra mã độc
+        Cloudflare Tunnel: mã hóa request
+    LUỒNG VỀ:
+        Cloudflare Tunnel: Nginx ném cục dữ liệu đã nén cho Tunnel để tuồn ngược ra thế giới bên ngoài.
+        Cloudflare Edge: Nhận dữ liệu từ Tunnel và xử lý lưu dữ liệu nếu nó cache đc để khi fe gọi trả nhanh
+-Granian Server: Nginx không hiểu được code Python. Granian đóng vai trò như một bộ máy trung gian. Nó nhận request từ Nginx, chuyển đổi thành chuẩn mà ứng dụng Python hiểu được (ASGI/WSGI) và phân phối cho các worker bên dưới xử lý.Và ngược lại nếu response sẽ dùng granian chuyển sang byte thô chuẩn cho nginx
+
+- QUY TRÌNH DEPLOY qua cloudflare tunnel(tunnel dùng để expose ra thế giới(bảo mật ip nhà) qua dns)
+
+- user gõ url -> dns(nơi đki domain) tìm ip -> cloudflare edge bảo mật -> cloudflare tunnel -> cloudflare -> nginx -> app
+- fe sẽ dùng domain chính(abc.com)  đăng kí server cname ở dns cho render , backend sẽ dùng (api.abc.com) và đăng kí dns cho backend dùng cloudflare tunnel. Ví dụ khi vào abc.com sẽ vào trang fe ở render, nhấn gọi api.abc.com
+
+    - cả fe và be đều cần cloudflare và nginx đứng trc bảo vệ nếu cả 2 chung server thì dùng chung, nhưng cả 2 riêng server thì dùng riêng
+    - nếu deploy lên VPS thì chỉ cần cloudflare mà k cần cloudflare tunnel, tunnel chỉ dùng cho ai muốn máy cá nhân làm server để ẩn ip và đẩy ra public
+    b0. gộp tất cả liên quan backend vào docker
+    b1:  đầu tiên đăng kí domain host
+        khi người dùng nhập url là domain -> nameserver sẽ kiểm tra đối chiếu domain đó và ip -> trả về địa chỉ ip để người dùng vào web và lưu cache nó cho những lần truy cập sau
+    b2: đăng kí tài khoản cloudflare và thêm domain, 1 domain có thể chứa nhiều sub domain ví dụ abc.com và api.abc.com
+    b3. tải winget install Cloudflare.cloudflared
+    b4. login cloudflared tunnel login
+    b5. cloudflared tunnel create socialnetwork-tunnel
+    b6. tạo config.yml trong cùng file b5
+        tunnel: 49312a88-586b-4148-8758-602400dd3792 # id lấy ở bước 5
+        credentials-file: C:\Users\Tran Chi Nghi\.cloudflared\49312a88-586b-4148-8758-602400dd3792.json
+
+        ingress:
+          - hostname: api.socialnetworkvietnam.eu.org
+            service: http://localhost:80
+
+          - service: http_status:404
+    b7. bật tunnel  cloudflared tunnel run socialnetwork-tunnel

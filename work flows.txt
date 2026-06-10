@@ -83,4 +83,9 @@ work flows
 56. Mã hóa tin nhắn trong database dùng from encrypted_fields.fields import EncryptedTextField
 57. Thêm api xóa notification
 58 deploy và đẩy project thành container trong docker
+59. Thêm group chat: flow là nhấn chat với ai đó thì gọi startchat, còn nhấn tạo group sẽ gọi api tạo group
+    creategroup khi nhấn tạo sẽ gọi api/friends và user chọn ai thì truyền vào đoạn chat
+    đổi admin: khi nhán sẽ gọi api check có phải admin k và đổi
+    thêm thành viên: gọi api/user/friends?exclude_group_id=... lấy ra bạn bè chưa có trong group, sau đó gọi api check user có là thành viên, id thêm = id truyền vào - id đã tồn tại
+     
 =====================================================================================

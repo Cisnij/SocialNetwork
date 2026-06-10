@@ -56,6 +56,7 @@ urlpatterns = [
     path('api/auth/check-password/',CheckPassword.as_view(),name='check-password'), #check password có đúng
     path('api/auth/has-password/',HasPassword.as_view(),name='has-password'), #check có mật khẩu không(user google k có)
     path('api/auth/delete-account/',DeleteAccount.as_view(),name='delete-account'),
+    path('api/email/cofirm-delete-account/', ConfirmDeleteAccount.as_view(), name='delete-account'),
     path('api/auth/google/login/', GoogleLogin.as_view(), name='google_login'),
     #url spectacular
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
@@ -94,6 +95,7 @@ urlpatterns = [
     path('api/post/share/<int:share_id>/privacy-change/',ChangePostSharePrivacy.as_view(),name='change-share-privacy'),#đổi chế độ xem share post
     path('api/post/<int:pin_id>/pin/',PinPostView.as_view(),name='pin-post'),
     path('api/post/<int:post_id>/report/',PostReportView.as_view(),name='post-report'),
+    path('api/comment/<int:comment_id>/report/',CommentReportView.as_view(),name='comment-report'),
     #url post-article
     path('api/user/post-article/', PostArticleListCreate.as_view(), name='post-article-list'), #thêm láy tất cả post article
     path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể
