@@ -105,6 +105,11 @@ class AddEmailView(APIView): #Thêm 1 email khác vào tài khoản
             return Response({'error': 'Email already added before'},status=400)
 
         email_address.send_confirmation(request) #signup false để bảo đây là thêm chứ k phải đăng kí tài khoản mới
+        send_email_task.delay(
+            subject="Bạn vừa thêm email",
+            message=f"Bạn vừa thêm 1 email {email_address}",
+            recipient_list=[user.email],
+        )
         return Response({'Email added successfully, please check your email'},status =200)
 
 class SetPrimaryEmailView(APIView): # đặt 1 email làm mặc đinh
@@ -163,6 +168,7 @@ class ConfirmChangePrimaryEmail(APIView):
             user.save(update_fields=["email", "username"])
 
         cache.delete(f"otp_change_primary:{user.id}")
+
         return Response({"detail": "Đổi email chính thành công"}, status=200)
 
 class DeleteEmailView(APIView):
@@ -183,7 +189,7 @@ class DeleteEmailView(APIView):
             return Response({"error": "Email not found"}, status=400)
         if email_obj.primary: #là email primary
             return Response({"error": "Cannot delete primary email"}, status=400)
-        if EmailAddress.objects.filter(user=user).count() <= 1: # nếu email chỉ có 1
+        if EmailAddress.objects.filter(user=user,verified=True).count() <= 1: # nếu email chỉ có 1
             return Response({"error": "Cannot delete the only email"}, status=400)
 
         with transaction.atomic():
@@ -193,6 +199,11 @@ class DeleteEmailView(APIView):
                 extra_data__email=email_obj.email
             ).delete()
 
+        send_email_task.delay(
+            subject="Bạn vừa xóa 1 email",
+            message=f"Bạn vừa xóa 1 email {email_obj}",
+            recipient_list=[user.email],
+        )
         return Response({"detail": "Email deleted successfully"}, status=200)
     
 class UserEmail(generics.ListAPIView):
@@ -244,10 +255,20 @@ class ConfirmDeleteAccount(APIView):
         data = cache.get(f"otp_delete_account:{user.id}")
         if not data or data['otp'] != otp_input:
             return Response({"error": "OTP không hợp lệ hoặc đã hết hạn"}, status=400)
-
+        #check password
+        if user.has_usable_password():
+            password = request.data.get('password')
+            if not password:
+                return Response({"error": "Vui lòng nhập mật khẩu"}, status=400)
+            if not authenticate(request=request, username=user.username, password=password):
+                return Response({"error": "Mật khẩu không đúng"}, status=400)
+        send_email_task.delay(
+            subject="Thư cám ơn",
+            message=f"Cám ơn bạn đã sử dụng dịch vụ chúng tôi! Hy vọng bạn sẽ quay trở lại",
+            recipient_list=[user.email],
+        )
         from auditlog.models import LogEntry
         LogEntry.objects.filter(actor=user).update(actor=None)  # set null thay vì xóa
         user.delete()
-
         cache.delete(f"otp_delete_account:{user.id}")
         return Response({"detail": "Xóa Account thành công"}, status=200)

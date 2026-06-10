@@ -1,6 +1,7 @@
 import uuid
 from itertools import chain
 
+from django.contrib.auth import authenticate
 from django.db.models.expressions import Window
 from django.db.models.functions import RowNumber
 from django.views.generic import DetailView
@@ -2168,4 +2169,44 @@ class AddMemberGroup(APIView):
             for u in new_member_ids
         ])
         return Response({"error": "Thêm thành công"}, status=200)
+
+class ModifyGroup(APIView):
+    permission_classes = [IsAuthenticated,IsConversationMember]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def patch(self, request, conv_id):
+        conv= get_object_or_404(Conversation, id=conv_id, is_group=True)
+        self.check_object_permissions(request,conv)
+        update_fields = []
+        picture = request.FILES.get('group_avatar')
+        name = request.data.get('name')
+        if picture:
+            conv.avatar = picture
+            update_fields.append('avatar')
+        if name:
+            conv.name = name
+            update_fields.append('name')
+        if not update_fields:
+            return Response({"error": "Không có gì để cập nhật"}, status=400)
+        conv.save(update_fields=update_fields)
+        serializer = ConversationSerializer(conv, context={'request': request})
+        return Response(serializer.data, status=200)
+
+class DeleteGroup(APIView):
+    permission_classes = [IsAuthenticated]
+    def delete(self,request,conv_id):
+        user =request.user
+        try:
+            user_member = ConversationMember.objects.get(conversation=conv_id, user=request.user, role='admin')
+        except ConversationMember.DoesNotExist:
+            return Response({"error": "Bạn không có quyền"}, status=403)
+        conv = get_object_or_404(Conversation, id=conv_id, is_group=True)
+        if user.has_usable_password():  # Nếu user có password vì register, dùng google login không có password nên bỏ qua
+            password = request.data.get("password")
+            if not password:
+                return Response({'error': "Please enter password"}, status=400)
+            if not authenticate(request=request, username=user.username, password=password):
+                return Response({'error': 'Wrong password'}, status=400)
+        conv.delete()
+        return Response({"success": True}, status=200)
 

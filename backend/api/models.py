@@ -42,6 +42,9 @@ def chat_upload_path(instance, filename):  # Ảnh chat → media/chat/conv_1/pi
     ext = filename.split('.')[-1].lower()
     return f'chat/conv_{instance.message.conversation.id}/{uuid.uuid4()}.{ext}'
 
+def conversation_avatar_upload_path(instance, filename):
+    ext = filename.split('.')[-1].lower()
+    return f'chat/conv_{instance.id}/avatar/{uuid.uuid4()}.{ext}'
 
 def generate_shared_code(): # hàm đổi sang base64
     return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
@@ -236,7 +239,7 @@ class Conversation(models.Model):
     id = models.BigAutoField(primary_key=True, editable=False)
     is_group = models.BooleanField(default=False)
     name = models.CharField(max_length=50, null=True, blank= True)
-    avatar_url = models.URLField(max_length=500, null=True, blank=True)
+    avatar = models.ImageField(upload_to=conversation_avatar_upload_path,null=True, blank=True,validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])])
     create_by = models.ForeignKey(User, on_delete=models.CASCADE,null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=(('pending', 'Pending'), ('accept', 'Accept')), default='pending')

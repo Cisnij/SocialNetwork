@@ -270,7 +270,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "id",
             "is_group",
             "name",
-            "avatar_url",
+            "avatar",
             "created_by",
             "status",
             "created_at",
