@@ -38,7 +38,7 @@ from safedelete.signals import post_softdelete, post_undelete
 @receiver(email_confirmed)
 def create_profile(sender, request, email_address, **kwargs):
     user = email_address.user
-    # Đã có profile => đây là flow verify add email phụ
+    # Đã có profile thì đây là flow verify add email phụ
     if Profile.objects.filter(user=user).exists():
         return
     pending_profile=PendingProfile.objects.filter(user=user).first()
