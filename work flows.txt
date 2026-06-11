@@ -95,5 +95,8 @@ work flows
     creategroup khi nhấn tạo sẽ gọi api/friends và user chọn ai thì truyền vào đoạn chat
     đổi admin: khi nhán sẽ gọi api check có phải admin k và đổi
     thêm thành viên: gọi api/user/friends?exclude_group_id=... lấy ra bạn bè chưa có trong group, sau đó gọi api check user có là thành viên, id thêm = id truyền vào - id đã tồn tại
-
+    modify group chat đổi tên và ảnh
+    kickmember: check xem có là admin không, khi kick gọi api lấy ra danh sách thành viên mà kick
+    DeleteGroupChat: yêu cầu nhập mật khẩu
+    LeaveGroupChat: gọi api lấy thành viên và trao quyền cho user đó mới đc rời
 =====================================================================================

@@ -72,9 +72,10 @@ REST_FRAMEWORK={ #Cấu hình token
         'hide_chat': '200/hour',
         'delete_notification': '500/hour',
         'suport_ticket_create': '5/day',
-        'create_group':'5/m',
-        'transfer_admin': '1/h',
-        'add_member_group': '10/m',
+        'create_group_chat':'5/m',
+        'transfer_admin_chat': '1/h',
+        'add_member_group_chat': '20/m',
+        'delete_member_group_chat':'20/m'
     },
 
     "DEFAULT_PARSER_CLASSES": [ #dùng cho phép nhận nhiều định dạng dữ liệu khác nhau 

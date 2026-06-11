@@ -1662,7 +1662,7 @@ class DeleteConversationOneSide(APIView): # nếu xóa conv thì sẽ lấy th�
         if not last_msg:
             return Response({"detail": "No messages to delete"}, status=200)
         member.deleted_at_message_id = last_msg.id # đặt id deleted at khi gọi api băng với id tin nhắn cuối, chỉ lấy tin nhắn sau tin nhắn cuối chưa xóa
-        member.last_read_message=None # đặt lại last_read_mesage
+        member.last_read_message=None # đặt lại last_read_mesage, khi xóa thì bên serializer sẽ count từ đầu hoặc count theo msg.id > last_read.id
         member.is_hidden = True # ẩn khỏi coversation
         member.save(update_fields=['deleted_at_message_id','last_read_message','is_hidden'])
         return Response({"detail": "Conversation deleted"}, status=200)
@@ -2092,7 +2092,7 @@ class SupportTicketView(generics.CreateAPIView):
 class CreateGroupConversation(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes=[ScopedRateThrottle]
-    throttle_scope='create_group'
+    throttle_scope='create_group_chat'
     def post(self,request):
         name = request.data.get('name')
         member_ids= request.data.get('members',[]) # mặc định list rỗng
@@ -2119,10 +2119,10 @@ class CreateGroupConversation(APIView):
         serializer = ConversationSerializer(conversation, context={'request': request})
         return Response(serializer.data,status=200)
 
-class TransferAdmin(APIView):
+class TransferAdminGroupChat(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes=[ScopedRateThrottle]
-    throttle_scope='transfer_admin'
+    throttle_scope='transfer_admin_chat'
     def post(self,request,conv_id):
         new_admin_id = request.data.get('new_admin_id')
 
@@ -2144,10 +2144,10 @@ class TransferAdmin(APIView):
 
         return Response({"new_admin": new_admin_id}, status=200)
 
-class AddMemberGroup(APIView):
+class AddMemberGroupChat(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes=[ScopedRateThrottle]
-    throttle_scope='add_member_group'
+    throttle_scope='add_member_group_chat'
     def post(self,request,conv_id):
         new_member_ids= request.data.get('new_members',[])
 
@@ -2170,7 +2170,7 @@ class AddMemberGroup(APIView):
         ])
         return Response({"error": "Thêm thành công"}, status=200)
 
-class ModifyGroup(APIView):
+class ModifyGroupChat(APIView):
     permission_classes = [IsAuthenticated,IsConversationMember]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
@@ -2192,21 +2192,61 @@ class ModifyGroup(APIView):
         serializer = ConversationSerializer(conv, context={'request': request})
         return Response(serializer.data, status=200)
 
-class DeleteGroup(APIView):
+class DeleteGroupChat(APIView):
     permission_classes = [IsAuthenticated]
     def delete(self,request,conv_id):
-        user =request.user
         try:
-            user_member = ConversationMember.objects.get(conversation=conv_id, user=request.user, role='admin')
+            user_member = ConversationMember.objects.get(conversation_id=conv_id, user=request.user, role='admin')
         except ConversationMember.DoesNotExist:
             return Response({"error": "Bạn không có quyền"}, status=403)
-        conv = get_object_or_404(Conversation, id=conv_id, is_group=True)
-        if user.has_usable_password():  # Nếu user có password vì register, dùng google login không có password nên bỏ qua
+        if request.user.has_usable_password():  # Nếu user có password vì register, dùng google login không có password nên bỏ qua
             password = request.data.get("password")
             if not password:
                 return Response({'error': "Please enter password"}, status=400)
-            if not authenticate(request=request, username=user.username, password=password):
+            if not authenticate(request=request, username=request.user.username, password=password):
                 return Response({'error': 'Wrong password'}, status=400)
-        conv.delete()
+        deleted, _ = Conversation.objects.filter(id=conv_id,is_group=True).delete()
+        if not deleted:
+            return Response({"error": "Không có group này"}, status=400)
         return Response({"success": True}, status=200)
 
+class KickMemberGroupChat(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='delete_member_group_chat'
+    def delete(self,request,conv_id):
+        user_kick_id = request.data.get('kick_id')
+        if not user_kick_id:
+            return Response({"error":"không có user kick"},status=400)
+        if user_kick_id == request.user.id:
+            return Response({"error":"không thể kick chính mình"},status=400)
+        try: #check valid conv_id truyền vào và cả check admin
+            ConversationMember.objects.get(conversation_id=conv_id, conversation__is_group=True, user=request.user, role='admin') #conversation is group sẽ được JOIN vào
+        except ConversationMember.DoesNotExist:
+            return Response({"error": "Bạn không có quyền"}, status=403)
+        #lọc ra có member k và xóa
+        deleted, _ = ConversationMember.objects.filter(conversation=conv_id, user_id=user_kick_id, role='member').delete()
+        if not deleted:
+            return Response({"error": "Không có thành viên này"}, status=400)
+        return Response({"success": True}, status=200)
+
+class LeaveGroupChat(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    def delete(self,request,conv_id):
+        try:
+            user_member = ConversationMember.objects.get(conversation_id=conv_id, user=request.user)
+        except ConversationMember.DoesNotExist:
+            return Response({"error": "Bạn không có trong group"}, status=403)
+        if user_member.role == 'admin':
+            next_admin_user_id = request.data.get('next_admin_user_id')
+            if not next_admin_user_id:
+                return Response({"error": "chọn user kế thừa admin"}, status=400)
+            with transaction.atomic():
+                updated = ConversationMember.objects.filter(conversation_id=conv_id, user_id=next_admin_user_id).update(role='admin')
+                if not updated:
+                    return Response({"error": "Thành viên không hợp lệ"}, status=400)
+                user_member.delete()
+            return  Response({"success": True}, status=200)
+        user_member.delete()
+        return Response({"success": True}, status=200)

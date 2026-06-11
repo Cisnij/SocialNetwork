@@ -291,13 +291,13 @@ class ConversationSerializer(serializers.ModelSerializer):
         user = self.context['request'].user # lấy user trong request
         #  conversationmember_set đã prefetch sẵn → không query DB mà lấy trong ram khi gọi api có liên quan đến conv
         member = next(
-            (m for m in obj.conversationmember_set.all() if m.user_id == user.id), #lọc ra trong conv member có mình không, có thì trả không thì default là None, next là láy phần tử đầu tiên
+            (m for m in obj.conversationmember_set.all() if m.user_id == user.id), #lọc ra trong conv member có mình không, có thì trả ra object thì default là None, next là láy phần tử đầu tiên
             None
         )
 
         if not member: # mình ko phải là thành viên thì trả 0
             return 0
-        #  đếm từ prefetched_messages trong RAM, không query DB
+        #  đếm từ prefetched_messages trong RAM gắn với request, không query DB
         msgs = getattr(obj, 'prefetched_messages', [])
 
         if member.last_read_message is None:# chưa đọc lần nào , đếm tất cả tin nhắn từ đầu trừ tin nhắn mình
