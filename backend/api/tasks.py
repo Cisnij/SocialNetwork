@@ -91,8 +91,7 @@ def backup_database():
             os.remove(path)
 
 
-# tasks.py
-@shared_task
+@shared_task(bind=True, max_retries=3, default_retry_delay=5)
 def notify_conversation_members(message_id, conversation_id, sender_id):
     '''Luồng là khi có người tạo message sẽ gửi cho tất cả user trong conv, nếu chat count đang là 1 thì gọi count lại sẽ nhảy lên 2'''
     channel_layer = get_channel_layer()
