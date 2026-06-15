@@ -123,6 +123,8 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
 
         message = data.get('message', '').strip() # lấy message và xóa khoảng trắng
         message_type = data.get('message_type', 'text') # mặc định là text
+        if message_type.startswith('system_'):
+            return
         reply_to_id = data.get('reply_to_id') # nhận vào id
         attachment_ids = data.get('attachment_ids', []) # nhận vào id của attachment đã đc tạo hoặc rỗng
         if not message and not attachment_ids: # không cho gửi tin rỗng
@@ -174,7 +176,7 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
                     'conversation_id': self.conversation_id,
                     'last_message': message,
                     'sender_id': self.user.id,
-                    'sender_name': self.user.username,
+                    'sender_name': sender_name,
                     'message_type': message_type,
                     'created_at': msg.created_at.isoformat(),
                 }
@@ -227,12 +229,20 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
             'sender': event['sender'],
             'is_typing': event['is_typing'],
         }))
+    #========SYSTEM MESSAGE==================
+    async def system_message(self,event):
+        await self.send(text_data=json.dumps({
+            'type': 'system_message',
+            'message': event['message'],
+            'message_type': event['message_type'],
+        }))
     # ===== CHECK =====
     @database_sync_to_async
     def is_member(self): # check có phải thành viên conversation không
         return ConversationMember.objects.filter(
             conversation_id=self.conversation_id,
-            user=self.user
+            user=self.user,
+            is_active=True
         ).exists()
 
     @database_sync_to_async
@@ -242,35 +252,44 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
         except Conversation.DoesNotExist:
             return False, "Conversation not found"
 
-        # check block - lấy tất cả member khác trong phòng
-        other_ids = list(
-            ConversationMember.objects
-            .filter(conversation=conv)
-            .exclude(user=self.user)
-            .values_list('user_id', flat=True)
-        )
-
-        is_blocked = Block.objects.filter(
-            # chiều 1: người khác block mình
-            blocker_id__in=other_ids, blocked=self.user
-        ).exists() or Block.objects.filter(
-            # chiều 2: mình block người khác
-            blocker=self.user, blocked_id__in=other_ids
-        ).exists()
-
-        if is_blocked: # nếu bị block thì không gửi được
-            return False, "Bạn đã bị chặn bởi người dùng này"
-
-        # nếu conversation đang pending thì người nhận phải accept trước mới reply được
-        if conv.status == 'pending':
-            first_message = (
-                Message.objects
-                .filter(conversation=conv)
-                .order_by('created_at')
-                .first()
+        # check user còn active trong conversation không
+        member = ConversationMember.objects.filter(
+            conversation=conv,
+            user=self.user,
+            is_active=True
+        ).first()
+        if not member:
+            return False, "Bạn không có trong đoạn chat"
+        if not conv.is_group:
+            # check block - lấy tất cả member khác trong phòng
+            other_ids = list(
+                ConversationMember.objects
+                .filter(conversation=conv,is_active=True)
+                .exclude(user=self.user)
+                .values_list('user_id', flat=True)
             )
-            if first_message and self.user != first_message.sender:
-                return False, "Bạn phải chấp nhận yêu cầu tin nhắn trước khi trả lời"
+
+            is_blocked = Block.objects.filter(
+                # chiều 1: người khác block mình
+                blocker_id__in=other_ids, blocked=self.user
+            ).exists() or Block.objects.filter(
+                # chiều 2: mình block người khác
+                blocker=self.user, blocked_id__in=other_ids
+            ).exists()
+
+            if is_blocked: # nếu bị block thì không gửi được
+                return False, "Bạn đã bị chặn bởi người dùng này"
+
+            # nếu conversation đang pending thì người nhận phải accept trước mới reply được
+            if conv.status == 'pending':
+                first_message = (
+                    Message.objects
+                    .filter(conversation=conv)
+                    .order_by('created_at')
+                    .first()
+                )
+                if first_message and self.user != first_message.sender:
+                    return False, "Bạn phải chấp nhận yêu cầu tin nhắn trước khi trả lời"
 
         return True, None
 
@@ -296,7 +315,7 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
                 ).update(message=msg)
             # Update updated_at của conversation để sort list chat
             Conversation.objects.filter(id=self.conversation_id).update(updated_at=timezone.now())
-            ConversationMember.objects.filter(conversation_id=self.conversation_id,is_hidden=True).update(is_hidden=False)
+            ConversationMember.objects.filter(conversation_id=self.conversation_id,is_hidden=True,is_active=True).update(is_hidden=False)
             return msg
         except Exception as e:
             print(f" Save message error: {e}")
@@ -318,7 +337,7 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
 
     @database_sync_to_async
     def get_member_ids(self):
-        return list(ConversationMember.objects.filter(conversation_id=self.conversation_id).values_list('user_id', flat=True)) # chỉ lấy 1 field user_id
+        return list(ConversationMember.objects.filter(conversation_id=self.conversation_id,is_active=True).values_list('user_id', flat=True)) # chỉ lấy 1 field user_id
     @database_sync_to_async
     def get_sender_name(self):
         profile = Profile.objects.filter(user=self.user).first()
@@ -388,13 +407,12 @@ class ConversationConsumer(HeartbeatMixin,AsyncWebsocketConsumer):
 
     async def conversation_updated(self,event):
         await self.send(text_data=json.dumps({
-            'conversation_id':event['conversation_id'],
-            'last_message':event['last_message'],
-            'sender_id': event['sender_id'],
-            'sender_name': event['sender_name'],
-            'message_type': event['message_type'],
-            'created_at': event['created_at'],
-
+            'conversation_id': event['conversation_id'],
+            'last_message': event.get('last_message'),
+            'sender_id': event.get('sender_id'),
+            'sender_name': event.get('sender_name'),
+            'message_type': event.get('message_type'),
+            'created_at': event.get('created_at'),
         }))
 
 # cần lặp group send vì không như chat mn chung 1 group, conv list thì môi user 1 conv list

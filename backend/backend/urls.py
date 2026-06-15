@@ -144,6 +144,14 @@ urlpatterns = [
     path('api/chat/conversation/<int:pk>/toogle-hidden/',ToogleHideConversation.as_view(),name='toogle-hidden'), # tắt/bật ần chat vĩnh viển
     path('api/chat/conversation/hidden-chat/',ListHideConversation.as_view(),name='hidden-chat'),# url hiện tất cả đoạn chat ẩn
     path('api/chat/conversation/<int:conv_id>/upload/',ChatAttachmentUpload.as_view(),name='upload-file'),
+    path('api/chat/conversation/group/create-group/',CreateGroupConversation.as_view(),name='create-group-chat'),
+    path('api/chat/conversation/group/<int:conv_id>/transfer-admin/<new_admin_id>/',TransferAdminGroupChat.as_view(),name='transfer-admin-chat'),
+    path('api/chat/conversation/group/<int:conv_id>/add/',AddMemberGroupChat.as_view(),name='add-member-chat'),
+    path('api/chat/conversation/group/<int:conv_id>/modify/',ModifyGroupChat.as_view(),name='modify-group-chat'),
+    path('api/chat/conversation/group/<int:conv_id>/delete/',DeleteGroupChat.as_view()),
+    path('api/chat/conversation/group/<int:conv_id>/kick/',KickMemberGroupChat.as_view()),
+    path('api/chat/conversation/<int:conv_id>/leave/',LeaveGroupChat.as_view()),
+    path('api/chat/conversation/<int:conv_id>/file-list/',GetFileFromConversation.as_view()),
     #fire base notification
     path("api/fcm-token/", SaveFCMTokenView.as_view()), # token cho thiết bị
     #in-app notification
@@ -170,7 +178,14 @@ urlpatterns = [
     path('api/user/post/create/v2/',CreateFullPostView.as_view(),name='post-create-v2'), #v2 của tạo post
     #support
     path('api/support/', SupportTicketView.as_view()), #user gửi lên ticket và nhân viên check reply qua mail sau đó
-    
+    #url cho task
+    path('api/chat/conversation/task/<int:conv_id>/create-task/',CreateTaskGroupChat.as_view()),
+    path('api/chat/conversation/task/<int:conv_id>/add-member/',AddMemberIntoTaskGroupChat.as_view()),
+    path('api/chat/conversation/<int:conv_id>/task/<int:task_id>/member/',MemberofTaskGroupChat.as_view()),
+    path('api/chat/conversation/<int:conv_id>/task/<int:task_id>/update/',UpdateTaskGroupChat.as_view()),
+    path('api/chat/conversation/<int:conv_id>/task/<int:task_id>/delete/',DeleteTaskGroupChat.as_view()),
+    path('api/chat/conversation/task/<int:conv_id>/list-task/',ListTaskGroupChat.as_view()),
+
 ] + router.urls
 
 

@@ -20,7 +20,8 @@ class IsConversationMember(BasePermission):
 
         return ConversationMember.objects.filter(
             conversation=conversation,
-            user=request.user
+            user=request.user,
+            is_active=True
         ).exists()
 
 class PostViewPermission(permissions.BasePermission):

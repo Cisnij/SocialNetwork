@@ -11,6 +11,7 @@ from actstream.models import Action
 #friendship
 from friendship.models import Friend, FriendshipRequest, Follow, Block
 
+from .models import Profile
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -24,7 +25,6 @@ DEFAULT_PROFILE_PICTURE = (
 
 '''Dùng ModelSerializer sẽ tự gọi validate bên Model và k cần phải validate lại bên đây như serializer.Serializer'''
 class ProfileSerializer(serializers.ModelSerializer):
-    #friends = serializers.PrimaryKeyRelatedField(many=True, read_only=True) #cách tạo serializer của many to many field
     is_online=serializers.SerializerMethodField()
     user = serializers.IntegerField(source='user_id', read_only=True)
     picture = serializers.ImageField(required=False, allow_null=True) # nhận vòoo dạng imagefield để nhận file ảnh và để validate ảnh và lưu vào db
@@ -163,7 +163,8 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_tagged_users_info(self, obj): #khi list thì sẽ truyền từng object lọc ra từ filter và lấy ra profile, chỉ output từ list và readonly
         return [{
             'id': u.profile.id,
-            'full_name': f"@{u.profile.first_name}{u.profile.last_name}"
+            'full_name': f"@{u.profile.first_name}{u.profile.last_name}",
+            'picture': obj.profile.picture.url if obj.profile.picture else DEFAULT_PROFILE_PICTURE ,
         }
             for u in obj.tagged_users.all()
         ] #trả về list dict kiểu [{},{}]
@@ -254,6 +255,8 @@ class ConversationMemberSerializer(serializers.ModelSerializer):
             "role",
             "joined_at",
             "last_read_message",
+            'is_active',
+            'left_at',
         ]
 
 class ConversationSerializer(serializers.ModelSerializer):
@@ -437,3 +440,49 @@ class SupportTicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupportTicket
         fields = ['id', 'content', 'created_at']
+
+class TaskSerializer(serializers.ModelSerializer):
+    created_by = ProfileSerializer(source='created_by.profile', read_only=True)
+    assigned_to = serializers.SerializerMethodField() #ManyToManyField nên k thể dùng ProfileSerializer
+    assigned_to_ids = serializers.PrimaryKeyRelatedField( # primary field dùng validate và chuyển id vào thành object
+        source='assigned_to',
+        many=True,
+        queryset=User.objects.all(),# validate id truyền vào
+        write_only=True, # chỉ nhận
+        required=False
+    )
+    class Meta:
+        model = Task
+        fields = [
+            'id',
+            'title',
+            'description',
+            'created_by',
+            'assigned_to',
+            'assigned_to_ids',
+            'status',
+            'priority',
+            'deadline',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
+    def get_assigned_to(self, obj):
+        return [
+            {
+                'id': u.profile.id,
+                'full_name': u.profile.full_name,
+                'picture': u.profile.picture.url if u.profile.picture else DEFAULT_PROFILE_PICTURE ,
+            }
+            for u in obj.assigned_to.select_related('profile').all()
+        ]
+    def get_fields(self):  #hàm override của modelSerializer để tùy chỉnh trường trả về
+        fields = super().get_fields() #kế thừa
+        request = self.context.get('request')
+        task = self.instance #instance truyền từ API sang
+
+        if task and request:
+            if task.created_by != request.user: #không phải người tạo thì k dc sửa những field sau
+                for field in ['title', 'description', 'priority', 'deadline', 'assigned_to_ids']:
+                    fields[field].read_only = True
+        return fields # nếu ng đó tạo task thì return hết để update

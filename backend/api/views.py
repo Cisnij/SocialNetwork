@@ -7,6 +7,7 @@ from django.db.models.functions import RowNumber
 from django.views.generic import DetailView
 
 from backend import settings_backend
+from .models import Profile
 from .serializers import *
 from rest_framework import generics,permissions
 from rest_framework.permissions import *
@@ -400,7 +401,7 @@ class PinPostView(generics.UpdateAPIView):
     serializer_class = PostSerializer
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'pin_post'
-    def get_object(self):
+    def get_object(self): #get_object để update dùng
         post = get_object_or_404(Post.objects.select_for_update(), pk=self.kwargs.get('pin_id'))
         if post.user != self.request.user:
             raise PermissionDenied('You are not the post owner')
@@ -1160,7 +1161,7 @@ class FriendListView(generics.ListAPIView):  # danh sách bạn bè của mình
         exclude_group_id = self.request.query_params.get('exclude_group_id') #chức năng lấy ra các thành viên chưa thêm vào group nếu có truyền
         queryset = Friend.objects.filter(from_user=self.request.user).select_related('to_user__profile')
         if exclude_group_id:
-            existing_user=ConversationMember.objects.filter(conversation_id=exclude_group_id).values_list("user_id", flat=True)
+            existing_user=ConversationMember.objects.filter(conversation_id=exclude_group_id, is_active=True).values_list("user_id", flat=True)
             queryset = queryset.exclude(to_user_id__in=existing_user)
         return queryset
 
@@ -1505,6 +1506,7 @@ class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ 
     def get_queryset(self):
         return Conversation.objects.filter(
             conversationmember__user=self.request.user, # lấy ra đoạn chat có user
+            conversationmember__is_active=True,
             conversationmember__is_hidden=False,
             conversationmember__is_permanently_hidden=False
         ).distinct().prefetch_related(
@@ -1556,7 +1558,11 @@ class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò c
             .prefetch_related("attachments")  # lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments n-n)
             .order_by("-created_at")
         )
-        member= ConversationMember.objects.filter(conversation=conv,user=self.request.user).only('deleted_at_message_id').first() # chỉ lấy deleted
+        member= ConversationMember.objects.filter(conversation=conv,user=self.request.user).only('deleted_at_message_id','is_active','left_at').first() # chỉ lấy deleted
+        if not member:  # thêm check này
+            return Response({"error": "Bạn không trong nhóm"}, status=403)
+        if not member.is_active and member.left_at: # user đã rời/bị kick → chỉ hiện tin nhắn trước lúc rời
+            qs = qs.filter(created_at__lt=member.left_at)
         if member and member.deleted_at_message_id is not None: # nếu là thành viên và đã xóa
             qs= qs.filter(id__gt=member.deleted_at_message_id) # lấy tin nhắn có thơi gian lớn hơn delete
         return qs
@@ -1574,7 +1580,7 @@ class MemberOfConversation(generics.ListAPIView):  # danh sách thành viên tro
         self.check_object_permissions(self.request,conv)
         return (
             ConversationMember.objects
-            .filter(conversation=conv)
+            .filter(conversation=conv, is_active=True)
             .select_related( "user","user__profile")
         )
 
@@ -1594,7 +1600,8 @@ class SeenMessage(APIView):  # đánh dấu đã xem tin nhắn, logic là khi m
 
         ConversationMember.objects.filter(
             conversation=conversation,
-            user=request.user
+            user=request.user,
+            is_active=True,
         ).update(last_read_message=last_message.id)
 
         # Gửi seen event qua WebSocket để đồng bộ các thiết bị khác, cách custome
@@ -1739,7 +1746,7 @@ class ChatAttachmentUpload(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser,FormParser]
     def post(self,request,conv_id):
-        if not ConversationMember.objects.filter(user=request.user,conversation_id=conv_id).exists():
+        if not ConversationMember.objects.filter(user=request.user,conversation_id=conv_id,is_active=True).exists():
             return Response({'error': 'Không có quyền'}, status=403)
         files=request.FILES.getlist('files')
         if not files: #check file hợp lệ
@@ -2103,7 +2110,7 @@ class CreateGroupConversation(APIView):
         conversation = Conversation.objects.create(
             is_group=True,
             name=name,
-            create_by=request.user,
+            created_by=request.user,
             status='accept'
         )
         ConversationMember.objects.create(
@@ -2124,16 +2131,14 @@ class TransferAdminGroupChat(APIView):
     throttle_classes=[ScopedRateThrottle]
     throttle_scope='transfer_admin_chat'
     def post(self,request,conv_id):
-        new_admin_id = request.data.get('new_admin_id')
-
+        new_admin_id = self.kwargs.get('new_admin_id')
         try: #check user hiện tại có phải admin
-            membership= ConversationMember.objects.get(conversation=conv_id, user=request.user, role='admin')
+            membership= ConversationMember.objects.get(conversation_id=conv_id, conversation__is_group=True, user=request.user, role='admin',is_active=True)
         except ConversationMember.DoesNotExist:
             return Response({"error": "Bạn không có quyền"}, status=403)
-
-        try: #check người được trao admin có trong nhóm
-            new_admin= ConversationMember.objects.filter(conversation=conv_id, user=new_admin_id).first()
-        except ConversationMember.DoesNotExist:
+        # check người được trao admin có trong nhóm
+        new_admin = ConversationMember.objects.filter(conversation_id=conv_id, user_id=new_admin_id,is_active=True).first()
+        if not new_admin:
             return Response({"error": "Người dùng không trong nhóm"}, status=404)
 
         with transaction.atomic():
@@ -2142,6 +2147,24 @@ class TransferAdminGroupChat(APIView):
             new_admin.role='admin'
             new_admin.save(update_fields=['role'])
 
+        message_system = Message.objects.create(
+            conversation_id=conv_id,
+            sender=request.user,
+            content=f"{request.user.profile.full_name} đã chuyển quyền admin",
+            message_type='system_admin_transferred'
+        )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send) (
+                f'chat_{conv_id}', # gửi đến device connect với tên này trong redis
+                {
+                    'type': 'system_message',
+                    'message': message_system.content,
+                    'message_type': message_system.message_type,
+                }
+            )
+        except Exception:
+            pass
         return Response({"new_admin": new_admin_id}, status=200)
 
 class AddMemberGroupChat(APIView):
@@ -2151,24 +2174,48 @@ class AddMemberGroupChat(APIView):
     def post(self,request,conv_id):
         new_member_ids= request.data.get('new_members',[])
 
-        if ConversationMember.objects.filter(conversation=conv_id, user=request.user).exists(): #check user có trong nhóm k
+        if not ConversationMember.objects.filter(conversation_id=conv_id, user=request.user, is_active=True).exists(): #check user có trong nhóm k
             return Response({"error": "Bạn không trong nhóm"}, status=403)
 
         if not new_member_ids:
             return Response({"error": "Danh sách thành viên không được để trống"}, status=400)
 
         new_member_ids= list(set(new_member_ids)) # thêm vào set tránh bị lặp thành viên
-        new_members= ConversationMember.objects.filter(conversation=conv_id, user_id__in=new_member_ids).values_list('user_id',flat=True) #láy ra các thành viên đã ở sẵn trong group rồi
+        new_members= ConversationMember.objects.filter(conversation_id=conv_id, user_id__in=new_member_ids, is_active=True).values_list('user_id',flat=True) #láy ra các thành viên đã ở sẵn trong group rồi
         validate_new_member = [u_id for u_id in new_member_ids if u_id not in new_members] # lấy ra thành viên chưa có trong group
 
         if not validate_new_member: # nếu trừ đi mà 0 còn thành viên nào thì chứng tỏ dã có trong gr sẵn r
             return Response({"detail": "Tất cả các thành viên đã có trong nhóm."}, status=200)
 
-        ConversationMember.objects.bulk_create([
-            ConversationMember(conversation=conv_id, user=u, role='member')
-            for u in new_member_ids
-        ])
-        return Response({"error": "Thêm thành công"}, status=200)
+        users = User.objects.filter(id__in=validate_new_member) #check có user k
+        ConversationMember.objects.bulk_create( # sql là insert into / values / on conflict /do update
+            [
+                ConversationMember(conversation_id=conv_id,user=u,role='member',is_active=True,left_at=None)
+                for u in users
+            ],
+            update_conflicts=True,  # thay vì báo lỗi unique thì update khi đã add vào mà đã rời đi thì chỉ update is active
+            unique_fields=['conversation', 'user'],  # nếu user đã có trc từ gr chỉ thêm lại thì sẽ bị trùng,trùng sẽ thực thi lệnh DO
+            update_fields=['is_active', 'left_at']  # field nào được update khi trùng, khai báo ở trên
+        )
+        message_system = Message.objects.create(
+            conversation_id=conv_id,
+            sender=request.user,
+            content=f"{request.user.profile.full_name} đã thêm {len(users)} thành viên vào nhóm",
+            message_type='system_member_added'
+        )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send) (
+                f'chat_{conv_id}', # gửi đến device connect với tên này trong redis
+                {
+                    'type': 'system_message',
+                    'message': message_system.content,
+                    'message_type': message_system.message_type,
+                }
+            )
+        except Exception:
+            pass
+        return Response({"detail": "Thêm thành công"}, status=200)
 
 class ModifyGroupChat(APIView):
     permission_classes = [IsAuthenticated,IsConversationMember]
@@ -2190,13 +2237,40 @@ class ModifyGroupChat(APIView):
             return Response({"error": "Không có gì để cập nhật"}, status=400)
         conv.save(update_fields=update_fields)
         serializer = ConversationSerializer(conv, context={'request': request})
+        message_system= None
+        if 'name' in update_fields:
+            message_system= Message.objects.create(
+                conversation_id=conv_id,
+                sender=request.user,
+                content=f"{request.user.profile.full_name} đã đổi tên nhóm thành {name}",
+                message_type='system_name_changed'
+            )
+        if 'avatar' in update_fields:
+            message_system = Message.objects.create(
+                conversation_id=conv_id,
+                sender=request.user,
+                content=f"{request.user.profile.full_name} đã đổi ảnh nhóm",
+                message_type='system_avatar_changed'
+            )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send) (
+                f'chat_{conv_id}', # gửi đến device connect với tên này trong redis
+                {
+                    'type': 'system_message',
+                    'message': message_system.content,
+                    'message_type': message_system.message_type,
+                }
+            )
+        except Exception:
+            pass
         return Response(serializer.data, status=200)
 
 class DeleteGroupChat(APIView):
     permission_classes = [IsAuthenticated]
     def delete(self,request,conv_id):
         try:
-            user_member = ConversationMember.objects.get(conversation_id=conv_id, user=request.user, role='admin')
+            user_member = ConversationMember.objects.get(conversation_id=conv_id, conversation__is_group=True, user=request.user, role='admin', is_active=True)
         except ConversationMember.DoesNotExist:
             return Response({"error": "Bạn không có quyền"}, status=403)
         if request.user.has_usable_password():  # Nếu user có password vì register, dùng google login không có password nên bỏ qua
@@ -2208,34 +2282,54 @@ class DeleteGroupChat(APIView):
         deleted, _ = Conversation.objects.filter(id=conv_id,is_group=True).delete()
         if not deleted:
             return Response({"error": "Không có group này"}, status=400)
-        return Response({"success": True}, status=200)
+        return Response({"conv_id": conv_id,}, status=200)
 
 class KickMemberGroupChat(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes=[ScopedRateThrottle]
     throttle_scope='delete_member_group_chat'
     def delete(self,request,conv_id):
-        user_kick_id = request.data.get('kick_id')
+        user_kick_id = self.kwargs.get('kick_id')
         if not user_kick_id:
             return Response({"error":"không có user kick"},status=400)
         if user_kick_id == request.user.id:
             return Response({"error":"không thể kick chính mình"},status=400)
         try: #check valid conv_id truyền vào và cả check admin
-            ConversationMember.objects.get(conversation_id=conv_id, conversation__is_group=True, user=request.user, role='admin') #conversation is group sẽ được JOIN vào
+            ConversationMember.objects.get(conversation_id=conv_id, conversation__is_group=True, user=request.user, role='admin', is_active=True) #conversation is group sẽ được JOIN vào
         except ConversationMember.DoesNotExist:
             return Response({"error": "Bạn không có quyền"}, status=403)
         #lọc ra có member k và xóa
-        deleted, _ = ConversationMember.objects.filter(conversation=conv_id, user_id=user_kick_id, role='member').delete()
-        if not deleted:
+        member = ConversationMember.objects.filter(conversation_id=conv_id,user_id=user_kick_id,role='member',is_active=True).select_related('user__profile').first()
+        if not member:
             return Response({"error": "Không có thành viên này"}, status=400)
-        return Response({"success": True}, status=200)
+        member.is_active = False
+        member.left_at = timezone.now()
+        member.save(update_fields=['is_active', 'left_at'])
+        message_system = Message.objects.create(
+            conversation_id=conv_id,
+            sender=request.user,
+            content=f"{request.user.profile.full_name} đã xóa {member.user.profile.full_name} thành viên",
+            message_type='system_member_kicked'
+        )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send) (
+                f'chat_{conv_id}', # gửi đến device connect với tên này trong redis
+                {
+                    'type': 'system_message',
+                    'message': message_system.content,
+                    'message_type': message_system.message_type,
+                }
+            )
+        except Exception:
+            pass
+        return Response({"success": user_kick_id}, status=200)
 
 class LeaveGroupChat(APIView):
     permission_classes = [IsAuthenticated]
-    throttle_classes=[ScopedRateThrottle]
     def delete(self,request,conv_id):
         try:
-            user_member = ConversationMember.objects.get(conversation_id=conv_id, user=request.user)
+            user_member = ConversationMember.objects.get(conversation_id=conv_id,conversation__is_group=True, user=request.user,is_active=True)
         except ConversationMember.DoesNotExist:
             return Response({"error": "Bạn không có trong group"}, status=403)
         if user_member.role == 'admin':
@@ -2243,10 +2337,220 @@ class LeaveGroupChat(APIView):
             if not next_admin_user_id:
                 return Response({"error": "chọn user kế thừa admin"}, status=400)
             with transaction.atomic():
-                updated = ConversationMember.objects.filter(conversation_id=conv_id, user_id=next_admin_user_id).update(role='admin')
+                updated = ConversationMember.objects.filter(conversation_id=conv_id, user_id=next_admin_user_id, is_active=True).update(role='admin')
                 if not updated:
                     return Response({"error": "Thành viên không hợp lệ"}, status=400)
-                user_member.delete()
+                user_member.is_active = False
+                user_member.left_at = timezone.now()
+                user_member.save(update_fields=['is_active', 'left_at'])
             return  Response({"success": True}, status=200)
-        user_member.delete()
+        user_member.is_active = False
+        user_member.left_at = timezone.now()
+        user_member.save(update_fields=['is_active', 'left_at'])
+        message_system = Message.objects.create(
+            conversation_id=conv_id,
+            sender=request.user,
+            content=f"{request.user.profile.full_name} đã rời nhóm",
+            message_type='system_member_left'
+        )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'chat_{conv_id}',  # gửi đến device connect với tên này trong redis
+                {
+                    'type': 'system_message',
+                    'message': message_system.content,
+                    'message_type': message_system.message_type,
+                }
+            )
+        except Exception:
+            pass
         return Response({"success": True}, status=200)
+
+#========================TASK===========================================================
+
+class CreateTaskGroupChat(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='add_tasks'
+    serializer_class = TaskSerializer
+    def perform_create(self, serializer): #perform_create tự trả về object vừa create
+        user= self.request.user
+        conv_id= self.kwargs.get('conv_id')
+        if not conv_id:
+            raise NotFound("Vui lòng truyền conversation id")
+        if not ConversationMember.objects.filter(
+                conversation_id=conv_id,
+                user=self.request.user,
+                is_active=True
+        ).exists():
+            raise PermissionDenied("Bạn không trong nhóm")
+        content_type = ContentType.objects.get_for_model(Conversation)
+        serializer.save(content_type=content_type, object_id=conv_id, created_by=user)
+        message_system = Message.objects.create(
+            conversation_id=conv_id,
+            sender=self.request.user,
+            content=f"{self.request.user.profile.full_name} đã tạo task",
+            message_type='system_task_created'
+        )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'chat_{conv_id}',
+                {
+                    'type': 'system_message',
+                    'message': message_system.content,
+                    'message_type': message_system.message_type,
+                }
+            )
+        except Exception:
+            pass
+
+
+class AddMemberIntoTaskGroupChat(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self,request,conv_id):
+        add_member_ids= request.data.get('add_member_ids')
+        tasks_id = request.data.get('tasks_id')
+        if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không trong nhóm")
+        task = get_object_or_404(Task.objects.select_related("created_by__profile"), id=tasks_id)
+        if task.created_by != request.user:
+            raise PermissionDenied("Bạn phải là người tạo mới được thêm thành viên")
+        user_ids= User.objects.filter(id__in=add_member_ids) #validate id truyền vào có real
+        task.assigned_to.add(*user_ids)  # ManyToMany dùng add, dấu * dùng để add từng id chứ k truyền 1 set vào
+        message_system = Message.objects.create(
+            conversation_id=conv_id,
+            sender=self.request.user,
+            content=f"{self.request.user.profile.full_name} đã thêm thành viên trong task {task.title}",
+            message_type='system_task_assigned'
+        )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'chat_{conv_id}',
+                {
+                    'type': 'system_message',
+                    'message': message_system.content,
+                    'message_type': message_system.message_type,
+                }
+            )
+        except Exception:
+            pass
+        return Response({"success": True}, status=200)
+
+class MemberofTaskGroupChat(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    pagination_class = SmallPagePagination
+    serializer_class = ProfileSerializer
+    def get_queryset(self):
+        conv_id = self.kwargs.get('conv_id')
+        task_id = self.kwargs.get('task_id')
+        if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không trong nhóm")
+        contenttype = ContentType.objects.get_for_model(Conversation)
+        task = get_object_or_404(Task, content_type=contenttype, object_id=conv_id, id=task_id)
+        return Profile.objects.filter(
+            user__in=task.assigned_to.all(), # lấy ra user trong user được giao trong task
+            user__conversationmember__conversation_id= conv_id, # user có trong conversationmember có conv_id = conv_id
+            user__conversationmember__is_active=True #user trong conversationmember mà is_active =True, rời group thì k hiện
+        ).select_related('user')
+
+class UpdateTaskGroupChat(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope='update_tasks'
+    def get_object(self):
+        conv_id = self.kwargs.get('conv_id')
+        task_id = self.kwargs.get('task_id')
+        task= get_object_or_404(Task.objects.select_related("created_by__profile"), id=task_id)
+        if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        #không phải là người tạo và không phải là người đc giao
+        if task.created_by != self.request.user and not task.assigned_to.filter(id=self.request.user.id).exists():
+            raise PermissionDenied("Bạn không có quyền")
+        return task
+
+    def patch(self, request, *args, **kwargs):
+        task = self.get_object() #kế thừa
+        serializer = self.get_serializer(task, data=request.data, partial=True) # gọi serializer để validate get_fields,truyền vào task để chạy get_fields
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        message_system = Message.objects.create(
+            conversation_id=self.kwargs.get('conv_id'),
+            sender=self.request.user,
+            content=f"{self.request.user.profile.full_name} đã cập nhật trong task {task.title}",
+            message_type='system_task_updated'
+        )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'chat_{self.kwargs.get('conv_id')}',
+                {
+                    'type': 'system_message',
+                    'message': message_system.content,
+                    'message_type': message_system.message_type,
+                }
+            )
+        except Exception:
+            pass
+        return Response(serializer.data, status=200)
+
+class DeleteTaskGroupChat(APIView):
+    permission_classes = [IsAuthenticated]
+    def delete(self, request, task_id, conv_id):
+        if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        content_type= ContentType.objects.get_for_model(Conversation)
+        task= get_object_or_404(Task.objects.select_related("created_by__profile"), id=task_id, content_type=content_type, object_id=conv_id)
+        if task.created_by != request.user:
+            raise PermissionDenied("Chỉ có người tạo task mới có thể xóa")
+        message_system = Message.objects.create(
+            conversation_id=conv_id,
+            sender=self.request.user,
+            content=f"{self.request.user.profile.full_name} đã xóa task {task.title}",
+            message_type='system_task_deleted'
+        )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'chat_{conv_id}',
+                {
+                    'type': 'system_message',
+                    'message': message_system.content,
+                    'message_type': message_system.message_type,
+                }
+            )
+        except Exception:
+            pass
+        task.delete()
+        return Response({"deleted_task_id": task_id}, status=200)
+
+class ListTaskGroupChat(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend,OrderingFilter]
+    filterset_fields = ['status','assigned_to'] #filter đúng ra ví dụ task.status= todo
+    ordering_fields = ['is_finished','created_at','deadline','priority'] # sắp xếp tăng giảm dần
+    serializer_class = TaskSerializer
+    pagination_class = SmallPagePagination
+    def get_queryset(self):
+        conv_id = self.kwargs.get('conv_id')
+        if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong nhóm")
+        contenttype= ContentType.objects.get_for_model(Conversation)
+        return Task.objects.filter(content_type=contenttype,object_id=conv_id,).order_by('-is_finished','-created_at').select_related('user__profile')
+
+class GetFileFromConversation(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend,OrderingFilter]
+    serializer_class = MessageAttachmentSerializer
+    pagination_class = LargePagePagination
+    filterset_fields = ['file_type']
+    def get_queryset(self):
+        conv_id= self.kwargs.get('conv_id')
+        if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        return MessageAttachment.objects.filter(
+            conversation_id=conv_id,
+        ).order_by('-created_at')

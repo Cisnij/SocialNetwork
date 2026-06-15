@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log,Notification,Message,PostShare
 from reaction.models import UserReaction
 from allauth.account.signals import email_confirmed, user_logged_in
-from .tasks import notify_conversation_members
+
 from django.contrib.auth import get_user_model
 from allauth.account.models import EmailAddress
 from django.contrib.contenttypes.models import ContentType
@@ -672,12 +672,4 @@ def delete_unverified_email(sender, request, email_address, **kwargs):
         verified=False,             # chưa verified
     ).exclude(user=email_address.user).delete()  # trừ user vừa verify
 
-# signals.py - gọn, chỉ fire task
-@receiver(post_save, sender=Message)
-def message_created(sender, instance, created, **kwargs):
-    if created:
-        notify_conversation_members.delay(
-            instance.id,
-            instance.conversation_id,
-            instance.sender_id,
-        )
+

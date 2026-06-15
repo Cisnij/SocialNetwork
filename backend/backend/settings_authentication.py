@@ -75,7 +75,9 @@ REST_FRAMEWORK={ #Cấu hình token
         'create_group_chat':'5/m',
         'transfer_admin_chat': '1/h',
         'add_member_group_chat': '20/m',
-        'delete_member_group_chat':'20/m'
+        'delete_member_group_chat':'20/m',
+        'add_tasks':'30/m',
+        'update_tasks':'20/m',
     },
 
     "DEFAULT_PARSER_CLASSES": [ #dùng cho phép nhận nhiều định dạng dữ liệu khác nhau 
@@ -292,9 +294,9 @@ AXES_ENABLE_ACCESS_FAILURE_LOG =True #log lại các lần đăng nhập thất 
 
 USE_X_FORWARDED_HOST=True   # nếu dùng proxy ngược như nginx
 
-X_FRAME_OPTIONS = 'SAMEORIGIN' #Ngăn chặn clickjacking tức là trang web bị load trong iframe của trang khác
+X_FRAME_OPTIONS = 'SAMEORIGIN' #Ngăn chặn clickjacking tức là trang web bị load trong iframe của trang khác, chỉ cho root domain load <iframe>
 
-REFERRER_POLICY = 'strict-origin-when-cross-origin'  
+REFERRER_POLICY = 'strict-origin-when-cross-origin'#User ở https://yoursite.com/profile/123 click link sang google.com chỉ còn https://yoursite.com để bảo vệ thông tin
 
 IPWARE_USE_X_FORWARDED_FOR = True 
 

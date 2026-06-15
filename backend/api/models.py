@@ -1,6 +1,7 @@
 import secrets
 import string
 
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.contrib.auth.models import User
 from autoslug import AutoSlugField  # pip install django-autoslug
@@ -240,7 +241,7 @@ class Conversation(models.Model):
     is_group = models.BooleanField(default=False)
     name = models.CharField(max_length=50, null=True, blank= True)
     avatar = models.ImageField(upload_to=conversation_avatar_upload_path,null=True, blank=True,validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])])
-    create_by = models.ForeignKey(User, on_delete=models.CASCADE,null=True,blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE,null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=(('pending', 'Pending'), ('accept', 'Accept')), default='pending')
     updated_at = models.DateTimeField(auto_now=True)
@@ -269,6 +270,8 @@ class ConversationMember(models.Model):
     deleted_at_message_id = models.PositiveBigIntegerField(null=True, blank=True)
     is_hidden=models.BooleanField(default=False)
     is_permanently_hidden = models.BooleanField(default=False)
+    is_active=models.BooleanField(default=True)
+    left_at = models.DateTimeField(null=True, blank=True)
     def __str__(self):
         return f"Member user_id={self.user_id} | conv_id={self.conversation_id}"
 
@@ -284,13 +287,29 @@ class ConversationMember(models.Model):
 
 
 class Message(SafeDeleteModel):
+    MESSAGE_TYPE_CHOICES=[
+        ('text', 'Text'),
+        ('image', 'Image'),
+        ('file', 'File'),
+        # thêm system message types
+        ('system_task_created', 'Tạo task'),
+        ('system_task_updated', 'Cập nhật task'),
+        ('system_task_assigned', 'Assign task'),
+        ('system_task_deleted', 'Xóa task'),
+        ('system_member_added', 'Thêm thành viên'),
+        ('system_member_left', 'Rời nhóm'),
+        ('system_member_kicked', 'Bị kick'),
+        ('system_admin_transferred', 'Chuyển admin'),
+        ('system_name_changed', 'Đổi tên nhóm'),
+        ('system_avatar_changed', 'Đổi avatar nhóm'),
+    ]
     _safedelete_policy = SOFT_DELETE_CASCADE
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
     content = EncryptedTextField(null=True, blank=True)
     message_type = models.CharField(  # ô chọn
-        max_length=20,
-        choices=(('text', 'Text'), ('image', 'Image'), ('file', 'File')),
+        max_length=50,
+        choices=MESSAGE_TYPE_CHOICES,
         default='text'
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -381,10 +400,6 @@ class Notification(models.Model):
         ]  # ví dụ nó sẽ lưu vào user là 5 trong db index và mốt nó truy vấn chỉ cần vào đó tìm user 5 sẽ ra row 1000
 
 
-# Cách để tạo model gán đc cho nhiều thằng
-#     content_type= models.ForeignKey(ContentType,on_delete=models.CASCADE)
-#     object_id= models.PositiveIntegerField()
-#     content_object=GenericForeignKey('content_type','object_id') # dùng để tham chiếu thẳng tới object trong model đó, cách để đem model gắn vào nhiều th model khác dùng GenericRelation(Notification) và Reaction.objects.create(content_object=post, ...) và post.reactions.all()
 
 # # ======================================================================
 class SearchHistory(SafeDeleteModel):
@@ -454,3 +469,34 @@ class SupportTicket(models.Model):
     def __str__(self):
         return f"{self.user} | {self.status}"
 
+#=================TASK=================================
+class Task(models.Model):
+    STATUS=[
+        ('todo','Cần làm'),
+        ('in_progress','Đang làm'),
+        ('done','Hoàn Thành')
+    ]
+    PRIORITY=[
+        ('low','Thấp'),
+        ('medium','Trung bình'),
+        ('high','Cao')
+    ]
+    #dùng để gắn vào nhiều model khác linh động mà k bị trói buộc foreign key khi gắn
+    content_type= models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    title = models.CharField(max_length=250)
+    description = models.TextField(null=True,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status= models.CharField(choices=STATUS,max_length=20,default='todo')
+    priority = models.CharField(choices=PRIORITY,max_length=20,default='medium')
+    assigned_to=models.ManyToManyField(User,blank=True, related_name='assigned_tasks')
+    is_finished=models.BooleanField(default=False)
+    deadline = models.DateTimeField(null=True,blank=True)
+    updated_at= models.DateTimeField(auto_now=True)
+    class Meta:
+        indexes= [
+            models.Index(fields=['content_type','object_id','status','priority']),
+        ]
