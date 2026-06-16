@@ -1,9 +1,7 @@
 
 chưa xong
 -sửa lại js phần bạn
--thiếu phần đăng nhập:, xác thực otp khi bật 2 bước, xóa tài khoản
-- tạo group
-- thêm vào reaction cho message, thêm vào setting cho chat, có role các kiểu bên trong model conversationmember,
+-thiếu phần đăng nhập:, xác thực otp khi bật 2 bước
 - api tạo group, api thêm member, thêm quyền vào db conversationmember is_admin=true, tạo api thêm quyền cho user trong đoạn chat, thêm avatar, group name vào db conversation
 - xong tất cả thì xây signal 1 thể
 - xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
@@ -16,14 +14,17 @@ chưa xong
 - thêm 1 cái là upload video và thêm model PostVideo luôn làm y chang PostPhoto
 -áp dụng proxy sql, ngày mai deploy gộp vào 1 container duy nhất
 - áp dung rapid api dùng lấy api bên thứ 3 free như thời tiết chứng khoán...
-4 api mới của
-    xem tất cả các api được gọi ở 1 trang xem có thừa, test đủ các api và fe đã dùng đủ chức năng chưa và đúng logic chưa
-
+-xem tất cả các api được gọi ở 1 trang xem có thừa, test đủ các api và fe đã dùng đủ chức năng chưa và đúng logic chưa
+-xây search cho chat
 chat nhóm:
 	call video
 	lên lịch
-	task to do
-	file nội bộ
+	// task to do
+	tạo vote
+	// file nội bộ
+	reaction cho message
+	thêm vào setting cho chat
+    -qunả lý file trong cloudinary cho chat cloudinary.api.resources(prefix=f'chat/conv_{conv_id}/')
 
 tạo group
 	quy tắc nhóm
@@ -50,9 +51,7 @@ GroupFile — file nội bộ upload
 
 
 Để thiết kế một hệ thống **Chuẩn Production** có thể tối đa hóa RPS (hàng ngàn requests/giây) và Concurrency (hàng chục ngàn người dùng online cùng lúc), bạn cần xây dựng một **Kiến trúc Đa tầng (Multi-tier Architecture)**.
-
 Tuyệt đối không được nhồi nhét tất cả mọi thứ vào chung một chỗ chạy khơi khơi như ở Local. Dưới đây là **Bản vẽ Kiến trúc Tiêu chuẩn nhất** dành cho Mạng Xã Hội Django của bạn:
-
 ### TẦNG 1: Cổng bảo vệ & Phân luồng (Edge & Load Balancer)
 1. **Cloudflare (CDN & WAF):** Đứng ngoài cùng. Nó chặn Hacker (DDoS), chống bão traffic rác, và quan trọng nhất là nó lưu trữ (Cache) lại toàn bộ hình ảnh, CSS, JS. Khi User tải hình, Cloudflare trả ảnh về luôn, Server của bạn không hề tốn 1 giọt mồ hôi nào!
 2. **Nginx (hoặc HAProxy):** Đứng ở máy chủ của bạn (VPS). Nhiệm vụ của Nginx là:

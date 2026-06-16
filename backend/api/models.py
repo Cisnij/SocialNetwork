@@ -500,3 +500,33 @@ class Task(models.Model):
         indexes= [
             models.Index(fields=['content_type','object_id','status','priority']),
         ]
+
+#=====================VOTE==========================================================
+class Vote(models.Model):
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    title = models.CharField(max_length=250)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE) #group chat hoặc group
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_closed = models.BooleanField(default=False)
+    class Meta:
+        indexes=[
+            models.Index(fields=['content_type','object_id','is_closed','created_at']),
+        ]
+
+class VoteOption(models.Model):
+    vote = models.ForeignKey(Vote, on_delete=models.CASCADE, related_name='options')
+    text = models.CharField(max_length=255)
+    count = models.PositiveIntegerField(default=0)
+    class Meta:
+        unique_together = (('vote', 'text'),) # Không cho phép tạo 2 option trùng tên trong 1 vote
+        indexes = [models.Index(fields=['vote','count'])]
+
+class UserVote(models.Model):
+    option = models.ForeignKey(VoteOption, on_delete=models.CASCADE,related_name='votes')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    class Meta:
+        unique_together = (('option', 'created_by'),) # Mỗi user chỉ được vote 1 option 1 lần
+        indexes = [models.Index(fields=['option','created_by'])]
+

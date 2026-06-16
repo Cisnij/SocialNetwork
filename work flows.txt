@@ -96,7 +96,9 @@ work flows
     đổi admin: khi nhán sẽ gọi api check có phải admin k và đổi
     thêm thành viên: gọi api/user/friends?exclude_group_id=... lấy ra bạn bè chưa có trong group, sau đó gọi api check user có là thành viên, id thêm = id truyền vào - id đã tồn tại
     modify group chat đổi tên và ảnh
-    kickmember: check xem có là admin không, khi kick gọi api lấy ra danh sách thành viên mà kick
+    kickmember: check xem có là admin không, khi kick gọi api lấy ra danh sách thành viên mà kick và đánh is_active=False
     DeleteGroupChat: yêu cầu nhập mật khẩu
-    LeaveGroupChat: gọi api lấy thành viên và trao quyền cho user đó mới đc rời
+    LeaveGroupChat: gọi api lấy thành viên và trao quyền cho user đó mới đc rời, đánh member là is active=False, fe khi gọi thành công sẽ hiện k có ô chat
+    **Tạo thêm message_type và broadcast qua khi gửi tin nhắn
+60. Tạo todo task cho group và chat
 =====================================================================================

@@ -145,7 +145,7 @@ urlpatterns = [
     path('api/chat/conversation/hidden-chat/',ListHideConversation.as_view(),name='hidden-chat'),# url hiện tất cả đoạn chat ẩn
     path('api/chat/conversation/<int:conv_id>/upload/',ChatAttachmentUpload.as_view(),name='upload-file'),
     path('api/chat/conversation/group/create-group/',CreateGroupConversation.as_view(),name='create-group-chat'),
-    path('api/chat/conversation/group/<int:conv_id>/transfer-admin/<new_admin_id>/',TransferAdminGroupChat.as_view(),name='transfer-admin-chat'),
+    path('api/chat/conversation/group/<int:conv_id>/transfer-admin/',TransferAdminGroupChat.as_view(),name='transfer-admin-chat'),
     path('api/chat/conversation/group/<int:conv_id>/add/',AddMemberGroupChat.as_view(),name='add-member-chat'),
     path('api/chat/conversation/group/<int:conv_id>/modify/',ModifyGroupChat.as_view(),name='modify-group-chat'),
     path('api/chat/conversation/group/<int:conv_id>/delete/',DeleteGroupChat.as_view()),

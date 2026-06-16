@@ -20,7 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields=['id','username','first_name','last_name']
 
 DEFAULT_PROFILE_PICTURE = (
-    "https://res.cloudinary.com/dec8t19tm/image/upload/v1779183832/default.jpg"
+    "https://res.cloudinary.com/dec8t19tm/image/upload/v1781533632/default-avatar_qprrlr.jpg"
 )
 
 '''Dùng ModelSerializer sẽ tự gọi validate bên Model và k cần phải validate lại bên đây như serializer.Serializer'''
@@ -314,6 +314,7 @@ class ConversationSerializer(serializers.ModelSerializer):
         return min(count,10) # trả về nhỏ nhất, count hoặc mặc định là 10
 
 class MessageAttachmentSerializer(serializers.ModelSerializer):
+    uploaded_by = ProfileSerializer(source="uploaded_by.profile", read_only=True)
     class Meta:
         model = MessageAttachment
         fields = [
@@ -322,6 +323,8 @@ class MessageAttachmentSerializer(serializers.ModelSerializer):
             'file_type',
             'file_name',
             'file_size',
+            'created_at',
+            'uploaded_by',
         ]
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -486,3 +489,25 @@ class TaskSerializer(serializers.ModelSerializer):
                 for field in ['title', 'description', 'priority', 'deadline', 'assigned_to_ids']:
                     fields[field].read_only = True
         return fields # nếu ng đó tạo task thì return hết để update
+
+#================VOTE==================================================
+class VoteOptionSerializer(serializers.ModelSerializer):
+    is_voted = serializers.BooleanField(read_only=True, default=False)
+    class Meta:
+        model = VoteOption
+        fields = ['id', 'text', 'count','is_voted']
+
+class VoteSerializer(serializers.ModelSerializer):
+    options = VoteOptionSerializer(many=True, read_only=True)
+    created_by = ProfileSerializer(source='created_by.profile', read_only=True)
+
+    class Meta:
+        model = Vote
+        fields = ['id', 'created_by', 'title', 'created_at', 'is_closed', 'options']
+
+class UserVoteSerializer(serializers.ModelSerializer):
+    option = VoteOptionSerializer(read_only=True)
+    created_by = ProfileSerializer(source='created_by.profile', read_only=True)
+    class Meta:
+        model = UserVote
+        fields = ['option','created_by']

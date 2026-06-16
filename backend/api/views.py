@@ -5,6 +5,8 @@ from django.contrib.auth import authenticate
 from django.db.models.expressions import Window
 from django.db.models.functions import RowNumber
 from django.views.generic import DetailView
+from safedelete import queryset
+from twisted.python.util import raises
 
 from backend import settings_backend
 from .models import Profile
@@ -18,7 +20,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from .pagination import *
 from .signals import unfriended_log
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
-from django.db.models import Q, Prefetch, prefetch_related_objects, F
+from django.db.models import Q, Prefetch, prefetch_related_objects, F, Exists, OuterRef
 from .permissions import IsConversationMember, PostViewPermission
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
@@ -1073,7 +1075,18 @@ class AcceptFriendRequestView(generics.UpdateAPIView):  # đồng ý lời mời
             return Response({"error": "Not allowed"}, status=403)
 
         # Accept lời mời
+        from_user = friend_request.from_user
+        to_user = friend_request.to_user
         friend_request.accept()
+
+        # Nếu 2 người đã có conversation 1-1 đang pending → tự động accept luôn
+        Conversation.objects.filter(
+            is_group=False,
+            status='pending',
+            conversationmember__user=from_user
+        ).filter(
+            conversationmember__user=to_user
+        ).distinct().update(status='accept')
 
         return Response({"detail": "Friend request accepted"})
 
@@ -2107,22 +2120,23 @@ class CreateGroupConversation(APIView):
             return Response({'error':'Tên nhóm không được rỗng'},status=400)
         if len(member_ids) <2:
             return Response({'error':'Nhóm cần ít nhất 2 thành viên'},status=400)
-        conversation = Conversation.objects.create(
-            is_group=True,
-            name=name,
-            created_by=request.user,
-            status='accept'
-        )
-        ConversationMember.objects.create(
-            conversation=conversation,
-            user=request.user,
-            role='admin'
-        )
-        members= User.objects.filter(id__in=member_ids)
-        ConversationMember.objects.bulk_create([
-            ConversationMember(conversation=conversation, user=u, role='member')
-            for u in members
-        ])
+        with transaction.atomic():
+            conversation = Conversation.objects.create(
+                is_group=True,
+                name=name,
+                created_by=request.user,
+                status='accept'
+            )
+            ConversationMember.objects.create(
+                conversation=conversation,
+                user=request.user,
+                role='admin'
+            )
+            members= User.objects.filter(id__in=member_ids)
+            ConversationMember.objects.bulk_create([
+                ConversationMember(conversation=conversation, user=u, role='member')
+                for u in members
+            ])
         serializer = ConversationSerializer(conversation, context={'request': request})
         return Response(serializer.data,status=200)
 
@@ -2131,7 +2145,7 @@ class TransferAdminGroupChat(APIView):
     throttle_classes=[ScopedRateThrottle]
     throttle_scope='transfer_admin_chat'
     def post(self,request,conv_id):
-        new_admin_id = self.kwargs.get('new_admin_id')
+        new_admin_id = request.data.get('new_admin_id')
         try: #check user hiện tại có phải admin
             membership= ConversationMember.objects.get(conversation_id=conv_id, conversation__is_group=True, user=request.user, role='admin',is_active=True)
         except ConversationMember.DoesNotExist:
@@ -2237,31 +2251,32 @@ class ModifyGroupChat(APIView):
             return Response({"error": "Không có gì để cập nhật"}, status=400)
         conv.save(update_fields=update_fields)
         serializer = ConversationSerializer(conv, context={'request': request})
-        message_system= None
+        messages_to_send = []
         if 'name' in update_fields:
-            message_system= Message.objects.create(
+            messages_to_send.append(Message.objects.create(
                 conversation_id=conv_id,
                 sender=request.user,
                 content=f"{request.user.profile.full_name} đã đổi tên nhóm thành {name}",
                 message_type='system_name_changed'
-            )
+            ))
         if 'avatar' in update_fields:
-            message_system = Message.objects.create(
+            messages_to_send.append(Message.objects.create(
                 conversation_id=conv_id,
                 sender=request.user,
                 content=f"{request.user.profile.full_name} đã đổi ảnh nhóm",
                 message_type='system_avatar_changed'
-            )
+            ))
         try:
             channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send) (
-                f'chat_{conv_id}', # gửi đến device connect với tên này trong redis
-                {
-                    'type': 'system_message',
-                    'message': message_system.content,
-                    'message_type': message_system.message_type,
-                }
-            )
+            for msg in messages_to_send:
+                async_to_sync(channel_layer.group_send)(
+                    f'chat_{conv_id}',
+                    {
+                        'type': 'system_message',
+                        'message': msg.content if msg else None,
+                        'message_type': msg.message_type if msg else None,
+                    }
+                )
         except Exception:
             pass
         return Response(serializer.data, status=200)
@@ -2539,7 +2554,7 @@ class ListTaskGroupChat(generics.ListAPIView):
         if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
             raise PermissionDenied("Bạn không có trong nhóm")
         contenttype= ContentType.objects.get_for_model(Conversation)
-        return Task.objects.filter(content_type=contenttype,object_id=conv_id,).order_by('-is_finished','-created_at').select_related('user__profile')
+        return Task.objects.filter(content_type=contenttype,object_id=conv_id,).order_by('-is_finished','-created_at').select_related('created_by__profile')
 
 class GetFileFromConversation(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -2553,4 +2568,193 @@ class GetFileFromConversation(generics.ListAPIView):
             raise PermissionDenied("Bạn không có trong group")
         return MessageAttachment.objects.filter(
             conversation_id=conv_id,
-        ).order_by('-created_at')
+        ).select_related("uploaded_by__profile").order_by('-created_at')
+#==================VOTE==========================================================
+class CreateVoteGroupChat(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        conv_id = self.kwargs.get("conv_id")
+        title = self.request.data.get("title")
+        options = self.request.data.get("options",[]) #mảng text option user truyền vào
+        if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        contenttype= ContentType.objects.get_for_model(Conversation)
+        if not title:
+            return Response({"error": "Vui lòng nhập tiêu đề"}, status=400)
+        if len(options) < 2:
+            return Response({"error": "Vui lòng chọn ít nhất 2 option"}, status=400)
+        
+        with transaction.atomic():
+            vote = Vote.objects.create(
+                created_by=request.user,
+                title=title,
+                content_type=contenttype,
+                object_id=conv_id
+            )
+            VoteOption.objects.bulk_create([
+                VoteOption(vote=vote, text=opt) for opt in options
+            ])
+        vote = Vote.objects.prefetch_related('options').select_related('created_by__profile').get(id=vote.id)
+        serializer = VoteSerializer(vote, context={'request': request})
+        return Response(serializer.data, status=201)
+
+
+class DeleteVoteGroupChat(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    def get_object(self):
+        conv_id = self.kwargs.get('conv_id')
+        vote_id = self.kwargs.get("vote_id")
+        if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        contenttype= ContentType.objects.get_for_model(Conversation)
+        vote =  get_object_or_404(Vote,id=vote_id,object_id=conv_id,content_type=contenttype)
+        if vote.created_by != self.request.user:
+            raise PermissionDenied("Phải là người tạo mới được xóa vote")
+        return vote
+
+class UserVoteGroupChat(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, conv_id, vote_id, vote_option_id):
+        if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user, is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+
+        contenttype = ContentType.objects.get_for_model(Conversation)
+        vote_option = get_object_or_404( #lấy ra option user chọn
+            VoteOption,
+            id=vote_option_id,
+            vote__object_id=conv_id,
+            vote__content_type=contenttype,
+            vote__is_closed=False
+        )
+
+        with transaction.atomic():
+            existing_vote = ( #lẩy ra xem user đã vote chưa
+                UserVote.objects
+                .select_for_update()
+                .select_related('option')
+                .filter(option__vote_id=vote_id, created_by=request.user)
+                .first()
+            )
+
+            if not existing_vote:
+                # Chưa vote thì tạo mới
+                user_vote = UserVote.objects.create(option=vote_option, created_by=request.user)
+                VoteOption.objects.filter(id=vote_option.id).update(count=F('count') + 1)
+
+            elif existing_vote.option.id == vote_option_id:
+                # Đã vote option thì hủy
+                existing_vote.delete()
+                VoteOption.objects.filter(id=vote_option.id).update(count=F('count') - 1)
+                return Response({"message": "Đã hủy vote"}, status=200)
+
+            else:
+                # Đã vote option khác → đổi sang option mới
+                old_option_id = existing_vote.option.id
+                existing_vote.option = vote_option
+                existing_vote.save(update_fields=['option'])
+                VoteOption.objects.filter(id=old_option_id).update(count=F('count') - 1)
+                VoteOption.objects.filter(id=vote_option.id).update(count=F('count') + 1)
+                user_vote = existing_vote
+        serializer = UserVoteSerializer(user_vote, context={"request": request})
+        return Response(serializer.data, status=201)
+
+class UpdateVoteGroupChat(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = VoteSerializer
+    def get_object(self):
+        vote_id = self.kwargs.get("vote_id")
+        conv_id = self.kwargs.get("conv_id")
+        if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        contenttype= ContentType.objects.get_for_model(Conversation)
+        vote = get_object_or_404(Vote.objects.prefetch_related('options').select_related('created_by__profile'),id=vote_id,content_type=contenttype,object_id=conv_id)
+        if vote.created_by != self.request.user:
+            raise PermissionDenied("Phải là người tạo mới được sửa")
+        return vote
+
+class AddOptionVoteGroupChat(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = VoteOptionSerializer
+    def create(self, request, *args, **kwargs):
+        vote_id = self.kwargs.get("vote_id")
+        conv_id = self.kwargs.get("conv_id")
+        options = request.data.get("options",[])
+        if not options:
+            return Response({"error": "Vui lòng truyền option"}, status=400)
+        if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        contenttype= ContentType.objects.get_for_model(Conversation)
+        vote = get_object_or_404(Vote,id=vote_id,content_type=contenttype,object_id=conv_id,is_closed=False)
+        created = VoteOption.objects.bulk_create([
+            VoteOption(vote=vote, text=opt)
+            for opt in options
+        ])
+        serializer = self.get_serializer(created, many=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class UpdateOptionVoteGroupChat(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = VoteOptionSerializer
+    def get_object(self):
+        vote_id = self.kwargs.get("vote_id")
+        option_id = self.kwargs.get("option_id")
+        conv_id = self.kwargs.get("conv_id")
+        if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        contenttype = ContentType.objects.get_for_model(Conversation)
+        vote = get_object_or_404(Vote, id=vote_id, content_type=contenttype, object_id=conv_id, is_closed=False)
+        return get_object_or_404(VoteOption, id=option_id,vote=vote)
+
+class DeleteOptionVoteGroupChat(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    def get_object(self):
+        vote_id = self.kwargs.get("vote_id")
+        option_id = self.kwargs.get("option_id")
+        conv_id = self.kwargs.get("conv_id")
+        if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        contenttype= ContentType.objects.get_for_model(Conversation)
+        vote = get_object_or_404(Vote,id=vote_id,content_type=contenttype,object_id=conv_id,is_closed=False)
+        if vote.created_by != self.request.user:
+            raise PermissionDenied("Phải là người tạo mới được xóa option")
+        option = get_object_or_404(VoteOption, id=option_id, vote=vote)
+        return option
+
+class ListVoteGroupChat(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = VoteSerializer
+    def get_queryset(self):
+        conv_id = self.kwargs.get("conv_id")
+        if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        contenttype = ContentType.objects.get_for_model(Conversation)
+        options_prefetch = Prefetch(
+            'options', #related name của vote option
+            queryset=VoteOption.objects.annotate( # annotate thêm tạm 1 cột trong db và xử lý ở db
+                is_voted=Exists( # trả true false nếu vote option có bảng tham chiếu tới uservote có user
+                    UserVote.objects.filter(
+                        option=OuterRef('pk'), #OuterRef('pk') = id của VoteOption đang được duyệt qua có liên kết tới user vote có user trong đó
+                        created_by=self.request.user
+                    )
+                )
+            )
+        )
+
+        return (
+            Vote.objects
+            .filter(content_type=contenttype, object_id=conv_id)
+            .select_related('created_by__profile')
+            .prefetch_related(options_prefetch) # từ vote , lấy vote option in vote, và với mỗi vote option thì có tồn tại uservote của user
+            .order_by('is_closed', '-created_at')  # vote đang mở lên trước, mới nhất trên cùng
+        )
+
+class ListUserVoteGroupChat(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserVoteSerializer
+    def get_queryset(self):
+        conv_id = self.kwargs.get("conv_id")
+        vote_id = self.kwargs.get("vote_id")
+        if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        contenttype = ContentType.objects.get_for_model(Conversation)
+        return UserVote.objects.filter(option__vote_id=vote_id,option__vote__content_type=contenttype,option__vote__object_id=conv_id).select_related('created_by__profile')

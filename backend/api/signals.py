@@ -404,7 +404,7 @@ def log_friend_request_created(sender, **kwargs):
 
 
 @receiver(friendship_request_canceled) #log hủy lời mời kb 
-def log_friend_request_canceled(sender, instance, **kwargs):
+def log_friend_request_canceled(sender, **kwargs):
     action.send(
         sender.from_user,
         verb='canceled',
