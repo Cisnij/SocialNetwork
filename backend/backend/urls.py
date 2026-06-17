@@ -149,7 +149,7 @@ urlpatterns = [
     path('api/chat/conversation/group/<int:conv_id>/add/',AddMemberGroupChat.as_view(),name='add-member-chat'),
     path('api/chat/conversation/group/<int:conv_id>/modify/',ModifyGroupChat.as_view(),name='modify-group-chat'),
     path('api/chat/conversation/group/<int:conv_id>/delete/',DeleteGroupChat.as_view()),
-    path('api/chat/conversation/group/<int:conv_id>/kick/',KickMemberGroupChat.as_view()),
+    path('api/chat/conversation/group/<int:conv_id>/kick/<int:kick_id>/',KickMemberGroupChat.as_view()),
     path('api/chat/conversation/<int:conv_id>/leave/',LeaveGroupChat.as_view()),
     path('api/chat/conversation/<int:conv_id>/file-list/',GetFileFromConversation.as_view()),
     #fire base notification
@@ -178,14 +178,24 @@ urlpatterns = [
     path('api/user/post/create/v2/',CreateFullPostView.as_view(),name='post-create-v2'), #v2 của tạo post
     #support
     path('api/support/', SupportTicketView.as_view()), #user gửi lên ticket và nhân viên check reply qua mail sau đó
-    #url cho task
-    path('api/chat/conversation/task/<int:conv_id>/create-task/',CreateTaskGroupChat.as_view()),
-    path('api/chat/conversation/task/<int:conv_id>/add-member/',AddMemberIntoTaskGroupChat.as_view()),
-    path('api/chat/conversation/<int:conv_id>/task/<int:task_id>/member/',MemberofTaskGroupChat.as_view()),
-    path('api/chat/conversation/<int:conv_id>/task/<int:task_id>/update/',UpdateTaskGroupChat.as_view()),
-    path('api/chat/conversation/<int:conv_id>/task/<int:task_id>/delete/',DeleteTaskGroupChat.as_view()),
-    path('api/chat/conversation/task/<int:conv_id>/list-task/',ListTaskGroupChat.as_view()),
-
+    #url cho task group chat
+    path('api/chat/conversation/task/<int:conv_id>/create-task/',CreateTaskGroupChat.as_view()), #taọ task
+    path('api/chat/conversation/task/<int:conv_id>/add-member/',AddMemberIntoTaskGroupChat.as_view()), # thêm member vào task
+    path('api/chat/conversation/<int:conv_id>/task/<int:task_id>/member/',MemberofTaskGroupChat.as_view()), # lấy ra các member của task
+    path('api/chat/conversation/<int:conv_id>/task/<int:task_id>/update/',UpdateTaskGroupChat.as_view()), #update task
+    path('api/chat/conversation/<int:conv_id>/task/<int:task_id>/delete/',DeleteTaskGroupChat.as_view()), #xóa task
+    path('api/chat/conversation/task/<int:conv_id>/list-task/',ListTaskGroupChat.as_view()), #list các task trong group
+    #url cho vote groupchat
+    path('api/chat/conversation/vote/<int:conv_id>/create-vote/',CreateVoteGroupChat.as_view()), # taọ vote
+    path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/delete-vote/',DeleteVoteGroupChat.as_view()), #xóa vote
+    path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:vote_option_id>/vote/',UserVoteGroupChat.as_view()), # vote cho option
+    path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/update-vote/',UpdateVoteGroupChat.as_view()), # update vote
+    path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/upate-vote/',UpdateVoteGroupChat.as_view()), # backward-compatible typo
+    path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/add-option/',AddOptionVoteGroupChat.as_view()), # thêm option
+    path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/update-option/',UpdateOptionVoteGroupChat.as_view()), #update option
+    path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/delete-option/',DeleteOptionVoteGroupChat.as_view()), #xóa option
+    path('api/chat/conversation/<int:conv_id>/vote/list-vote/',ListVoteGroupChat.as_view()), #list các vote trong group
+    path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/user-vote/',ListUserVoteGroupChat.as_view()), # list các user vote đã vote option gì
 ] + router.urls
 
 

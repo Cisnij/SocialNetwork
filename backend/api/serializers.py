@@ -43,10 +43,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance): # cách để chỉnh sửa các trường hiển thị ra response
         data = super().to_representation(instance) #lấy ra các response hiện tại và thay thế
-        if instance.picture:
-
-            data["picture"] = instance.picture.url
-        else:
+        if not instance.picture:
             data["picture"] = DEFAULT_PROFILE_PICTURE
         return data
 
@@ -163,8 +160,9 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_tagged_users_info(self, obj): #khi list thì sẽ truyền từng object lọc ra từ filter và lấy ra profile, chỉ output từ list và readonly
         return [{
             'id': u.profile.id,
-            'full_name': f"@{u.profile.first_name}{u.profile.last_name}",
-            'picture': obj.profile.picture.url if obj.profile.picture else DEFAULT_PROFILE_PICTURE ,
+            'user': u.id,
+            'full_name': f"@{u.profile.full_name}",
+            'picture': u.profile.picture.url if u.profile.picture else DEFAULT_PROFILE_PICTURE ,
         }
             for u in obj.tagged_users.all()
         ] #trả về list dict kiểu [{},{}]
@@ -437,7 +435,8 @@ class PostShareSerializer(serializers.ModelSerializer):
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
-        fields = ['reason','created_at']
+        fields = ['id', 'reason', 'created_at', 'post', 'comment']
+        read_only_fields = ['id', 'created_at', 'post', 'comment']
 
 class SupportTicketSerializer(serializers.ModelSerializer):
     class Meta:

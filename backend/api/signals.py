@@ -656,6 +656,8 @@ def push_ws_notification(sender,instance,created,**kwargs):
                     'actor_id': instance.actor_id,
                     'actor_name': f'{instance.actor.profile.first_name} {instance.actor.profile.last_name}',
                     'actor_avatar': instance.actor.profile.picture.url if instance.actor.profile.picture else None,
+                    'created_at': instance.created_at.isoformat(),
+                    'is_read': False,
                 }
 
             }
