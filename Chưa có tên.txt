@@ -1,7 +1,8 @@
 
 chưa xong
 -sửa lại js phần bạn
--thiếu phần đăng nhập:, xác thực otp khi bật 2 bước
+-thiếu phần đăng nhập:
+    xác thực otp khi bật 2 bước có 2 setting là gửi otp qua mail hay gửi sms qua sdt dùng rapid api
 - api tạo group, api thêm member, thêm quyền vào db conversationmember is_admin=true, tạo api thêm quyền cho user trong đoạn chat, thêm avatar, group name vào db conversation
 - xong tất cả thì xây signal 1 thể
 - xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
@@ -13,7 +14,12 @@ chưa xong
 -thêm story 24h
 - thêm 1 cái là upload video và thêm model PostVideo luôn làm y chang PostPhoto
 -áp dụng proxy sql, ngày mai deploy gộp vào 1 container duy nhất
-- áp dung rapid api dùng lấy api bên thứ 3 free như thời tiết chứng khoán...
+- áp dung rapid api dùng lấy api bên thứ 3 free như
+    #thời tiết
+    #chứng khoán...
+    #tỷ giá
+    Video call (Daily.co/WebRTC) — họp nhóm trong group chat LiveKit
+    Translation API — dịch tin nhắn/post cho công ty đa quốc gia
 -xem tất cả các api được gọi ở 1 trang xem có thừa, test đủ các api và fe đã dùng đủ chức năng chưa và đúng logic chưa
 -xây search cho chat
 chat nhóm:
@@ -24,7 +30,6 @@ chat nhóm:
 	// file nội bộ
 	reaction cho message
 	thêm vào setting cho chat
-    -qunả lý file trong cloudinary cho chat cloudinary.api.resources(prefix=f'chat/conv_{conv_id}/')
 
 tạo group
 	quy tắc nhóm

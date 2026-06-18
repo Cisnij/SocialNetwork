@@ -101,4 +101,13 @@ work flows
     LeaveGroupChat: gọi api lấy thành viên và trao quyền cho user đó mới đc rời, đánh member là is active=False, fe khi gọi thành công sẽ hiện k có ô chat
     **Tạo thêm message_type và broadcast qua khi gửi tin nhắn
 60. Tạo todo task cho group và chat
+    CreateVoteGroupChat : tạo vote group chat
+    DeleteVoteGroupChat : xoá vote, phải là ng tạo mới xóa đc
+    UpdateVoteGroupChat : sửa vote group chat và phải là người sửa mới update đc, có thể đóng vote
+    AddOptionVoteGroupChat: bất kì ai cũng có thể thêm option , và thêm nhiều option cùng lúc
+    UpdateOptionVoteGroupChat : bất kì ai cũng có thể update option
+    DeleteOptionVoteGroupChat: phải là người tạo option mới xóa được
+    ListVoteGroupChat : lấy ra tất cả vote trong group
+    ListUserVoteGroupChat : lấy ra các user và vote của user
+    UserVoteGroupChat :  nếu user đã vote thì nhấn lần nữa sẽ xóa vote giảm count, chưa vote thì tạo, đổi vote thì đổi và + count
 =====================================================================================

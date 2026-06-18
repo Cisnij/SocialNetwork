@@ -2,6 +2,7 @@ import { authFetch } from "../authenticate/auth.js";
 import { API, buildListUrl } from "./config.js";
 import { showToast } from "./toast.js";
 import { fullName } from "./ui.js";
+import { confirmDialog } from "./confirm.js";
 import { getCurrentUserId, fetchUserProfileShared } from "../app/profile.js";
 import { fetchPage } from "./paginated-list.js";
 import { initPostModals, openReactionsModal } from "./posts/modals.js";
@@ -18,6 +19,8 @@ let postOwnerId = null;
 let myId = null;
 let nextUrl = null;
 let loading = false;
+let mentionFriends = null;
+let selectedTaggedUserIds = new Set();
 
 export function initCommentsPanel() {
   initPostModals();
@@ -26,6 +29,7 @@ export function initCommentsPanel() {
     document.getElementById("commentsModal")?.classList.add("hidden");
   });
   document.getElementById("submitCommentBtn")?.addEventListener("click", submitComment);
+  document.getElementById("commentInput")?.addEventListener("input", handleMentionInput);
 
   const list = document.getElementById("commentsList");
   const sentinel = document.getElementById("commentsSentinel");
@@ -44,6 +48,7 @@ export async function openCommentsModal(id, ownerProfileId = null) {
   const list = document.getElementById("commentsList");
   modal?.classList.remove("hidden");
   list.replaceChildren();
+  resetCommentComposer();
   nextUrl = buildListUrl(API.comments(postId), 15);
   await loadMore(true);
 }
@@ -130,6 +135,64 @@ function buildCommentReactionUI(comment, meta) {
 }
 
 /**
+ * Render nội dung comment với @mention inline thành link click được — chuẩn Facebook.
+ * Sort tên dài trước để tránh match @Nghị trước @Nghị Chí.
+ */
+function renderContentWithMentions(content, taggedUsers) {
+  const p = document.createElement("p");
+  p.className = "text-sm post-comment-text whitespace-pre-wrap dark:text-[#e4e6eb]";
+
+  if (!taggedUsers?.length) {
+    p.textContent = content;
+    return p;
+  }
+
+  // Sort tên dài trước → tránh match ngắn trước
+  const sorted = [...taggedUsers].sort((a, b) => b.full_name.length - a.full_name.length);
+
+  let remaining = content;
+  while (remaining.length) {
+    let earliest = null;
+    let matchedUser = null;
+
+    sorted.forEach((u) => {
+      const idx = remaining.indexOf(`@${u.full_name}`);
+      if (idx !== -1 && (earliest === null || idx < earliest)) {
+        earliest = idx;
+        matchedUser = u;
+      }
+    });
+
+    if (earliest === null) {
+      // Không còn mention → append phần còn lại
+      p.appendChild(document.createTextNode(remaining));
+      break;
+    }
+
+    // Text trước @mention
+    if (earliest > 0) {
+      p.appendChild(document.createTextNode(remaining.slice(0, earliest)));
+    }
+
+    // @mention → link
+    const a = document.createElement("a");
+    a.href = `/profile/${matchedUser.id}/`;
+    a.className = "text-fb-primary font-semibold hover:underline cursor-pointer";
+    a.textContent = `@${matchedUser.full_name}`;
+    a.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      window.location.href = `/profile/${matchedUser.id}/`;
+    };
+    p.appendChild(a);
+
+    remaining = remaining.slice(earliest + `@${matchedUser.full_name}`.length);
+  }
+
+  return p;
+}
+
+/**
  * Chỉ 1 cấp reply: parent_id luôn là comment gốc (depth 0), kể cả khi bấm Trả lời trên reply con.
  * @param {number|null} threadParentId - id comment cha (cấp 0) của thread
  */
@@ -154,10 +217,8 @@ function renderComment(c, depth = 0, ownerId = postOwnerId, threadParentId = nul
   const author = document.createElement("p");
   author.className = "font-semibold text-xs text-fb-primary";
   author.textContent = fullName(c.user);
-  const text = document.createElement("p");
-  text.className = "text-sm post-comment-text whitespace-pre-wrap dark:text-[#e4e6eb]";
-  text.textContent = c.content;
-  bubble.append(author, text);
+  const textNode = renderContentWithMentions(c.content, c.tagged_users_info);
+  bubble.append(author, textNode);
   if (c.is_pinned) {
     const pin = document.createElement("span");
     pin.className = "text-[10px] text-amber-600 block mt-1";
@@ -212,20 +273,24 @@ function renderComment(c, depth = 0, ownerId = postOwnerId, threadParentId = nul
     const edit = document.createElement("button");
     edit.type = "button";
     edit.textContent = "Sửa";
-    edit.onclick = async () => {
-      const nv = prompt("Sửa bình luận", c.content);
-      if (!nv) return;
-      const res = await authFetch(API.comment(c.id), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: nv }),
-      });
+    edit.onclick = () => showInlineCommentEdit(c.id, text, bubble, edit);
+    meta.appendChild(edit);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.textContent = "Xóa";
+    del.className = "text-red-500 hover:text-red-700";
+    del.onclick = async () => {
+      if (!await confirmDialog("Xóa bình luận này?")) return;
+      const res = await authFetch(API.comment(c.id), { method: "DELETE" });
       if (res.ok) {
-        text.textContent = nv;
-        showToast("Đã cập nhật");
+        wrap.remove();
+        showToast("Đã xóa bình luận");
+      } else {
+        showToast("Xóa thất bại", "red");
       }
     };
-    meta.appendChild(edit);
+    meta.appendChild(del);
   }
 
   body.append(countsRow, meta);
@@ -356,6 +421,83 @@ async function normalizeCreatedComment(raw) {
   return c;
 }
 
+function resetCommentComposer() {
+  const input = document.getElementById("commentInput");
+  const parentInput = document.getElementById("commentParentId");
+  const hint = document.getElementById("commentParentHint");
+  if (input) input.value = "";
+  if (parentInput) parentInput.value = "";
+  if (hint) hint.textContent = "";
+  selectedTaggedUserIds.clear();
+  document.getElementById("commentMentionMenu")?.remove();
+}
+
+async function getMentionFriends() {
+  if (mentionFriends) return mentionFriends;
+  const res = await authFetch(API.friends());
+  if (!res.ok) return [];
+  const data = await res.json();
+  mentionFriends = (data.results || [])
+    .map((f) => f.user)
+    .filter((p) => p?.user && p?.id);
+  return mentionFriends;
+}
+
+async function handleMentionInput(e) {
+  const input = e.target;
+  const value = input.value || "";
+  const match = value.match(/@([\p{L}\p{N}]{0,40})$/u);
+  if (!match) {
+    document.getElementById("commentMentionMenu")?.remove();
+    return;
+  }
+
+  const q = match[1].trim().toLowerCase();
+  const friends = await getMentionFriends();
+  const matches = friends
+    .filter((p) => fullName(p).toLowerCase().includes(q))
+    .slice(0, 8);
+  showMentionMenu(input, matches, match[0]);
+}
+
+function showMentionMenu(input, profiles, token) {
+  document.getElementById("commentMentionMenu")?.remove();
+  if (!profiles.length) return;
+
+  const menu = document.createElement("div");
+  menu.id = "commentMentionMenu";
+  menu.className =
+    "absolute z-[80] mb-2 w-64 max-h-64 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#242526] shadow-xl p-1";
+
+  profiles.forEach((profile) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className =
+      "w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-fb-secondary dark:hover:bg-[#3a3b3c]";
+    const av = document.createElement("img");
+    av.src = profile.picture || "/static/default-avatar.png";
+    av.className = "w-8 h-8 rounded-full object-cover";
+    const name = document.createElement("span");
+    name.className = "text-sm dark:text-[#e4e6eb]";
+    name.textContent = fullName(profile);
+    btn.append(av, name);
+    btn.onclick = () => {
+      selectedTaggedUserIds.add(Number(profile.user));
+      const lastAt = input.value.lastIndexOf("@");
+      input.value = input.value.slice(0, lastAt) + `@${fullName(profile)} `;
+      menu.remove();
+      input.focus();
+    };
+    menu.appendChild(btn);
+  });
+
+  const wrapper = input.parentElement;
+  wrapper?.classList.add("relative");
+  wrapper?.appendChild(menu);
+  menu.style.left = "0";
+  menu.style.bottom = `${input.offsetHeight + 6}px`;
+}
+
 async function submitComment() {
   const input = document.getElementById("commentInput");
   const parentInput = document.getElementById("commentParentId");
@@ -369,6 +511,7 @@ async function submitComment() {
 
   const body = { content };
   if (parent) body.parent_id = Number(parent);
+  if (selectedTaggedUserIds.size) body.tagged_users = [...selectedTaggedUserIds];
 
   const submitBtn = document.getElementById("submitCommentBtn");
   if (submitBtn) submitBtn.disabled = true;
@@ -386,9 +529,13 @@ async function submitComment() {
 
     const created = await normalizeCreatedComment(await res.json());
     input.value = "";
+    selectedTaggedUserIds.clear();
+    document.getElementById("commentMentionMenu")?.remove();
 
     if (parent) {
       appendReplyToThread(Number(parent), created);
+      parentInput.value = "";
+      if (hint) hint.textContent = "";
     } else {
       parentInput.value = "";
       if (hint) hint.textContent = "";

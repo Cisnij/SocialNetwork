@@ -1521,7 +1521,8 @@ class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ 
             conversationmember__user=self.request.user, # lấy ra đoạn chat có user
             conversationmember__is_active=True,
             conversationmember__is_hidden=False,
-            conversationmember__is_permanently_hidden=False
+            conversationmember__is_permanently_hidden=False,
+            message__isnull = False,
         ).distinct().prefetch_related(
             # load members + user + profile  trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
             # (1 query join conv với message có trong conv, 1 query join user trong conv
@@ -1680,6 +1681,8 @@ class DeleteConversationOneSide(APIView): # nếu xóa conv thì sẽ lấy th�
             raise PermissionDenied("You are not member of this conversation")
         last_msg=Message.objects.filter(conversation=conv).order_by('-created_at').first() #lấy ra tin nhắn mới nhất
         if not last_msg:
+            member.is_hidden = True
+            member.save(update_fields=['is_hidden'])
             return Response({"detail": "No messages to delete"}, status=200)
         member.deleted_at_message_id = last_msg.id # đặt id deleted at khi gọi api băng với id tin nhắn cuối, chỉ lấy tin nhắn sau tin nhắn cuối chưa xóa
         member.last_read_message=None # đặt lại last_read_mesage, khi xóa thì bên serializer sẽ count từ đầu hoặc count theo msg.id > last_read.id

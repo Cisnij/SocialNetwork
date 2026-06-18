@@ -50,7 +50,7 @@ async function init() {
   setupEmailAdd();
   setupDeleteAccount();
   loadActivity(true);
-  
+
   // Inject private profile UI
   setupPrivateProfileUI();
 }
@@ -270,7 +270,7 @@ function setupEmailAdd() {
         return;
       }
     }
-    
+
     const res = await authFetch(API.addEmail(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -379,46 +379,65 @@ init();
 
 function setupDeleteAccount() {
   document.getElementById("deleteAccountBtn")?.addEventListener("click", async () => {
-    if (!hasPassword) {
-      showToast("Tài khoản này đăng nhập qua mạng xã hội, không cần mật khẩu để xóa.", "red");
-      return;
-    }
-    const password = await passwordPrompt(
-      "Nhập mật khẩu để xác nhận xóa tài khoản. Hành động này không thể hoàn tác.",
-      "Xác nhận xóa tài khoản",
-      { forgotPasswordUrl: "/forgot-password/" }
-    );
-    if (!password) return;
-
-    // Task 6: verify password via API before proceeding
-    const checkRes = await authFetch(API.checkPassword(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-    if (!checkRes.ok) {
-      showToast("Mật khẩu không đúng, không thể xóa tài khoản", "red");
-      return;
-    }
-
-    if (!(await confirmDialog("Bạn có chắc chắn muốn xóa tài khoản? Hành động này KHÔNG THỂ hoàn tác!"))) return;
-    
-    const res = await authFetch(API.deleteAccount(), {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-    
-    if (res.ok) {
-      showToast("Đã xóa tài khoản. Đang chuyển hướng...", "green");
-      setTimeout(() => {
-        localStorage.removeItem("accessToken"); // Xóa token để tránh redirect loop
-        window.location.href = "/login/";
-      }, 2000);
-    } else {
+    // Bước 1: Gửi OTP xóa tài khoản
+    const res = await authFetch(API.deleteAccount(), { method: "DELETE" });
+    if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      showToast(data.detail || "Lỗi xóa tài khoản", "red");
+      showToast(data.detail || "Không thể gửi OTP", "red");
+      return;
     }
+    showToast("Mã OTP đã gửi về email của bạn", "green");
+
+    // Bước 2: Hiển thị modal OTP + mật khẩu
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4";
+    modal.id = "deleteAccountOtpModal";
+    modal.innerHTML = `
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold dark:text-white">Xóa tài khoản</h2>
+          <button type="button" class="text-2xl text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white" onclick="document.getElementById('deleteAccountOtpModal')?.remove()">&times;</button>
+        </div>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Nhập mã OTP đã gửi về email để xác nhận xóa tài khoản của bạn.</p>
+        <input type="text" id="deleteOtpInput" placeholder="Mã OTP 6 số" maxlength="6" class="w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white mb-3">
+        <input type="password" id="deletePasswordInput" placeholder="${hasPassword ? 'Mật khẩu' : 'Không cần mật khẩu'}" class="w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white mb-4" ${hasPassword ? '' : 'disabled'}>
+        <button id="confirmDeleteBtn" type="button" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold">
+          Xác nhận xóa tài khoản
+        </button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById("confirmDeleteBtn")?.addEventListener("click", async () => {
+      const otp = document.getElementById("deleteOtpInput")?.value.trim();
+      if (!otp || otp.length !== 6) {
+        showToast("Vui lòng nhập mã OTP 6 số", "red");
+        return;
+      }
+      const body = { otp };
+      if (hasPassword) {
+        const password = document.getElementById("deletePasswordInput")?.value;
+        if (!password) { showToast("Vui lòng nhập mật khẩu", "red"); return; }
+        body.password = password;
+      }
+      if (!(await confirmDialog("Bạn có CHẮC CHẮN muốn xóa tài khoản? Hành động này KHÔNG THỂ hoàn tác!"))) return;
+
+      const confirmRes = await authFetch(API.confirmDeleteAccount(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (confirmRes.ok) {
+        showToast("Đã xóa tài khoản!", "green");
+        setTimeout(() => {
+          localStorage.removeItem("accessToken");
+          window.location.href = "/login/";
+        }, 2000);
+      } else {
+        const err = await confirmRes.json().catch(() => ({}));
+        showToast(err.error || "OTP sai hoặc mật khẩu không đúng", "red");
+      }
+    });
   });
 }
 

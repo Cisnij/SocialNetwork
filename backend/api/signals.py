@@ -635,14 +635,22 @@ def notify_post_share(sender,instance,created,**kwargs):
             post_id=instance.post.post_id,
             message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} share your post'
         )
-@receiver(post_save, sender=Notification) # khi có noti mới, lọc ra người dùng của noti mới đó, count lại và gửi qua ws
-def push_ws_notification(sender,instance,created,**kwargs):
+# ✅ Dùng on_commit để đảm bảo DB đã commit xong mới gửi WS
+from django.db import transaction
+
+@receiver(post_save, sender=Notification)
+def push_ws_notification(sender, instance, created, **kwargs):
     if not created:
         return
+    transaction.on_commit(lambda: _push_ws(instance))
+
+def _push_ws(instance):
     try:
-        unread_count = Notification.objects.select_related('actor__profile').filter(reciever=instance.reciever, is_read=False).count()
+        unread_count = Notification.objects.filter(
+            reciever=instance.reciever, is_read=False
+        ).count()
         channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(# gửi số unread count cho fe, gửi cả message lên để load ra noti
+        async_to_sync(channel_layer.group_send)(
             f'notification_{instance.reciever.id}',
             {
                 'type': 'send_notification',
@@ -659,11 +667,11 @@ def push_ws_notification(sender,instance,created,**kwargs):
                     'created_at': instance.created_at.isoformat(),
                     'is_read': False,
                 }
-
             }
         )
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"WS notification error: {e}", exc_info=True)
 
 #==============================================================================
 @receiver(email_confirmed) # khi 1 email đã xác nhận, xóa các email trùng tên chưa xác nhận khỏi db 

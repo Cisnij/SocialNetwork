@@ -108,7 +108,7 @@ function setupBaseModal() {
 
         // Dispatch event để feed loader thêm bài mới
         document.dispatchEvent(new CustomEvent("newPostCreated", { detail: newPost }));
-        
+
         showToast("✅ Bài viết đã được đăng!");
       } catch (err) {
         console.error("Create post error:", err);
@@ -125,7 +125,7 @@ function updateBasePhotoPreview() {
   const preview = document.getElementById("imagePreview");
   if (!preview) return;
   preview.replaceChildren();
-  
+
   selectedFiles.forEach((file) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -188,18 +188,18 @@ function setupAddPostPage() {
   function updatePhotoPreview() {
     if (!photoPreview) return;
     photoPreview.replaceChildren();
-    
+
     selectedFiles.forEach((file, index) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const div = document.createElement("div");
         div.className = "relative";
-        
+
         const img = document.createElement("img");
         img.src = e.target.result;
         img.alt = "Preview";
         img.className = "w-full h-32 object-cover rounded-lg";
-        
+
         const removeBtn = document.createElement("button");
         removeBtn.type = "button";
         removeBtn.className = "absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600";
@@ -209,7 +209,7 @@ function setupAddPostPage() {
           updatePhotoPreview();
           updateSubmitButton();
         };
-        
+
         div.appendChild(img);
         div.appendChild(removeBtn);
         photoPreview.appendChild(div);
@@ -223,7 +223,7 @@ function setupAddPostPage() {
     console.log("Add post page submit clicked!", e);
     e.preventDefault();
     e.stopPropagation();
-    
+
     const content = postContent?.value.trim();
     const privacy = document.getElementById("postPrivacy")?.value || "public";
 
@@ -237,7 +237,7 @@ function setupAddPostPage() {
     const formData = new FormData();
     formData.append("title", content || "Bài viết mới");
     formData.append("privacy", privacy);
-    
+
     selectedFiles.forEach((file) => {
       formData.append("photos", file);
     });
@@ -273,14 +273,14 @@ function setupAddPostPage() {
 
       // Dispatch event để feed loader thêm bài mới
       document.dispatchEvent(new CustomEvent("newPostCreated", { detail: newPost }));
-      
+
       showToast("✅ Bài viết đã được đăng!");
-      
+
       // Redirect về trang chủ sau 1 giây
       setTimeout(() => {
         window.location.href = "/";
       }, 1000);
-      
+
     } catch (err) {
       console.error("Create post error:", err);
       showToast("⚠️ Không thể kết nối server", "red");

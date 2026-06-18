@@ -28,7 +28,7 @@ class JwtOrSessionMiddleware: #api websocket cho cả web và mobile, web thì d
 
         # Nếu có token → dùng JWT cho mobile
         if token:
-            scope["user"] = await get_user_from_token(token) #lấy ra user 
+            scope["user"] = await get_user_from_token(token) #lấy ra user  
 
         # Nếu không có token → KHÔNG set user
         # để AuthMiddlewareStack xử lý session cookie

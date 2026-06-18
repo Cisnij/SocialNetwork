@@ -161,7 +161,7 @@ class CommentSerializer(serializers.ModelSerializer):
         return [{
             'id': u.profile.id,
             'user': u.id,
-            'full_name': f"@{u.profile.full_name}",
+            'full_name': f"{u.profile.full_name}",
             'picture': u.profile.picture.url if u.profile.picture else DEFAULT_PROFILE_PICTURE ,
         }
             for u in obj.tagged_users.all()

@@ -1,5 +1,4 @@
 import { authFetch } from "../authenticate/auth.js";
-import { markAllNotificationsRead } from "../app/nav.js";
 import { API, buildListUrl } from "../shared/config.js";
 import { showToast } from "../shared/toast.js";
 import { formatDate, showEmpty, showSpinner, fullName } from "../shared/ui.js";
@@ -42,11 +41,10 @@ function buildCard(n) {
 
   const card = document.createElement("button");
   card.type = "button";
-  card.className = `w-full text-left p-4 rounded-xl shadow-sm flex gap-3 transition hover:bg-fb-secondary dark:hover:bg-fb-hover ${
-    n.is_read
-      ? "bg-white dark:bg-[#242526]"
-      : "bg-blue-50 dark:bg-[#263951] border border-blue-100 dark:border-blue-900/40"
-  }`;
+  card.className = `w-full text-left p-4 rounded-xl shadow-sm flex gap-3 transition hover:bg-fb-secondary dark:hover:bg-fb-hover ${n.is_read
+    ? "bg-white dark:bg-[#242526]"
+    : "bg-blue-50 dark:bg-[#263951] border border-blue-100 dark:border-blue-900/40"
+    }`;
 
   const img = document.createElement("img");
   img.src = n.actor_avatar || DEFAULT_AVATAR;
@@ -145,8 +143,21 @@ function connectNotifPageWs() {
       }
 
       // Backend sends: { unread_count, id, type, message, object_id,
-      //                  post_id, actor_id, actor_name, actor_avatar }
-      // Only prepend when a real new notification arrives (has message field)
+      //                  post_id, actor_id, actor_name, actor_avatar, created_at, is_read }
+      // Khi nhận được unread_count, cập nhật badge (cả từ signal gửi count lẫn noti mới)
+      if (typeof data.unread_count === "number") {
+        const badge = document.getElementById("notifBadge");
+        if (badge) {
+          if (data.unread_count > 0) {
+            badge.textContent = data.unread_count > 99 ? "99+" : String(data.unread_count);
+            badge.classList.remove("hidden");
+          } else {
+            badge.classList.add("hidden");
+          }
+        }
+      }
+
+      // Khi có message + id → notification mới → prepend lên trang
       if (data.message && data.id) {
         prependNotification({
           id: data.id,
@@ -156,11 +167,11 @@ function connectNotifPageWs() {
           type: data.type,
           post_id: data.post_id,
           object_id: data.object_id,
-          created_at: new Date().toISOString(),
-          is_read: false,
+          created_at: data.created_at || new Date().toISOString(),
+          is_read: data.is_read || false,
         });
       }
-    } catch (_) {}
+    } catch (_) { }
   };
 
   notifWs.onclose = () => {
@@ -172,7 +183,7 @@ function connectNotifPageWs() {
     }
   };
 
-  notifWs.onerror = () => {};
+  notifWs.onerror = () => { };
 }
 
 async function load(initial = false) {
@@ -206,6 +217,4 @@ window.addEventListener("scroll", () => {
 });
 
 connectNotifPageWs();
-markAllNotificationsRead()
-  .catch(() => {})
-  .finally(() => load(true));
+load(true);

@@ -11,7 +11,7 @@ export function shareLink(shareCode) {
 
 export const DEFAULT_AVATAR =
   window.APP_CONFIG?.DEFAULT_AVATAR ||
-  "https://res.cloudinary.com/dec8t19tm/image/upload/v1779183832/default.jpg";
+  "https://res.cloudinary.com/dec8t19tm/image/upload/v1781533632/default-avatar_qprrlr.jpg";
 
 /** Override backend default page sizes (feed 20, userpage 5) for consistent UX. */
 export const POST_PAGE_SIZE = {
@@ -76,6 +76,7 @@ export const API = {
   commentReact: (id) => `${API_BASE_URL}/api/comments/${id}/react/`,
   commentReactions: (id) =>
     `${API_BASE_URL}/api/user/reaction/comment/${id}/`,
+  reportComment: (commentId) => `${API_BASE_URL}/api/comment/${commentId}/report/`,
 
   postPrivacy: (postId) => `${API_BASE_URL}/api/post/${postId}/privacy-change/`,
   postShares: (postId) => `${API_BASE_URL}/api/posts/${postId}/share/`,
@@ -89,6 +90,8 @@ export const API = {
   shareDetail: (code) => `${API_BASE_URL}/api/share-detail/${code}/`,
 
   friends: () => `${API_BASE_URL}/api/friends/`,
+  friendsAvailableForGroup: (convId) =>
+    `${API_BASE_URL}/api/friends/?exclude_group_id=${encodeURIComponent(convId)}`,
   friendsOf: (profileId) => `${API_BASE_URL}/api/friends/${profileId}/`,
   friendRequest: (profileId) =>
     `${API_BASE_URL}/api/friends/request/${profileId}/`,
@@ -128,6 +131,7 @@ export const API = {
   conversations: () => `${API_BASE_URL}/api/chat/conversations/`,
   startChat: (profileId) => `${API_BASE_URL}/api/chat/start/${profileId}/`,
   messages: (convId) => `${API_BASE_URL}/api/chat/messages/list/${convId}/`,
+  conversationMembers: (convId) => `${API_BASE_URL}/api/chat/conversation/members/${convId}/`,
   seenMessage: (convId) => `${API_BASE_URL}/api/chat/messages/seen/${convId}/`,
   unsendMessage: (id) => `${API_BASE_URL}/api/chat/messages/unsend/${id}/`,
   updateMessage: (id) => `${API_BASE_URL}/api/chat/messages/update/${id}/`,
@@ -137,6 +141,32 @@ export const API = {
   deleteConv: (id) => `${API_BASE_URL}/api/chat/conversation/${id}/delete/`,
   hiddenChats: () => `${API_BASE_URL}/api/chat/conversation/hidden-chat/`,
   chatUpload: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/upload/`,
+  chatFiles: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/file-list/`,
+  createGroupChat: () => `${API_BASE_URL}/api/chat/conversation/group/create-group/`,
+  transferGroupAdmin: (convId) => `${API_BASE_URL}/api/chat/conversation/group/${convId}/transfer-admin/`,
+  addGroupMembers: (convId) => `${API_BASE_URL}/api/chat/conversation/group/${convId}/add/`,
+  modifyGroupChat: (convId) => `${API_BASE_URL}/api/chat/conversation/group/${convId}/modify/`,
+  deleteGroupChat: (convId) => `${API_BASE_URL}/api/chat/conversation/group/${convId}/delete/`,
+  kickGroupMember: (convId, userId) => `${API_BASE_URL}/api/chat/conversation/group/${convId}/kick/${userId}/`,
+  leaveGroupChat: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/leave/`,
+  createTask: (convId) => `${API_BASE_URL}/api/chat/conversation/task/${convId}/create-task/`,
+  addTaskMembers: (convId) => `${API_BASE_URL}/api/chat/conversation/task/${convId}/add-member/`,
+  taskMembers: (convId, taskId) => `${API_BASE_URL}/api/chat/conversation/${convId}/task/${taskId}/member/`,
+  updateTask: (convId, taskId) => `${API_BASE_URL}/api/chat/conversation/${convId}/task/${taskId}/update/`,
+  deleteTask: (convId, taskId) => `${API_BASE_URL}/api/chat/conversation/${convId}/task/${taskId}/delete/`,
+  listTasks: (convId) => `${API_BASE_URL}/api/chat/conversation/task/${convId}/list-task/`,
+  createVote: (convId) => `${API_BASE_URL}/api/chat/conversation/vote/${convId}/create-vote/`,
+  deleteVote: (convId, voteId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/delete-vote/`,
+  updateVote: (convId, voteId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/update-vote/`,
+  addVoteOptions: (convId, voteId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/add-option/`,
+  updateVoteOption: (convId, voteId, optionId) =>
+    `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/option/${optionId}/update-option/`,
+  deleteVoteOption: (convId, voteId, optionId) =>
+    `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/option/${optionId}/delete-option/`,
+  listVotes: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/list-vote/`,
+  listUserVotes: (convId, voteId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/user-vote/`,
+  userVote: (convId, voteId, optionId) =>
+    `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/option/${optionId}/vote/`,
 
   emails: () => `${API_BASE_URL}/api/user/email/`,
   addEmail: () => `${API_BASE_URL}/api/email/add/`,
@@ -147,6 +177,7 @@ export const API = {
   hasPassword: () => `${API_BASE_URL}/api/auth/has-password/`,
   passwordChange: () => `${API_BASE_URL}/api/auth/password/change/`,
   deleteAccount: () => `${API_BASE_URL}/api/auth/delete-account/`,
+  confirmDeleteAccount: () => `${API_BASE_URL}/api/email/cofirm-delete-account/`,
   supportTicket: () => `${API_BASE_URL}/api/support/`,
 
   wsChat: (convId) => {
