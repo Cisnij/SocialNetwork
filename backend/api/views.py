@@ -2761,3 +2761,4 @@ class ListUserVoteGroupChat(generics.ListAPIView):
             raise PermissionDenied("Bạn không có trong group")
         contenttype = ContentType.objects.get_for_model(Conversation)
         return UserVote.objects.filter(option__vote_id=vote_id,option__vote__content_type=contenttype,option__vote__object_id=conv_id).select_related('created_by__profile')
+

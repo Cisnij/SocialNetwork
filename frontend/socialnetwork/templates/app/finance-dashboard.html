@@ -1,0 +1,1355 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block title %}Finance Dashboard - Thị Trường Tài Chính{% endblock title %}
+
+{% block main_content %}
+<style>
+  /* ===== FINANCE DASHBOARD STYLES ===== */
+  .fd-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .fd-card {
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fd-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #1877f2, #8b5cf6, #ec4899);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .fd-card:hover::before { opacity: 1; }
+  .fd-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.12); }
+  .dark .fd-card:hover { box-shadow: 0 12px 40px rgba(0,0,0,0.35); }
+
+  /* Currency items */
+  .currency-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 10px;
+    transition: background 0.2s;
+    gap: 8px;
+  }
+  .currency-item:hover { background: rgba(24,119,242,0.06); }
+  .dark .currency-item:hover { background: rgba(255,255,255,0.05); }
+
+  .currency-flag {
+    font-size: 1.4rem;
+    width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .currency-name {
+    font-weight: 600;
+    font-size: 0.92rem;
+  }
+
+  .currency-rate {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1877f2;
+    text-align: right;
+  }
+
+  .dark .currency-rate { color: #60a5fa; }
+
+  /* Weather card */
+  .weather-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .weather-icon-wrap {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    box-shadow: 0 6px 24px rgba(245,158,11,0.35);
+    flex-shrink: 0;
+  }
+
+  .weather-temp {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .weather-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .weather-detail-item {
+    background: rgba(0,0,0,0.04);
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .dark .weather-detail-item { background: rgba(255,255,255,0.05); }
+
+  /* Crypto */
+  .crypto-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 10px;
+    transition: background 0.2s;
+  }
+  .crypto-item:hover { background: rgba(24,119,242,0.06); }
+  .dark .crypto-item:hover { background: rgba(255,255,255,0.05); }
+
+  .crypto-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .change-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .change-up { background: rgba(34,197,94,0.12); color: #16a34a; }
+  .change-down { background: rgba(239,68,68,0.12); color: #dc2626; }
+  .dark .change-up { background: rgba(34,197,94,0.18); color: #4ade80; }
+  .dark .change-down { background: rgba(239,68,68,0.18); color: #f87171; }
+
+  /* Gold */
+  .gold-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(234,179,8,0.1), rgba(234,179,8,0.05));
+    border: 1px solid rgba(234,179,8,0.2);
+    margin-bottom: 8px;
+    transition: all 0.2s;
+  }
+  .gold-item:hover { border-color: rgba(234,179,8,0.5); }
+
+  .silver-item {
+    background: linear-gradient(135deg, rgba(148,163,184,0.1), rgba(148,163,184,0.05));
+    border-color: rgba(148,163,184,0.2);
+  }
+  .silver-item:hover { border-color: rgba(148,163,184,0.5); }
+
+  /* News cards */
+  .news-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    transition: background 0.2s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+  }
+  .news-item:hover { background: rgba(24,119,242,0.06); }
+  .dark .news-item:hover { background: rgba(255,255,255,0.05); }
+
+  .news-img {
+    width: 72px;
+    height: 52px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+  }
+  .dark .news-img { background: linear-gradient(135deg, #3a3b3c, #2d2e2f); }
+
+  /* VNIndex placeholder */
+  .vnindex-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #22c55e, #86efac);
+    transition: width 1s ease;
+  }
+
+  /* Live indicator */
+  .live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: live-pulse 2s infinite;
+  }
+
+  @keyframes live-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.7; }
+  }
+
+  /* Loading shimmer */
+  .fd-loading {
+    height: 20px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+  }
+  .dark .fd-loading {
+    background: linear-gradient(90deg, #3a3b3c 25%, #4e4f50 50%, #3a3b3c 75%);
+  }
+
+  /* Section header */
+  .fd-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .dark .fd-section-header { border-bottom-color: rgba(255,255,255,0.06); }
+
+  .refresh-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(24,119,242,0.1);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    color: #1877f2;
+    flex-shrink: 0;
+  }
+  .refresh-btn:hover { background: rgba(24,119,242,0.2); transform: rotate(180deg); }
+  .dark .refresh-btn { background: rgba(96,165,250,0.1); color: #60a5fa; }
+
+  /* Stats bar */
+  .stats-bar {
+    background: linear-gradient(135deg, #1877f2 0%, #8b5cf6 50%, #ec4899 100%);
+    border-radius: 16px;
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+  .stats-bar::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+  .stats-bar::after {
+    content: '';
+    position: absolute;
+    bottom: -60%;
+    left: -5%;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+  }
+
+  .inflation-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(239,68,68,0.12);
+    color: #dc2626;
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .dark .inflation-badge { background: rgba(248,113,113,0.15); color: #f87171; border-color: rgba(248,113,113,0.2); }
+
+  /* Ticker tape */
+  .ticker-tape-wrap {
+    background: #0f172a;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+  }
+  .ticker-label {
+    background: #1877f2;
+    color: white;
+    font-weight: 700;
+    font-size: 0.78rem;
+    padding: 0 16px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    letter-spacing: 0.08em;
+  }
+  .ticker-scroll {
+    overflow: hidden;
+    flex: 1;
+  }
+  .ticker-inner {
+    display: flex;
+    gap: 40px;
+    animation: ticker-scroll 35s linear infinite;
+    white-space: nowrap;
+    color: #e2e8f0;
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
+  @keyframes ticker-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .ticker-inner span.up { color: #4ade80; }
+  .ticker-inner span.down { color: #f87171; }
+
+  @media (max-width: 768px) {
+    .weather-temp { font-size: 2.2rem; }
+    .stats-bar { padding: 16px; }
+  }
+</style>
+
+<div class="max-w-7xl mx-auto px-3 sm:px-4 py-6">
+
+  <!-- Hero Stats Bar -->
+  <div class="stats-bar">
+    <div class="relative z-10">
+      <div class="text-white/70 text-xs font-medium uppercase tracking-wider mb-1">Bảng Tổng Quan Tài Chính</div>
+      <h1 class="text-2xl font-bold text-white">Thị Trường Việt Nam & Thế Giới</h1>
+      <div class="flex items-center gap-2 mt-2 flex-wrap">
+        <span class="live-dot"></span>
+        <span class="text-white/80 text-sm">Dữ liệu cập nhật real-time</span>
+        <span id="lastUpdateTime" class="text-white/60 text-xs"></span>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 relative z-10 flex-wrap">
+      <!-- Vietnam Inflation static data (latest from GSO) -->
+      <div class="text-center">
+        <div class="text-white/70 text-xs mb-0.5">Lạm phát VN (T5/2026)</div>
+        <div class="text-white font-bold text-xl" id="inflationVN">3.84%</div>
+        <div class="inflation-badge mt-1">
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+          CPI so cùng kỳ
+        </div>
+      </div>
+      <div class="w-px h-12 bg-white/20 hidden sm:block"></div>
+      <div class="text-center">
+        <div class="text-white/70 text-xs mb-0.5">VNIndex</div>
+        <div id="vnindex-hero" class="text-white font-bold text-xl fd-loading w-24 h-7 mx-auto rounded"></div>
+      </div>
+      <div class="w-px h-12 bg-white/20 hidden sm:block"></div>
+      <div class="text-center">
+        <div class="text-white/70 text-xs mb-0.5">BTC/USDT</div>
+        <div id="btc-hero" class="text-white font-bold text-xl fd-loading w-24 h-7 mx-auto rounded"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ticker Tape -->
+  <div class="ticker-tape-wrap">
+    <div class="ticker-label">📈 LIVE</div>
+    <div class="ticker-scroll">
+      <div class="ticker-inner" id="tickerInner">
+        <span>Đang tải dữ liệu...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+
+    <!-- ===== TỶ GIÁ TIỀN TỆ ===== -->
+    <div class="fd-card glass-card">
+      <div class="fd-section-header">
+        <div class="fd-section-title text-gray-800 dark:text-gray-100">
+          <span class="text-xl">💱</span> Tỷ Giá Ngoại Tệ
+        </div>
+        <button class="refresh-btn" id="refreshCurrency" title="Làm mới">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
+      <div class="text-xs text-gray-500 dark:text-gray-400 mb-3">1 ngoại tệ → VND (tỷ giá trực tiếp)</div>
+      <div id="currencyList" class="space-y-1">
+        <!-- Loading skeletons -->
+        <div class="currency-item">
+          <div class="currency-flag">🇺🇸</div>
+          <div class="flex-1"><div class="currency-name">USD - Đô la Mỹ</div></div>
+          <div class="fd-loading w-24 h-5 rounded"></div>
+        </div>
+        <div class="currency-item">
+          <div class="currency-flag">🇨🇦</div>
+          <div class="flex-1"><div class="currency-name">CAD - Đô la Canada</div></div>
+          <div class="fd-loading w-24 h-5 rounded"></div>
+        </div>
+        <div class="currency-item">
+          <div class="currency-flag">🇪🇺</div>
+          <div class="flex-1"><div class="currency-name">EUR - Euro</div></div>
+          <div class="fd-loading w-24 h-5 rounded"></div>
+        </div>
+        <div class="currency-item">
+          <div class="currency-flag">🇬🇧</div>
+          <div class="flex-1"><div class="currency-name">GBP - Bảng Anh</div></div>
+          <div class="fd-loading w-24 h-5 rounded"></div>
+        </div>
+        <div class="currency-item">
+          <div class="currency-flag">🇯🇵</div>
+          <div class="flex-1"><div class="currency-name">JPY - Yên Nhật</div></div>
+          <div class="fd-loading w-24 h-5 rounded"></div>
+        </div>
+        <div class="currency-item">
+          <div class="currency-flag">🇰🇷</div>
+          <div class="flex-1"><div class="currency-name">KRW - Won Hàn</div></div>
+          <div class="fd-loading w-24 h-5 rounded"></div>
+        </div>
+        <div class="currency-item">
+          <div class="currency-flag">🇨🇳</div>
+          <div class="flex-1"><div class="currency-name">CNY - Nhân dân tệ</div></div>
+          <div class="fd-loading w-24 h-5 rounded"></div>
+        </div>
+        <div class="currency-item">
+          <div class="currency-flag">🇸🇬</div>
+          <div class="flex-1"><div class="currency-name">SGD - Đô la Singapore</div></div>
+          <div class="fd-loading w-24 h-5 rounded"></div>
+        </div>
+        <div class="currency-item">
+          <div class="currency-flag">🇦🇺</div>
+          <div class="flex-1"><div class="currency-name">AUD - Đô la Úc</div></div>
+          <div class="fd-loading w-24 h-5 rounded"></div>
+        </div>
+        <div class="currency-item">
+          <div class="currency-flag">🇨🇭</div>
+          <div class="flex-1"><div class="currency-name">CHF - Franc Thụy Sĩ</div></div>
+          <div class="fd-loading w-24 h-5 rounded"></div>
+        </div>
+      </div>
+      <div class="mt-3 text-[11px] text-gray-400 dark:text-gray-500 text-right">Nguồn: RapidAPI Exchange Rates</div>
+    </div>
+
+    <!-- ===== THỜI TIẾT TP.HCM ===== -->
+    <div class="fd-card glass-card">
+      <div class="fd-section-header">
+        <div class="fd-section-title text-gray-800 dark:text-gray-100">
+          <span class="text-xl">🌤️</span> Thời Tiết TP. HCM
+        </div>
+        <button class="refresh-btn" id="refreshWeather" title="Làm mới">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
+      <div id="weatherContent">
+        <!-- Loading state -->
+        <div class="weather-main">
+          <div class="fd-loading w-16 h-16 rounded-full"></div>
+          <div class="flex-1 space-y-2">
+            <div class="fd-loading h-10 w-24 rounded"></div>
+            <div class="fd-loading h-4 w-32 rounded"></div>
+          </div>
+        </div>
+        <div class="weather-detail-grid">
+          <div class="weather-detail-item"><div class="fd-loading h-4 rounded"></div></div>
+          <div class="weather-detail-item"><div class="fd-loading h-4 rounded"></div></div>
+          <div class="weather-detail-item"><div class="fd-loading h-4 rounded"></div></div>
+          <div class="weather-detail-item"><div class="fd-loading h-4 rounded"></div></div>
+        </div>
+      </div>
+      <div class="mt-3 text-[11px] text-gray-400 dark:text-gray-500 text-right">Nguồn: OpenWeather API</div>
+    </div>
+
+    <!-- ===== GIÁ VÀNG ===== -->
+    <div class="fd-card glass-card">
+      <div class="fd-section-header">
+        <div class="fd-section-title text-gray-800 dark:text-gray-100">
+          <span class="text-xl">🥇</span> Giá Kim Loại Quý
+        </div>
+        <button class="refresh-btn" id="refreshGold" title="Làm mới">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
+
+      <div id="goldContent">
+        <div class="gold-item">
+          <div class="crypto-icon" style="background:linear-gradient(135deg,#eab308,#ca8a04);color:white;font-size:1.3rem;width:42px;height:42px;">Au</div>
+          <div class="flex-1">
+            <div class="font-semibold text-gray-800 dark:text-gray-100">Vàng (XAU)</div>
+            <div id="goldPrice" class="fd-loading h-5 w-28 rounded mt-1"></div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-gray-500">troy oz</div>
+            <div id="goldUnit" class="text-xs text-gray-400 dark:text-gray-500">≈ <span id="goldPerGram">--</span>/g</div>
+          </div>
+        </div>
+        <div class="gold-item silver-item">
+          <div class="crypto-icon" style="background:linear-gradient(135deg,#94a3b8,#64748b);color:white;font-size:1.3rem;width:42px;height:42px;">Ag</div>
+          <div class="flex-1">
+            <div class="font-semibold text-gray-800 dark:text-gray-100">Bạc (XAG)</div>
+            <div id="silverPrice" class="fd-loading h-5 w-28 rounded mt-1"></div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-gray-500">troy oz</div>
+            <div id="silverUnit" class="text-xs text-gray-400 dark:text-gray-500">≈ <span id="silverPerGram">--</span>/g</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gold/VND conversion note -->
+      <div class="mt-4 p-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-700/30">
+        <div class="text-xs text-yellow-800 dark:text-yellow-300 font-medium">💡 Đổi sang VND</div>
+        <div class="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
+          Vàng: <span id="goldVND" class="font-bold">--</span> triệu đồng/lượng
+        </div>
+        <div class="text-sm text-yellow-700 dark:text-yellow-400">
+          (1 lượng ≈ 37.5g, tỷ giá hiện tại)
+        </div>
+      </div>
+      <div class="mt-3 text-[11px] text-gray-400 dark:text-gray-500 text-right">Nguồn: Live Metal Prices API</div>
+    </div>
+
+    <!-- ===== BITCOIN & CRYPTO ===== -->
+    <div class="fd-card glass-card">
+      <div class="fd-section-header">
+        <div class="fd-section-title text-gray-800 dark:text-gray-100">
+          <span class="text-xl">₿</span> Tiền Điện Tử
+        </div>
+        <button class="refresh-btn" id="refreshCrypto" title="Làm mới">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
+      <div id="cryptoList" class="space-y-2">
+        <div class="crypto-item">
+          <div class="crypto-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;">BTC</div>
+          <div class="flex-1 ml-3">
+            <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">Bitcoin</div>
+            <div id="btcPrice" class="fd-loading h-4 w-24 rounded mt-1"></div>
+          </div>
+          <div id="btcChange" class="fd-loading h-5 w-16 rounded"></div>
+        </div>
+        <div class="crypto-item">
+          <div class="crypto-icon" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;">ETH</div>
+          <div class="flex-1 ml-3">
+            <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">Ethereum</div>
+            <div id="ethPrice" class="fd-loading h-4 w-24 rounded mt-1"></div>
+          </div>
+          <div id="ethChange" class="fd-loading h-5 w-16 rounded"></div>
+        </div>
+        <div class="crypto-item">
+          <div class="crypto-icon" style="background:linear-gradient(135deg,#06b6d4,#0891b2);color:white;">SOL</div>
+          <div class="flex-1 ml-3">
+            <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">Solana</div>
+            <div id="solPrice" class="fd-loading h-4 w-24 rounded mt-1"></div>
+          </div>
+          <div id="solChange" class="fd-loading h-5 w-16 rounded"></div>
+        </div>
+        <div class="crypto-item">
+          <div class="crypto-icon" style="background:linear-gradient(135deg,#10b981,#059669);color:white;">BNB</div>
+          <div class="flex-1 ml-3">
+            <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">BNB</div>
+            <div id="bnbPrice" class="fd-loading h-4 w-24 rounded mt-1"></div>
+          </div>
+          <div id="bnbChange" class="fd-loading h-5 w-16 rounded"></div>
+        </div>
+        <div class="crypto-item">
+          <div class="crypto-icon" style="background:linear-gradient(135deg,#64748b,#475569);color:white;font-size:0.65rem;">USDT</div>
+          <div class="flex-1 ml-3">
+            <div class="font-semibold text-sm text-gray-800 dark:text-gray-100">Tether USD</div>
+            <div id="usdtPrice" class="fd-loading h-4 w-24 rounded mt-1"></div>
+          </div>
+          <div id="usdtChange" class="fd-loading h-5 w-16 rounded"></div>
+        </div>
+      </div>
+      <div class="mt-3 text-[11px] text-gray-400 dark:text-gray-500 text-right">Nguồn: Binance API</div>
+    </div>
+
+    <!-- ===== VNINDEX ===== -->
+    <div class="fd-card glass-card">
+      <div class="fd-section-header">
+        <div class="fd-section-title text-gray-800 dark:text-gray-100">
+          <span class="text-xl">📊</span> Chứng Khoán VN
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="live-dot"></span>
+          <span class="text-xs text-gray-500 dark:text-gray-400">Live</span>
+          <button class="refresh-btn" id="refreshVNIndex" title="Làm mới">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- VNIndex Stats -->
+      <div class="space-y-4">
+        <div class="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-700/30">
+          <div class="flex items-end justify-between">
+            <div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">VN-Index</div>
+              <div id="vnindexVal" class="text-3xl font-bold text-gray-800 dark:text-gray-100 mt-1">--</div>
+            </div>
+            <div id="vnindexChange" class="text-right">
+              <div class="fd-loading h-5 w-20 rounded ml-auto mb-1"></div>
+              <div class="fd-loading h-4 w-16 rounded ml-auto"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HNX & UPCOM -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200/50 dark:border-gray-700/30">
+            <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">HNX-Index</div>
+            <div id="hnxVal" class="text-lg font-bold text-gray-800 dark:text-gray-100 mt-1">--</div>
+            <div id="hnxChange" class="text-xs mt-0.5 text-gray-500">--</div>
+          </div>
+          <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200/50 dark:border-gray-700/30">
+            <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">UPCOM</div>
+            <div id="upcomVal" class="text-lg font-bold text-gray-800 dark:text-gray-100 mt-1">--</div>
+            <div id="upcomChange" class="text-xs mt-0.5 text-gray-500">--</div>
+          </div>
+        </div>
+
+        <!-- Trading info -->
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="p-2 rounded-lg bg-green-50 dark:bg-green-900/15">
+            <div class="text-green-600 dark:text-green-400 font-bold text-sm" id="vnUp">--</div>
+            <div class="text-xs text-gray-500">Tăng</div>
+          </div>
+          <div class="p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+            <div class="text-gray-600 dark:text-gray-400 font-bold text-sm" id="vnRef">--</div>
+            <div class="text-xs text-gray-500">Tham chiếu</div>
+          </div>
+          <div class="p-2 rounded-lg bg-red-50 dark:bg-red-900/15">
+            <div class="text-red-600 dark:text-red-400 font-bold text-sm" id="vnDown">--</div>
+            <div class="text-xs text-gray-500">Giảm</div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-3 text-[11px] text-gray-400 dark:text-gray-500 text-right">Nguồn: VN Stock Market API</div>
+    </div>
+
+    <!-- ===== LẠM PHÁT VIỆT NAM ===== -->
+    <div class="fd-card glass-card">
+      <div class="fd-section-header">
+        <div class="fd-section-title text-gray-800 dark:text-gray-100">
+          <span class="text-xl">📈</span> Lạm Phát Việt Nam
+        </div>
+      </div>
+
+      <!-- CPI Data - Static from GSO (Tổng cục Thống kê) -->
+      <div class="space-y-3">
+        <div class="p-4 rounded-xl bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/15 dark:to-orange-900/15 border border-red-200/50 dark:border-red-700/30 text-center">
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">CPI so cùng kỳ 2025 (Tháng 5/2026)</div>
+          <div class="text-4xl font-bold text-red-600 dark:text-red-400">3.84%</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Nguồn: Tổng cục Thống kê (GSO)</div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">CPI Theo Nhóm (T5/2026)</div>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <div class="text-xs w-32 text-gray-600 dark:text-gray-400 flex-shrink-0">Nhà ở, điện nước</div>
+              <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-3">
+                <div class="vnindex-bar" style="width:72%;background:linear-gradient(90deg,#ef4444,#f97316);"></div>
+              </div>
+              <div class="text-xs font-bold text-red-600 dark:text-red-400 w-10 text-right">7.2%</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="text-xs w-32 text-gray-600 dark:text-gray-400 flex-shrink-0">Giáo dục</div>
+              <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-3">
+                <div class="vnindex-bar" style="width:60%;background:linear-gradient(90deg,#f59e0b,#fbbf24);"></div>
+              </div>
+              <div class="text-xs font-bold text-orange-600 dark:text-orange-400 w-10 text-right">5.9%</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="text-xs w-32 text-gray-600 dark:text-gray-400 flex-shrink-0">Thực phẩm</div>
+              <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-3">
+                <div class="vnindex-bar" style="width:38%;background:linear-gradient(90deg,#22c55e,#4ade80);"></div>
+              </div>
+              <div class="text-xs font-bold text-green-600 dark:text-green-400 w-10 text-right">3.8%</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="text-xs w-32 text-gray-600 dark:text-gray-400 flex-shrink-0">Y tế</div>
+              <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-3">
+                <div class="vnindex-bar" style="width:30%;background:linear-gradient(90deg,#3b82f6,#60a5fa);"></div>
+              </div>
+              <div class="text-xs font-bold text-blue-600 dark:text-blue-400 w-10 text-right">3.1%</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="text-xs w-32 text-gray-600 dark:text-gray-400 flex-shrink-0">Giao thông</div>
+              <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-3">
+                <div class="vnindex-bar" style="width:15%;background:linear-gradient(90deg,#8b5cf6,#a78bfa);"></div>
+              </div>
+              <div class="text-xs font-bold text-purple-600 dark:text-purple-400 w-10 text-right">1.5%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200/50 dark:border-blue-700/30">
+          <div class="text-xs text-blue-800 dark:text-blue-300 font-medium">🎯 Mục tiêu lạm phát 2026</div>
+          <div class="text-sm text-blue-700 dark:text-blue-400 mt-1">Chính phủ đặt mục tiêu giữ lạm phát dưới <strong>4.5%</strong></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- End main grid -->
+
+  <!-- ===== TIN TỨC CHỨNG KHOÁN ===== -->
+  <div class="mt-6 fd-card glass-card">
+    <div class="fd-section-header">
+      <div class="fd-section-title text-gray-800 dark:text-gray-100">
+        <span class="text-xl">📰</span> Tin Tức Thị Trường
+      </div>
+      <button class="refresh-btn" id="refreshNews" title="Làm mới">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
+    </div>
+    <div id="newsList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+      <!-- Loading states -->
+      {% for i in "123456" %}
+      <div class="news-item">
+        <div class="news-img fd-loading"></div>
+        <div class="flex-1 space-y-2">
+          <div class="fd-loading h-3 rounded w-full"></div>
+          <div class="fd-loading h-3 rounded w-3/4"></div>
+          <div class="fd-loading h-3 rounded w-1/2"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div><!-- End max-w-7xl -->
+
+<script>
+// ========================================
+// FINANCE DASHBOARD - MAIN CONTROLLER
+// ========================================
+const API_KEY = '223ded8ee5mshc9c34e8094dd80bp19a5e0jsnbb90d0f1b6e5';
+
+const headers = {
+  exchange: {
+    'x-rapidapi-key': API_KEY,
+    'x-rapidapi-host': 'exchange-rates7.p.rapidapi.com',
+    'Content-Type': 'application/json'
+  },
+  weather: {
+    'x-rapidapi-key': API_KEY,
+    'x-rapidapi-host': 'open-weather13.p.rapidapi.com',
+    'Content-Type': 'application/json'
+  },
+  yahoo: {
+    'x-rapidapi-key': API_KEY,
+    'x-rapidapi-host': 'yahoo-finance166.p.rapidapi.com',
+    'Content-Type': 'application/json'
+  },
+  binance: {
+    'x-rapidapi-key': API_KEY,
+    'x-rapidapi-host': 'binance43.p.rapidapi.com',
+    'Content-Type': 'application/json'
+  },
+  gold: {
+    'x-rapidapi-key': API_KEY,
+    'x-rapidapi-host': 'live-metal-prices.p.rapidapi.com',
+    'Content-Type': 'application/json'
+  }
+};
+
+// ---- State (dữ liệu thật, cập nhật từ API) ----
+let usdToVnd = 25000;
+let goldUSD = null;
+let _currencyRates = {};   // rates base=USD (rates['VND'] = vndPerUSD)
+let _cryptoPrices = {};    // { BTCUSDT: price, ETHUSDT: price, ... }
+let _cryptoChanges = {};   // { BTCUSDT: changePercent, ... }
+let _weatherTemp = null;   // °C
+
+// ---- Helpers ----
+function fmtNum(n, decimals = 2) {
+  if (n === null || n === undefined || isNaN(n)) return '--';
+  return parseFloat(n).toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: decimals });
+}
+
+function changeBadge(val) {
+  const v = parseFloat(val);
+  if (isNaN(v)) return '<span class="change-badge change-up">--</span>';
+  const cls = v >= 0 ? 'change-up' : 'change-down';
+  const arrow = v >= 0 ? '▲' : '▼';
+  return `<span class="change-badge ${cls}">${arrow} ${Math.abs(v).toFixed(2)}%</span>`;
+}
+
+function setEl(id, html, isText = false) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('fd-loading');
+  if (isText) el.textContent = html;
+  else el.innerHTML = html;
+}
+
+function updateTime() {
+  const el = document.getElementById('lastUpdateTime');
+  if (el) el.textContent = '• Cập nhật: ' + new Date().toLocaleTimeString('vi-VN');
+}
+
+// ========================================
+// CURRENCIES
+// ========================================
+const CURRENCIES = [
+  { code: 'USD', flag: '🇺🇸', name: 'Đô la Mỹ' },
+  { code: 'CAD', flag: '🇨🇦', name: 'Đô la Canada' },
+  { code: 'EUR', flag: '🇪🇺', name: 'Euro' },
+  { code: 'GBP', flag: '🇬🇧', name: 'Bảng Anh' },
+  { code: 'JPY', flag: '🇯🇵', name: 'Yên Nhật' },
+  { code: 'KRW', flag: '🇰🇷', name: 'Won Hàn Quốc' },
+  { code: 'CNY', flag: '🇨🇳', name: 'Nhân dân tệ' },
+  { code: 'SGD', flag: '🇸🇬', name: 'Đô la Singapore' },
+  { code: 'AUD', flag: '🇦🇺', name: 'Đô la Úc' },
+  { code: 'CHF', flag: '🇨🇭', name: 'Franc Thụy Sĩ' },
+];
+
+async function fetchCurrencies() {
+  try {
+    // base=USD: rates["VND"] = số VND đổi từ 1 USD, rates["EUR"] = số EUR đổi từ 1 USD, v.v.
+    const res = await fetch('https://exchange-rates7.p.rapidapi.com/latest?base=USD', { headers: headers.exchange });
+    const data = await res.json();
+    const rates = data.rates || {};
+
+    // Lưu tỷ giá USD→VND
+    const vndPerUSD = parseFloat(rates['VND']) || 25000;
+    usdToVnd = vndPerUSD;
+
+    const list = document.getElementById('currencyList');
+    if (!list) return;
+
+    list.innerHTML = '';
+    CURRENCIES.forEach(cur => {
+      let display = '--';
+      if (cur.code === 'USD') {
+        // 1 USD = X VND (trực tiếp)
+        display = Math.round(vndPerUSD).toLocaleString('vi-VN') + ' ₫';
+      } else {
+        // 1 cur = ? VND: (1/rates[cur]) * vndPerUSD
+        const rateVsUSD = parseFloat(rates[cur.code]);
+        if (rateVsUSD && rateVsUSD > 0) {
+          const vndPerCur = vndPerUSD / rateVsUSD;
+          if (vndPerCur >= 100) {
+            display = Math.round(vndPerCur).toLocaleString('vi-VN') + ' ₫';
+          } else {
+            display = vndPerCur.toFixed(2) + ' ₫';
+          }
+        }
+      }
+
+      const item = document.createElement('div');
+      item.className = 'currency-item';
+      item.innerHTML = `
+        <div class="currency-flag">${cur.flag}</div>
+        <div class="flex-1">
+          <div class="currency-name text-gray-800 dark:text-gray-100">${cur.code}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">${cur.name}</div>
+        </div>
+        <div class="currency-rate">${display}</div>
+      `;
+      list.appendChild(item);
+    });
+
+    // Update gold VND after currency loaded
+    if (goldUSD) updateGoldVND();
+    updateTickerCurrency(rates, vndPerUSD);
+  } catch (e) {
+    console.error('Currency error:', e);
+    document.getElementById('currencyList').innerHTML = `<div class="text-center text-red-500 text-sm py-4">⚠️ Không tải được dữ liệu tỷ giá</div>`;
+  }
+}
+
+// ========================================
+// WEATHER
+// ========================================
+const WEATHER_ICONS = {
+  Clear: '☀️', Clouds: '☁️', Rain: '🌧️', Drizzle: '🌦️',
+  Thunderstorm: '⛈️', Snow: '❄️', Mist: '🌫️', Fog: '🌫️',
+  Haze: '🌫️', Smoke: '🌫️', default: '🌤️'
+};
+
+const WIND_DIRS = ['Bắc','Đông Bắc','Đông','Đông Nam','Nam','Tây Nam','Tây','Tây Bắc','Bắc'];
+function windDir(deg) {
+  if (deg === undefined) return '--';
+  return WIND_DIRS[Math.round(deg / 45) % 8];
+}
+
+async function fetchWeather() {
+  try {
+    // open-weather13 trả về nhiệt độ theo Fahrenheit
+    const res = await fetch('https://open-weather13.p.rapidapi.com/city?city=ho%20chi%20minh&lang=VI', { headers: headers.weather });
+    const d = await res.json();
+
+    const main = d.main || {};
+    const weather = (d.weather && d.weather[0]) || {};
+    const wind = d.wind || {};
+    const icon = WEATHER_ICONS[weather.main] || WEATHER_ICONS.default;
+
+    // API trả về Fahrenheit → đổi sang Celsius: C = (F - 32) * 5/9
+    const fToC = (f) => ((parseFloat(f) - 32) * 5 / 9).toFixed(1);
+    const tempC = main.temp != null ? fToC(main.temp) : '--';
+    const feelsLike = main.feels_like != null ? fToC(main.feels_like) : '--';
+    const humidity = main.humidity ?? '--';
+    // wind.speed đơn vị mph → km/h: * 1.60934
+    const windSpeed = wind.speed ? (wind.speed * 1.60934).toFixed(1) : '--';
+    const visibility = d.visibility ? (d.visibility / 1000).toFixed(1) + ' km' : '--';
+    const pressure = main.pressure ? main.pressure + ' hPa' : '--';
+
+    // Lưu nhiệt độ thật cho ticker
+    if (tempC !== '--') {
+      _weatherTemp = parseFloat(tempC);
+      buildTicker();
+    }
+
+    const el = document.getElementById('weatherContent');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="weather-main">
+        <div class="weather-icon-wrap">${icon}</div>
+        <div>
+          <div class="weather-temp">${tempC}°C</div>
+          <div class="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-1 capitalize">${weather.description || '--'}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Cảm giác như ${feelsLike}°C</div>
+        </div>
+      </div>
+      <div class="weather-detail-grid">
+        <div class="weather-detail-item">
+          <span class="text-xs text-gray-500 dark:text-gray-400">💧 Độ ẩm</span>
+          <span class="font-bold text-gray-800 dark:text-gray-100">${humidity}%</span>
+        </div>
+        <div class="weather-detail-item">
+          <span class="text-xs text-gray-500 dark:text-gray-400">💨 Gió</span>
+          <span class="font-bold text-gray-800 dark:text-gray-100">${windSpeed} km/h ${windDir(wind.deg)}</span>
+        </div>
+        <div class="weather-detail-item">
+          <span class="text-xs text-gray-500 dark:text-gray-400">👁️ Tầm nhìn</span>
+          <span class="font-bold text-gray-800 dark:text-gray-100">${visibility}</span>
+        </div>
+        <div class="weather-detail-item">
+          <span class="text-xs text-gray-500 dark:text-gray-400">🔽 Áp suất</span>
+          <span class="font-bold text-gray-800 dark:text-gray-100">${pressure}</span>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    console.error('Weather error:', e);
+    document.getElementById('weatherContent').innerHTML = `<div class="text-center text-red-500 text-sm py-4">⚠️ Không tải được dữ liệu thời tiết</div>`;
+  }
+}
+
+// ========================================
+// GOLD & SILVER
+// ========================================
+function updateGoldVND() {
+  if (!goldUSD || !usdToVnd) return;
+  const goldVNDPerTroyOz = goldUSD * usdToVnd;
+  // 1 lượng = 37.5g, 1 troy oz = 31.1035g => 1 lượng = 37.5/31.1035 troy oz
+  const luongFactor = 37.5 / 31.1035;
+  const goldPerLuong = goldVNDPerTroyOz * luongFactor / 1_000_000;
+  const el = document.getElementById('goldVND');
+  if (el) el.textContent = goldPerLuong.toFixed(2);
+}
+
+async function fetchGold() {
+  try {
+    const res = await fetch('https://live-metal-prices.p.rapidapi.com/v1/latest/XAU,XAG/USD', { headers: headers.gold });
+    const d = await res.json();
+    const rates = d.rates || {};
+    const xau = rates.XAU;
+    const xag = rates.XAG;
+
+    if (xau) {
+      goldUSD = parseFloat(xau);
+      setEl('goldPrice', `<span class="font-bold text-lg text-gray-800 dark:text-gray-100">$${fmtNum(xau, 2)}</span> <span class="text-xs text-gray-500">/ troy oz</span>`);
+      setEl('goldPerGram', `$${(parseFloat(xau) / 31.1035).toFixed(2)}`);
+      updateGoldVND();
+      buildTicker(); // cập nhật ticker với giá vàng thật
+    }
+    if (xag) {
+      setEl('silverPrice', `<span class="font-bold text-lg text-gray-800 dark:text-gray-100">$${fmtNum(xag, 2)}</span> <span class="text-xs text-gray-500">/ troy oz</span>`);
+      setEl('silverPerGram', `$${(parseFloat(xag) / 31.1035).toFixed(3)}`);
+    }
+  } catch (e) {
+    console.error('Gold error:', e);
+    setEl('goldPrice', '<span class="text-red-500 text-sm">Không tải được</span>');
+    setEl('silverPrice', '<span class="text-red-500 text-sm">Không tải được</span>');
+  }
+}
+
+// ========================================
+// CRYPTO (BITCOIN, ETH, SOL, BNB)
+// ========================================
+const CRYPTO_PAIRS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'USDTUSDT'];
+
+async function fetchCrypto() {
+  try {
+    const promises = CRYPTO_PAIRS.map(symbol =>
+      fetch(`https://binance43.p.rapidapi.com/ticker/price?symbol=${symbol}`, { headers: headers.binance })
+        .then(r => r.json())
+        .then(d => ({ symbol, price: d.price, ok: true }))
+        .catch(() => ({ symbol, ok: false }))
+    );
+
+    // Also fetch 24hr change
+    const changePromises = CRYPTO_PAIRS.filter(s => s !== 'USDTUSDT').map(symbol =>
+      fetch(`https://binance43.p.rapidapi.com/ticker/24hr?symbol=${symbol}`, { headers: headers.binance })
+        .then(r => r.json())
+        .then(d => ({ symbol, change: d.priceChangePercent, ok: true }))
+        .catch(() => ({ symbol, ok: false }))
+    );
+
+    const [prices, changes] = await Promise.all([Promise.allSettled(promises), Promise.allSettled(changePromises)]);
+    const priceMap = {};
+    const changeMap = {};
+
+    prices.forEach(r => { if (r.status === 'fulfilled' && r.value.ok) priceMap[r.value.symbol] = r.value.price; });
+    changes.forEach(r => { if (r.status === 'fulfilled' && r.value.ok) changeMap[r.value.symbol] = r.value.change; });
+
+    const pairs = [
+      { sym: 'BTCUSDT', priceId: 'btcPrice', changeId: 'btcChange', heroId: 'btc-hero' },
+      { sym: 'ETHUSDT', priceId: 'ethPrice', changeId: 'ethChange' },
+      { sym: 'SOLUSDT', priceId: 'solPrice', changeId: 'solChange' },
+      { sym: 'BNBUSDT', priceId: 'bnbPrice', changeId: 'bnbChange' },
+      { sym: 'USDTUSDT', priceId: 'usdtPrice', changeId: 'usdtChange' },
+    ];
+
+    pairs.forEach(({ sym, priceId, changeId, heroId }) => {
+      const p = priceMap[sym];
+      const c = changeMap[sym];
+      if (p) {
+        const price = parseFloat(p);
+        setEl(priceId, `<span class="font-bold text-gray-800 dark:text-gray-100">$${fmtNum(price, price < 1 ? 4 : 2)}</span>`);
+        if (heroId) setEl(heroId, `<span class="text-white font-bold">$${fmtNum(price, 0)}</span>`);
+      }
+      if (c !== undefined) {
+        setEl(changeId, changeBadge(c));
+      }
+    });
+
+    updateTickerCrypto(priceMap, changeMap);
+  } catch (e) {
+    console.error('Crypto error:', e);
+  }
+}
+
+// ========================================
+// VNINDEX - Using Yahoo Finance API (VN region)
+// ========================================
+async function fetchVNIndex() {
+  try {
+    // Try to get VNIndex from Yahoo Finance
+    const res = await fetch('https://yahoo-finance166.p.rapidapi.com/api/market/get-quotes?region=VN&symbols=%5EVNINDEX%2C%5EHNXINDEX%2C%5EUPCOM', {
+      headers: headers.yahoo
+    });
+    const d = await res.json();
+    const results = d?.quoteResponse?.result || [];
+
+    results.forEach(item => {
+      const sym = item.symbol;
+      const price = item.regularMarketPrice;
+      const change = item.regularMarketChange;
+      const changePct = item.regularMarketChangePercent;
+
+      if (sym === '^VNINDEX' || sym === 'VNINDEX') {
+        setEl('vnindexVal', fmtNum(price, 2), true);
+        const heroEl = document.getElementById('vnindex-hero');
+        if (heroEl) {
+          heroEl.classList.remove('fd-loading');
+          heroEl.innerHTML = `<span class="text-white font-bold">${fmtNum(price, 2)}</span>`;
+        }
+        const changeHtml = price ? `
+          <div class="${changePct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} font-bold text-lg">
+            ${changePct >= 0 ? '▲' : '▼'} ${change ? Math.abs(change).toFixed(2) : '--'}
+          </div>
+          <div class="${changePct >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'} text-sm font-medium">
+            ${changePct >= 0 ? '+' : ''}${changePct ? changePct.toFixed(2) : '--'}%
+          </div>` : '<div class="text-gray-500">--</div>';
+        setEl('vnindexChange', changeHtml);
+      }
+
+      if (sym === '^HNXINDEX' || sym === 'HNXINDEX') {
+        setEl('hnxVal', fmtNum(price, 2), true);
+        setEl('hnxChange', `<span class="${changePct >= 0 ? 'text-green-500' : 'text-red-500'}">${changePct >= 0 ? '+' : ''}${changePct ? changePct.toFixed(2) : '--'}%</span>`);
+      }
+
+      if (sym === '^UPCOM' || sym === 'UPCOM') {
+        setEl('upcomVal', fmtNum(price, 2), true);
+        setEl('upcomChange', `<span class="${changePct >= 0 ? 'text-green-500' : 'text-red-500'}">${changePct >= 0 ? '+' : ''}${changePct ? changePct.toFixed(2) : '--'}%</span>`);
+      }
+    });
+
+    // If no results, try fallback with news
+    if (results.length === 0) {
+      throw new Error('No VNIndex data');
+    }
+  } catch (e) {
+    console.error('VNIndex error:', e);
+    // Fallback: show static placeholder with note
+    setEl('vnindexVal', '~1,290', true);
+    const heroEl = document.getElementById('vnindex-hero');
+    if (heroEl) {
+      heroEl.classList.remove('fd-loading');
+      heroEl.innerHTML = `<span class="text-white/70 text-sm">Xem trang HOSE</span>`;
+    }
+    setEl('vnindexChange', '<div class="text-xs text-gray-500 dark:text-gray-400">Dữ liệu không khả dụng qua API này.<br><a href="https://www.hsx.vn/" target="_blank" class="text-blue-500 hover:underline">→ Xem tại HOSE</a></div>');
+    setEl('hnxVal', '--', true);
+    setEl('upcomVal', '--', true);
+  }
+}
+
+// ========================================
+// STOCK NEWS (Vietnam region)
+// ========================================
+async function fetchNews() {
+  try {
+    const res = await fetch('https://yahoo-finance166.p.rapidapi.com/api/news/list?snippetCount=12&region=VN', {
+      headers: headers.yahoo
+    });
+    const d = await res.json();
+    // Yahoo Finance news format
+    const items = d?.data?.main?.stream || d?.items?.result || [];
+
+    if (!items || items.length === 0) throw new Error('No news');
+
+    const list = document.getElementById('newsList');
+    if (!list) return;
+    list.innerHTML = '';
+
+    items.slice(0, 12).forEach(item => {
+      const content = item.content || item;
+      const title = content.title || content.name || 'Không có tiêu đề';
+      const url = content.clickThroughUrl?.url || content.canonicalUrl?.url || '#';
+      const source = content.provider?.displayName || content.source || 'Yahoo Finance';
+      const pubDate = content.pubDate || content.publishedAt;
+      const timeAgo = pubDate ? getTimeAgo(new Date(pubDate)) : '';
+      const thumbUrl = content.thumbnail?.resolutions?.[0]?.url || '';
+
+      const el = document.createElement('a');
+      el.href = url;
+      el.target = '_blank';
+      el.rel = 'noopener noreferrer';
+      el.className = 'news-item';
+      el.innerHTML = `
+        ${thumbUrl ? `<img class="news-img" src="${thumbUrl}" alt="" onerror="this.style.display='none'">` : `<div class="news-img" style="background:linear-gradient(135deg,#e5e7eb,#d1d5db);"></div>`}
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 line-clamp-2 leading-tight">${title}</div>
+          <div class="flex items-center gap-2 mt-1.5">
+            <span class="text-xs text-blue-600 dark:text-blue-400">${source}</span>
+            ${timeAgo ? `<span class="text-xs text-gray-400">• ${timeAgo}</span>` : ''}
+          </div>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  } catch (e) {
+    console.error('News error:', e);
+    document.getElementById('newsList').innerHTML = `
+      <div class="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+        <div class="text-3xl mb-2">📰</div>
+        <div>Không tải được tin tức thị trường</div>
+        <a href="https://finance.yahoo.com/topic/latest-news/" target="_blank" class="text-blue-500 text-sm hover:underline mt-1 block">Xem tại Yahoo Finance →</a>
+      </div>`;
+  }
+}
+
+function getTimeAgo(date) {
+  const now = new Date();
+  const diff = Math.floor((now - date) / 1000);
+  if (diff < 60) return `${diff}s trước`;
+  if (diff < 3600) return `${Math.floor(diff/60)}p trước`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h trước`;
+  return `${Math.floor(diff/86400)}d trước`;
+}
+
+// ========================================
+// TICKER TAPE
+// ========================================
+function updateTicker() {
+  const el = document.getElementById('tickerInner');
+  if (!el) return;
+
+  const items = [...el.querySelectorAll('[data-ticker]')];
+  // Duplicate for infinite scroll
+  if (items.length > 0 && el.children.length < items.length * 2) {
+    const clone = el.innerHTML;
+    el.innerHTML = clone + clone;
+  }
+}
+
+function updateTickerCurrency(rates, vndPerUSD) {
+  _currencyRates = rates || {};
+  if (vndPerUSD) usdToVnd = vndPerUSD;
+  buildTicker();
+}
+
+function updateTickerCrypto(priceMap, changeMap) {
+  _cryptoPrices = priceMap || {};
+  _cryptoChanges = changeMap || {};
+  buildTicker();
+}
+
+function buildTicker() {
+  const el = document.getElementById('tickerInner');
+  if (!el) return;
+
+  const parts = [];
+
+  // Tỷ giá thật
+  if (usdToVnd && usdToVnd > 1000) {
+    parts.push(`<span class="up" data-ticker>💵 USD = ${Math.round(usdToVnd).toLocaleString('vi-VN')} ₫</span>`);
+  }
+  if (_currencyRates['EUR']) {
+    const eurVnd = usdToVnd / parseFloat(_currencyRates['EUR']);
+    parts.push(`<span data-ticker>🇪🇺 EUR = ${Math.round(eurVnd).toLocaleString('vi-VN')} ₫</span>`);
+  }
+  if (_currencyRates['JPY']) {
+    const jpyVnd = usdToVnd / parseFloat(_currencyRates['JPY']);
+    parts.push(`<span data-ticker>🇯🇵 JPY = ${jpyVnd.toFixed(0)} ₫</span>`);
+  }
+
+  // Vàng thật
+  if (goldUSD) {
+    parts.push(`<span class="up" data-ticker>🥇 Vàng $${fmtNum(goldUSD, 0)}/oz</span>`);
+    if (usdToVnd > 1000) {
+      const luong = (goldUSD * usdToVnd * 37.5 / 31.1035 / 1e6).toFixed(2);
+      parts.push(`<span data-ticker>🥇 Vàng VN ~${luong} tr/lượng</span>`);
+    }
+  }
+
+  // Thời tiết thật
+  if (_weatherTemp !== null) {
+    parts.push(`<span data-ticker>🌡️ TP.HCM ${_weatherTemp}°C</span>`);
+  }
+
+  // Crypto thật
+  const cryptoDisplay = [
+    { sym: 'BTCUSDT', label: '₿ BTC' },
+    { sym: 'ETHUSDT', label: 'Ξ ETH' },
+    { sym: 'SOLUSDT', label: '◎ SOL' },
+    { sym: 'BNBUSDT', label: 'BNB' },
+  ];
+  cryptoDisplay.forEach(({ sym, label }) => {
+    const price = _cryptoPrices[sym];
+    const change = _cryptoChanges[sym];
+    if (price) {
+      const p = parseFloat(price);
+      const cls = change && parseFloat(change) >= 0 ? 'up' : 'down';
+      const arrow = change ? (parseFloat(change) >= 0 ? '▲' : '▼') : '';
+      const pct = change ? ` ${arrow}${Math.abs(parseFloat(change)).toFixed(2)}%` : '';
+      parts.push(`<span class="${cls}" data-ticker>${label} $${fmtNum(p, p < 10 ? 2 : 0)}${pct}</span>`);
+    }
+  });
+
+  // Lạm phát (static từ GSO)
+  parts.push(`<span class="text-yellow-300" data-ticker>📈 CPI VN 3.84% (T5/2026)</span>`);
+
+  if (parts.length > 0) {
+    const sep = ' <span style="color:#4b5563;margin:0 12px">|</span> ';
+    const inner = parts.join(sep);
+    el.innerHTML = inner + sep + inner; // duplicate for seamless infinite loop
+  }
+}
+
+// ========================================
+// INIT & REFRESH
+// ========================================
+async function fetchAll() {
+  updateTime();
+  // Fetch in parallel
+  await Promise.allSettled([
+    fetchCurrencies(),
+    fetchWeather(),
+    fetchGold(),
+    fetchCrypto(),
+    fetchVNIndex(),
+    fetchNews(),
+  ]);
+  buildTicker();
+  updateTime();
+}
+
+// Refresh buttons
+document.getElementById('refreshCurrency')?.addEventListener('click', () => { fetchCurrencies(); buildTicker(); });
+document.getElementById('refreshWeather')?.addEventListener('click', fetchWeather);
+document.getElementById('refreshGold')?.addEventListener('click', () => { fetchGold().then(buildTicker); });
+document.getElementById('refreshCrypto')?.addEventListener('click', () => { fetchCrypto().then(buildTicker); });
+document.getElementById('refreshVNIndex')?.addEventListener('click', fetchVNIndex);
+document.getElementById('refreshNews')?.addEventListener('click', fetchNews);
+
+// Run on load
+document.addEventListener('DOMContentLoaded', () => {
+  fetchAll();
+  // Auto-refresh every 60 seconds
+  setInterval(fetchAll, 60000);
+});
+</script>
+{% endblock main_content %}

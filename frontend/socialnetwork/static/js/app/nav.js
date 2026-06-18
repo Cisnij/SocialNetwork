@@ -140,7 +140,8 @@ document.querySelectorAll("[data-nav]").forEach((el) => {
     (nav === "home" && path === "/") ||
     (nav === "articles" && path.startsWith("/create-article")) ||
     (nav === "shares" && path.startsWith("/shares")) ||
-    (nav === "friends" && path.startsWith("/friends"))
+    (nav === "friends" && path.startsWith("/friends")) ||
+    (nav === "finance" && path.startsWith("/finance"))
   ) {
     el.classList.add("active");
   }

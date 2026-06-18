@@ -190,7 +190,6 @@ urlpatterns = [
     path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/delete-vote/',DeleteVoteGroupChat.as_view()), #xóa vote
     path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:vote_option_id>/vote/',UserVoteGroupChat.as_view()), # vote cho option
     path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/update-vote/',UpdateVoteGroupChat.as_view()), # update vote
-    path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/upate-vote/',UpdateVoteGroupChat.as_view()), # backward-compatible typo
     path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/add-option/',AddOptionVoteGroupChat.as_view()), # thêm option
     path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/update-option/',UpdateOptionVoteGroupChat.as_view()), #update option
     path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/delete-option/',DeleteOptionVoteGroupChat.as_view()), #xóa option

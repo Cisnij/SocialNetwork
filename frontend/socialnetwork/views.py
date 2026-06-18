@@ -88,3 +88,6 @@ def getAddArticle(request):
 
 def getTestDarkmode(request):
     return render(request, 'app/test-darkmode.html')
+
+def getFinanceDashboard(request):
+    return render(request, 'app/finance-dashboard.html')

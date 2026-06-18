@@ -32,5 +32,6 @@ urlpatterns = [
     path('friend-suggest/', views.getFriendSuggest, name='friend-suggest'),
     path('search-history/', views.getSearchHistory, name='search-history'),
     path('support/', views.getSupport, name='support'),
+    path('finance/', views.getFinanceDashboard, name='finance-dashboard'),
 
 ]
