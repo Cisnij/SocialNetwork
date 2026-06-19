@@ -497,7 +497,7 @@ class VoteOptionSerializer(serializers.ModelSerializer):
         fields = ['id', 'text', 'count','is_voted']
 
 class VoteSerializer(serializers.ModelSerializer):
-    options = VoteOptionSerializer(many=True, read_only=True)
+    options = VoteOptionSerializer(many=True, read_only=True) #1-n
     created_by = ProfileSerializer(source='created_by.profile', read_only=True)
 
     class Meta:

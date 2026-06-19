@@ -77,7 +77,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware', # các header bảo mật
     'django_structlog.middlewares.RequestMiddleware', #structlog
     'whitenoise.middleware.WhiteNoiseMiddleware',  # whitenoise
-    # "silk.middleware.SilkyMiddleware",#silk, nên tắt khi lên production
+    "silk.middleware.SilkyMiddleware",#silk, nên tắt khi lên production
     'django.middleware.gzip.GZipMiddleware', # nén file truyền qua internet để nhẹ
     "csp.middleware.CSPMiddleware",#csp
     'corsheaders.middleware.CorsMiddleware',# corsheader

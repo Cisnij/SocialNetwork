@@ -302,6 +302,13 @@ class Message(SafeDeleteModel):
         ('system_admin_transferred', 'Chuyển admin'),
         ('system_name_changed', 'Đổi tên nhóm'),
         ('system_avatar_changed', 'Đổi avatar nhóm'),
+
+        ('system_vote_created',"Tạo vote nhóm"),
+        ('system_vote_deleted','Xóa vote nhóm'),
+        ('system_vote_updated', 'Cập nhật vote nhóm'),
+        ('system_vote_option_added', 'Thêm option vote nhóm'),
+        ('system_vote_option_deleted', 'Xóa option vote nhóm'),
+        ('system_vote_added', 'Người dùng thêm vote nhóm'),
     ]
     _safedelete_policy = SOFT_DELETE_CASCADE
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)

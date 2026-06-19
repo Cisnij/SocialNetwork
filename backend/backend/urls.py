@@ -194,7 +194,7 @@ urlpatterns = [
     path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/update-option/',UpdateOptionVoteGroupChat.as_view()), #update option
     path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/delete-option/',DeleteOptionVoteGroupChat.as_view()), #xóa option
     path('api/chat/conversation/<int:conv_id>/vote/list-vote/',ListVoteGroupChat.as_view()), #list các vote trong group
-    path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/user-vote/',ListUserVoteGroupChat.as_view()), # list các user vote đã vote option gì
+    path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/user/',ListUserVoteGroupChat.as_view()), # list các user vote đã vote option gì
 ] + router.urls
 
 
