@@ -134,6 +134,7 @@ DATABASES = {
             "RECYCLE": 3600,  # recycle connection sau 5 phút
             "TIMEOUT": 60,  # chờ tối đa 30s lấy connection từ pool
             "POOL_PRE_PING": True, #check xem connection còn sống không
+            'isolation_level': 'read committed', # đảm bảo tính nhất quán trong transaction tránh đọc data cũ
         },
 
         "OPTIONS": {

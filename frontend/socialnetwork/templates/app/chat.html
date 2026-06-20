@@ -3,9 +3,9 @@
 {% block title %}Messenger{% endblock %}
 {% block main_content %}
 <div id="chatPageRoot" data-page="chat"
-  class="max-w-[1400px] mx-auto h-[calc(100vh-4rem)] sm:h-[calc(100vh-5.5rem)] flex glass-card sm:rounded-3xl sm:border border-slate-200 dark:border-white/10 shadow-xl overflow-hidden sm:mt-2 relative animate-fade-in">
-  <aside
-    class="w-full md:w-[380px] border-r border-slate-200 dark:border-white/10 flex flex-col bg-slate-50/80 dark:bg-black/40">
+  class="max-w-[1400px] mx-auto h-[calc(100vh-7.5rem)] sm:h-[calc(100vh-5.5rem)] flex glass-card sm:rounded-3xl sm:border border-slate-200 dark:border-white/10 shadow-xl overflow-hidden sm:mt-2 relative animate-fade-in">
+  <aside id="chatSidebar"
+    class="w-full md:w-[380px] border-r border-slate-200 dark:border-white/10 flex flex-col bg-slate-50/80 dark:bg-black/40 shrink-0">
     <div
       class="p-5 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-white/80 dark:bg-white/5 backdrop-blur-md">
       <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -23,9 +23,10 @@
     <div class="flex-1 flex flex-col min-h-0 bg-white/70 dark:bg-white/5">
       <p class="px-5 pt-4 pb-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Trò
         chuyện</p>
-      <div id="chatConvList" class="flex-1 overflow-y-auto scrollbar-thin px-3 space-y-1 pb-4"></div>
+      <div id="chatConvList" class="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 space-y-1 pb-4"></div>
     </div>
   </aside>
+  <div id="sidebarResizer" class="hidden md:block w-1.5 cursor-col-resize hover:bg-fb-primary/50 active:bg-fb-primary transition-colors z-20 shrink-0"></div>
   <section id="chatPanel"
     class="hidden md:flex flex-1 flex-col min-w-0 absolute md:relative inset-0 md:inset-auto z-10 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-xl">
     <div id="chatHeader"

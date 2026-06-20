@@ -110,4 +110,6 @@ work flows
     ListVoteGroupChat : lấy ra tất cả vote trong group
     ListUserVoteGroupChat : lấy ra các user và vote của user
     UserVoteGroupChat :  nếu user đã vote thì nhấn lần nữa sẽ xóa vote giảm count, chưa vote thì tạo, đổi vote thì đổi và + count
+61. Thêm CHATBOT gemini 2.5 flash: FLow là khi người dùng gửi tin nhắn đến chat bot, save message rồi sau đó gửi msg đó tới conversation đó. Check nếu
+                                    là bot thì sẽ gọi hàm ở backend gọi tới model AI truyền message user gửi và trả về message của AI rồi save sau đó group send tới phòng
 =====================================================================================

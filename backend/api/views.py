@@ -1765,6 +1765,11 @@ class ChatAttachmentUpload(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser,FormParser]
     def post(self,request,conv_id):
+        '''flow là gửi ảnh lên thì lưu vào cloudinarty, lưu vào messageattachment sau đó trả về id
+            Sau đó gọi ws với content null và id của messageattachment, thực hiện tạo message và update gán message vào messageattachment.
+            Lấy ra file thì gọi hàm get_attachments gọi filter lấy ra id của msg vừa tạo truyền vào
+            k thể gộp create msg  vào api được vì ws đã có flow save msg và hạn chế thgian phản hồi(upload lên cloud lâu)
+        '''
         if not ConversationMember.objects.filter(user=request.user,conversation_id=conv_id,is_active=True).exists():
             return Response({'error': 'Không có quyền'}, status=403)
         files=request.FILES.getlist('files')

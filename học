@@ -604,11 +604,12 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         #+django-meta:chia sẻ link kiểu khi copy paste vô messenger sẽ hiện card preview, dùng cho fe
         #+django-structlog:theo dõi log của server(ip,lỗi)
         #django-fernet-encrypted-fields: dùng mã hóa tin nhắn trong db
+        #pip install google-generativeai: áp dụng AI vào
     }
         Storage & Media:{
             #pip install django-storages || cloudinary  # lưu file lên S3, Google Cloud, Azure thay vì server
             # pip install Pillow            # xử lý ảnh, bắt buộc nếu dùng ImageField
-            # pip install python-magic trên win || magic-bin trên linux     # validate đúng loại file upload (tránh upload file độc)
+            # pip install python-magic trên linux || magic-bin trên win     # validate đúng loại file upload (tránh upload file độc)
     }
 
     {

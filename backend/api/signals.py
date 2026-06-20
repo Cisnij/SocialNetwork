@@ -4,7 +4,7 @@ from django.db.models.signals import post_save, post_delete, pre_delete, \
     m2m_changed  # post save là ngay khi tạo user thì trigger tạo profile
 from django.dispatch import receiver
 from django.contrib.auth.models import User
-from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log,Notification,Message,PostShare
+from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log,Notification,Message,PostShare,Conversation,ConversationMember
 from reaction.models import UserReaction
 from allauth.account.signals import email_confirmed, user_logged_in
 
@@ -635,9 +635,8 @@ def notify_post_share(sender,instance,created,**kwargs):
             post_id=instance.post.post_id,
             message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} share your post'
         )
-# ✅ Dùng on_commit để đảm bảo DB đã commit xong mới gửi WS
-from django.db import transaction
 
+from django.db import transaction
 @receiver(post_save, sender=Notification)
 def push_ws_notification(sender, instance, created, **kwargs):
     if not created:
@@ -683,3 +682,36 @@ def delete_unverified_email(sender, request, email_address, **kwargs):
     ).exclude(user=email_address.user).delete()  # trừ user vừa verify
 
 
+#===========================CHATBOT=======================================
+from backend.env_config import env
+@receiver(post_save,sender=Profile)
+def create_bot_conversation(sender, instance, created, **kwargs):
+    if not created:
+        return
+    try:
+        bot_name = env('BOT_USERNAME')
+        bot_user, _ = User.objects.get_or_create(
+            username=bot_name,
+            defaults={
+                'email': 'chatbot@system.com',
+                'is_active': True,
+            }
+        )
+        with transaction.atomic():
+            conv = Conversation.objects.create(
+                is_group=False,
+                status='accept'
+            )
+            ConversationMember.objects.bulk_create([
+                ConversationMember(conversation=conv, user=instance.user, role='member', is_active=True),
+                ConversationMember(conversation=conv, user=bot_user, role='member', is_active=True),
+            ])
+            Message.objects.create(
+                conversation=conv,
+                sender=bot_user,
+                content="Xin chào! Tôi là trợ lý AI. Tôi có thể giúp gì cho bạn?",
+                message_type='text'
+            )
+    except Exception as e:
+        print("ERROR:", e)
+        raise

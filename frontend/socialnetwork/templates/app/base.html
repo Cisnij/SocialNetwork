@@ -909,7 +909,7 @@
   </style>
 </head>
 
-<body class="bg-fb-bg dark:bg-[#18191a] min-h-screen text-gray-900 dark:text-[#e4e6eb] gradient-mesh-bg">
+<body class="bg-fb-bg dark:bg-[#18191a] min-h-screen text-gray-900 dark:text-[#e4e6eb] gradient-mesh-bg pb-14 sm:pb-0">
 
   <!-- Top navbar (Facebook-style) -->
   <header
@@ -945,32 +945,32 @@
       </div>
     </div>
 
-    <nav class="flex items-center justify-center gap-1 sm:gap-2 flex-1 max-w-xl">
-      <a href="/" data-nav="home" class="fb-nav-icon active hover-scale" title="Trang chủ">
+    <nav class="fixed bottom-0 left-0 right-0 z-[60] bg-white/95 dark:bg-[#18191a]/95 backdrop-blur-xl border-t dark:border-gray-800 sm:static sm:bg-transparent sm:border-0 flex items-center justify-around sm:justify-center gap-1 sm:gap-2 sm:flex-1 max-w-xl mx-auto w-full pb-[env(safe-area-inset-bottom,0px)] sm:pb-0 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] sm:shadow-none h-14 sm:h-auto">
+      <a href="/" data-nav="home" class="fb-nav-icon active hover-scale flex-1 sm:flex-none flex justify-center h-full sm:h-10 rounded-none sm:rounded-full" title="Trang chủ">
         <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       </a>
-      <a href="/create-article/" data-nav="articles" class="fb-nav-icon hover-scale" title="Bài viết dài">
+      <a href="/create-article/" data-nav="articles" class="fb-nav-icon hover-scale flex-1 sm:flex-none flex justify-center h-full sm:h-10 rounded-none sm:rounded-full" title="Bài viết dài">
         <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       </a>
-      <a href="/shares/" data-nav="shares" class="fb-nav-icon hover-scale" title="Bài chia sẻ">
+      <a href="/shares/" data-nav="shares" class="fb-nav-icon hover-scale flex-1 sm:flex-none flex justify-center h-full sm:h-10 rounded-none sm:rounded-full" title="Bài chia sẻ">
         <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
         </svg>
       </a>
-      <a href="/friends/" data-nav="friends" class="fb-nav-icon hidden sm:flex hover-scale" title="Bạn bè">
+      <a href="/friends/" data-nav="friends" class="fb-nav-icon hover-scale flex-1 sm:flex-none flex justify-center h-full sm:h-10 rounded-none sm:rounded-full" title="Bạn bè">
         <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
       </a>
-      <a href="/finance/" data-nav="finance" class="fb-nav-icon hover-scale" title="Tài chính">
+      <a href="/finance/" data-nav="finance" class="fb-nav-icon hover-scale flex-1 sm:flex-none flex justify-center h-full sm:h-10 rounded-none sm:rounded-full" title="Tài chính">
         <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />

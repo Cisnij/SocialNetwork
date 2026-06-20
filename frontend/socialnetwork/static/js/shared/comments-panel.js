@@ -6,6 +6,7 @@ import { confirmDialog } from "./confirm.js";
 import { getCurrentUserId, fetchUserProfileShared } from "../app/profile.js";
 import { fetchPage } from "./paginated-list.js";
 import { initPostModals, openReactionsModal } from "./posts/modals.js";
+import { showReportModal } from "./pin-report.js";
 import {
   createReactionBar,
   getTotalReactions,
@@ -269,11 +270,24 @@ function renderComment(c, depth = 0, ownerId = postOwnerId, threadParentId = nul
     meta.appendChild(pin);
   }
 
+  // Report comment button (for non-owners) — FB-style modal
+  if (Number(c.user?.id) !== Number(myId)) {
+    const reportBtn = document.createElement("button");
+    reportBtn.type = "button";
+    reportBtn.textContent = "Báo cáo";
+    reportBtn.className = "text-red-400 hover:text-red-600";
+    reportBtn.onclick = (e) => {
+      e.stopPropagation();
+      showReportModal(c.id, "comment");
+    };
+    meta.appendChild(reportBtn);
+  }
+
   if (Number(c.user?.id) === Number(myId)) {
     const edit = document.createElement("button");
     edit.type = "button";
     edit.textContent = "Sửa";
-    edit.onclick = () => showInlineCommentEdit(c.id, text, bubble, edit);
+    edit.onclick = () => showInlineCommentEdit(c.id, textNode, bubble, edit);
     meta.appendChild(edit);
 
     const del = document.createElement("button");
@@ -551,4 +565,44 @@ async function submitComment() {
     if (submitBtn) submitBtn.disabled = false;
     input?.focus();
   }
+}
+
+// ==================== INLINE EDIT COMMENT ====================
+export function showInlineCommentEdit(msgId, textNode, bubble, editBtn) {
+  if (bubble.querySelector('.inline-edit-container')) return;
+  const currentText = textNode.textContent;
+  const container = document.createElement("div");
+  container.className = "inline-edit-container mt-2 w-full";
+  const input = document.createElement("textarea");
+  input.className = "w-full text-sm rounded-lg px-2 py-1.5 bg-white/20 dark:bg-black/20 border border-fb-primary/50 focus:outline-none focus:ring-1 focus:ring-fb-primary resize-none text-inherit dark:text-white";
+  input.value = currentText;
+  input.rows = 2;
+  input.style.minHeight = "36px";
+  input.style.color = "inherit";
+  const actionsRow = document.createElement("div");
+  actionsRow.className = "flex gap-2 justify-end mt-1";
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "text-[11px] px-2.5 py-1 rounded-full bg-gray-200/80 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 transition dark:text-white";
+  cancelBtn.textContent = "Hủy";
+  cancelBtn.onclick = () => container.remove();
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "text-[11px] px-2.5 py-1 rounded-full bg-fb-primary text-white hover:bg-fb-primary-hover transition font-semibold";
+  saveBtn.textContent = "Lưu";
+  saveBtn.onclick = async () => {
+    const nv = input.value.trim();
+    if (!nv || nv === currentText) { container.remove(); return; }
+    try {
+      const res = await authFetch(API.comment(msgId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: nv }) });
+      if (res.ok) { textNode.textContent = nv; container.remove(); showToast("Đã sửa"); }
+      else showToast("Sửa thất bại", "red");
+    } catch { showToast("Lỗi mạng", "red"); }
+  };
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveBtn.click(); } });
+  actionsRow.append(cancelBtn, saveBtn);
+  container.append(input, actionsRow);
+  bubble.appendChild(container);
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
 }

@@ -7,7 +7,6 @@ chưa xong
 - xong tất cả thì xây signal 1 thể
 - xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
 
-- test lại logic tất cả api xem có cái nào chạy báo lỗi
 
 -thêm signal
 -thêm setting default post privacy
@@ -15,18 +14,16 @@ chưa xong
 - thêm 1 cái là upload video và thêm model PostVideo luôn làm y chang PostPhoto
 -áp dụng proxy sql, ngày mai deploy gộp vào 1 container duy nhất
 - áp dung rapid api dùng lấy api bên thứ 3 free như
-    #thời tiết
-    #chứng khoán...
-    #tỷ giá
     Video call (Daily.co/WebRTC) — họp nhóm trong group chat LiveKit
     Translation API — dịch tin nhắn/post cho công ty đa quốc gia
+
 -xem tất cả các api được gọi ở 1 trang xem có thừa, test đủ các api và fe đã dùng đủ chức năng chưa và đúng logic chưa
 -xây search cho chat
 chat nhóm:
 	call video
 	lên lịch
 	// task to do
-	tạo vote
+	// tạo vote
 	// file nội bộ
 	reaction cho message
 	thêm vào setting cho chat

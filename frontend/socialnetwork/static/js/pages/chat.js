@@ -1,4 +1,4 @@
-﻿import { authFetch } from "../authenticate/auth.js";
+import { authFetch } from "../authenticate/auth.js";
 import { fetchUserProfileShared } from "../app/profile.js";
 import { API, withPageSize, DEFAULT_AVATAR } from "../shared/config.js";
 import { uploadChatFiles, sendChatWsMessage } from "../shared/chat-upload.js";
@@ -107,7 +107,7 @@ function scrollToBottomDeferred() {
 function messagePreview(conv) {
   const lm = conv.last_message;
   if (!lm) return "Chưa có tin nhắn";
-  if (lm.message_type === 'file') return 'File đính kèm';
+  if (lm.message_type === 'file' || (lm.attachments && lm.attachments.length > 0 && !lm.content)) return 'File đính kèm';
   return lm.content || lm.message || "Tin nhắn mới";
 }
 
@@ -124,6 +124,12 @@ function getConvTitle(conv) {
 function isCurrentUserAdmin() {
   return (activeConvMembers || []).some(
     (m) => Number(m.user?.id) === Number(myProfileId) && m.role === 'admin'
+  );
+}
+
+function isCurrentUserActiveMember() {
+  return (activeConvMembers || []).some(
+    (m) => Number(m.user?.id) === Number(myProfileId) && m.is_active !== false
   );
 }
 
@@ -300,12 +306,21 @@ function renderConvItem(c) {
   return wrap;
 }
 
+// ==================== CONTEXT MENU FIXED ====================
 function showConvMenu(convId, anchor, conv) {
   document.querySelectorAll(".conv-context-menu").forEach((m) => m.remove());
-  // Position relative to anchor, make anchor position:relative if needed
-  if (window.getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
+
   const menu = document.createElement("div");
-  menu.className = "conv-context-menu absolute right-0 bottom-full mb-1 bg-white dark:bg-[#242526] shadow-xl rounded-lg z-[100] py-1 text-sm min-w-[180px] border dark:border-fb-divider";
+  menu.className = "conv-context-menu fixed bg-white dark:bg-[#242526] shadow-xl rounded-lg z-[9999] py-1 text-sm min-w-[180px] border dark:border-fb-divider";
+
+  const rect = anchor.getBoundingClientRect();
+  let top = rect.top;
+  let left = rect.right - 180;
+  if (left < 10) left = 10;
+  if (top + 200 > window.innerHeight) top = window.innerHeight - 220;
+  if (top < 10) top = 10;
+  menu.style.top = top + "px";
+  menu.style.left = left + "px";
 
   const hide = document.createElement("button");
   hide.type = "button";
@@ -321,19 +336,69 @@ function showConvMenu(convId, anchor, conv) {
   del.onclick = async () => { await authFetch(API.deleteConv(convId), { method: "PATCH" }); menu.remove(); loadConversations(); };
   menu.appendChild(del);
 
-  // Group chat options
   if (conv?.is_group) {
     menu.appendChild(el("hr", "border-t dark:border-white/10 my-1", {}));
+    const members = document.createElement("button");
+    members.type = "button";
+    members.className = "block w-full text-left px-4 py-2 hover:bg-fb-secondary dark:hover:bg-[#3a3b3c]";
+    members.textContent = "👥 Xem thành viên";
+    members.onclick = async () => { menu.remove(); showGroupMembersModal(convId); };
+    menu.appendChild(members);
+
     const leave = document.createElement("button");
     leave.type = "button";
     leave.className = "block w-full text-left px-4 py-2 hover:bg-fb-secondary dark:hover:bg-[#3a3b3c] text-red-500";
-    leave.textContent = "Rời nhóm";
+    leave.textContent = "🚪 Rời nhóm";
     leave.onclick = async () => { await showLeaveGroupModal(convId); menu.remove(); };
     menu.appendChild(leave);
   }
 
-  anchor.appendChild(menu);
+  document.body.appendChild(menu);
   setTimeout(() => document.addEventListener("click", () => menu.remove(), { once: true }), 0);
+}
+
+// ==================== GROUP MEMBERS MODAL ====================
+async function showGroupMembersModal(convId) {
+  const members = await fetchConversationMembers(convId);
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 modal-backdrop z-[85] flex items-center justify-center p-4";
+  modal.innerHTML = `
+    <div class="glass-card rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col p-4">
+      <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">👥 Thành viên nhóm</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
+      <div id="groupMembersList" class="flex-1 overflow-y-auto space-y-2"></div>
+    </div>`;
+  modal.querySelector("[data-close]")?.addEventListener("click", () => modal.remove());
+  document.body.appendChild(modal);
+
+  const list = modal.querySelector("#groupMembersList");
+  const isAdmin = members.some((m) => Number(m.user?.id) === Number(myProfileId) && m.role === 'admin');
+  members.forEach((m) => {
+    if (!m.user) return;
+    const row = document.createElement("div");
+    row.className = "flex items-center gap-3 p-2 rounded-lg hover:bg-fb-secondary dark:hover:bg-white/10";
+    const avatar = document.createElement("img");
+    avatar.src = m.user.picture || DEFAULT_AVATAR;
+    avatar.className = "w-10 h-10 rounded-full object-cover";
+    const info = document.createElement("div");
+    info.className = "flex-1";
+    info.innerHTML = `<p class="text-sm font-semibold dark:text-white">${fullName(m.user)} ${m.role === 'admin' ? '👑' : ''}</p>`;
+    row.append(avatar, info);
+
+    // Kick button for admin
+    if (isAdmin && Number(m.user?.id) !== Number(myProfileId) && m.role !== 'admin') {
+      const kickBtn = document.createElement("button");
+      kickBtn.type = "button";
+      kickBtn.className = "text-xs px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-600 hover:bg-red-200";
+      kickBtn.textContent = "Kick";
+      kickBtn.onclick = async () => {
+        if (!await confirmDialog(`Kick ${fullName(m.user)} khỏi nhóm?`)) return;
+        const res = await authFetch(API.kickGroupMember(convId, m.user.id), { method: "POST" });
+        if (res.ok) { showToast("Đã kick", "green"); row.remove(); } else showToast("Kick thất bại", "red");
+      };
+      row.appendChild(kickBtn);
+    }
+    list?.appendChild(row);
+  });
 }
 
 // ==================== FETCH FIRST MESSAGE ====================
@@ -355,7 +420,9 @@ function isFirstMessageFromMe(msg) {
 
 function isPendingInitiator(conv) {
   if (isFirstMessageFromMe(firstMessageInConv)) return true;
-  return !firstMessageInConv && !!conv?._startedByMe;
+  if (!firstMessageInConv) return true;
+  if (conv && conv.created_by && myUserId != null && Number(conv.created_by) === Number(myUserId)) return true;
+  return !!conv?._startedByMe;
 }
 
 function canSendWhilePending() {
@@ -410,6 +477,7 @@ async function openConversation(conv, titleName) {
   activeConvId = conv.id;
   activeConvMeta = conv;
   activeConvMembers = [];
+  userLastReadMap.clear();
   clearReply();
 
   const panel = $("chatPanel");
@@ -417,6 +485,22 @@ async function openConversation(conv, titleName) {
   if (chatTitle) chatTitle.textContent = titleName || getConvTitle(conv);
 
   messagesEl.replaceChildren();
+
+  // Show left-group message if member is inactive
+  const memberCheck = await checkMembershipStatus(conv.id);
+  if (memberCheck && !memberCheck.is_active) {
+    messagesEl.replaceChildren();
+    const leftMsg = document.createElement("div");
+    leftMsg.className = "flex items-center justify-center h-full";
+    leftMsg.innerHTML = `<div class="text-center p-6"><p class="text-gray-500 dark:text-gray-400 text-lg mb-2">😔 Bạn đã không còn trong nhóm này</p><p class="text-sm text-gray-400">${memberCheck.left_at ? new Date(memberCheck.left_at).toLocaleDateString('vi-VN') : ''}</p></div>`;
+    messagesEl.appendChild(leftMsg);
+    chatForm?.classList.add("opacity-50", "pointer-events-none");
+    chatTitle.textContent = conv.name || "Nhóm";
+    connectChatWs(conv.id);
+    updateChatHeaderActions(conv);
+    return;
+  }
+
   const loader = document.createElement("div"); loader.className = "flex items-center justify-center h-full gap-2";
   const spinner = document.createElement("div"); spinner.className = "w-5 h-5 border-3 border-fb-primary border-t-transparent rounded-full animate-spin"; loader.appendChild(spinner);
   const loadText = document.createElement("p"); loadText.className = "text-sm text-gray-500 dark:text-fb-muted"; loadText.textContent = "Đang tải..."; loader.appendChild(loadText);
@@ -439,12 +523,23 @@ async function openConversation(conv, titleName) {
 
   try { await authFetch(API.seenMessage(conv.id), { method: "POST" }); } catch (e) { console.warn("[chat] seen", e); }
 
-  // Update seen based on other member's last_read_message
-  const otherMem = (activeConvMembers.length ? activeConvMembers : (conv.members || [])).find((m) => Number(m.user?.id) !== Number(myProfileId));
-  if (otherMem && otherMem.last_read_message) markSeenMessages(otherMem.last_read_message);
+  // Update seen based on other members' last_read_message
+  const otherMems = (activeConvMembers.length ? activeConvMembers : (conv.members || [])).filter((m) => Number(m.user?.id) !== Number(myProfileId));
+  otherMems.forEach((m) => {
+    if (m.last_read_message) markSeenMessages(m.last_read_message, m.user);
+  });
 
-  // Update chat header actions with group buttons
   updateChatHeaderActions(conv);
+}
+
+async function checkMembershipStatus(convId) {
+  try {
+    const res = await authFetch(withPageSize(API.conversationMembers(convId), 100));
+    if (!res.ok) return null;
+    const data = await res.json();
+    const members = data.results || [];
+    return members.find((m) => Number(m.user?.id) === Number(myProfileId)) || null;
+  } catch { return null; }
 }
 
 async function fetchConversationMembers(convId) {
@@ -459,41 +554,175 @@ async function fetchConversationMembers(convId) {
 function updateChatHeaderActions(conv) {
   if (!chatHeaderActions) return;
   chatHeaderActions.replaceChildren();
+
+  // Members & Files button for all chats
+  const infoBtn = document.createElement("button");
+  infoBtn.type = "button";
+  infoBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
+  infoBtn.title = "Thông tin & tệp";
+  infoBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+  infoBtn.onclick = () => showConvInfoModal(conv.id, conv);
+  chatHeaderActions.appendChild(infoBtn);
+
   if (!conv.is_group) return;
 
-  if (isCurrentUserAdmin()) {
-    const groupSettingsBtn = document.createElement("button");
-    groupSettingsBtn.type = "button";
-    groupSettingsBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
-    groupSettingsBtn.title = "Quản lý nhóm";
-    groupSettingsBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`;
-    groupSettingsBtn.onclick = () => showGroupSettingsModal(conv.id);
-    chatHeaderActions.appendChild(groupSettingsBtn);
+  // Group settings
+  const groupSettingsBtn = document.createElement("button");
+  groupSettingsBtn.type = "button";
+  groupSettingsBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
+  groupSettingsBtn.title = "Cài đặt nhóm";
+  groupSettingsBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`;
+  groupSettingsBtn.onclick = () => showGroupSettingsModal(conv.id);
+  chatHeaderActions.appendChild(groupSettingsBtn);
+}
+
+// ==================== CONVERSATION INFO MODAL ====================
+function showConvInfoModal(convId, conv) {
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 modal-backdrop z-[80] flex items-center justify-center p-4";
+  modal.innerHTML = `
+    <div class="glass-card rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col p-4">
+      <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">${conv.is_group ? 'Thông tin nhóm' : 'Thông tin'}</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
+      <div class="flex gap-2 mb-3">
+        <button type="button" data-tab="members" class="info-tab-btn text-xs px-3 py-1.5 rounded-full bg-fb-primary text-white">Thành viên</button>
+        <button type="button" data-tab="files" class="info-tab-btn text-xs px-3 py-1.5 rounded-full bg-fb-secondary dark:bg-white/10 dark:text-white">Tệp</button>
+        <button type="button" data-tab="tasks" class="info-tab-btn text-xs px-3 py-1.5 rounded-full bg-fb-secondary dark:bg-white/10 dark:text-white">Công việc</button>
+        <button type="button" data-tab="votes" class="info-tab-btn text-xs px-3 py-1.5 rounded-full bg-fb-secondary dark:bg-white/10 dark:text-white">Bình chọn</button>
+      </div>
+      <div id="convInfoTabContent" class="flex-1 overflow-y-auto"></div>
+    </div>`;
+  modal.querySelector("[data-close]")?.addEventListener("click", () => modal.remove());
+  document.body.appendChild(modal);
+
+  const tabContent = modal.querySelector("#convInfoTabContent");
+  let currentTab = 'members';
+
+  function switchTab(tab) {
+    currentTab = tab;
+    modal.querySelectorAll(".info-tab-btn").forEach((b) => {
+      b.className = "text-xs px-3 py-1.5 rounded-full " + (b.dataset.tab === tab ? "bg-fb-primary text-white" : "bg-fb-secondary dark:bg-white/10 dark:text-white");
+    });
+    if (tab === 'members') loadConvMembersTab(convId, tabContent);
+    else if (tab === 'files') loadConvFilesTab(convId, tabContent);
+    else if (tab === 'tasks') showTaskModal(convId, tabContent);
+    else if (tab === 'votes') showVoteModal(convId, tabContent);
   }
 
-  const viewFilesBtn = document.createElement("button");
-  viewFilesBtn.type = "button";
-  viewFilesBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
-  viewFilesBtn.title = "Tệp đã gửi";
-  viewFilesBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>`;
-  viewFilesBtn.onclick = () => showGroupFilesModal(conv.id);
-  chatHeaderActions.appendChild(viewFilesBtn);
+  modal.querySelectorAll(".info-tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
 
-  const viewTasksBtn = document.createElement("button");
-  viewTasksBtn.type = "button";
-  viewTasksBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
-  viewTasksBtn.title = "Công việc";
-  viewTasksBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>`;
-  viewTasksBtn.onclick = () => showTaskModal(conv.id);
-  chatHeaderActions.appendChild(viewTasksBtn);
+  switchTab('members');
+}
 
-  const viewVotesBtn = document.createElement("button");
-  viewVotesBtn.type = "button";
-  viewVotesBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
-  viewVotesBtn.title = "Bình chọn";
-  viewVotesBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
-  viewVotesBtn.onclick = () => showVoteModal(conv.id);
-  chatHeaderActions.appendChild(viewVotesBtn);
+async function loadConvMembersTab(convId, container) {
+  container.innerHTML = '<p class="text-sm text-gray-400 p-4 text-center">Đang tải...</p>';
+  const members = await fetchConversationMembers(convId);
+  const isAdmin = isCurrentUserAdmin();
+  container.replaceChildren();
+  members.forEach((m) => {
+    if (!m.user) return;
+    const isMe = Number(m.user.id) === Number(myProfileId);
+    const canKick = isAdmin && !isMe;
+    
+    const row = document.createElement("div");
+    row.className = "flex items-center gap-3 p-2 rounded-lg hover:bg-fb-secondary dark:hover:bg-white/10";
+    row.innerHTML = `
+      <img src="${m.user.picture || DEFAULT_AVATAR}" class="w-10 h-10 rounded-full object-cover">
+      <div class="flex-1">
+        <p class="text-sm font-semibold dark:text-white">${fullName(m.user)} ${m.role === 'admin' ? '👑' : ''}</p>
+      </div>
+      ${canKick ? `<button type="button" data-kick="${m.user.user}" class="text-xs text-red-500 hover:underline px-2">Xóa</button>` : ''}
+    `;
+    container.appendChild(row);
+
+    if (canKick) {
+      row.querySelector("[data-kick]")?.addEventListener("click", async () => {
+        if (!await confirmDialog(`Xóa ${fullName(m.user)} khỏi nhóm?`)) return;
+        const res = await authFetch(API.kickGroupMember(convId, m.user.user), { method: "DELETE" });
+        if (res.ok) {
+          showToast("Đã xóa khỏi nhóm", "green");
+          loadConvMembersTab(convId, container);
+        } else {
+          showToast("Không thể xóa", "red");
+        }
+      });
+    }
+  });
+}
+
+async function loadConvFilesTab(convId, container) {
+  container.innerHTML = '<p class="text-sm text-gray-400 p-4 text-center">Đang tải...</p>';
+  const url = withPageSize(API.chatFiles(convId), 30);
+  const res = await authFetch(url);
+  const data = res.ok ? await res.json() : { results: [] };
+  container.replaceChildren();
+
+  const mediaGrid = document.createElement("div");
+  mediaGrid.className = "grid grid-cols-3 gap-1 mb-4";
+  
+  const fileList = document.createElement("div");
+  fileList.className = "space-y-2";
+
+  (data.results || []).forEach((f) => {
+    const isImage = f.file_type === 'image' || f.file_type?.startsWith('image/') || f.file_url?.match(/\.(jpg|jpeg|png|gif|webp)/i);
+    const isVideo = f.file_type === 'video' || f.file_type?.startsWith('video/');
+
+    if (isImage) {
+      const wrapper = document.createElement("a");
+      wrapper.href = f.file_url;
+      wrapper.target = "_blank";
+      wrapper.className = "block aspect-square cursor-pointer hover:opacity-90 transition";
+      wrapper.innerHTML = `<img src="${f.file_url}" class="w-full h-full object-cover" loading="lazy" alt="${f.file_name}">`;
+      mediaGrid.appendChild(wrapper);
+    } else if (isVideo) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "block aspect-square bg-black/10 dark:bg-white/5 flex items-center justify-center relative";
+      wrapper.innerHTML = `<video src="${f.file_url}" class="w-full h-full object-cover" controls preload="metadata"></video>`;
+      mediaGrid.appendChild(wrapper);
+    } else {
+      const item = document.createElement("a");
+      item.href = f.file_url;
+      item.target = "_blank";
+      item.className = "flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 transition group";
+      
+      const sizeStr = f.file_size ? `${Math.round(f.file_size / 1024)} KB` : '';
+      const dateStr = new Date(f.created_at).toLocaleDateString('vi-VN');
+      const uploader = f.uploaded_by?.first_name || '';
+
+      item.innerHTML = `
+        <div class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold dark:text-white truncate group-hover:text-blue-600 transition-colors">${f.file_name}</p>
+          <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate">${sizeStr ? sizeStr + ' · ' : ''}${uploader} · ${dateStr}</p>
+        </div>
+        <div class="shrink-0 w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-500/30 text-gray-500 dark:text-gray-300 group-hover:text-blue-600 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </div>
+      `;
+      fileList.appendChild(item);
+    }
+  });
+
+  if (mediaGrid.childElementCount > 0) {
+    const title = document.createElement("p");
+    title.className = "text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider";
+    title.textContent = "Phương tiện";
+    container.appendChild(title);
+    container.appendChild(mediaGrid);
+  }
+  
+  if (fileList.childElementCount > 0) {
+    const title = document.createElement("p");
+    title.className = "text-xs font-bold text-gray-500 mb-2 mt-4 uppercase tracking-wider";
+    title.textContent = "Tài liệu";
+    container.appendChild(title);
+    container.appendChild(fileList);
+  }
+
+  if (!(data.results || []).length) container.appendChild(textEl("p", "text-sm text-gray-400 text-center py-4", "Chưa có tệp nào."));
 }
 
 // ==================== CHAT WS ====================
@@ -511,8 +740,16 @@ function connectChatWs(convId) {
     chatWs.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
+        if (data.error) { showToast(data.error, "red"); return; }
         if (data.type === "ping") { chatWs.send(JSON.stringify({ type: "pong" })); resetChatPingWatchdog(convId, gen); return; }
-        if (data.type === "seen_message") { if (Number(data.user_id) !== Number(myUserId)) markSeenMessages(data.last_message_id); return; }
+        if (data.type === "seen_message") {
+          if (Number(data.user_id) !== Number(myUserId)) {
+            // Find the user profile for seen avatar
+            const seer = (activeConvMembers || []).find((m) => Number(m.user?.user) === Number(data.user_id));
+            markSeenMessages(data.last_message_id, seer?.user || null);
+          }
+          return;
+        }
         if (data.type === "typing") { handleTypingEvent(data); return; }
         if (data.type === "system_message") { appendMessage({ id: `system-${Date.now()}`, content: data.message, message_type: data.message_type || "system" }, true); return; }
         if (data.type === "message_deleted") { document.querySelector(`[data-msg-id="${data.id}"]`)?.remove(); return; }
@@ -622,9 +859,10 @@ function appendMessage(m, scroll = true, prepend = false) {
   if (content) bubble.appendChild(text);
 
   (m.attachments || []).forEach((a) => {
-    if (a.file_type === "image" || a.file_type?.startsWith("image/") || a.file_url?.match(/\.(jpg|jpeg|png|gif|webp)/i)) {
+    if (a.file_type === "image" || a.file_type?.startsWith("image/") || a.file_url?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)/i)) {
       const image = document.createElement("img");
-      image.src = a.file_url; image.className = "max-w-full rounded-lg mt-1 cursor-pointer"; image.alt = a.file_name || "";
+      image.src = a.file_url; image.className = "max-w-full rounded-lg mt-1 cursor-pointer hover:opacity-90 transition"; image.alt = a.file_name || "";
+      image.loading = "lazy";
       image.onclick = () => window.open(a.file_url, "_blank");
       bubble.appendChild(image);
     } else if (a.file_type === "video" || a.file_type?.startsWith("video/")) {
@@ -634,13 +872,23 @@ function appendMessage(m, scroll = true, prepend = false) {
     } else {
       const link = document.createElement("a");
       link.href = a.file_url; link.target = "_blank"; link.rel = "noopener noreferrer";
-      link.className = "block mt-1 underline text-sm";
-      link.textContent = `📎 ${a.file_name || "Tải file"}`;
+      link.className = "block mt-1 underline text-sm flex items-center gap-1";
+      link.innerHTML = `📎 ${a.file_name || "Tải file"} <span class="text-[10px] opacity-70">(${a.file_size ? Math.round(a.file_size / 1024) + 'KB' : ''})</span>`;
       bubble.appendChild(link);
     }
   });
 
-  if (!content && !(m.attachments || []).length) bubble.appendChild(text);
+  const messageCol = document.createElement("div");
+  messageCol.className = "flex flex-col max-w-[75%]";
+  bubble.classList.remove("max-w-[75%]");
+  bubble.classList.add("w-fit", mine ? "self-end" : "self-start");
+  messageCol.appendChild(bubble);
+
+  const seenContainer = document.createElement("div");
+  seenContainer.className = "msg-seen-container flex justify-end gap-0.5 mt-0.5 min-h-[16px]";
+  messageCol.appendChild(seenContainer);
+
+  if (!content && !(m.attachments || []).length && !mine) bubble.appendChild(text);
 
   if (mine) {
     const actions = document.createElement("div");
@@ -655,29 +903,69 @@ function appendMessage(m, scroll = true, prepend = false) {
     bubble.appendChild(actions);
   }
 
-  const seenLabel = document.createElement("p");
-  seenLabel.className = "msg-seen text-[10px] text-gray-400 dark:text-[#b0b3b8] mt-0.5 text-right";
-  seenLabel.textContent = "";
-
-  if (mine) { wrap.append(replyBtn, bubble); } else { wrap.append(bubble, replyBtn); }
-  if (mine) wrap.appendChild(seenLabel);
+  if (mine) { wrap.append(replyBtn, messageCol); } else { wrap.append(messageCol, replyBtn); }
 
   if (prepend) messagesEl.prepend(wrap); else messagesEl.appendChild(wrap);
   if (scroll) scrollToBottom(false);
 }
 
-function markSeenMessages(lastMessageId) {
+// ==================== SEEN AVATARS INSTEAD OF TEXT ====================
+const userLastReadMap = new Map();
+
+function markSeenMessages(lastMessageId, seerUser) {
   const seenId = Number(lastMessageId);
-  if (!Number.isFinite(seenId)) return;
-  document.querySelectorAll(".msg-seen").forEach((el) => { el.textContent = ""; el.classList.remove("seen-check"); });
-  const nodes = document.querySelectorAll("[data-msg-id]");
-  for (let i = nodes.length - 1; i >= 0; i--) {
-    const node = nodes[i];
-    const id = Number(node.dataset.msgId);
-    if (!Number.isFinite(id)) continue;
-    const seenLabelEl = node.querySelector(".msg-seen");
-    if (!seenLabelEl) continue;
-    if (id <= seenId) { seenLabelEl.textContent = "Đã xem"; seenLabelEl.classList.add("seen-check"); break; }
+  if (!Number.isFinite(seenId) || !seerUser) return;
+  const userId = seerUser.user || seerUser.id;
+  const previousReadId = userLastReadMap.get(userId)?.lastMessageId;
+
+  userLastReadMap.set(userId, { user: seerUser, lastMessageId: seenId });
+
+  if (previousReadId && previousReadId !== seenId) {
+    renderSeenForMessage(previousReadId);
+  }
+  renderSeenForMessage(seenId);
+}
+
+function renderSeenForMessage(msgId) {
+  const node = document.querySelector(`[data-msg-id="${msgId}"]`);
+  if (!node) return;
+  const container = node.querySelector(".msg-seen-container");
+  if (!container) return;
+
+  const seers = [];
+  userLastReadMap.forEach((data) => {
+    if (data.lastMessageId === Number(msgId)) {
+      const uId = data.user.user || data.user.id;
+      if (Number(uId) !== Number(myUserId)) seers.push(data.user);
+    }
+  });
+
+  container.replaceChildren();
+  if (seers.length === 0) return;
+
+  container.className = "msg-seen-container flex justify-end mt-0.5 min-h-[16px] -space-x-1";
+
+  const maxDisplay = 3;
+  const displaySeers = seers.slice(0, maxDisplay);
+  const extraCount = seers.length - maxDisplay;
+  const names = seers.map(s => fullName(s)).join(", ");
+
+  displaySeers.forEach((seer, idx) => {
+    const img = document.createElement("img");
+    img.src = seer.picture || DEFAULT_AVATAR;
+    img.className = "w-3.5 h-3.5 rounded-full object-cover ring-[1.5px] ring-white dark:ring-[#0b0f19] relative";
+    img.style.zIndex = String(10 - idx);
+    img.title = `Đã xem bởi:\n${names}`;
+    container.appendChild(img);
+  });
+
+  if (extraCount > 0) {
+    const extra = document.createElement("div");
+    extra.className = "w-3.5 h-3.5 rounded-full bg-gray-200 dark:bg-[#3a3b3c] flex items-center justify-center text-[8px] text-gray-600 dark:text-gray-300 ring-[1.5px] ring-white dark:ring-[#0b0f19] relative font-bold";
+    extra.style.zIndex = String(10 - maxDisplay);
+    extra.textContent = `+${extraCount}`;
+    extra.title = `Đã xem bởi:\n${names}`;
+    container.appendChild(extra);
   }
 }
 
@@ -702,7 +990,6 @@ function ensureTypingIndicator() {
       .typing-dots .dot:nth-child(2) { animation-delay: 0.2s; }
       .typing-dots .dot:nth-child(3) { animation-delay: 0.4s; }
       @keyframes typingBounce { 0%,60%,100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
-      .msg-seen.seen-check { color: #1877f2; font-size: 10px; }
     `;
     document.head.appendChild(style);
   }
@@ -778,26 +1065,33 @@ function setTyping(isTyping) {
 // ==================== GROUP CHAT SETTINGS MODAL ====================
 async function showGroupSettingsModal(convId) {
   document.getElementById("groupSettingsModal")?.remove();
+  const isAdmin = isCurrentUserAdmin();
   const modal = document.createElement("div");
   modal.id = "groupSettingsModal";
   modal.className = "fixed inset-0 modal-backdrop z-[80] flex items-center justify-center p-4";
   modal.innerHTML = `
     <div class="glass-card rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col p-4">
-      <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">Quản lý nhóm</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
+      <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">Cài đặt nhóm</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
       <div class="space-y-3 overflow-y-auto flex-1">
-        <button type="button" data-action="add-members" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-fb-secondary dark:hover:bg-white/10 dark:text-white">➕ Thêm thành viên</button>
-        <button type="button" data-action="transfer-admin" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-fb-secondary dark:hover:bg-white/10 dark:text-white">👑 Chuyển quyền admin</button>
         <button type="button" data-action="modify-group" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-fb-secondary dark:hover:bg-white/10 dark:text-white">✏️ Đổi tên/ảnh nhóm</button>
-        <button type="button" data-action="delete-group" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">🗑️ Xóa nhóm</button>
+        <button type="button" data-action="add-members" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-fb-secondary dark:hover:bg-white/10 dark:text-white">➕ Thêm thành viên</button>
+        ${isAdmin ? `<button type="button" data-action="transfer-admin" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-fb-secondary dark:hover:bg-white/10 dark:text-white">👑 Chuyển quyền admin</button>` : ''}
+        ${isAdmin ? `<button type="button" data-action="delete-group" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">🗑️ Xóa nhóm</button>` : ''}
+        ${!isAdmin ? `<button type="button" data-action="leave-group" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">👋 Rời nhóm</button>` : ''}
       </div>
     </div>`;
   modal.querySelector("[data-close]")?.addEventListener("click", () => modal.remove());
   document.body.appendChild(modal);
 
   modal.querySelector("[data-action='add-members']")?.addEventListener("click", () => { modal.remove(); showAddMembersModal(convId); });
-  modal.querySelector("[data-action='transfer-admin']")?.addEventListener("click", () => { modal.remove(); showTransferAdminModal(convId); });
   modal.querySelector("[data-action='modify-group']")?.addEventListener("click", () => { modal.remove(); showModifyGroupModal(convId); });
-  modal.querySelector("[data-action='delete-group']")?.addEventListener("click", () => { modal.remove(); showDeleteGroupModal(convId); });
+  
+  if (isAdmin) {
+    modal.querySelector("[data-action='transfer-admin']")?.addEventListener("click", () => { modal.remove(); showTransferAdminModal(convId); });
+    modal.querySelector("[data-action='delete-group']")?.addEventListener("click", () => { modal.remove(); showDeleteGroupModal(convId); });
+  } else {
+    modal.querySelector("[data-action='leave-group']")?.addEventListener("click", () => { modal.remove(); showLeaveGroupModal(convId); });
+  }
 }
 
 async function showAddMembersModal(convId) {
@@ -954,62 +1248,156 @@ async function showLeaveGroupModal(convId) {
       if (!radio) { showToast("Chọn người kế thừa admin", "red"); return; }
       body.next_admin_user_id = Number(radio.value);
     }
-    const res = await authFetch(API.leaveGroupChat(convId), { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const res = await authFetch(API.leaveGroupChat(convId), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) { showToast("Đã rời nhóm", "green"); modal.remove(); activeConvId = null; messagesEl?.replaceChildren(); chatTitle ? chatTitle.textContent = "Chọn hội thoại" : null; $("chatPanel")?.classList.add("hidden"); loadConversations(); }
     else { showToast("Rời nhóm thất bại", "red"); }
   });
 }
 
 // ==================== TASK MODAL ====================
-async function showTaskModal(convId) {
-  document.getElementById("taskModal")?.remove();
+async function showTaskModal(convId, containerOverride) {
+  const container = containerOverride || document.getElementById("taskModal");
+  if (!containerOverride) {
+    document.getElementById("taskModal")?.remove();
+  }
+  const modal = containerOverride ? null : document.createElement("div");
+  if (!modal && !containerOverride) return;
+
+  let contentEl;
+  if (containerOverride) {
+    contentEl = containerOverride;
+    contentEl.innerHTML = '';
+    contentEl.id = "taskContent_" + convId;
+  } else {
+    modal.className = "fixed inset-0 modal-backdrop z-[80] flex items-center justify-center p-4";
+    modal.innerHTML = `
+      <div class="glass-card rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col p-4">
+        <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">📋 Công việc</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
+        <div id="taskContent_${convId}" class="flex-1 overflow-y-auto"></div>
+      </div>`;
+    modal.querySelector("[data-close]")?.addEventListener("click", () => modal.remove());
+    document.body.appendChild(modal);
+    contentEl = modal.querySelector(`#taskContent_${convId}`);
+  }
+
+  contentEl.innerHTML = `
+    <button type="button" id="showCreateTaskForm_${convId}" class="text-sm text-fb-primary font-semibold mb-3">+ Tạo công việc mới</button>
+    <div id="createTaskForm_${convId}" class="hidden space-y-2 mb-3 p-3 bg-slate-50 dark:bg-white/5 rounded-xl">
+      <input id="taskTitleInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Tiêu đề">
+      <textarea id="taskDescInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Mô tả" rows="2"></textarea>
+      <select id="taskPriorityInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm"><option value="medium">Medium</option><option value="low">Low</option><option value="high">High</option></select>
+      <input id="taskDeadlineInput_${convId}" type="datetime-local" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm">
+      <button type="button" id="submitCreateTask_${convId}" class="w-full rounded-lg bg-fb-primary text-white font-semibold py-2 text-sm">Tạo</button>
+    </div>
+    <div class="flex gap-2 mb-3">
+      <select id="taskStatusFilter_${convId}" class="text-xs rounded-lg px-2 py-1.5 bg-white dark:bg-white/10 dark:text-white border dark:border-white/10">
+        <option value="">Tất cả trạng thái</option>
+        <option value="todo">Cần làm</option>
+        <option value="in_progress">Đang làm</option>
+        <option value="done">Hoàn thành</option>
+      </select>
+      <select id="taskAssigneeFilter_${convId}" class="text-xs rounded-lg px-2 py-1.5 bg-white dark:bg-white/10 dark:text-white border dark:border-white/10 flex-1">
+        <option value="">Tất cả thành viên</option>
+      </select>
+    </div>
+    <div id="taskList_${convId}" class="space-y-2"></div>`;
+
+  contentEl.querySelector(`#showCreateTaskForm_${convId}`)?.addEventListener("click", () => {
+    contentEl.querySelector(`#createTaskForm_${convId}`)?.classList.toggle("hidden");
+  });
+
+  contentEl.querySelector(`#submitCreateTask_${convId}`)?.addEventListener("click", async () => {
+    const title = contentEl.querySelector(`#taskTitleInput_${convId}`)?.value.trim();
+    if (!title) { showToast("Nhập tiêu đề", "red"); return; }
+    const body = { title, description: contentEl.querySelector(`#taskDescInput_${convId}`)?.value || "", priority: contentEl.querySelector(`#taskPriorityInput_${convId}`)?.value || "medium" };
+    const deadline = contentEl.querySelector(`#taskDeadlineInput_${convId}`)?.value;
+    if (deadline) body.deadline = deadline;
+    const res = await authFetch(API.createTask(convId), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.ok) {
+      showToast("Đã tạo task", "green");
+      contentEl.querySelector(`#createTaskForm_${convId}`)?.classList.add("hidden");
+      // After creation, show add member modal
+      const taskData = await res.json();
+      showAddTaskMembersModal(convId, taskData.id);
+      loadTaskList(convId, contentEl);
+    } else { showToast("Tạo thất bại", "red"); }
+  });
+
+  await loadTaskList(convId, contentEl);
+  
+  // Load members for filter
+  const members = await fetchConversationMembers(convId);
+  const assigneeFilter = contentEl.querySelector(`#taskAssigneeFilter_${convId}`);
+  if (assigneeFilter) {
+    members.forEach(m => {
+      if (m.user) assigneeFilter.insertAdjacentHTML('beforeend', `<option value="${m.user.id}">${fullName(m.user)}</option>`);
+    });
+    assigneeFilter.addEventListener("change", () => loadTaskList(convId, contentEl));
+  }
+  contentEl.querySelector(`#taskStatusFilter_${convId}`)?.addEventListener("change", () => loadTaskList(convId, contentEl));
+}
+
+async function showAddTaskMembersModal(convId, taskId) {
+  // Get existing task members first
+  const existingRes = await authFetch(withPageSize(API.taskMembers(convId, taskId), 100));
+  const existingData = existingRes.ok ? await existingRes.json() : { results: [] };
+  const existingMemberUserIds = (existingData.results || []).map((p) => p.user);
+
+  // Get group members for available list
+  const groupMembers = await fetchConversationMembers(convId);
+  const availableMembers = groupMembers.filter((m) => !existingMemberUserIds.includes(m.user?.user) && Number(m.user?.id) !== Number(myProfileId));
+
+  if (!availableMembers.length) { showToast("Không còn thành viên để thêm vào task", "red"); return; }
+
   const modal = document.createElement("div");
-  modal.id = "taskModal";
-  modal.className = "fixed inset-0 modal-backdrop z-[80] flex items-center justify-center p-4";
+  modal.className = "fixed inset-0 modal-backdrop z-[85] flex items-center justify-center p-4";
   modal.innerHTML = `
-    <div class="glass-card rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col p-4">
-      <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">📋 Công việc</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
-      <button type="button" id="showCreateTaskForm" class="text-sm text-fb-primary font-semibold mb-3">+ Tạo công việc mới</button>
-      <div id="createTaskForm" class="hidden space-y-2 mb-3 p-3 bg-slate-50 dark:bg-white/5 rounded-xl">
-        <input id="taskTitleInput" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Tiêu đề">
-        <textarea id="taskDescInput" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Mô tả" rows="2"></textarea>
-        <select id="taskPriorityInput" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm"><option value="medium">Medium</option><option value="low">Low</option><option value="high">High</option></select>
-        <input id="taskDeadlineInput" type="datetime-local" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm">
-        <button type="button" id="submitCreateTask" class="w-full rounded-lg bg-fb-primary text-white font-semibold py-2 text-sm">Tạo</button>
-      </div>
-      <div id="taskList" class="flex-1 overflow-y-auto space-y-2"></div>
+    <div class="glass-card rounded-2xl w-full max-w-md p-4">
+      <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">Thêm thành viên vào task</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
+      <div id="addTaskMemberList" class="space-y-1 max-h-60 overflow-y-auto"></div>
+      <button type="button" id="submitAddTaskMembers" class="mt-3 w-full rounded-xl bg-fb-primary text-white font-semibold py-2">Thêm</button>
     </div>`;
   modal.querySelector("[data-close]")?.addEventListener("click", () => modal.remove());
   document.body.appendChild(modal);
 
-  modal.querySelector("#showCreateTaskForm")?.addEventListener("click", () => {
-    const form = modal.querySelector("#createTaskForm");
-    form.classList.toggle("hidden");
+  const list = modal.querySelector("#addTaskMemberList");
+  availableMembers.forEach((m) => {
+    if (!m.user) return;
+    const row = document.createElement("label");
+    row.className = "flex items-center gap-3 rounded-xl p-2 hover:bg-fb-secondary dark:hover:bg-white/10 cursor-pointer";
+    row.innerHTML = `<input type="checkbox" class="add-task-member-check" value="${m.user.user}"><img src="${m.user.picture || DEFAULT_AVATAR}" class="w-9 h-9 rounded-full object-cover"><span class="text-sm dark:text-white">${fullName(m.user)}</span>`;
+    list?.appendChild(row);
   });
 
-  modal.querySelector("#submitCreateTask")?.addEventListener("click", async () => {
-    const title = modal.querySelector("#taskTitleInput")?.value.trim();
-    if (!title) { showToast("Nhập tiêu đề", "red"); return; }
-    const body = { title, description: modal.querySelector("#taskDescInput")?.value || "", priority: modal.querySelector("#taskPriorityInput")?.value || "medium" };
-    const deadline = modal.querySelector("#taskDeadlineInput")?.value;
-    if (deadline) body.deadline = deadline;
-    const res = await authFetch(API.createTask(convId), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (res.ok) { showToast("Đã tạo task", "green"); modal.querySelector("#createTaskForm")?.classList.add("hidden"); loadTaskList(convId); }
-    else { showToast("Tạo thất bại", "red"); }
+  modal.querySelector("#submitAddTaskMembers")?.addEventListener("click", async () => {
+    const ids = [...modal.querySelectorAll(".add-task-member-check:checked")].map((i) => Number(i.value));
+    if (!ids.length) { showToast("Chọn ít nhất 1 người", "red"); return; }
+    const res = await authFetch(API.addTaskMembers(convId), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tasks_id: taskId, add_member_ids: ids }) });
+    if (res.ok) { showToast("Đã thêm thành viên", "green"); modal.remove(); } else { showToast("Thêm thất bại", "red"); }
   });
-
-  await loadTaskList(convId);
 }
 
-async function loadTaskList(convId) {
-  const list = document.getElementById("taskList");
+async function loadTaskList(convId, container) {
+  const list = container?.querySelector(`#taskList_${convId}`) || document.getElementById("taskList");
   if (!list) return;
   const res = await authFetch(withPageSize(API.listTasks(convId), 50));
   const data = res.ok ? await res.json() : { results: [] };
+  const statusFilter = container?.querySelector(`#taskStatusFilter_${convId}`)?.value;
+  const assigneeFilter = container?.querySelector(`#taskAssigneeFilter_${convId}`)?.value;
+  let tasks = data.results || [];
+  
+  if (statusFilter) {
+    tasks = tasks.filter(t => t.status === statusFilter || (statusFilter === 'done' && t.is_finished));
+  }
+  if (assigneeFilter) {
+    tasks = tasks.filter(t => t.assigned_to?.some(u => Number(u.id) === Number(assigneeFilter)));
+  }
+
   list.replaceChildren();
-  (data.results || []).forEach((t) => {
+  tasks.forEach((t) => {
     const card = document.createElement("div");
     card.className = "p-3 rounded-xl bg-white dark:bg-white/5 border dark:border-white/10";
+    const canDelete = t.created_by?.user === myUserId;
     card.innerHTML = `
       <div class="flex items-start justify-between">
         <div class="flex-1 min-w-0">
@@ -1020,169 +1408,255 @@ async function loadTaskList(convId) {
             <span class="text-[10px] px-2 py-0.5 rounded-full ${t.status === 'done' ? 'bg-green-100 text-green-600' : t.status === 'in_progress' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}">${t.status}</span>
             ${t.deadline ? `<span class="text-[10px] text-gray-400">📅 ${new Date(t.deadline).toLocaleDateString('vi-VN')}</span>` : ''}
           </div>
+          ${t.assigned_to?.length ? `<div class="flex gap-1 mt-2 flex-wrap">${t.assigned_to.map((u) => `<span class="text-[10px] bg-fb-secondary dark:bg-white/10 px-2 py-0.5 rounded-full">@${u.full_name || ''}</span>`).join('')}</div>` : ''}
         </div>
         <div class="flex gap-1 shrink-0">
+          ${canDelete ? `<button type="button" data-task-id="${t.id}" data-action="edit" class="text-xs px-2 py-1 rounded hover:bg-fb-secondary dark:hover:bg-white/10 text-blue-500">✏️</button>` : ''}
+          ${canDelete ? `<button type="button" data-task-id="${t.id}" data-action="add-members" class="text-xs px-2 py-1 rounded hover:bg-fb-secondary dark:hover:bg-white/10">➕</button>` : ''}
           <button type="button" data-task-id="${t.id}" data-action="toggle" class="text-xs px-2 py-1 rounded hover:bg-fb-secondary dark:hover:bg-white/10 ${t.is_finished ? 'text-gray-400' : 'text-green-600'}">${t.is_finished ? '↩️' : '✅'}</button>
-          <button type="button" data-task-id="${t.id}" data-action="delete" class="text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500">🗑️</button>
+          ${canDelete ? `<button type="button" data-task-id="${t.id}" data-action="delete" class="text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500">🗑️</button>` : ''}
         </div>
-      </div>
-      ${t.assigned_to?.length ? `<div class="flex gap-1 mt-2 flex-wrap">${t.assigned_to.map((u) => `<span class="text-[10px] bg-fb-secondary dark:bg-white/10 px-2 py-0.5 rounded-full">@${u.full_name || ''}</span>`).join('')}</div>` : ''}`;
+      </div>`;
     list.appendChild(card);
 
+    card.querySelector("[data-action='add-members']")?.addEventListener("click", () => showAddTaskMembersModal(convId, t.id));
     card.querySelector("[data-action='toggle']")?.addEventListener("click", async () => {
       const body = { is_finished: !t.is_finished, status: t.is_finished ? 'todo' : 'done' };
       await authFetch(API.updateTask(convId, t.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      loadTaskList(convId);
+      loadTaskList(convId, container);
     });
     card.querySelector("[data-action='delete']")?.addEventListener("click", async () => {
       if (!await confirmDialog("Xóa task này?")) return;
       await authFetch(API.deleteTask(convId, t.id), { method: "DELETE" });
-      loadTaskList(convId);
+      loadTaskList(convId, container);
+    });
+    card.querySelector("[data-action='edit']")?.addEventListener("click", () => {
+      const dt = t.deadline ? new Date(t.deadline).toISOString().slice(0, 16) : '';
+      card.innerHTML = `
+        <div class="space-y-2 p-1">
+          <input class="edit-title w-full rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 border dark:border-white/10 text-sm dark:text-white" value="${t.title}">
+          <textarea class="edit-desc w-full rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 border dark:border-white/10 text-sm dark:text-white" rows="2">${t.description || ''}</textarea>
+          <div class="flex gap-2">
+            <select class="edit-priority w-1/2 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 text-sm dark:text-white">
+              <option value="medium" ${t.priority==='medium'?'selected':''}>Medium</option>
+              <option value="low" ${t.priority==='low'?'selected':''}>Low</option>
+              <option value="high" ${t.priority==='high'?'selected':''}>High</option>
+            </select>
+            <input class="edit-deadline w-1/2 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 text-sm dark:text-white" type="datetime-local" value="${dt}">
+          </div>
+          <div class="flex gap-2 justify-end mt-2">
+            <button class="cancel-edit text-xs px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-white/10 dark:text-white">Hủy</button>
+            <button class="save-edit text-xs px-3 py-1.5 rounded-lg bg-fb-primary text-white">Lưu</button>
+          </div>
+        </div>
+      `;
+      card.querySelector(".cancel-edit").onclick = () => loadTaskList(convId, container);
+      card.querySelector(".save-edit").onclick = async () => {
+        const body = {
+          title: card.querySelector(".edit-title").value.trim(),
+          description: card.querySelector(".edit-desc").value.trim(),
+          priority: card.querySelector(".edit-priority").value,
+        };
+        const dl = card.querySelector(".edit-deadline").value;
+        if (dl) body.deadline = dl;
+        else body.deadline = null;
+        await authFetch(API.updateTask(convId, t.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        loadTaskList(convId, container);
+      };
     });
   });
+  if (!(data.results || []).length) list.appendChild(textEl("p", "text-sm text-gray-400 text-center py-4", "Chưa có công việc nào."));
 }
 
 // ==================== VOTE MODAL ====================
-async function showVoteModal(convId) {
-  document.getElementById("voteModal")?.remove();
-  const modal = document.createElement("div");
-  modal.id = "voteModal";
-  modal.className = "fixed inset-0 modal-backdrop z-[80] flex items-center justify-center p-4";
-  modal.innerHTML = `
-    <div class="glass-card rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col p-4">
-      <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">📊 Bình chọn</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
-      <button type="button" id="showCreateVoteForm" class="text-sm text-fb-primary font-semibold mb-3">+ Tạo bình chọn mới</button>
-      <div id="createVoteForm" class="hidden space-y-2 mb-3 p-3 bg-slate-50 dark:bg-white/5 rounded-xl">
-        <input id="voteTitleInput" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Câu hỏi">
-        <div id="voteOptionsInput" class="space-y-1">
-          <input class="vote-option-input w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Lựa chọn 1">
-          <input class="vote-option-input w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Lựa chọn 2">
-        </div>
-        <button type="button" id="addVoteOptionRow" class="text-xs text-fb-primary">+ Thêm lựa chọn</button>
-        <button type="button" id="submitCreateVote" class="w-full rounded-lg bg-fb-primary text-white font-semibold py-2 text-sm">Tạo bình chọn</button>
-      </div>
-      <div id="voteList" class="flex-1 overflow-y-auto space-y-3"></div>
-    </div>`;
-  modal.querySelector("[data-close]")?.addEventListener("click", () => modal.remove());
-  document.body.appendChild(modal);
+async function showVoteModal(convId, containerOverride) {
+  const container = containerOverride || document.getElementById("voteModal");
+  if (!containerOverride) {
+    document.getElementById("voteModal")?.remove();
+  }
+  const modal = containerOverride ? null : document.createElement("div");
+  if (!modal && !containerOverride) return;
 
-  modal.querySelector("#showCreateVoteForm")?.addEventListener("click", () => {
-    modal.querySelector("#createVoteForm")?.classList.toggle("hidden");
+  let contentEl;
+  if (containerOverride) {
+    contentEl = containerOverride;
+    contentEl.innerHTML = '';
+    contentEl.id = "voteContent_" + convId;
+  } else {
+    modal.className = "fixed inset-0 modal-backdrop z-[80] flex items-center justify-center p-4";
+    modal.innerHTML = `
+      <div class="glass-card rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col p-4">
+        <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">📊 Bình chọn</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
+        <div id="voteContent_${convId}" class="flex-1 overflow-y-auto"></div>
+      </div>`;
+    modal.querySelector("[data-close]")?.addEventListener("click", () => modal.remove());
+    document.body.appendChild(modal);
+    contentEl = modal.querySelector(`#voteContent_${convId}`);
+  }
+
+  contentEl.innerHTML = `
+    <button type="button" id="showCreateVoteForm_${convId}" class="text-sm text-fb-primary font-semibold mb-3">+ Tạo bình chọn mới</button>
+    <div id="createVoteForm_${convId}" class="hidden space-y-2 mb-3 p-3 bg-slate-50 dark:bg-white/5 rounded-xl">
+      <input id="voteTitleInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Câu hỏi">
+      <div id="voteOptionsInput_${convId}" class="space-y-1">
+        <input class="vote-option-input w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Lựa chọn 1">
+        <input class="vote-option-input w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Lựa chọn 2">
+      </div>
+      <button type="button" id="addVoteOptionRow_${convId}" class="text-xs text-fb-primary">+ Thêm lựa chọn</button>
+      <button type="button" id="submitCreateVote_${convId}" class="w-full rounded-lg bg-fb-primary text-white font-semibold py-2 text-sm">Tạo bình chọn</button>
+    </div>
+    <div id="voteList_${convId}" class="space-y-3"></div>`;
+
+  contentEl.querySelector(`#showCreateVoteForm_${convId}`)?.addEventListener("click", () => {
+    contentEl.querySelector(`#createVoteForm_${convId}`)?.classList.toggle("hidden");
   });
 
-  modal.querySelector("#addVoteOptionRow")?.addEventListener("click", () => {
-    const container = modal.querySelector("#voteOptionsInput");
+  contentEl.querySelector(`#addVoteOptionRow_${convId}`)?.addEventListener("click", () => {
+    const container = contentEl.querySelector(`#voteOptionsInput_${convId}`);
     const input = document.createElement("input");
     input.className = "vote-option-input w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm";
     input.placeholder = `Lựa chọn ${container.children.length + 1}`;
     container.appendChild(input);
   });
 
-  modal.querySelector("#submitCreateVote")?.addEventListener("click", async () => {
-    const title = modal.querySelector("#voteTitleInput")?.value.trim();
+  contentEl.querySelector(`#submitCreateVote_${convId}`)?.addEventListener("click", async () => {
+    const title = contentEl.querySelector(`#voteTitleInput_${convId}`)?.value.trim();
     if (!title) { showToast("Nhập câu hỏi", "red"); return; }
-    const options = [...modal.querySelectorAll(".vote-option-input")].map((i) => i.value.trim()).filter(Boolean);
+    const options = [...contentEl.querySelectorAll(".vote-option-input")].map((i) => i.value.trim()).filter(Boolean);
     if (options.length < 2) { showToast("Cần ít nhất 2 lựa chọn", "red"); return; }
     const res = await authFetch(API.createVote(convId), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, options }) });
-    if (res.ok) { showToast("Đã tạo bình chọn", "green"); modal.querySelector("#createVoteForm")?.classList.add("hidden"); loadVoteList(convId); }
+    if (res.ok) { showToast("Đã tạo bình chọn", "green"); contentEl.querySelector(`#createVoteForm_${convId}`)?.classList.add("hidden"); loadVoteList(convId, contentEl); }
     else { showToast("Tạo thất bại", "red"); }
   });
 
-  await loadVoteList(convId);
+  await loadVoteList(convId, contentEl);
 }
 
-async function loadVoteList(convId) {
-  const list = document.getElementById("voteList");
+async function loadVoteList(convId, container) {
+  const list = container?.querySelector(`#voteList_${convId}`) || document.getElementById("voteList");
   if (!list) return;
   const res = await authFetch(API.listVotes(convId));
   const data = res.ok ? await res.json() : { results: [] };
   list.replaceChildren();
   for (const v of (data.results || [])) {
     const card = document.createElement("div");
-    card.className = "p-3 rounded-xl bg-white dark:bg-white/5 border dark:border-white/10";
+    card.className = "p-3 rounded-xl bg-white dark:bg-white/5 border dark:border-white/10 relative group";
     const totalVotes = (v.options || []).reduce((s, o) => s + o.count, 0);
+    const canDelete = v.created_by?.user === myUserId;
 
     card.innerHTML = `
-      <div class="flex items-start justify-between mb-2">
-        <p class="font-semibold text-sm dark:text-white">${v.title}</p>
+      ${canDelete ? `<button class="absolute top-2 right-8 hidden group-hover:block text-blue-400 hover:text-blue-600 p-1" title="Sửa bình chọn" data-action="edit-vote" data-id="${v.id}">✏️</button>
+                     <button class="absolute top-2 right-2 hidden group-hover:block text-red-400 hover:text-red-600 p-1" title="Xóa bình chọn" data-action="delete-vote" data-id="${v.id}">🗑️</button>` : ''}
+      <div class="flex items-start justify-between mb-2 pr-14">
+        <p class="font-semibold text-sm dark:text-white vote-title-display">${v.title}</p>
         <span class="text-[10px] px-2 py-0.5 rounded-full ${v.is_closed ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">${v.is_closed ? 'Đã đóng' : 'Đang mở'}</span>
       </div>
       <div class="space-y-1">
         ${(v.options || []).map((o) => {
-      const pct = totalVotes > 0 ? Math.round((o.count / totalVotes) * 100) : 0;
-      return `<div class="vote-option-item ${v.is_closed ? '' : 'cursor-pointer hover:bg-fb-secondary dark:hover:bg-white/5'} rounded-lg p-2 ${o.is_voted ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''}" data-vote-id="${v.id}" data-option-id="${o.id}">
-            <div class="flex justify-between text-xs"><span class="dark:text-white">${o.text}</span><span class="text-gray-500">${o.count} phiếu (${pct}%)</span></div>
+          const pct = totalVotes > 0 ? Math.round((o.count / totalVotes) * 100) : 0;
+          return `<div class="vote-option-item relative group/opt ${v.is_closed ? '' : 'cursor-pointer hover:bg-fb-secondary dark:hover:bg-white/5'} rounded-lg p-2 ${o.is_voted ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''}" data-vote-id="${v.id}" data-option-id="${o.id}">
+            <div class="flex justify-between text-xs"><span class="dark:text-white vote-opt-text">${o.text}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-gray-500">${o.count} phiếu (${pct}%)</span>
+                ${o.count > 0 ? `<button type="button" data-action="view-voters" class="text-fb-primary hover:underline px-1 z-10" data-vote-id="${v.id}" data-option-id="${o.id}">👥</button>` : ''}
+              </div>
+            </div>
             <div class="w-full h-1.5 bg-gray-200 dark:bg-white/10 rounded-full mt-1"><div class="h-1.5 rounded-full transition-all ${o.is_voted ? 'bg-fb-primary' : 'bg-gray-400 dark:bg-white/30'}" style="width:${pct}%"></div></div>
-            ${o.is_voted ? '<span class="text-[10px] text-fb-primary">✓ Đã bình chọn</span>' : ''}
+            ${o.is_voted ? '<span class="text-[10px] text-fb-primary mt-1 inline-block">✓ Đã bình chọn</span>' : ''}
+            ${canDelete && !v.is_closed ? `
+              <div class="absolute right-0 top-0 bottom-0 px-2 hidden group-hover/opt:flex items-center gap-1 text-xs bg-white/80 dark:bg-black/80 rounded-r-lg z-10">
+                <button type="button" class="text-blue-500 hover:underline" data-action="edit-opt" data-option-id="${o.id}" data-option-text="${o.text}">Sửa</button>
+                <button type="button" class="text-red-500 hover:underline" data-action="delete-opt" data-option-id="${o.id}">Xóa</button>
+              </div>` : ''}
           </div>`;
-    }).join('')}
+        }).join('')}
+        ${canDelete && !v.is_closed ? `
+          <div class="flex gap-2 mt-2" onclick="event.stopPropagation()">
+            <input class="add-opt-input flex-1 text-xs px-2 py-1.5 rounded bg-gray-50 dark:bg-white/5 dark:text-white border dark:border-white/10" placeholder="Lựa chọn mới">
+            <button class="add-opt-btn text-xs px-3 py-1.5 bg-fb-primary text-white rounded font-medium">Thêm</button>
+          </div>
+        ` : ''}
       </div>
-      <p class="text-[10px] text-gray-400 mt-2">Tổng: ${totalVotes} phiếu</p>`;
+      <p class="text-[10px] text-gray-400 mt-2">Tổng: ${totalVotes} phiếu</p>
+      <div class="voter-list-container hidden mt-2 text-xs text-gray-600 dark:text-gray-300 p-2 bg-slate-50 dark:bg-white/5 rounded-lg max-h-32 overflow-y-auto"></div>`;
 
     list.appendChild(card);
 
+    if (canDelete) {
+      card.querySelector("[data-action='delete-vote']")?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!await confirmDialog("Xóa bình chọn này?")) return;
+        const resp = await authFetch(API.deleteVote(convId, v.id), { method: "DELETE" });
+        if (resp.ok) loadVoteList(convId, container);
+      });
+      card.querySelector("[data-action='edit-vote']")?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const newTitle = prompt("Nhập tiêu đề mới:", v.title);
+        if (newTitle && newTitle.trim() !== v.title) {
+          const resp = await authFetch(API.updateVote(convId, v.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: newTitle.trim() }) });
+          if (resp.ok) loadVoteList(convId, container);
+        }
+      });
+      card.querySelectorAll("[data-action='edit-opt']").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const optionId = btn.dataset.optionId;
+          const oldText = btn.dataset.optionText;
+          const newText = prompt("Sửa lựa chọn:", oldText);
+          if (newText && newText.trim() !== oldText) {
+            const resp = await authFetch(API.updateVoteOption(convId, v.id, optionId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: newText.trim() }) });
+            if (resp.ok) loadVoteList(convId, container);
+          }
+        });
+      });
+      card.querySelectorAll("[data-action='delete-opt']").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const optionId = btn.dataset.optionId;
+          const resp = await authFetch(API.deleteVoteOption(convId, v.id, optionId), { method: "DELETE" });
+          if (resp.ok) loadVoteList(convId, container);
+        });
+      });
+      const addBtn = card.querySelector(".add-opt-btn");
+      if (addBtn) {
+        addBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const inp = card.querySelector(".add-opt-input");
+          const text = inp.value.trim();
+          if (!text) return;
+          const resp = await authFetch(API.addVoteOptions(convId, v.id), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ options: [text] }) });
+          if (resp.ok) loadVoteList(convId, container);
+        });
+      }
+    }
+
+    card.querySelectorAll("[data-action='view-voters']").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const optionId = btn.dataset.optionId;
+        const voteId = btn.dataset.voteId;
+        const res = await authFetch(API.listUserVotes(convId, voteId) + `?option=${optionId}`);
+        const data = res.ok ? await res.json() : { results: [] };
+        const containerBox = card.querySelector(".voter-list-container");
+        containerBox.classList.remove("hidden");
+        if (!data.results?.length) { containerBox.innerHTML = "Không có ai."; return; }
+        containerBox.innerHTML = "<div class='font-semibold mb-1'>Đã chọn:</div>" + data.results.map(u => `<div>${fullName(u.user)}</div>`).join("");
+      });
+    });
+
     if (!v.is_closed) {
       card.querySelectorAll(".vote-option-item").forEach((el) => {
-        el.addEventListener("click", async () => {
+        el.addEventListener("click", async (e) => {
+          if (e.target.closest('button') || e.target.closest('input')) return;
           const voteId = el.dataset.voteId;
           const optionId = el.dataset.optionId;
           const res = await authFetch(API.userVote(convId, voteId, optionId), { method: "POST" });
-          if (res.ok) { loadVoteList(convId); } else { showToast("Bình chọn thất bại", "red"); }
+          if (res.ok) { loadVoteList(convId, container); } else { showToast("Bình chọn thất bại", "red"); }
         });
       });
     }
   }
-}
-
-// ==================== GROUP FILES MODAL ====================
-async function showGroupFilesModal(convId) {
-  document.getElementById("groupFilesModal")?.remove();
-  const modal = document.createElement("div");
-  modal.id = "groupFilesModal";
-  modal.className = "fixed inset-0 modal-backdrop z-[80] flex items-center justify-center p-4";
-  modal.innerHTML = `
-    <div class="glass-card rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col p-4">
-      <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">📁 Tệp đã gửi</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
-      <div class="flex gap-2 mb-3">
-        <button type="button" data-filter="all" class="file-filter-btn text-xs px-3 py-1.5 rounded-full bg-fb-primary text-white">Tất cả</button>
-        <button type="button" data-filter="image" class="file-filter-btn text-xs px-3 py-1.5 rounded-full bg-fb-secondary dark:bg-white/10 dark:text-white">Ảnh</button>
-        <button type="button" data-filter="file" class="file-filter-btn text-xs px-3 py-1.5 rounded-full bg-fb-secondary dark:bg-white/10 dark:text-white">File</button>
-        <button type="button" data-filter="video" class="file-filter-btn text-xs px-3 py-1.5 rounded-full bg-fb-secondary dark:bg-white/10 dark:text-white">Video</button>
-      </div>
-      <div id="groupFilesList" class="flex-1 overflow-y-auto space-y-2"></div>
-    </div>`;
-  modal.querySelector("[data-close]")?.addEventListener("click", () => modal.remove());
-  document.body.appendChild(modal);
-
-  let currentFilter = 'all';
-  modal.querySelectorAll(".file-filter-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      modal.querySelectorAll(".file-filter-btn").forEach((b) => { b.className = "text-xs px-3 py-1.5 rounded-full bg-fb-secondary dark:bg-white/10 dark:text-white"; });
-      btn.className = "text-xs px-3 py-1.5 rounded-full bg-fb-primary text-white";
-      currentFilter = btn.dataset.filter;
-      loadGroupFiles(convId, currentFilter);
-    });
-  });
-
-  await loadGroupFiles(convId, 'all');
-}
-
-async function loadGroupFiles(convId, filter) {
-  const list = document.getElementById("groupFilesList");
-  if (!list) return;
-  let url = withPageSize(API.chatFiles(convId), 30);
-  if (filter !== 'all') url += `&file_type=${filter}`;
-  const res = await authFetch(url);
-  const data = res.ok ? await res.json() : { results: [] };
-  list.replaceChildren();
-  (data.results || []).forEach((f) => {
-    const item = document.createElement("div");
-    item.className = "flex items-center gap-3 p-2 rounded-lg hover:bg-fb-secondary dark:hover:bg-white/5";
-    const icon = f.file_type === 'image' ? '🖼️' : f.file_type === 'video' ? '🎬' : '📄';
-    item.innerHTML = `<span class="text-lg">${icon}</span><div class="flex-1 min-w-0"><p class="text-sm dark:text-white truncate">${f.file_name}</p><p class="text-[10px] text-gray-400">${f.uploaded_by?.first_name || ''} · ${new Date(f.created_at).toLocaleDateString('vi-VN')}</p></div><a href="${f.file_url}" target="_blank" class="text-xs text-fb-primary shrink-0">Tải</a>`;
-    list.appendChild(item);
-  });
-  if (!(data.results || []).length) list.appendChild(textEl("p", "text-sm text-gray-400 text-center py-4", "Chưa có tệp nào."));
+  if (!(data.results || []).length) list.appendChild(textEl("p", "text-sm text-gray-400 text-center py-4", "Chưa có bình chọn nào."));
 }
 
 // ==================== BIND EVENTS ====================
@@ -1222,12 +1696,31 @@ function bindEvents() {
     if (!files?.length) return;
     const attachBtn = input.closest("label");
     if (attachBtn) attachBtn.classList.add("opacity-50", "pointer-events-none");
+
+    const spinnerId = `upload-${Date.now()}`;
+    if (messagesEl) {
+      const spinnerWrap = document.createElement("div");
+      spinnerWrap.id = spinnerId;
+      spinnerWrap.className = "flex justify-end my-2 chat-msg-wrap";
+      spinnerWrap.innerHTML = `
+        <div class="px-4 py-2 rounded-2xl bg-fb-primary/20 dark:bg-white/10 flex items-center gap-2 text-sm dark:text-white">
+          <svg class="animate-spin w-4 h-4 text-fb-primary" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
+          Đang gửi ${files.length} tệp...
+        </div>`;
+      messagesEl.appendChild(spinnerWrap);
+      scrollToBottom(true);
+    }
+
     try {
       const ids = await uploadChatFiles(activeConvId, files);
       sendChatWsMessage(chatWs, { text: "", attachmentIds: ids });
       showToast("Đã gửi tệp đính kèm");
     } catch (err) { showToast(err.message || "Upload thất bại", "red"); }
-    finally { input.value = ""; attachBtn?.classList.remove("opacity-50", "pointer-events-none"); }
+    finally { 
+      input.value = ""; 
+      attachBtn?.classList.remove("opacity-50", "pointer-events-none"); 
+      document.getElementById(spinnerId)?.remove();
+    }
   });
 
   messagesEl?.addEventListener("scroll", () => {
@@ -1333,6 +1826,7 @@ async function initChat() {
 
   bindEvents();
   addCreateGroupButton();
+  initResizer();
 
   try {
     await loadCurrentUser();
@@ -1354,3 +1848,31 @@ async function initChat() {
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => initChat());
 else initChat();
+
+function initResizer() {
+  const sidebar = document.getElementById("chatSidebar");
+  const resizer = document.getElementById("sidebarResizer");
+  if (!sidebar || !resizer) return;
+
+  let isResizing = false;
+
+  resizer.addEventListener("mousedown", (e) => {
+    isResizing = true;
+    document.body.style.cursor = "col-resize";
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!isResizing) return;
+    const newWidth = e.clientX;
+    if (newWidth >= 250 && newWidth <= window.innerWidth * 0.6) {
+      sidebar.style.width = `${newWidth}px`;
+    }
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (isResizing) {
+      isResizing = false;
+      document.body.style.cursor = "";
+    }
+  });
+}

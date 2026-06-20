@@ -35,7 +35,8 @@ from friendship.models import Block
 from django.utils import timezone
 from django.contrib.auth.models import User
 from api.tasks import push_notification_task
-
+from api.AI_Bot import get_gemini_reply
+from backend.env_config import env
 class HeartbeatMixin:
     '''giúp tự kết nối khi bị ngắt, flow là server gửi ping sau 30s, client còn sống thì gửi pong. Nếu k gửi pong thì server disconnect và client k nhận ping cũng sẽ tự reconnect 3s chỉ sau khi server close'''
     ''' 
@@ -109,13 +110,14 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
         if self.handle_pong(data): # lấy data server nhận đưa vào hàm kiểm tra có pong k, có true không false và false thì dừng
             return
         # xử lý typing
+        sender_name = await self.get_sender_name()
         if data.get('type') == 'typing':
             await self.channel_layer.group_send(
                     self.room_name,
-        {
+            {
                     'type' : 'typing_indicator',
                     'sender_id' : self.user.id,
-                    'sender' : self.user.username,
+                    'sender' : sender_name,
                     'is_typing': data.get('is_typing', False), # lấy giá trị is_typing không thì default false, fe gửi is_typing=True  khi user nhập 
                 }
             )
@@ -135,7 +137,6 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
         if not allowed:
             await self.send(text_data=json.dumps({'error': reason})) # báo lỗi về client, chuyển thành chuỗi json
             return
-
         # lưu vào db
         msg = await self.save_message(message, message_type,reply_to_id,attachment_ids) # save sẽ trả về 1 object đầy đủ
         if not msg: # lưu thất bại
@@ -158,9 +159,27 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
                 'attachments': attachments,
             }
         )
-
+        # bot reply
+        is_bot = await self.is_bot_conversation()
+        if is_bot:
+            bot_reply_text = await asyncio.get_event_loop().run_in_executor(None,get_gemini_reply,message) #khi user nhấn gửi cho bot thì gọi hàm gọi AI không qua API, run in executor để kêu thread khác gọi tránh block
+            bot_message = await self.save_bot_message(bot_reply_text)
+            await self.channel_layer.group_send(
+                self.room_name,
+                {
+                    'type': 'chat_message',
+                    'id': bot_message.id,
+                    'message': bot_reply_text,
+                    'sender': env('BOT_USERNAME'),
+                    'sender_id': bot_message.sender_id,
+                    'message_type': 'text',
+                    'created_at': bot_message.created_at.isoformat(),
+                    'reply_to_id': None,
+                    'reply_to_id_content': None,
+                    'attachments': [],
+                }
+            )
         member_ids = await self.get_member_ids()
-        sender_name = await self.get_sender_name()
         for user_id in member_ids:
             if user_id != self.user.id:
                 push_notification_task.delay(
@@ -342,7 +361,22 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer): # chỉ kết nối 
     def get_sender_name(self):
         profile = Profile.objects.filter(user=self.user).first()
         return profile.full_name if profile else self.user.username
-    
+    #==============AI======================
+    @database_sync_to_async
+    def is_bot_conversation(self):
+        return ConversationMember.objects.filter(
+            conversation_id=self.conversation_id,
+            user__username= env("BOT_USERNAME")
+        ).exists()
+    @database_sync_to_async
+    def save_bot_message(self, content):
+        bot_user = User.objects.get(username=env("BOT_USERNAME"))
+        return Message.objects.create(
+            conversation_id=self.conversation_id,
+            sender=bot_user,
+            content=content,
+            message_type='text'
+        )
 class NotificationConsumer(HeartbeatMixin,AsyncWebsocketConsumer): # chịu trách nhiệm kết nối khi vào app và đếm số count noti ngay khi vào app, khi nhấn vào noti sẽ broadcast từ signal qua và đặt lại 0
     async def connect(self):
         self.ping_task=None

@@ -47,7 +47,7 @@ export function injectPinReportButtons(post, { isUserPage = false } = {}) {
 }
 
 // ========= REPORT MODAL — FB-style beautiful (Task 8) =========
-export function showReportModal(postId) {
+export function showReportModal(id, type = "post") {
   // Remove existing if any
   document.getElementById("reportModal")?.remove();
 
@@ -95,9 +95,10 @@ export function showReportModal(postId) {
   // ---- Header ----
   const header = document.createElement("div");
   header.className = "flex items-center justify-between px-5 py-4 border-b dark:border-[#3e4042]";
+  const modalTitle = type === "post" ? "🚩 Báo cáo bài viết" : "🚩 Báo cáo bình luận";
   header.innerHTML = `
     <div>
-      <h2 class="text-base font-bold dark:text-white flex items-center gap-2">🚩 Báo cáo bài viết</h2>
+      <h2 class="text-base font-bold dark:text-white flex items-center gap-2">${modalTitle}</h2>
       <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Giúp chúng tôi hiểu vấn đề bạn gặp phải</p>
     </div>
     <button type="button" id="closeReportModal"
@@ -235,7 +236,8 @@ export function showReportModal(postId) {
     `;
 
     try {
-      const res = await authFetch(API.reportPost(postId), {
+      const endpoint = type === "post" ? API.reportPost(id) : API.reportComment(id);
+      const res = await authFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: finalReason }),
