@@ -483,9 +483,9 @@ class TaskSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         task = self.instance #instance truyền từ API sang
 
-        if task and request:
+        if task and request and hasattr(task, 'created_by'): # truyền hasatrr để quertset không bị lỗi vì cái này k có instance của 1 task cụ thể mà là 1 querryset
             if task.created_by != request.user: #không phải người tạo thì k dc sửa những field sau
-                for field in ['title', 'description', 'priority', 'deadline', 'assigned_to_ids']:
+                for field in ['title', 'description', 'priority', 'deadline', 'assigned_to_ids','status']:
                     fields[field].read_only = True
         return fields # nếu ng đó tạo task thì return hết để update
 

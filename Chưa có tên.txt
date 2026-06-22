@@ -27,6 +27,7 @@ chat nhóm:
 	// file nội bộ
 	reaction cho message
 	thêm vào setting cho chat
+	// AI
 
 tạo group
 	quy tắc nhóm

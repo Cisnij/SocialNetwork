@@ -7,7 +7,8 @@ from firebase_admin import messaging
 from .models import FCMToken
 
 env=environ.Env(DEBUG=(bool,False))
-
+"""logic gửi firebase là khi user login thì tạo token và gọi api từ backend save token. 
+Khi có thông  báo thì backend gọi lấy token và gửi tới firebase kèm title và body, firebase sẽ tìm xem token đó liên kết device nào thì gửi về đó"""
 def init_firebase(): # HÀM KHỞI TRẠO 
     if not firebase_admin._apps:
         cred = credentials.Certificate(Path(settings.BASE_DIR) / env("FIREBASE_CREDENTIAL"))

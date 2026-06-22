@@ -500,7 +500,6 @@ class Task(models.Model):
     status= models.CharField(choices=STATUS,max_length=20,default='todo')
     priority = models.CharField(choices=PRIORITY,max_length=20,default='medium')
     assigned_to=models.ManyToManyField(User,blank=True, related_name='assigned_tasks')
-    is_finished=models.BooleanField(default=False)
     deadline = models.DateTimeField(null=True,blank=True)
     updated_at= models.DateTimeField(auto_now=True)
     class Meta:

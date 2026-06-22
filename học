@@ -871,3 +871,5 @@ Authfetch sẽ truyền vào đó 1 là url, 2 là method là post put hay delet
 
           - service: http_status:404
     b7. bật tunnel  cloudflared tunnel run socialnetwork-tunnel
+
+Async: nếu gọi nhiều hàm async thì nó sẽ không tuần tự mà chạy nhiều function cùng lúc và lấy kết quả lần lượt, nếu gọi 1 api có async function thì nó sẽ không chiếm thread mà chạy và xử lý api khác sau đó về lấy kết quả lại

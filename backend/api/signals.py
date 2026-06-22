@@ -4,7 +4,7 @@ from django.db.models.signals import post_save, post_delete, pre_delete, \
     m2m_changed  # post save là ngay khi tạo user thì trigger tạo profile
 from django.dispatch import receiver
 from django.contrib.auth.models import User
-from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log,Notification,Message,PostShare,Conversation,ConversationMember
+from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log,Notification,Message,PostShare,Conversation,ConversationMember,MessageAttachment
 from reaction.models import UserReaction
 from allauth.account.signals import email_confirmed, user_logged_in
 
@@ -715,3 +715,4 @@ def create_bot_conversation(sender, instance, created, **kwargs):
     except Exception as e:
         print("ERROR:", e)
         raise
+

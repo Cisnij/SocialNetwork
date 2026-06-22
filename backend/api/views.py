@@ -1523,7 +1523,7 @@ class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ 
             conversationmember__is_hidden=False,
             conversationmember__is_permanently_hidden=False
         ).filter(#lấy ra conv nếu is group = true hoặc lấy is_group =false, active và có message , không có message hooặc chat 1-1 mà không active thì không lấy
-            Q(is_group=True) |
+            Q(is_group=True) | #vẫn lấy ra is group dù thoát
             Q(is_group=False, conversationmember__is_active=True) & has_message
         )
         .distinct()
@@ -2909,3 +2909,24 @@ class ListUserVoteGroupChat(generics.ListAPIView):
         contenttype = ContentType.objects.get_for_model(Conversation)
         return UserVote.objects.filter(option_id=option_id,option__vote_id=vote_id,option__vote__content_type=contenttype,option__vote__object_id=conv_id).select_related('created_by__profile','option','option__vote')
 
+
+from adrf.views import APIView  # Lưu ý import từ adrf
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from django.contrib.auth.models import User
+
+
+class TestAsyncAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    # Hàm xử lý HTTP GET dạng async
+    async def get(self, request):
+        # Hàm .acount() là bản Async của .count() trong Django Core
+        # Gặp await, server sẽ giải phóng luồng để làm việc khác trong lúc chờ DB đếm user
+        total_users = await User.objects.acount()
+
+        return Response({
+            "status": "success",
+            "message": "API Async hoạt động hoàn hảo!",
+            "total_users": total_users
+        })

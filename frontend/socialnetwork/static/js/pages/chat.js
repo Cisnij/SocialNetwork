@@ -1,4 +1,4 @@
-import { authFetch } from "../authenticate/auth.js";
+﻿import { authFetch } from "../authenticate/auth.js";
 import { fetchUserProfileShared } from "../app/profile.js";
 import { API, withPageSize, DEFAULT_AVATAR } from "../shared/config.js";
 import { uploadChatFiles, sendChatWsMessage } from "../shared/chat-upload.js";
@@ -624,7 +624,7 @@ async function loadConvMembersTab(convId, container) {
     if (!m.user) return;
     const isMe = Number(m.user.id) === Number(myProfileId);
     const canKick = isAdmin && !isMe;
-    
+
     const row = document.createElement("div");
     row.className = "flex items-center gap-3 p-2 rounded-lg hover:bg-fb-secondary dark:hover:bg-white/10";
     row.innerHTML = `
@@ -639,7 +639,7 @@ async function loadConvMembersTab(convId, container) {
     if (canKick) {
       row.querySelector("[data-kick]")?.addEventListener("click", async () => {
         if (!await confirmDialog(`Xóa ${fullName(m.user)} khỏi nhóm?`)) return;
-        const res = await authFetch(API.kickGroupMember(convId, m.user.user), { method: "DELETE" });
+        const res = await authFetch(API.kickGroupMember(convId, m.user.user), { method: "POST" });
         if (res.ok) {
           showToast("Đã xóa khỏi nhóm", "green");
           loadConvMembersTab(convId, container);
@@ -660,7 +660,7 @@ async function loadConvFilesTab(convId, container) {
 
   const mediaGrid = document.createElement("div");
   mediaGrid.className = "grid grid-cols-3 gap-1 mb-4";
-  
+
   const fileList = document.createElement("div");
   fileList.className = "space-y-2";
 
@@ -685,7 +685,7 @@ async function loadConvFilesTab(convId, container) {
       item.href = f.file_url;
       item.target = "_blank";
       item.className = "flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 transition group";
-      
+
       const sizeStr = f.file_size ? `${Math.round(f.file_size / 1024)} KB` : '';
       const dateStr = new Date(f.created_at).toLocaleDateString('vi-VN');
       const uploader = f.uploaded_by?.first_name || '';
@@ -713,7 +713,7 @@ async function loadConvFilesTab(convId, container) {
     container.appendChild(title);
     container.appendChild(mediaGrid);
   }
-  
+
   if (fileList.childElementCount > 0) {
     const title = document.createElement("p");
     title.className = "text-xs font-bold text-gray-500 mb-2 mt-4 uppercase tracking-wider";
@@ -1085,7 +1085,7 @@ async function showGroupSettingsModal(convId) {
 
   modal.querySelector("[data-action='add-members']")?.addEventListener("click", () => { modal.remove(); showAddMembersModal(convId); });
   modal.querySelector("[data-action='modify-group']")?.addEventListener("click", () => { modal.remove(); showModifyGroupModal(convId); });
-  
+
   if (isAdmin) {
     modal.querySelector("[data-action='transfer-admin']")?.addEventListener("click", () => { modal.remove(); showTransferAdminModal(convId); });
     modal.querySelector("[data-action='delete-group']")?.addEventListener("click", () => { modal.remove(); showDeleteGroupModal(convId); });
@@ -1324,7 +1324,7 @@ async function showTaskModal(convId, containerOverride) {
   });
 
   await loadTaskList(convId, contentEl);
-  
+
   // Load members for filter
   const members = await fetchConversationMembers(convId);
   const assigneeFilter = contentEl.querySelector(`#taskAssigneeFilter_${convId}`);
@@ -1385,7 +1385,7 @@ async function loadTaskList(convId, container) {
   const statusFilter = container?.querySelector(`#taskStatusFilter_${convId}`)?.value;
   const assigneeFilter = container?.querySelector(`#taskAssigneeFilter_${convId}`)?.value;
   let tasks = data.results || [];
-  
+
   if (statusFilter) {
     tasks = tasks.filter(t => t.status === statusFilter || (statusFilter === 'done' && t.is_finished));
   }
@@ -1438,9 +1438,9 @@ async function loadTaskList(convId, container) {
           <textarea class="edit-desc w-full rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 border dark:border-white/10 text-sm dark:text-white" rows="2">${t.description || ''}</textarea>
           <div class="flex gap-2">
             <select class="edit-priority w-1/2 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 text-sm dark:text-white">
-              <option value="medium" ${t.priority==='medium'?'selected':''}>Medium</option>
-              <option value="low" ${t.priority==='low'?'selected':''}>Low</option>
-              <option value="high" ${t.priority==='high'?'selected':''}>High</option>
+              <option value="medium" ${t.priority === 'medium' ? 'selected' : ''}>Medium</option>
+              <option value="low" ${t.priority === 'low' ? 'selected' : ''}>Low</option>
+              <option value="high" ${t.priority === 'high' ? 'selected' : ''}>High</option>
             </select>
             <input class="edit-deadline w-1/2 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 text-sm dark:text-white" type="datetime-local" value="${dt}">
           </div>
@@ -1553,8 +1553,8 @@ async function loadVoteList(convId, container) {
       </div>
       <div class="space-y-1">
         ${(v.options || []).map((o) => {
-          const pct = totalVotes > 0 ? Math.round((o.count / totalVotes) * 100) : 0;
-          return `<div class="vote-option-item relative group/opt ${v.is_closed ? '' : 'cursor-pointer hover:bg-fb-secondary dark:hover:bg-white/5'} rounded-lg p-2 ${o.is_voted ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''}" data-vote-id="${v.id}" data-option-id="${o.id}">
+      const pct = totalVotes > 0 ? Math.round((o.count / totalVotes) * 100) : 0;
+      return `<div class="vote-option-item relative group/opt ${v.is_closed ? '' : 'cursor-pointer hover:bg-fb-secondary dark:hover:bg-white/5'} rounded-lg p-2 ${o.is_voted ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''}" data-vote-id="${v.id}" data-option-id="${o.id}">
             <div class="flex justify-between text-xs"><span class="dark:text-white vote-opt-text">${o.text}</span>
               <div class="flex items-center gap-2">
                 <span class="text-gray-500">${o.count} phiếu (${pct}%)</span>
@@ -1569,7 +1569,7 @@ async function loadVoteList(convId, container) {
                 <button type="button" class="text-red-500 hover:underline" data-action="delete-opt" data-option-id="${o.id}">Xóa</button>
               </div>` : ''}
           </div>`;
-        }).join('')}
+    }).join('')}
         ${canDelete && !v.is_closed ? `
           <div class="flex gap-2 mt-2" onclick="event.stopPropagation()">
             <input class="add-opt-input flex-1 text-xs px-2 py-1.5 rounded bg-gray-50 dark:bg-white/5 dark:text-white border dark:border-white/10" placeholder="Lựa chọn mới">
@@ -1716,9 +1716,9 @@ function bindEvents() {
       sendChatWsMessage(chatWs, { text: "", attachmentIds: ids });
       showToast("Đã gửi tệp đính kèm");
     } catch (err) { showToast(err.message || "Upload thất bại", "red"); }
-    finally { 
-      input.value = ""; 
-      attachBtn?.classList.remove("opacity-50", "pointer-events-none"); 
+    finally {
+      input.value = "";
+      attachBtn?.classList.remove("opacity-50", "pointer-events-none");
       document.getElementById(spinnerId)?.remove();
     }
   });
