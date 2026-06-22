@@ -183,7 +183,8 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
 
         # bot reply — dùng self.is_bot đã cache, không query thêm
         if self.is_bot:
-            bot_reply_text = await get_gemini_reply(message, self.sender_name)  # gọi AI
+            old_messages = await self.get_context_messages()
+            bot_reply_text = await get_gemini_reply(message, self.sender_name,old_messages)  # gọi AI
             bot_message = await self.save_bot_message(bot_reply_text)
             await self.channel_layer.group_send(
                 self.room_name,
@@ -417,6 +418,10 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
             content=content,
             message_type='text'
         )
+    @database_sync_to_async
+    def get_context_messages(self):
+        messages = Message.objects.filter(conversation_id=self.conversation_id).order_by('-created_at')[:10]
+        return messages if messages.exists() else None
 
 
 class NotificationConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chịu trách nhiệm kết nối khi vào app và đếm số count noti ngay khi vào app
