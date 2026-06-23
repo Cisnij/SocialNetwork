@@ -265,6 +265,7 @@ class ConversationSerializer(serializers.ModelSerializer):
     )
     last_message = serializers.SerializerMethodField()
     unread_count=serializers.SerializerMethodField()
+    is_chatbot = serializers.SerializerMethodField()
     class Meta:
         model = Conversation
         fields = [
@@ -278,8 +279,16 @@ class ConversationSerializer(serializers.ModelSerializer):
             "members",
             "last_message",
             'updated_at',
-            'unread_count'
+            'unread_count',
+            'is_chatbot'
         ]
+    def get_is_chatbot(self, obj):
+        try:
+            from backend.env_config import env
+            bot_name = env('BOT_USERNAME')
+            return any(m.user.username == bot_name for m in obj.conversationmember_set.all())
+        except Exception:
+            return False
     def get_last_message(self, obj):
         # đọc từ prefetched_messages trong RAM, không query DB
         # getattr để tránh crash nếu chưa prefetch (trả về None thay vì lỗi)

@@ -44,10 +44,10 @@ CACHEOPS = {
 
     'auth.user': {'ops': 'all', 'timeout': 60*60}, #24h
     # cache user từ auth, ví dụ cache khi lấy ra user, lọc user
-    'api.profile': {'ops': ['get', 'fetch'], 'timeout': 60*30},
+    'api.profile': {'ops': 'all', 'timeout': 60*30},
     # ops là cache querry gì kiểu get,count,filter...timeout là bao lâu thì xóa
     'api.pendingProfile': {'ops': 'all', 'timeout': 60*60*24},
-    'api.setting': {'ops': ['get', 'fetch'], 'timeout': 60*10},  # 10 phút
+    'api.setting': {'ops': 'all', 'timeout': 60*10},  # 10 phút
     'contenttypes.contenttype': {'ops': 'all', 'timeout': 60*60*24*30},
 
     #  Cache vừa — thay đổi vừa
@@ -58,9 +58,15 @@ CACHEOPS = {
     'api.notification': {'ops': 'all', 'timeout': 60 * 5},
     'api.searchHistory': {'ops': 'all', 'timeout': 60 * 5},
     'api.postshare':{'ops': 'all', 'timeout': 60 * 20},
+    'api.report':{'ops':'all', 'timeout': 60*10},
+    'api.supportticket':{'ops':'all', 'timeout': 60*10},
     #  Cache ngắn — realtime
-    'api.conversation': {'ops': 'all', 'timeout': 60 * 1},
-    'api.conversationMember': {'ops': 'all', 'timeout': 60 * 2},
+    'api.conversation': {'ops': 'all', 'timeout': 60 * 5},
+    'api.conversationMember': {'ops': 'all', 'timeout': 60 * 5},
+    'api.task':{'ops':'all', 'timeout': 60*5},
+    'api.vote':{'ops':'all', 'timeout': 60*5},
+    'api.voteoption':{'ops':'all', 'timeout': 60*2},
+    'api.uservote':{'ops':'all', 'timeout': 60*1},
     # thư viện
     'friendship.*': {'ops': 'all', 'timeout': 60 * 60},
     'actstream.action': {'ops': 'all', 'timeout': 60 * 5},

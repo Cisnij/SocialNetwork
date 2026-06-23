@@ -844,7 +844,7 @@ class NestedCommentList(generics.ListAPIView):
                 parent=comment,
             ).exclude(
                 Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)
-            ).select_related('user','user__profile').prefetch_related('tagged_users')
+            ).select_related('user','user__profile').prefetch_related('tagged_users__profile')  # thêm __profile tránh N+1 khi serialize tagged_users_info
         return self._qs
 
     def get_serializer_context(self):
@@ -1424,9 +1424,20 @@ class StartConversationAPIView(
                         ConversationMember(conversation=convo, user=current_user),
                         ConversationMember(conversation=convo, user=target_user),
                 ])
+        # prefetch members + profile để ConversationSerializer.get_is_chatbot không bị N+1
+        from django.db.models import Prefetch as _Prefetch
+        convo = (
+            Conversation.objects
+            .prefetch_related(
+                _Prefetch(
+                    'conversationmember_set',
+                    queryset=ConversationMember.objects.select_related('user', 'user__profile')
+                )
+            )
+            .get(pk=convo.pk)
+        )
         return Response(
             self.get_serializer(convo).data,
-            # get_serializer là hàm của GenericAPIView để lấy serializer đã khai báo ở trên
             status=status.HTTP_200_OK
         )
 
@@ -1596,7 +1607,8 @@ class ConversationSearch(generics.ListAPIView):
         if search:
             queryset = queryset.filter(
                 Q(conversationmember__user__profile__first_name__icontains=search) |
-                Q(conversationmember__user__profile__last_name__icontains=search)
+                Q(conversationmember__user__profile__last_name__icontains=search) |
+                Q(name__icontains=search)
             ).distinct()
         return queryset
 

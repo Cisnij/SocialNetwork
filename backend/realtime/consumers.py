@@ -183,24 +183,31 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
 
         # bot reply — dùng self.is_bot đã cache, không query thêm
         if self.is_bot:
-            old_messages = await self.get_context_messages()
-            bot_reply_text = await get_gemini_reply(message, self.sender_name,old_messages)  # gọi AI
-            bot_message = await self.save_bot_message(bot_reply_text)
-            await self.channel_layer.group_send(
-                self.room_name,
-                {
-                    'type': 'chat_message',
-                    'id': bot_message.id,
-                    'message': bot_reply_text,
-                    'sender': env('BOT_USERNAME'),
-                    'sender_id': bot_message.sender_id,
-                    'message_type': 'text',
-                    'created_at': bot_message.created_at.isoformat(),
-                    'reply_to_id': None,
-                    'reply_to_id_content': None,
-                    'attachments': [],
-                }
-            )
+            async def bot_task():
+                try:
+                    old_messages = await self.get_context_messages()
+                    bot_reply_text = await get_gemini_reply(message, self.sender_name, old_messages)
+                    bot_message = await self.save_bot_message(bot_reply_text)
+                    await self.channel_layer.group_send(
+                        self.room_name,
+                        {
+                            'type': 'chat_message',
+                            'id': bot_message.id,
+                            'message': bot_reply_text,
+                            'sender': env('BOT_USERNAME'),
+                            'sender_id': bot_message.sender_id,
+                            'message_type': 'text',
+                            'created_at': bot_message.created_at.isoformat(),
+                            'reply_to_id': None,
+                            'reply_to_id_content': None,
+                            'attachments': [],
+                        }
+                    )
+                except Exception as e:
+                    print(f"Bot task error: {e}")
+            
+            asyncio.create_task(bot_task())
+
 
         member_ids = await self.get_member_ids()
         for user_id in member_ids:

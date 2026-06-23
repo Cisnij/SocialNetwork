@@ -1,0 +1,11 @@
+- [x] Update `authFetch` in `auth.js` to use "Stale-While-Revalidate" caching pattern (`authFetchCache`).
+- [x] Update `ConversationSearch` in `backend/api/views.py` to search by group chat `name`.
+- [x] Identify Chatbot implementation in `chat.js`.
+- [x] Fix Chatbot behavior in `chat.js`: instantly render user messages, remove action buttons, fix position.
+- [x] Implement Group Chat leave restriction in `chat.js` (disable input box when left/inactive).
+- [x] Fix 3rd conversation freeze bug in `chat.js`.
+- [x] Integrate Search API for Conversations in `chat.js`.
+- [x] Implement Todo Task Modal in `chat.js` (Include Task Search).
+- [x] Implement Vote Group Modal in `chat.js` (Include Vote Search).
+- [x] Improve UI/UX for Mobile (Settings, Userpage, Aesthetics).
+- [x] Final Verification & Walkthrough.

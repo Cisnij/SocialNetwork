@@ -135,9 +135,8 @@ async function loadUserInfo() {
     statusRow.className =
       "flex items-center justify-center gap-2 mt-3 text-sm font-medium";
     const statusDot = document.createElement("span");
-    statusDot.className = `inline-block w-2.5 h-2.5 rounded-full shrink-0 ${
-      online ? "bg-green-500" : "bg-gray-400 dark:bg-gray-500"
-    }`;
+    statusDot.className = `inline-block w-2.5 h-2.5 rounded-full shrink-0 ${online ? "bg-green-500" : "bg-gray-400 dark:bg-gray-500"
+      }`;
     const statusLabel = document.createElement("span");
     statusLabel.className = online
       ? "text-green-600 dark:text-green-400"

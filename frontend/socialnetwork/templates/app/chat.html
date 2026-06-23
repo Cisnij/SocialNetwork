@@ -21,8 +21,10 @@
       <div id="chatFriendsStrip" class="flex gap-4 overflow-x-auto px-5 pb-2 scrollbar-thin"></div>
     </div>
     <div class="flex-1 flex flex-col min-h-0 bg-white/70 dark:bg-white/5">
-      <p class="px-5 pt-4 pb-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Trò
-        chuyện</p>
+      <div class="px-5 pt-4 pb-2">
+        <input type="text" id="convSearchInput" placeholder="Tìm kiếm trò chuyện..." class="w-full text-sm px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/10 dark:text-white border-none focus:ring-2 focus:ring-blue-500/50 outline-none">
+      </div>
+      <p class="px-5 pb-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Trò chuyện</p>
       <div id="chatConvList" class="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 space-y-1 pb-4"></div>
     </div>
   </aside>

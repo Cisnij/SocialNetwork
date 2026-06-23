@@ -129,6 +129,7 @@ export const API = {
   fcmToken: () => `${API_BASE_URL}/api/fcm-token/`,
 
   conversations: () => `${API_BASE_URL}/api/chat/conversations/`,
+  searchConversations: (q) => `${API_BASE_URL}/api/chat/search-conversations/?search=${encodeURIComponent(q)}`,
   startChat: (profileId) => `${API_BASE_URL}/api/chat/start/${profileId}/`,
   messages: (convId) => `${API_BASE_URL}/api/chat/messages/list/${convId}/`,
   conversationMembers: (convId) => `${API_BASE_URL}/api/chat/conversation/members/${convId}/`,

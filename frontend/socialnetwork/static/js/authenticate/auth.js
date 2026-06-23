@@ -123,9 +123,49 @@ function logout() {
   window.location.href = "http://localhost:3000/login/";
 }
 
+async function authFetchCache(url, options = {}, onData) {
+  if (options.method && options.method.toUpperCase() !== "GET") {
+    const res = await authFetch(url, options);
+    if (res.ok) {
+      const data = await res.json();
+      if (onData) onData(data, false);
+    }
+    return res;
+  }
+
+  const cacheKey = `authCache_${url}`;
+  const cachedData = sessionStorage.getItem(cacheKey);
+
+  if (cachedData && onData) {
+    try {
+      const parsed = JSON.parse(cachedData);
+      onData(parsed, true);
+    } catch (e) {
+      console.error("Cache parse error", e);
+    }
+  }
+
+  try {
+    const res = await authFetch(url, options);
+    if (res.ok) {
+      const data = await res.json();
+      const newDataStr = JSON.stringify(data);
+      if (newDataStr !== cachedData) {
+        sessionStorage.setItem(cacheKey, newDataStr);
+        if (onData) onData(data, false);
+      }
+    }
+    return res;
+  } catch (error) {
+    console.error("Background fetch failed", error);
+    throw error;
+  }
+}
+
 export {
   refreshAccessToken,
   authFetch,
+  authFetchCache,
   RedirectIfAuth,
   RedirectIfNotAuth,
   logout,
