@@ -164,7 +164,7 @@ export const API = {
   deleteVoteOption: (convId, voteId, optionId) =>
     `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/option/${optionId}/delete-option/`,
   listVotes: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/list-vote/`,
-  listUserVotes: (convId, voteId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/user-vote/`,
+  listUserVotes: (convId, voteId, optionId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/option/${optionId}/user/`,
   userVote: (convId, voteId, optionId) =>
     `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/option/${optionId}/vote/`,
 

@@ -1,0 +1,40 @@
+
+** LÀM CHUẨN PRODUCTION VÀ ĐẸP Không rõ logic hay response gồm gì thi xem lại backend của tao ví dụ model,views,serializers,signal,consumer...Tôi không chấp nhận làm sai đặc biệt là khi thêm tính năng mới và và khiến cái cũ bị sai làm mất thời gian cực kì, tuy nhiên nếu cái nào sai logic hoặc chưa tối ưu thì có thể sửa hết refactor lại. Tất cả gọi api dùng auth fetch.
+đọc code base tôi và triển khai những cái chưa triển khai, kiểm tra logic tất cả api, dùng những api nào chưa dùng và làm chuẩn production giống fb vì tính năng tôi giống logic fb
+mỗi dấu - là 1 yêu cầu
+REQUIREMENT: 
+-UI/UX hiện cần hiện đầy đủ trên mobile và vẫn đẹp(thiếu setting và userpage)
+- chatbot là mặc định, không có nút xóa và nằm ở 1 vị trí khác cố định không nằm ở conversation,không có nút xem thành viên và nút tạo vote group...
+- chat bot khi user gửi tin nhắn thì sao nó đợi có response mới load ra tin nhắn user vậy 
+-group chat: 
+       - khi out group vẫn xem đc conversation. Nhưng fe show là bạn đã không còn trong group này replace cho ô chat 
+- thêm todo task: gom tất cả liên quan todo task vào 1 ô bấm ra modal trên thanh tên ở chat (vui lòng đọc kĩ lại logic task)
+	cái nào đã xong thì không hiện nút click đã xong nữa 
+	thiếu nút sửa status là đang làm, không thấy chỉnh status để biết cái nào đang làm 
+	chỉ có người tạo mới có nút ấn hoàn thành, người không tạo chỉ được thì k thể chỉnh sửa bất cứ thứ gì 
+-tại sao khi tôi ấn qua 2 conv thì tới conv thứ 3 nó hiện đang tải, nhưng nhấn lần nữa là đc ngay, ý là nó bị treo dù gọi api đã xong 
+
+
+
+-thêm tạo vote: : gom tất cả liên quan tạo vote vào 1 ô bấm ra modal trên thanh tên ở chat (vui lòng đọc kĩ lại logic vote)
+	CreateVoteGroupChat:truyền conv_id và title và options và lấy option title gọi api crreate vote 
+	DeleteVoteGroupChat: phải là ng tạo mới được xóa vote, khi có list vote xem user hiện tại tạo cái nào thì vote đó mới xóa đc
+	UpdateVoteGroupChat: phải là người tạo mới đc sửa
+	AddOptionVoteGroupChat : bất cứ ai cũng được tạo option mới
+	UpdateOptionVoteGroupChat :bất cứ ai cũng được sửa option
+	DeleteOptionVoteGroupChat: phải là người tạo option mới được xóa
+	ListVoteGroupChat : list các vote hiện tại có option trong đó kèm count tính ra % (hiện nó k chịu load ra)
+	ListUserVoteGroupChat: gọi api lấy các user đã vote khi click vào option
+	UserVoteGroupChat : gọi api để vote option đó, nếu chưa có vote thì tạo mới, có rồi thì đổi và truyền vào trùng thì xóa
+- ngoài ra dò soát lại tất cả file hiện của tôi bị lỗi khi không gọi api nhiều lắm
+
+
+
+
+-triển khai Tích hợp Memory/Storage Cache vào auth.js: Viết thêm một hàm authFetchCache() hoặc nâng cấp authFetch để lưu lại kết quả của các API dùng chung (ví dụ: GET /api/user/profile/, GET /api/friends/).
+Khi người dùng vào trang, nó sẽ lấy Data từ bộ nhớ đệm (SessionStorage/RAM) ra hiển thị ngay lập tức trong 0.01 giây (Không có độ trễ loading).
+Cùng lúc đó, nó ngầm gọi API lên Server để lấy Data mới nhất. Nếu có thay đổi, nó tự cập nhật lại UI nhẹ nhàng (Đây là cách Facebook và React Query đang làm).
+
+ -chuyển sang adrf https://github.com/em1208/adrf
+	from adrf.serializers import ModelSerializer
+	from adrf.generics import ListCreateAPIView

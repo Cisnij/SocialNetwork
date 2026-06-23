@@ -2872,6 +2872,7 @@ class DeleteOptionVoteGroupChat(generics.DestroyAPIView):
 class ListVoteGroupChat(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VoteSerializer
+    pagination_class = LargePagePagination
     def get_queryset(self):
         conv_id = self.kwargs.get("conv_id")
         if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user,is_active=True).exists():
@@ -2900,6 +2901,7 @@ class ListVoteGroupChat(generics.ListAPIView):
 class ListUserVoteGroupChat(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserVoteSerializer
+    pagination_class = LargePagePagination
     def get_queryset(self):
         conv_id = self.kwargs.get("conv_id")
         vote_id = self.kwargs.get("vote_id")
@@ -2910,23 +2912,3 @@ class ListUserVoteGroupChat(generics.ListAPIView):
         return UserVote.objects.filter(option_id=option_id,option__vote_id=vote_id,option__vote__content_type=contenttype,option__vote__object_id=conv_id).select_related('created_by__profile','option','option__vote')
 
 
-from adrf.views import APIView  # Lưu ý import từ adrf
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-from django.contrib.auth.models import User
-
-
-class TestAsyncAPIView(APIView):
-    permission_classes = [AllowAny]
-
-    # Hàm xử lý HTTP GET dạng async
-    async def get(self, request):
-        # Hàm .acount() là bản Async của .count() trong Django Core
-        # Gặp await, server sẽ giải phóng luồng để làm việc khác trong lúc chờ DB đếm user
-        total_users = await User.objects.acount()
-
-        return Response({
-            "status": "success",
-            "message": "API Async hoạt động hoàn hảo!",
-            "total_users": total_users
-        })

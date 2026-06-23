@@ -420,8 +420,23 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
         )
     @database_sync_to_async
     def get_context_messages(self):
-        messages = Message.objects.filter(conversation_id=self.conversation_id).order_by('-created_at')[:10]
-        return messages if messages.exists() else None
+        messages = (
+            Message.objects.filter(conversation_id=self.conversation_id)
+            .select_related('sender__profile')
+            .order_by('-created_at')[:10]
+            .values('content', 'sender__profile__last_name')
+        )
+
+        messages_list = list(messages)
+        if not messages_list:
+            return "Chưa có tin nhắn nào trước đây."
+
+        messages_list.reverse()
+
+        return "\n".join([ # join là phương thức list -> string và mỗi lần in là \n xuống dòng
+            f"{msg['sender__profile__last_name'] or 'Ẩn danh'}: {msg['content'] or '[File đính kèm]'}"
+            for msg in messages_list
+        ])
 
 
 class NotificationConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chịu trách nhiệm kết nối khi vào app và đếm số count noti ngay khi vào app
