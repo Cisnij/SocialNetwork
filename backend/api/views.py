@@ -1,6 +1,6 @@
 import uuid
 from itertools import chain
-
+from adrf.views import APIView as AsyncAPIView
 from django.contrib.auth import authenticate
 from django.db.models.expressions import Window
 from django.db.models.functions import RowNumber
@@ -34,7 +34,7 @@ from rest_framework.response import Response
 from friendship.models import Friend
 # broadcast channels
 from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
+from asgiref.sync import async_to_sync,sync_to_async
 # elastic
 from .documents import PostDocument,ProfileDocument
 from elasticsearch_dsl.query import MultiMatch
@@ -1761,60 +1761,118 @@ BLOCKED_MIMES = { # những file có đuôi bị block nhằm bảo mật cho ap
     'application/xhtml+xml',
     'image/svg+xml',
 }
-class ChatAttachmentUpload(APIView):
+class ChatAttachmentUpload(AsyncAPIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser,FormParser]
-    def post(self,request,conv_id):
-        '''flow là gửi ảnh lên thì lưu vào cloudinarty, lưu vào messageattachment sau đó trả về id
-            Sau đó gọi ws với content null và id của messageattachment, thực hiện tạo message và update gán message vào messageattachment.
-            Lấy ra file thì gọi hàm get_attachments gọi filter lấy ra id của msg vừa tạo truyền vào
-            k thể gộp create msg  vào api được vì ws đã có flow save msg và hạn chế thgian phản hồi(upload lên cloud lâu)
-        '''
-        if not ConversationMember.objects.filter(user=request.user,conversation_id=conv_id,is_active=True).exists():
-            return Response({'error': 'Không có quyền'}, status=403)
-        files=request.FILES.getlist('files')
-        if not files: #check file hợp lệ
-            return Response({'error': 'Thiếu file'}, status=400)
-        results = []
-        for file in files: # lặp từng file trong file tải lên
-            if file.size > 50*1024*1024: # check chỉ đc 50 mb
-                return Response({'error': f'{file.name} vượt quá 50MB'}, status=400)
+    parser_classes = [MultiPartParser, FormParser]
 
-            # detect mime kiểu image/png hay video/mp4, phát hiện file giả mạo đuôi
-            mime = magic.from_buffer(
-                file.read(4096),
-                mime=True
+    async def post(self, request, conv_id):
+        """
+        Flow:
+        1. Upload file lên Cloudinary
+        2. Tạo MessageAttachment
+        3. Trả attachment_id
+        4. Client gọi WS gửi message chứa attachment_id
+        5. WS tạo Message rồi update MessageAttachment.message
+        """
+
+        is_member = await ConversationMember.objects.filter( #check quyền
+            user=request.user,
+            conversation_id=conv_id,
+            is_active=True
+        ).aexists()
+
+        if not is_member:
+            return Response(
+                {"error": "Không có quyền"},
+                status=403
             )
+
+        files = request.FILES.getlist("files")
+
+        if not files:
+            return Response(
+                {"error": "Thiếu file"},
+                status=400
+            )
+
+        results = []
+
+        for file in files:
+
+            # giới hạn 50MB
+            if file.size > 50 * 1024 * 1024:
+                return Response(
+                    {"error": f"{file.name} vượt quá 50MB"},
+                    status=400
+                )
+
+            # detect mime thật, mime là loại file
+            mime = await sync_to_async(
+                lambda: magic.from_buffer(
+                    file.read(4096),
+                    mime=True
+                ),
+                thread_sensitive=False
+            )()
+
             file.seek(0)
-            if mime in BLOCKED_MIMES: # nếu đuôi gốc nằm trong đuôi bị cấm
-                return Response({'error': f'{file.name} không được hỗ trợ'}, status=400)
-            # phân loại file
-            if mime.startswith('image/'):
-                file_type = 'image'
-                resource_type = 'image'
-            elif mime.startswith('video/'):
-                file_type = 'video'
-                resource_type = 'video'
+
+            if mime in BLOCKED_MIMES: #loại mime bị block
+                return Response(
+                    {"error": f"{file.name} không được hỗ trợ"},
+                    status=400
+                )
+
+            # xác định loại file
+            if mime.startswith("image/"):
+                file_type = "image"
+                resource_type = "image"
+
+            elif mime.startswith("video/"):
+                file_type = "video"
+                resource_type = "video"
+
             else:
-                file_type = 'file'
-                resource_type = 'raw'
-            result = cloudinary.uploader.upload( #up lên cloudinary, cloudinary trả secure url
+                file_type = "file"
+                resource_type = "raw"
+
+            # upload cloudinary
+            result = await sync_to_async(
+                cloudinary.uploader.upload,
+                thread_sensitive=False
+            )(
                 file,
-                folder=f'chat/conv_{conv_id}',
+                folder=f"chat/conv_{conv_id}",
                 resource_type=resource_type,
-                public_id = str(uuid.uuid4())
+                public_id=str(uuid.uuid4())
             )
-            attachment = MessageAttachment.objects.create(
+
+            # tạo attachment
+            attachment = await MessageAttachment.objects.acreate(
                 conversation_id=conv_id,
                 uploaded_by=request.user,
-                file_url=result['secure_url'], # file url nhận về sau khi upload lên cloudinary
+                file_url=result["secure_url"],
                 file_type=file_type,
                 file_name=file.name,
                 file_size=file.size,
                 message=None
             )
-            results.append(MessageAttachmentSerializer(attachment).data | {'attachment_id': attachment.id, 'mime': mime,}) # để trả ra nhiều serializer tương ứng với n file,mime để trả về đuôi gốc ví dụ ảnh1.png -> image/png
-        return Response({'attachments': results}, status=200)
+
+            data = MessageAttachmentSerializer(
+                attachment
+            ).data
+
+            data.update({
+                "attachment_id": attachment.id,
+                "mime": mime
+            })
+
+            results.append(data)
+
+        return Response(
+            {"attachments": results},
+            status=200
+        )
 
 # =============================================================================
 class ProfileRelationship(APIView):

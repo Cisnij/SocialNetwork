@@ -68,7 +68,8 @@ INSTALLED_APPS = [
     #celery
     'django_celery_beat',
     'django_celery_results',
-
+    # async
+    'adrf',
     # django cleanup, cuối
     "django_cleanup.apps.CleanupConfig",
 
