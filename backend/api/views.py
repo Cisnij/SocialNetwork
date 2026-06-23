@@ -1514,7 +1514,6 @@ class RejectMessageRequest(APIView):
 class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ load tất cả đoạn chat
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     pagination_class = LargePagePagination
     def get_queryset(self):
         has_message = Exists(Message.objects.filter(conversation=OuterRef('pk'))) #nếu bảng message mà có dữ liệu conversation_id tham chiếu tới conversation thì là true không thì false.
@@ -1555,6 +1554,53 @@ class ConversationListAPIView(generics.ListAPIView):  # mở app chat lên sẽ 
                 to_attr='prefetched_messages'  # lưu vào obj.prefetched_messages trong RAM
             ),
         ).order_by('-updated_at'))
+
+class ConversationSearch(generics.ListAPIView):
+    serializer_class = ConversationSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = LargePagePagination
+    def get_queryset(self):
+        search = self.request.query_params.get("search", "").strip()
+        queryset = Conversation.objects.filter(
+            conversationmember__user=self.request.user,
+            conversationmember__is_hidden=False,
+            conversationmember__is_permanently_hidden=False
+        ).prefetch_related(
+            # load members + user + profile  trong 2 query thay vì 20 đoạn chat và 40 lần query trong serializer
+            # (1 query join conv với message có trong conv, 1 query join user trong conv
+            Prefetch( #lấy ra đoạn chat có user và prefetch lấy ra các user trong đó đoạn chat đó luôn (select convmember in conv)
+                'conversationmember_set',  # conversationmember có FK với conversation nên phải lấy tham chiếu là set
+                queryset=ConversationMember.objects.select_related(  # tùy chỉnh thêm field muốn lấy
+                    'user','user__profile',  # JOIN user và profile (1-1)
+                )
+            ),
+            # load messages mới nhất trong 1 query IN riêng
+            # kèm JOIN sender+profile để get_last_message không query thêm
+            Prefetch(  # lấy ra đoạn chat có user kèm 11 message mới nhất (select message in conv)
+                'message_set',  # relation 1-nhiều: 1 conv có nhiều messages
+                queryset=Message.objects.annotate(
+                    row_num=Window(  # đánh số thứ tự từng tin trong conv
+                        expression=RowNumber(),
+                        partition_by=[F('conversation_id')],  # reset số thứ tự theo từng conv
+                        order_by=F('created_at').desc()  # tin mới nhất = row_num 1
+                    )
+                ).filter(row_num__lte=11)  # chỉ lấy 11 tin gần nhất, đủ để FE hiển thị 9+ nếu count >= 10
+                .select_related(
+                    'sender__profile'  # JOIN sender và profile luôn (1-1)
+                )
+                .prefetch_related('attachments')
+                .order_by('-created_at'),  # sắp xếp mới nhất trước
+                to_attr='prefetched_messages'  # lưu vào obj.prefetched_messages trong RAM
+            ),
+        ).order_by('-updated_at')
+        if search:
+            queryset = queryset.filter(
+                Q(conversationmember__user__profile__first_name__icontains=search) |
+                Q(conversationmember__user__profile__last_name__icontains=search)
+            ).distinct()
+        return queryset
+
+
 
 class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò chuyện
     serializer_class = MessageSerializer
@@ -2624,9 +2670,10 @@ class DeleteTaskGroupChat(APIView):
 
 class ListTaskGroupChat(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend,OrderingFilter]
+    filter_backends = [DjangoFilterBackend,OrderingFilter,SearchFilter]
     filterset_fields = ['status','assigned_to'] #filter đúng ra ví dụ task.status= todo
-    ordering_fields = ['is_finished','created_at','deadline','priority'] # sắp xếp tăng giảm dần
+    ordering_fields = ['created_at','deadline','priority'] # sắp xếp tăng giảm dần
+    search_fields = ['title']
     serializer_class = TaskSerializer
     pagination_class = SmallPagePagination
     def get_queryset(self):
@@ -2634,7 +2681,7 @@ class ListTaskGroupChat(generics.ListAPIView):
         if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
             raise PermissionDenied("Bạn không có trong nhóm")
         contenttype= ContentType.objects.get_for_model(Conversation)
-        return Task.objects.filter(content_type=contenttype,object_id=conv_id,).order_by('-is_finished','-created_at').select_related('created_by__profile').prefetch_related(Prefetch('assigned_to', queryset=User.objects.select_related('profile')))
+        return Task.objects.filter(content_type=contenttype,object_id=conv_id,).order_by('-created_at').select_related('created_by__profile').prefetch_related(Prefetch('assigned_to', queryset=User.objects.select_related('profile')))
 
 class GetFileFromConversation(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -2931,6 +2978,8 @@ class ListVoteGroupChat(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VoteSerializer
     pagination_class = LargePagePagination
+    filter_backends = (DjangoFilterBackend,SearchFilter)
+    search_fields = ['title']
     def get_queryset(self):
         conv_id = self.kwargs.get("conv_id")
         if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user,is_active=True).exists():
@@ -2968,5 +3017,4 @@ class ListUserVoteGroupChat(generics.ListAPIView):
             raise PermissionDenied("Bạn không có trong group")
         contenttype = ContentType.objects.get_for_model(Conversation)
         return UserVote.objects.filter(option_id=option_id,option__vote_id=vote_id,option__vote__content_type=contenttype,option__vote__object_id=conv_id).select_related('created_by__profile','option','option__vote')
-
 

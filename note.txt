@@ -4,7 +4,7 @@
 mỗi dấu - là 1 yêu cầu
 REQUIREMENT: 
 -UI/UX hiện cần hiện đầy đủ trên mobile và vẫn đẹp(thiếu setting và userpage)
-- chatbot là mặc định, không có nút xóa và nằm ở 1 vị trí khác cố định không nằm ở conversation,không có nút xem thành viên và nút tạo vote group...
+- chatbot là mặc định, không có nút xóa và nằm ở 1 vị trí khác cố định không nằm ở conversation để user không thể xóa ,không có nút xem thành viên và nút tạo vote group...
 - chat bot khi user gửi tin nhắn thì sao nó đợi có response mới load ra tin nhắn user vậy 
 -group chat: 
        - khi out group vẫn xem đc conversation. Nhưng fe show là bạn đã không còn trong group này replace cho ô chat 
@@ -13,7 +13,9 @@ REQUIREMENT:
 	thiếu nút sửa status là đang làm, không thấy chỉnh status để biết cái nào đang làm 
 	chỉ có người tạo mới có nút ấn hoàn thành, người không tạo chỉ được thì k thể chỉnh sửa bất cứ thứ gì 
 -tại sao khi tôi ấn qua 2 conv thì tới conv thứ 3 nó hiện đang tải, nhưng nhấn lần nữa là đc ngay, ý là nó bị treo dù gọi api đã xong 
-
+- thêm api search cho conversation api/chat/search-conversations/?search=
+- thêm search cho api/chat/conversation/<int:conv_id>/vote/list-vote/?search= title
+- thêm api/chat/conversation/task/<int:conv_id>/list-task/?search
 
 
 -thêm tạo vote: : gom tất cả liên quan tạo vote vào 1 ô bấm ra modal trên thanh tên ở chat (vui lòng đọc kĩ lại logic vote)
@@ -38,3 +40,8 @@ Cùng lúc đó, nó ngầm gọi API lên Server để lấy Data mới nhất.
  -chuyển sang adrf https://github.com/em1208/adrf
 	from adrf.serializers import ModelSerializer
 	from adrf.generics import ListCreateAPIView
+
+chat
+elasticsearch
+cloudinary upload
+notification service

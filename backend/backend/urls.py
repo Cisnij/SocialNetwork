@@ -133,6 +133,7 @@ urlpatterns = [
     # url cho chat
     path('api/chat/messages/unsend/<int:pk>/', UnsendMessageAPIView.as_view(), name='unsend-message'), # thu hồi tin nhắn
     path('api/chat/conversations/', ConversationListAPIView.as_view(), name='conversation-list'), #danh sách cuộc trò chuyện của user
+    path('api/chat/search-conversations/', ConversationSearch.as_view(), name='conversation-search'), #search danh sách cuộc trò chuyện của user
     path('api/chat/start/<int:user_id>/', StartConversationAPIView.as_view(), name='conversation-start'), #bắt đầu cuộc trò chuyện mới
     path('api/chat/accept/conversation/<int:conv_id>/',AcceptMessageRequest.as_view(),name='accept-conversation'), #accept tin nhắn ng lạ
     path('api/chat/reject/conversation/<int:conv_id>/',RejectMessageRequest.as_view(),name='reject-conversation'), #reject tin nhắn người lạ
