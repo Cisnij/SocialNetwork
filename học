@@ -815,6 +815,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         request.META          # thông tin server, IP client...
     - ModelSerializer khác serializer là model serializer ánh xạ từ model ra và validate check theo model , còn serializer k phụ thuộc model nên tự định nghĩa từng field, sau đó viết hàm validate từng field và hàm save
     -Celery: tức là gọi api nó trả 200 luôn sau đó celery sẽ thực hiện theo hàng đợi sau, trong ram nó sẽ chạy theo hàng đợi nếu chỉ 1 thì chạy ngay
+    await asyncio.gather(*tasks): cũng giống celery nhưng chạy ngầm nhanh trong consumer
 =========================================================================================================================================================================================================================================
 Database chỉ lưu refreshtoken và sẽ tự tạo accesstoken từ đó mới mà k lưu vào db
 Flow của Frontend

@@ -112,4 +112,10 @@ work flows
     UserVoteGroupChat :  nếu user đã vote thì nhấn lần nữa sẽ xóa vote giảm count, chưa vote thì tạo, đổi vote thì đổi và + count
 61. Thêm CHATBOT gemini 2.5 flash: FLow là khi người dùng gửi tin nhắn đến chat bot, save message rồi sau đó gửi msg đó tới conversation đó. Check nếu
                                     là bot thì sẽ gọi hàm ở backend gọi tới model AI truyền message user gửi và trả về message của AI rồi save sau đó group send tới phòng
+62. Thêm call video qua live kit
+    """1 user a bấm gọi, sẽ gọi api tạo phòng trả về token cho fe
+        2 fe gọi livekit kiểm tra token có cho kết nối vào room, có thì cho kết nối thì video và mic user a đó trên cloud
+         3 hiển thị broadcast incoming_call lên phòng qua ws, user b thấy bấm vào và join cuộc gọi (từ chối thì ws gửi decline+đóng phòng nếu là 1-1)
+            4. user b gọi api tạo phòng kiểm tra có phòng đang active thì kết nối vào và lấy token cho fe và fe gọi livekit,token có quyền thì vô phòng
+    """
 =====================================================================================

@@ -145,6 +145,8 @@ urlpatterns = [
     path('api/chat/conversation/<int:pk>/toogle-hidden/',ToogleHideConversation.as_view(),name='toogle-hidden'), # tắt/bật ần chat vĩnh viển
     path('api/chat/conversation/hidden-chat/',ListHideConversation.as_view(),name='hidden-chat'),# url hiện tất cả đoạn chat ẩn
     path('api/chat/conversation/<int:conv_id>/upload/',ChatAttachmentUpload.as_view(),name='upload-file'),
+    path('api/chat/conversation/<int:conv_id>/file-list/', GetFileFromConversation.as_view()),
+    #Chat group
     path('api/chat/conversation/group/create-group/',CreateGroupConversation.as_view(),name='create-group-chat'),
     path('api/chat/conversation/group/<int:conv_id>/transfer-admin/',TransferAdminGroupChat.as_view(),name='transfer-admin-chat'),
     path('api/chat/conversation/group/<int:conv_id>/add/',AddMemberGroupChat.as_view(),name='add-member-chat'),
@@ -152,7 +154,6 @@ urlpatterns = [
     path('api/chat/conversation/group/<int:conv_id>/delete/',DeleteGroupChat.as_view()),
     path('api/chat/conversation/group/<int:conv_id>/kick/<int:kick_id>/',KickMemberGroupChat.as_view()),
     path('api/chat/conversation/<int:conv_id>/leave/',LeaveGroupChat.as_view()),
-    path('api/chat/conversation/<int:conv_id>/file-list/',GetFileFromConversation.as_view()),
     #fire base notification
     path("api/fcm-token/", SaveFCMTokenView.as_view()), # token cho thiết bị
     #in-app notification
@@ -196,6 +197,9 @@ urlpatterns = [
     path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/delete-option/',DeleteOptionVoteGroupChat.as_view()), #xóa option
     path('api/chat/conversation/<int:conv_id>/vote/list-vote/',ListVoteGroupChat.as_view()), #list các vote trong group
     path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/user/',ListUserVoteGroupChat.as_view()), # list các user vote đã vote option gì
+    # call video
+    path('api/chat/conversation/<int:conv_id>/call-video/create/', CreateVideoRoomView.as_view()),
+    # path('api/chat/conversation/<int:conv_id>/call-video/end/', EndVideoRoomView.as_view()),
 ] + router.urls
 
 

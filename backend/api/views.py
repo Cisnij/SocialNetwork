@@ -1,14 +1,17 @@
 import uuid
 from itertools import chain
 from adrf.views import APIView as AsyncAPIView
+
+from channels.db import database_sync_to_async
 from django.contrib.auth import authenticate
 from django.db.models.expressions import Window
 from django.db.models.functions import RowNumber
+from django.utils import asyncio
 from django.views.generic import DetailView
-from safedelete import queryset
-from twisted.python.util import raises
-
+from livekit import api
+from backend.env_config import env
 from backend import settings_backend
+from rules import is_active
 from .models import Profile
 from .serializers import *
 from rest_framework import generics,permissions
@@ -25,6 +28,7 @@ from .permissions import IsConversationMember, PostViewPermission
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
 from .utils import get_reactions_post_context,get_reactions_comment_context,get_reactions_share_context
+from .tasks import push_notification_task
 #filter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter,OrderingFilter
@@ -3030,3 +3034,225 @@ class ListUserVoteGroupChat(generics.ListAPIView):
         contenttype = ContentType.objects.get_for_model(Conversation)
         return UserVote.objects.filter(option_id=option_id,option__vote_id=vote_id,option__vote__content_type=contenttype,option__vote__object_id=conv_id).select_related('created_by__profile','option','option__vote')
 
+
+#==============VIDEO CALL ROOM========================================================================
+"""1 user a bấm gọi, sẽ gọi api tạo phòng trả về token cho fe
+    2 fe gọi livekit kiểm tra token có cho kết nối vào room, có cho kết nối thì video và mic user a đó trên cloud
+     3 hiển thị broadcast lên phòng qua ws noti, user b thấy bấm vào và join cuộc gọi
+        4. user b gọi api join phòng kiểm tra có phòng đang active thì kết nối vào và lấy token cho fe và fe gọi livekit,token có quyền thì vô phòng
+"""
+class CreateVideoRoomView(AsyncAPIView):
+    permission_classes = [IsAuthenticated]
+
+    async def post(self, request, conv_id):
+        is_member = await ConversationMember.objects.filter(
+            conversation_id=conv_id, user=request.user, is_active=True
+        ).aexists()
+        if not is_member:
+            raise PermissionDenied("Bạn không có trong cuộc trò chuyện")
+
+        # Không cho tạo nếu đã có phòng active
+        existing = await VideoRoom.objects.filter(
+            conversation_id=conv_id, is_active=True
+        ).aexists()
+        if existing:
+            raise ValidationError("Đang có cuộc gọi trong cuộc trò chuyện này")
+
+        room = await VideoRoom.objects.acreate( #tạo phòng khi không active, mỗi lần gọi sẽ tạo mới phòng
+            conversation_id=conv_id,
+            room_name=f"conv-{conv_id}-{uuid.uuid4().hex[:8]}",
+            created_by=request.user,
+            is_active=True,
+        )
+
+        # Lấy tất cả member ids 1 lần
+        member_ids = []
+        async for uid in ConversationMember.objects.filter(
+            conversation_id=conv_id, is_active=True
+        ).values_list('user_id', flat=True):
+            member_ids.append(uid)
+
+        await CallParticipant.objects.abulk_create([ # tạo thành viên
+            CallParticipant(room=room, user_id=uid)
+            for uid in member_ids
+        ], ignore_conflicts=True)
+
+        # Người gọi sẽ luôn là accept vì chủ động gọi
+        await CallParticipant.objects.filter(
+            room=room, user=request.user
+        ).aupdate(status='accepted', joined_at=timezone.now())
+        profile = request.user.profile
+        full_name = profile.full_name
+        avatar = getattr(profile.picture, "url", None) if profile else None
+        channel_layer = get_channel_layer()
+        tasks = [
+            channel_layer.group_send(
+                f'notification_{uid}',          # gửi tới callee, không phải caller
+                {
+                    'type':          'incoming_call',
+                    'conv_id':       conv_id,
+                    'room_name':     room.room_name,
+                    'caller_id':     request.user.id,
+                    'caller_name':   full_name,
+                    'caller_avatar': avatar,
+                }
+            )
+            for uid in member_ids
+            if uid != request.user.id          # bỏ qua caller
+        ]
+        await asyncio.gather(*tasks)
+
+        token = await self._create_token(room.room_name, request.user)
+        return Response({
+            'token':       token,
+            'room_name':   room.room_name,
+            'livekit_url': env("LIVEKIT_URL"),
+        })
+
+    async def _create_token(self, room_name, user):
+        token = api.AccessToken(
+            env("LIVEKIT_API_KEY"),
+            env("LIVEKIT_API_SECRET")
+        ).with_identity(str(user.id)) \
+         .with_name(user.profile.full_name) \
+         .with_grants(api.VideoGrants(
+             room_join=True,
+             room=room_name,
+         )).to_jwt()
+        return token
+
+class JoinVideoRoomView(AsyncAPIView):
+    permission_classes = [IsAuthenticated]
+
+    async def post(self, request, conv_id):
+
+        room = await VideoRoom.objects.filter( # kiểm tra xem cuộc gọi còn không
+            conversation_id=conv_id, is_active=True
+        ).afirst()
+        if not room:
+            raise NotFound("Cuộc gọi đã kết thúc")
+
+        participant = await CallParticipant.objects.filter( #check quyền
+            room=room, user=request.user
+        ).afirst()
+        if not participant:
+            raise PermissionDenied("Bạn không được mời vào cuộc gọi này")
+
+
+        now = timezone.now()
+        await CallParticipant.objects.filter(id=participant.id).aupdate( # cập nhật vào phòng
+            status='accepted', joined_at=now
+        )
+
+        # Lần đầu tiên có người thứ 2 join thì set started_at
+        if not room.started_at:
+            await VideoRoom.objects.filter(id=room.id).aupdate(started_at=now)
+
+        token = await self._create_token(room.room_name, request.user)
+        return Response({
+            'token':       token,
+            'room_name':   room.room_name,
+            'livekit_url': env("LIVEKIT_URL"),
+        })
+    async def _create_token(self, room_name,user):
+        lkapi = api.LiveKitAPI(
+            env("LIVEKIT_URL"),
+            env("LIVEKIT_API_KEY"),
+            env("LIVEKIT_API_SECRET")
+        )
+        token = api.AccessToken(
+            env("LIVEKIT_API_KEY"),
+            env("LIVEKIT_API_SECRET")
+        ).with_identity(str(user.id)) \
+         .with_name(user.profile.full_name) \
+         .with_grants(api.VideoGrants(
+             room_join=True,
+             room=room_name,
+         )).to_jwt()
+        return token
+
+class DeclineCallView(AsyncAPIView):
+    permission_classes = [IsAuthenticated]
+
+    async def post(self, request, conv_id):
+        room = await VideoRoom.objects.select_related(
+            'conversation', 'created_by'
+        ).filter(conversation_id=conv_id, is_active=True).afirst()
+        if not room:
+            raise NotFound("Cuộc gọi không còn tồn tại")
+
+        participant = await CallParticipant.objects.filter(
+            room=room, user=request.user
+        ).afirst()
+        if not participant:
+            raise PermissionDenied("Bạn không có trong cuộc gọi này")
+
+        await CallParticipant.objects.filter(id=participant.id).aupdate(status='declined') # user nào gọi api thì update decline luôn
+
+        is_group = room.conversation.is_group
+        channel_layer = get_channel_layer()
+
+        if not is_group: #nếu là 1-1 thì đóng phòng luông
+            await VideoRoom.objects.filter(id=room.id).aupdate(
+                is_active=False,
+                ended_at=timezone.now(),
+                end_reason='declined',
+            )
+            await CallParticipant.objects.filter( # cập nhật cả 2 user thành decline vì k thể có 1 ng accept(ở createroom) 1 người decline dc
+                room=room, status='pending'
+            ).aupdate(status='declined')
+            await self._create_system_message(room, 'system_call_declined')
+            # Broadcast qua consumer
+            await channel_layer.group_send(
+                f'call_{conv_id}',
+                {
+                    'type':       'call_ended',
+                    'end_reason': 'declined',
+                    'conv_id':    conv_id,
+                }
+            )
+        else: # nếu là group chat thì kiểm tra tất cả từ chối mới broadcast
+            all_rejected = await self._check_all_rejected(room)
+            if all_rejected:
+                await self._create_system_message(room, 'system_call_missed')
+                await channel_layer.group_send(
+                    f'call_{conv_id}',
+                    {
+                        'type':       'call_ended',
+                        'end_reason': 'missed',
+                        'conv_id':    conv_id,
+                    }
+                )
+        return Response({'detail': 'Đã từ chối'})
+    @database_sync_to_async
+    def _check_all_rejected(self, room):
+        others   = CallParticipant.objects.filter(room=room).exclude(user=room.created_by) #lấy ra tất cả thành viên và count
+        total    = others.count()
+        rejected = others.filter(status__in=['declined', 'missed']).count() # count thành viên nào mà status là decline hoặc miss
+        if total > 0 and total == rejected: # nếu mà tất cả thành viên đều bỏ qua thì đóng phòng
+            VideoRoom.objects.filter(id=room.id).update(
+                is_active=False,
+                ended_at=timezone.now(),
+                end_reason='missed',
+            )
+            return True
+        return False
+
+    @database_sync_to_async
+    def _create_system_message(self, room, msg_type):
+        room.refresh_from_db(fields=['started_at', 'ended_at'])
+        secs = room.duration_call
+        content_map = {
+            'system_call_completed': f'Cuộc gọi video · {secs // 60}:{secs % 60:02d}',
+            'system_call_missed':    'Cuộc gọi video nhỡ',
+            'system_call_declined':  'Cuộc gọi video bị từ chối',
+            'system_call_cancelled': 'Cuộc gọi video bị huỷ',
+        }
+        msg = Message.objects.create(
+            conversation_id=room.conversation_id,
+            sender=room.created_by,
+            content=content_map[msg_type],
+            message_type=msg_type,
+        )
+        Conversation.objects.filter(id=room.conversation_id).update(updated_at=timezone.now())
+        return msg

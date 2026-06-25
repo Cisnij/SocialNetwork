@@ -309,6 +309,12 @@ class Message(SafeDeleteModel):
         ('system_vote_option_added', 'Thêm option vote nhóm'),
         ('system_vote_option_deleted', 'Xóa option vote nhóm'),
         ('system_vote_added', 'Người dùng thêm vote nhóm'),
+
+        ('system_call_completed','Cuộc gọi hoàn thành'),
+        ('system_call_missed', 'Cuộc gọi nhỡ'),
+        ('system_call_declined', 'Cuộc gọi bị từ chối'),
+        ('system_call_cancelled', 'Cuộc gọi video bị huỷ'),
+
     ]
     _safedelete_policy = SOFT_DELETE_CASCADE
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
@@ -536,3 +542,46 @@ class UserVote(models.Model):
         unique_together = (('option', 'created_by'),) # Mỗi user chỉ được vote 1 option 1 lần
         indexes = [models.Index(fields=['option','created_by'])]
 
+
+#===================================ROOM CALL VIDEO==================================================
+
+class VideoRoom(models.Model):
+    END_REASON = [
+        ('completed', 'Hoàn thành'),
+        ('missed',    'Cuộc gọi nhỡ'),
+        ('declined',  'Từ chối'),      # chỉ có ở 1-1
+        ('cancelled', 'Huỷ'),
+    ]
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='rooms')
+    room_name = models.CharField(max_length=250,unique=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at   = models.DateTimeField(null=True, blank=True) # chỉ khi bắt máy mới có
+    ended_at     = models.DateTimeField(null=True, blank=True)
+    end_reason   = models.CharField(max_length=15, choices=END_REASON, null=True, blank=True)
+
+    @property
+    def duration_call(self):
+        if self.started_at and self.ended_at:
+            return int( (self.ended_at - self.started_at).total_seconds() )
+        return 0
+    class Meta:
+        indexes= [models.Index(fields=['room_name','is_active'])]
+
+
+class CallParticipant(models.Model):
+    STATUS = [
+        ('pending',  'Chưa trả lời'),
+        ('accepted', 'Đã bắt máy'),
+        ('declined', 'Từ chối'),
+        ('missed',   'Nhỡ'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    room = models.ForeignKey(VideoRoom, on_delete=models.CASCADE, related_name='participants')
+    status = models.CharField(max_length=10, choices=STATUS, default='pending')
+    joined_at = models.DateTimeField(auto_now_add=True)
+    left_at= models.DateTimeField(null=True)
+    class Meta:
+        unique_together = ('room', 'user')
+        indexes = [models.Index(fields=['room', 'status'])]

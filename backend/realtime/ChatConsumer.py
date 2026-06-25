@@ -295,7 +295,18 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
             'message_type': event['message_type'],
         }))
 
-    # ===== CHECK =====
+    async def start_call(self):
+        await self.send(text_data=json.dumps({
+            'type': 'start_call',
+
+        }))
+
+    async def stop_call(self):
+        await self.send(text_data=json.dumps({
+            'type': 'stop_call',
+        }))
+
+    # ===== MODEL CHECK =====
     @database_sync_to_async
     def is_member(self):  # check có phải thành viên conversation không
         return ConversationMember.objects.filter(
@@ -446,78 +457,6 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
         ])
 
 
-class NotificationConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chịu trách nhiệm kết nối khi vào app và đếm số count noti ngay khi vào app
-    async def connect(self):
-        self.ping_task = None
-        if not self.scope['user'].is_authenticated:
-            await self.close()
-            return
-        self.user = self.scope['user']  # lấy ra user trong consumer giống request.user
-        self.group_name = f'notification_{self.user.id}'  # lưu tên kèm user id vào redis để gửi kết nối và data tới n thiết bị có tên đó
-        await self.channel_layer.group_add(self.group_name, self.channel_name)  # add vào redis tên group và tên channels tạo
-        await self.accept()
-        await self.start_heartbeat()
-
-        count = await self.get_unread_count()
-        await self.send(text_data=json.dumps({'unread_count': count}))  # chuyển thành chuỗi json
-
-    async def disconnect(self, close_code):
-        await self.stop_heartbeat()
-        if getattr(self, 'group_name', None):
-            await self.channel_layer.group_discard(self.group_name, self.channel_name)
-
-    async def receive(self, text_data):
-        try:
-            data = json.loads(text_data)
-            if self.handle_pong(data):
-                return
-        except json.JSONDecodeError:
-            pass
-
-    async def send_notification(self, event):  # event là cái group send gửi lên, event[''] là dữ liệu th group send
-        await self.send(text_data=json.dumps(event['data']))  # chuyển data của event thành json
-
-    @database_sync_to_async
-    def get_unread_count(self):  # count ban đầu khi vào app
-        return Notification.objects.filter(
-            reciever=self.user,
-            is_read=False
-        ).count()
 
 
-class ConversationConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
-    async def connect(self):
-        self.ping_task = None
-        if not self.scope['user'].is_authenticated:
-            await self.close()
-            return
-        self.user = self.scope['user']
-        self.group_name = f'conv_list_{self.user.id}'
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
-        await self.accept()
-        await self.start_heartbeat()
 
-    async def disconnect(self, code):
-        await self.stop_heartbeat()
-        if getattr(self, 'group_name', None):
-            await self.channel_layer.group_discard(self.group_name, self.channel_name)
-
-    async def receive(self, text_data):
-        try:
-            data = json.loads(text_data)
-            if self.handle_pong(data):
-                return
-        except json.JSONDecodeError:
-            pass
-
-    async def conversation_updated(self, event):
-        await self.send(text_data=json.dumps({
-            'conversation_id': event['conversation_id'],
-            'last_message': event.get('last_message'),
-            'sender_id': event.get('sender_id'),
-            'sender_name': event.get('sender_name'),
-            'message_type': event.get('message_type'),
-            'created_at': event.get('created_at'),
-        }))
-
-# cần lặp group send vì không như chat mn chung 1 group, conv list thì mỗi user 1 conv list
