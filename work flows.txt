@@ -118,4 +118,43 @@ work flows
          3 hiển thị broadcast incoming_call lên phòng qua ws, user b thấy bấm vào và join cuộc gọi (từ chối thì ws gửi decline+đóng phòng nếu là 1-1)
             4. user b gọi api tạo phòng kiểm tra có phòng đang active thì kết nối vào và lấy token cho fe và fe gọi livekit,token có quyền thì vô phòng
     """
+    # Tất cả user vào web
+    #   → connect ws/notifications/  ← sống suốt session, nhận call popup
+    #
+    # Caller bấm gọi
+    #   → POST /video/create/
+    #   → server push incoming_call tới notification_<uid> của tất cả callee
+    #   → caller connect ws/call/<conv_id>/ → connect LiveKit
+    #   → FE callee nhận qua ws/notifications/ → hiện popup "ABC đang gọi..."
+    #
+    # Callee bấm Accept
+    #   → POST /video/join/ → nhận token
+    #   → connect ws/call/<conv_id>/z`
+    #   → connect LiveKit → đang gọi
+    #
+    # Callee bấm Decline
+    #   → POST /video/decline/  (REST, không cần WS)
+    #   → 1-1: server báo caller qua ws/call/<conv_id>/, và đóng phòng
+    #   → FE caller nhận call_ended → đóng màn hình gọi
+    #
+    # Caller huỷ trước khi ai bắt
+    #   → WS gửi end_call → end_reason = cancelled
+    #   → server push call_cancelled tới notification_<uid> callee
+    #   → FE callee nhận → tắt popup đi
+    #
+    # Đang gọi, caller end
+    #   → WS gửi end_call → end_reason = completed
+    #   → broadcast call_ended trong ws/call/<conv_id>/
+    #   → hiện system message thời gian cuộc gọi
+
+    # ngoài cuộc gọi(tức là tất cả chưa connect vào ws):
+         # call incoming: notification
+         # created by hủy: notification
+        # user decline: call consumer broadcast thông qua api
+    # trong cuộc gọi tức là tất cả đã connect vào ws
+         # user leave: call consumer
+         # call end: call consume
+
+63. EVENT TASK: CreateTask: Tạo event check conv member, sau đó add tất cả vào event và status=pending và tạo celery
+                Celery sẽ nhận
 =====================================================================================

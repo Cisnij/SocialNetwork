@@ -557,6 +557,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         #pip install django-pwned-passwords:check mật khẩu rò rỉ
         #pip install pyyaml ua-parser user-agents: track user đăng nhập từ đâu, thiết bị gì để thông báo
         #pip install django-honeypot  # bẫy bot spam form dùng cho MVT
+        #python-saml / djangosaml2SSO doanh nghiệp (SAML 2.0): dùng khi mở ứng dụng khác như gmail, nếu đã login tài khoản cty sẽ tạo chứng chỉ chuyển qua gmail k cần login lại
     }
     {
         Thông báo, sự kiện:
@@ -564,7 +565,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         +pip install django-scheduler: để tạo các lịch hẹn, các event lặp lại
         #+pip install django-notification-hq: tạo thông báo, có hệ thống đọc/chưa đọc sẵn, có thể tích hợp channels
         # django.core.mail : thư viện gửi export_email
-         django-anymail: gửi mail
+        +django-anymail: gửi mail
         # +pip install django-activity-stream: ghi log lại các hành động ng dùng
     }
      
@@ -588,15 +589,15 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         #+pip install django-extensions : tích hợp nhiều tính năng mở rộng cho django như chạy server lỗi đẹp hơn... {tất cả dùng với manage.py, runserver_plus:chạy server tốt hơn hiện lỗi chi tiết, show_urls:hiển thị tất cả url bao gồm url ẩn, graph_models:vẽ mô hình erd, sqldiff: hỗ trợ check lỗi sql, export_emails: xuất email ... dùng, check: check lỗi, manage.py --help xem thêm }
         #+django-ckeditor5: tạo imput nhập đẹp có font google, có thẻ tích hợp vào html
         +django-vote: like đislike
-        +django star-ratings: đánh giá star 1-5 sao 
+        #+django star-ratings: đánh giá star 1-5 sao
         #+django-reaction-system: thả reaction cười, buồn như facebook
         # django-friendship: để follow
         #django-comments-xtd: comment bài viết, có like dislike cho comment
-        +django-markdownx: tạo highlights
+        #+django-markdownx: tạo highlights
         #+django-elasticsearch-dsl : search nâng cao, python manage.py search_index --rebuild
         +django-taggit: tạo tag bài viết
         +pip install django-modeltranslation: hỗ trợ dịch
-        +pip install django-invoices: tạo hóa đơn , gửi email, xuất pdf
+        #+pip install django-invoices: tạo hóa đơn , gửi email, xuất pdf
         +pip install django-payments: thanh toán qua paypal...
         #+pip install django-formtools: tạo form thanh toán từng bước(có lưu session)
         +pip install django-imagekit dùng để tự động resize ảnh, tạo thumbnail

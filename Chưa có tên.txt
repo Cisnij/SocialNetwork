@@ -20,7 +20,7 @@ chưa xong
 -xem tất cả các api được gọi ở 1 trang xem có thừa, test đủ các api và fe đã dùng đủ chức năng chưa và đúng logic chưa
 -xây search cho chat
 chat nhóm:
-	call video
+	//call video
 	lên lịch
 	// task to do
 	// tạo vote
