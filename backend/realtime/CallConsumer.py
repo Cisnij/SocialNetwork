@@ -37,11 +37,13 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 #   → broadcast call_ended trong ws/call/<conv_id>/
 #   → hiện system message thời gian cuộc gọi
 
- # call incoming: notification
- # created by hủy: notification
- # user decline: call consumer broadcast
- # user leave: call consumer
- # call end: call consumer
+# ngoài cuộc gọi(tức là tất cả chưa connect vào ws):
+     # call incoming: notification
+     # created by hủy: notification
+    # user decline: call consumer broadcast thông qua api
+# trong cuộc gọi tức là tất cả đã connect vào ws
+     # user leave: call consumer
+     # call end: call consumer
 
 class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
 
@@ -166,7 +168,7 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
             ]
             await asyncio.gather(*tasks)
 
-    # SERVER → CLIENT 
+    # SERVER → CLIENT
     async def call_user_left(self, event):
         await self.send(text_data=json.dumps(event))
 
