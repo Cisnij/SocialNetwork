@@ -1,13 +1,14 @@
 from celery import shared_task
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from django.contrib.contenttypes.models import ContentType
 from django.core.mail import send_mail
 import logging
 from django.contrib.auth import get_user_model
 from api.firebase import push_to_user
 from django.utils import timezone
 from datetime import timedelta
-from api.models import Post, Message, ConversationMember, Profile
+from api.models import Post, Message, ConversationMember, Profile, Event, EventParticipant, Conversation
 import subprocess
 import os
 from datetime import datetime
@@ -43,6 +44,40 @@ def send_email_task(self, subject, message, recipient_list):
     except Exception as exc:
         logger.error(f"Send email error: {exc}")
         raise self.retry(exc=exc)
+
+#==== TASK ======
+@shared_task(bind=True, max_retries=3)
+def send_event_reminder(self, event_id, content_type_id):
+    try:
+        event = (
+            Event.objects
+            .filter(id=event_id, content_type_id=content_type_id)
+            .select_related('created_by', 'created_by__profile')
+            .first()
+        )
+        if not event:
+            return
+
+        participant_ids = EventParticipant.objects.filter(
+            event=event,
+            status = 'accept'
+        ).values_list('user_id', flat=True)
+
+        channel_layer = get_channel_layer()
+        for uid in participant_ids:
+            async_to_sync(channel_layer.group_send)(
+                f'notification_{uid}',
+                {
+                    'type':       'event_reminder',
+                    'event_id':   event.id,
+                    'title':      event.title,
+                    'start_time': event.start_time.isoformat(),
+                    'conv_id':    event.object_id,
+                    'message':    f'Sắp bắt đầu: {event.title} lúc {event.start_time.strftime("%H:%M")}',
+                }
+            )
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60)
 
 
 # ===== CLEANUP =====

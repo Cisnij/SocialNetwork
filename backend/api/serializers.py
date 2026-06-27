@@ -451,11 +451,11 @@ class SupportTicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupportTicket
         fields = ['id', 'content', 'created_at']
-
+#=========== TASK=================================================
 class TaskSerializer(serializers.ModelSerializer):
     created_by = ProfileSerializer(source='created_by.profile', read_only=True)
-    assigned_to = serializers.SerializerMethodField() #ManyToManyField nên k thể dùng ProfileSerializer
-    assigned_to_ids = serializers.PrimaryKeyRelatedField( # primary field dùng validate và chuyển id vào thành object
+    assigned_to = serializers.SerializerMethodField() #ManyToManyField nên k thể dùng ProfileSerializer, dùng hiện thị ra
+    assigned_to_ids = serializers.PrimaryKeyRelatedField( # primary field dùng validate và chuyển id vào thành object, dùng chuyển vào
         source='assigned_to',
         many=True,
         queryset=User.objects.all(),# validate id truyền vào
@@ -519,3 +519,49 @@ class UserVoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserVote
         fields = ['option','created_by']
+
+#=============== Event ====================
+class EventParticipantSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source='user.profile.full_name', read_only=True)
+    avatar = serializers.SerializerMethodField()
+    class Meta:
+        model=EventParticipant
+        fields=[
+            'id',
+            'full_name',
+            'avatar'
+            'status',
+        ]
+    def get_avatar(self, obj):
+        pic = getattr(obj.user.profile, 'picture', None)
+        return pic.url if pic else DEFAULT_PROFILE_PICTURE
+
+class EventSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.profile.full_name', read_only=True)
+    participants = EventParticipantSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Event
+        fields = [
+            'id',
+            'created_by_name',
+            'title',
+            'description',
+            'start_time',
+            'end_time',
+            'created_at',
+            'participants'
+        ]
+        read_only_fields = ['id', 'created_at', 'created_by_name', 'participants']
+
+    def validate_start_time(self, start_time): # validate đầu vào, validate_{field_name}
+        if start_time < timezone.now():
+            raise serializers.ValidationError('Thời gian bắt đầu phải ở tương lai.')
+        return start_time
+
+    def validate(self, attrs): # cái này validate nhiều field cùng lúc
+        start = attrs.get('start_time')
+        end   = attrs.get('end_time')
+        if start and end and end <= start:
+            raise serializers.ValidationError({'end_time': 'Thời gian kết thúc phải sau thời gian bắt đầu.'})
+        return attrs

@@ -315,6 +315,10 @@ class Message(SafeDeleteModel):
         ('system_call_declined', 'Cuộc gọi bị từ chối'),
         ('system_call_cancelled', 'Cuộc gọi video bị huỷ'),
 
+        ('system_event_created','Tạo sự kiện'),
+        ('system_event_cancelled', 'Xóa sự kiện'),
+        ('system_event_attended', 'Tham gia sự kiện'),
+
     ]
     _safedelete_policy = SOFT_DELETE_CASCADE
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
@@ -585,3 +589,34 @@ class CallParticipant(models.Model):
     class Meta:
         unique_together = ('room', 'user')
         indexes = [models.Index(fields=['room', 'status'])]
+
+#================EVENT========================================================
+class Event(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    title = models.CharField(max_length=250)
+    description = models.TextField(null=True,blank=True)
+    start_time = models.DateTimeField(null=True)
+    end_time = models.DateTimeField(null=True,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    celery_task_id = models.CharField(max_length=255, null=True, blank=True)  # lưu task id để cancel
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['content_type', 'object_id', 'start_time']),  # list event theo giờ
+            models.Index(fields=['content_type', 'object_id']),  # lookup chung
+        ]
+
+class EventParticipant(models.Model):
+    STATUS = [
+        ('accept','Tham gia'),
+        ('decline', 'Từ chối'),
+        ('pending', 'Chưa phản hồi')
+    ]
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='participants')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    status = models.CharField(max_length=10, choices=STATUS, default='pending')
+    class Meta:
+        unique_together = ('event', 'user') #1 user chỉ đc tham gia 1 lần

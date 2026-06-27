@@ -199,7 +199,12 @@ urlpatterns = [
     path('api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/user/',ListUserVoteGroupChat.as_view()), # list các user vote đã vote option gì
     # call video
     path('api/chat/conversation/<int:conv_id>/call-video/create/', CreateVideoRoomView.as_view()),
-    # path('api/chat/conversation/<int:conv_id>/call-video/end/', EndVideoRoomView.as_view()),
+    path('api/chat/conversation/<int:conv_id>/call-video/join/', JoinVideoRoomView.as_view()),
+    path('api/chat/conversation/<int:conv_id>/call-video/decline/', DeclineCallView.as_view()),
+    #SCHEDULE TASK
+    path('api/chat/conversation/<int:conv_id>/create-event/', CreateEventChat.as_view()),
+    path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/', EventDetailChat.as_view()),# sửa, xóa, detail
+    path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/update-status/',EventDetailChat.as_view())
 ] + router.urls
 
 

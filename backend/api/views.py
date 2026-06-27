@@ -1,18 +1,22 @@
 import uuid
+from datetime import timedelta
 from itertools import chain
 from adrf.views import APIView as AsyncAPIView
+from adrf.generics import ListCreateAPIView as AsyncListCreateAPIView
 
+
+from celery import app
 from channels.db import database_sync_to_async
 from django.contrib.auth import authenticate
 from django.db.models.expressions import Window
 from django.db.models.functions import RowNumber
-from django.utils import asyncio
+import asyncio
 from django.views.generic import DetailView
 from livekit import api
 from backend.env_config import env
 from backend import settings_backend
 from rules import is_active
-from .models import Profile
+from .models import Profile, Event
 from .serializers import *
 from rest_framework import generics,permissions
 from rest_framework.permissions import *
@@ -28,7 +32,7 @@ from .permissions import IsConversationMember, PostViewPermission
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
 from .utils import get_reactions_post_context,get_reactions_comment_context,get_reactions_share_context
-from .tasks import push_notification_task
+from .tasks import push_notification_task, send_event_reminder
 #filter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter,OrderingFilter
@@ -48,8 +52,6 @@ from cacheops import invalidate_model
 #cloudinary
 import cloudinary.uploader
 # magic-bin
-import magic
-# meta
 from meta.views import MetadataMixin
 
 def get_online_set(queryset):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
@@ -3256,3 +3258,178 @@ class DeclineCallView(AsyncAPIView):
         )
         Conversation.objects.filter(id=room.conversation_id).update(updated_at=timezone.now())
         return msg
+
+#===============================EVENT===========================================
+class CreateEventChat(AsyncListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = EventSerializer
+    pagination_class = LargePagePagination
+    async def get_queryset(self):
+        conv_id = self.kwargs.get("conv_id")
+        if not await ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).aexists():
+            raise PermissionDenied("Bạn không có trong group")
+        content_type = await sync_to_async(ContentType.objects.get_for_model)(Conversation)
+
+        return Event.objects.filter(content_type=content_type,object_id=conv_id).select_related('created_by','created_by__profile').prefetch_related('participants__user__profile').order_by('start_time')
+
+    async def perform_create(self, serializer):
+        conv_id = self.kwargs.get("conv_id")
+        if not await ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).aexists():
+            raise PermissionDenied("Bạn không có trong group")
+        content_type = await sync_to_async(ContentType.objects.get_for_model)(Conversation)
+        event = await sync_to_async(serializer.save)(
+            content_type=content_type,
+            object_id=conv_id,
+            created_by=user,
+        )
+
+        member_ids = await (
+            ConversationMember.objects
+            .filter(conversation_id=conv_id, is_active=True)
+            .values_list('user_id', flat=True)
+            .alist()
+        ) # tạo participant cho tất cả trong group
+
+        await EventParticipant.objects.abulk_create([
+            EventParticipant(event=event, user_id=uid)
+            for uid in member_ids
+        ], ignore_conflicts=True)
+
+        #Đặt reminder trước 15p
+        start_time = serializer.validated_data.get('start_time')  #lấy ra trường này ở serializer khi truyền
+        remind_at = start_time - timedelta(minutes=5) # nhắc trước thời gian start 5p.Ví dụ 15p trước 3h thứ 2
+        if remind_at > timezone.now(): # chỉ đặt nếu thời gian start lớn hơn hiện tại, chưa trễ. Ví dụ t2 nhắc mà bây giờ t3 thì k đc nhắc, nếu hnay là cn và t2 start thì nhắc
+            task = send_event_reminder.apply_async( #apply_async để đặt lịch chạy, gọi deplay thì chạy ngay async
+                args=[event.id, content_type.id], # chạy cái nào
+                eta=remind_at, # thời gian chạy
+            )
+            await Event.objects.filter(id=event.id).aupdate(celery_task_id=task.id)
+
+        profile = await sync_to_async(lambda: user.profile)()
+        msg = await Message.objects.acreate( #tạo system message
+            conversation_id=conv_id,
+            sender=user,
+            content=f"{profile.full_name} đã tạo sự kiện: {event.title} lúc {start_time.strftime('%H:%M %d/%m/%Y')}",
+            message_type='system_event_created',
+        )
+        try:
+            channel_layer = get_channel_layer()
+            await channel_layer.group_send(
+                f'chat_{conv_id}',
+                {
+                    'type':         'system_message',
+                    'message':      msg.content,
+                    'message_type': msg.message_type,
+                }
+            )
+        except Exception:
+            pass
+
+class EventDetailChat(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = EventSerializer
+    def get_object(self):
+        conv_id = self.kwargs.get("conv_id")
+        event_id = self.kwargs.get("event_id")
+        if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        content_type = ContentType.objects.get_for_model(Conversation)
+        return get_object_or_404(
+            Event.objects
+            .select_related('created_by', 'created_by__profile')
+            .prefetch_related('participants__user__profile'),
+            id=event_id,
+            content_type=content_type,
+            object_id=conv_id,
+        )
+    def perform_update(self, serializer):
+        event = self.get_object()
+        if event.created_by != self.request.user:
+            raise PermissionDenied("Phải là người tạo mới có quyền update")
+        if event.celery_task_id:
+            app.control.revoke(event.celery_task_id, terminate=True) #hủy task
+        serializer.save()
+        new_start = serializer.validated_data.get('start_time', event.start_time) # nếu có update thời gian thì phải update lại thgian celery chạy
+        remind_at = new_start - timedelta(minutes=15)
+        task = send_event_reminder.apply_async(
+            args=[event.id, content_type.id],
+            eta=remind_at,
+        )
+        Event.objects.filter(id=event.id).update(celery_task_id=task.id)
+
+    def perform_destroy(self, instance):
+        if instance.created_by != self.request.user:
+            raise PermissionDenied("Chỉ người tạo mới được xóa sự kiện")
+        # Hủy celery task trước khi xóa
+        if instance.celery_task_id:
+            from backend.celery import app
+            app.control.revoke(instance.celery_task_id, terminate=True)
+        # System message thông báo xóa
+        conv_id = instance.object_id
+        title = instance.title
+        user = self.request.user
+        instance.delete()
+        msg = Message.objects.create(
+            conversation_id=conv_id,
+            sender=user,
+            content=f"{user.profile.full_name} đã hủy sự kiện: {title}",
+            message_type='system_event_cancelled',
+        )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'chat_{conv_id}',
+                {
+                    'type': 'system_message',
+                    'message': msg.content,
+                    'message_type': msg.message_type,
+                }
+            )
+        except Exception:
+            pass
+
+
+class EventAcceptChat(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = EventSerializer
+
+    def patch(self, request, conv_id, event_id):
+        user = request.user
+        if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+
+        new_status = request.data.get('status')
+        if new_status not in ('accept', 'decline'):
+            raise ValidationError({'status': 'Chỉ chấp nhận "accept" hoặc "decline".'})
+
+        content_type = ContentType.objects.get_for_model(Conversation)
+        event = get_object_or_404(Event, id=event_id, content_type=content_type, object_id=conv_id)
+        #update status
+        participant = get_object_or_404(EventParticipant, event=event, user=request.user)
+        participant.status = new_status
+        participant.save(update_fields=['status'])
+
+        label = 'tham gia' if new_status == 'accept' else 'từ chối'
+        if new_status == 'accept':
+            msg = Message.objects.create(
+                conversation_id=conv_id,
+                sender=user,
+                content=f"{user.profile.full_name} chấp nhận tham gia sự kiện: {event.title}",
+                message_type='system_event_attended',
+            )
+            try:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'chat_{conv_id}',
+                    {
+                        'type': 'system_message',
+                        'message': msg.content,
+                        'message_type': msg.message_type,
+                    }
+                )
+            except Exception:
+                pass
+        return Response(
+            {'detail': f'Bạn đã {label} sự kiện "{event.title}".'},
+            status=status.HTTP_200_OK,
+        )
