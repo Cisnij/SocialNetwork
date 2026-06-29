@@ -392,6 +392,8 @@ class Notification(models.Model):
         ('reaction_on_comment', 'Reaction on Comment'),
         ('friend_request', 'Friend Request'),
         ('follow', 'Follow'),
+        ('share_post', 'Share on Post'),
+        ('accepted_friend_request', 'Accept Friend')
     ]
     reciever = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')

@@ -1,11 +1,9 @@
 
 chưa xong
--sửa lại js phần bạn
+
 -thiếu phần đăng nhập:
     xác thực otp khi bật 2 bước có 2 setting là gửi otp qua mail hay gửi sms qua sdt dùng rapid api
-- api tạo group, api thêm member, thêm quyền vào db conversationmember is_admin=true, tạo api thêm quyền cho user trong đoạn chat, thêm avatar, group name vào db conversation
-- xong tất cả thì xây signal 1 thể
-- xây chức năng lên lich tạo post dùng thư viện schedule và redis và hiện calender lên lịch
+
 
 
 -thêm signal

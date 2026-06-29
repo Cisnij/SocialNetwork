@@ -4,7 +4,7 @@ from django.db.models.signals import post_save, post_delete, pre_delete, \
     m2m_changed  # post save là ngay khi tạo user thì trigger tạo profile
 from django.dispatch import receiver
 from django.contrib.auth.models import User
-from .models import Profile,PendingProfile,Setting,Post,PostArticle,Comment,Log,Notification,Message,PostShare,Conversation,ConversationMember,MessageAttachment
+from .models import Profile, PendingProfile, Setting, Post, PostArticle, Comment, Log, Notification, Message, PostShare, Vote, Conversation, ConversationMember, MessageAttachment, Report, SupportTicket, SearchHistory, Task
 from reaction.models import UserReaction
 from allauth.account.signals import email_confirmed, user_logged_in
 
@@ -74,7 +74,6 @@ def create_user_profile_log(sender, instance, created, **kwargs):
         target=instance,
         data={  #metadata để lưu thông tin nhằm truy xuất log nhanh hơn và dễ dàng hơn 
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "target_type": "Profile",
             "target_id": instance.pk,
             "action": verb,
@@ -89,7 +88,6 @@ def delete_profile_log(sender, instance, **kwargs):
         target=instance,
         data={
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "target_type": "Profile",
             "target_id": instance.pk,
             "action": "deleted",
@@ -105,7 +103,6 @@ def create_post_log(sender, instance, created, **kwargs):
         target=instance,
         data={
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "target_type": "Post",
             "target_id": instance.pk,
             "title": instance.title,
@@ -122,7 +119,6 @@ def delete_post_log(sender, instance, **kwargs):
         target=instance,
         data={
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "target_type": "Post",
             "target_id": instance.pk,
             "title": instance.title,
@@ -138,7 +134,6 @@ def post_undelete_log(sender, instance, **kwargs):
         target=instance,
         data={
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "target_type": "Post",
             "target_id": instance.pk,
             "title": instance.title,
@@ -154,7 +149,6 @@ def create_postarticle_log(sender, instance, created, **kwargs):
         target=instance,
         data={
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "target_type": "PostArticle",
             "target_id": instance.pk,
             "title": instance.title,
@@ -171,7 +165,6 @@ def delete_postarticle_log(sender, instance, **kwargs):
         target=instance,
         data={
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "target_type": "PostArticle",
             "target_id": instance.pk,
             "title": instance.title,
@@ -188,7 +181,6 @@ def postarticle_undelete_log(sender, instance, **kwargs):
         target=instance,
         data={
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "target_type": "PostArticle",
             "target_id": instance.pk,
             "title": instance.title,
@@ -205,7 +197,6 @@ def create_comment_log(sender, instance, created, **kwargs):
         target=instance.post,
         data={
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "action_object_type": "Comment",              # chủ thể hành động
             "action_object_id": instance.pk,              # id Comment
             "target_type": "Post",                        # đối tượng bị tác động
@@ -223,7 +214,6 @@ def delete_comment_log(sender, instance, **kwargs):
         target=instance.post,
         data={
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "target_type": "Comment",
             "target_id": instance.pk,
             "post_id": instance.post_id,
@@ -251,7 +241,6 @@ def reaction_activity(sender, instance, created, **kwargs):
         target=target,
         data={
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "action_object_type": "UserReaction",       # loại chủ thể hành động
             "action_object_id": getattr(instance, "pk", None), # id của UserReaction
             "target_type": "Post",                      # loại đối tượng bị tác động
@@ -276,7 +265,6 @@ def reaction_removed(sender, instance, **kwargs):
         target=target,          # Post là đối tượng bị tác động
         data={
             "user_id": instance.user.id,
-            "username": instance.user.username,
             "action_object_type": "UserReaction",            # loại chủ thể hành động
             "action_object_id": getattr(instance, "pk", None), # id của UserReaction
             "target_type": "Post",                           # loại đối tượng bị tác động
@@ -296,7 +284,6 @@ def message_log(sender, instance, created, **kwargs):
             target=instance.conversation,
             data={
                 "user_id": instance.sender.id,
-                "username": instance.sender.username,
                 "action_object_type": "Message",
                 "action_object_id": instance.pk,
                 "target_type": "Conversation",
@@ -314,7 +301,6 @@ def message_log(sender, instance, created, **kwargs):
             target=instance.conversation,
             data={
                 "user_id": instance.sender.id,
-                "username": instance.sender.username,
                 "action_object_type": "Message",
                 "action_object_id": instance.pk,
                 "target_type": "Conversation",
@@ -332,7 +318,6 @@ def message_soft_delete_log(sender, instance, **kwargs):
         target=instance.conversation,
         data={
             "user_id": instance.sender.id,
-            "username": instance.sender.username,
             "action_object_type": "Message",
             "action_object_id": instance.pk,
             "target_type": "Conversation",
@@ -355,7 +340,6 @@ def log_login(sender, request, user, **kwargs):
         verb="logged in",
         data={
             "user_id": user.id,
-            "username": user.username,
             "ip": ip,
             "device": user_agent,
             "login_type": (
@@ -374,7 +358,6 @@ def log_logout(sender, request, user, **kwargs):
             verb="logged out",
             data={
                 "user_id": user.id,
-                "username": user.username,
                 "ip": ip,
                 "device": user_agent,
             }
@@ -730,3 +713,189 @@ def create_bot_conversation(sender, instance, created, **kwargs):
         print("ERROR:", e)
         raise
 
+#Thêm
+'''ghi log
+ghi notification
+ghi user activity
+
+
+Conversation
+Task
+Vote
+Event
+
+Log:
+
+
+VideoRoom❌ Không có log tạo phòng, kết thúc cuộc gọi
+Event❌ Không có log tạo/sửa/xóa event trong chat
+ConversationMember❌ Không có log thêm/xóa thành viên group
+
+Notification:
+Task assigned❌ Không có noti khi được assign task
+Vote tạo❌ Không có noti cho member trong group biết có vote mới
+Event tạo❌ Không có noti cho participant (chỉ có system message trong chat)'''
+
+@receiver(friendship_request_accepted)  # log chấp nhận lời mời kết bạn
+def noti_friend_request_accepted(sender, **kwargs):
+    Notification.objects.create(
+        reciever=sender.from_user,
+        actor=sender.to_user,
+        type='accepted_friend_request',
+        message=f'{sender.to_user.profile.full_name} đã chấp nhận lời mời kết bạn'
+    )
+@receiver(post_save, sender= PostShare)
+def log_post_share(sender,created,instance,**kwargs):
+    if not created:
+        return
+    verb = "share post" if created else "updated share post"
+    action.send(
+        instance.user,
+        verb="shared post",
+        action_object=instance,
+        target=instance.post,
+        data={
+            "user_id": instance.user.id,
+            "action_object_type": "PostShare",  # chủ thể hành động
+            "action_object_id": instance.pk,
+            "target_type": "Post",
+            "target_id": instance.post.id,
+            "content": instance.content[:50],
+            "action": verb,
+        }
+    )
+@receiver(post_delete, sender= PostShare)
+def log_post_share(sender,instance,**kwargs):
+    action.send(
+        instance.user,
+        verb="shared post",
+        action_object=instance,
+        target=instance.post,
+        data={
+            "user_id": instance.user.id,
+            "action_object_type": "PostShare",  # chủ thể hành động
+            "action_object_id": instance.pk,
+            "target_type": "Post",
+            "target_id": instance.post.id,
+            "content": instance.content[:50],
+            "action": "delete share post",
+        }
+    )
+
+@receiver(post_save,sender=Setting)
+def log_setting_updated(sender,instance,created,**kwargs):
+    if not created:
+        action.send(
+            instance.user,
+            verb = "updated setting",
+            action_object=instance,
+            target=None,
+        data={
+            "user_id": instance.user.id,
+            "action_object_type": "Setting",  # chủ thể hành động
+            "action_object_id": instance.pk,
+            "action": "updated setting",
+        }
+    )
+
+@receiver(post_save, sender=Report)
+def log_report(sender, instance, created, **kwargs):
+    if created:
+        Log.objects.create(
+            metadata_json=json.dumps({
+                'action': 'reported',
+                'actor_id': instance.user_id,
+                'target_type': 'post' if instance.post_id else 'comment',
+                'target_id': instance.post_id or instance.comment_id,
+                'reason': instance.reason,
+            }, ensure_ascii=False)
+        )
+
+@receiver(post_save, sender=SupportTicket)
+def log_support_ticket(sender, instance, created, **kwargs):
+    if created:
+        Log.objects.create(
+            metadata_json=json.dumps({
+                'action': 'support ticket',
+                'actor_id': instance.user_id,
+                'content': instance.content,
+            }, ensure_ascii=False)
+        )
+@receiver(post_save, sender=SearchHistory)
+def log_search(sender, instance, created, **kwargs):
+    if created:
+        Log.objects.create(
+            metadata_json=json.dumps({
+                'action': 'search',
+                'actor_id': instance.user_id,
+                'content': instance.content,
+            }, ensure_ascii=False)
+        )
+
+@receiver(post_save, sender= Task)
+def log_task_created(sender,created,instance,**kwargs):
+    if not created:
+        return
+    verb = "task created" if created else "updated task"
+    action.send(
+        instance.created_by,
+        verb=verb,
+        action_object=instance,
+        target=instance.content_object,
+        data={
+            "user_id": instance.user.id,
+            "action_object_type": "Task",       # loại chủ thể hành động
+            "action_object_id": getattr(instance, "pk", None), #
+            "target_type": "Conversation",                      # loại đối tượng bị tác động
+            "action": verb,
+        }
+    )
+@receiver(post_delete, sender= Task)
+def log_task_deleted(sender,instance,**kwargs):
+    action.send(
+        instance.created_by,
+        verb="deleted task",
+        action_object=instance,
+        target=instance.content_object,
+        data={
+            "user_id": instance.user.id,
+            "action_object_type": "Task",       # loại chủ thể hành động
+            "action_object_id": getattr(instance, "pk", None), #
+            "target_type": "Conversation",                      # loại đối tượng bị tác động
+            "action": "deleted task",
+        }
+    )
+
+@receiver(post_save, sender= Vote)
+def log_vote_created(sender,created,instance,**kwargs):
+    if not created:
+        return
+    verb = "task created" if created else "updated task"
+    action.send(
+        instance.created_by,
+        verb=verb,
+        action_object=instance,
+        target=instance.content_object,
+        data={
+            "user_id": instance.user.id,
+            "action_object_type": "Vote",
+            "action_object_id": getattr(instance, "pk", None),
+            "target_type": "Conversation",      # thêm vào là group hoặc conversation chat
+            "action": verb,
+        }
+    )
+@receiver(post_delete, sender= Vote)
+def log_vote_deleted(sender,instance,**kwargs):
+    action.send(
+        instance.created_by,
+        verb="deleted vote",
+        action_object=instance,
+        target=instance.content_object,
+        data={
+            "user_id": instance.user.id,
+            "action_object_type": "Vote",
+            "action_object_id": getattr(instance, "pk", None), #
+            "target_type": "Conversation",                    # thêm vào là group hoặc conversation chat
+            "action": "deleted vote",
+        }
+    )

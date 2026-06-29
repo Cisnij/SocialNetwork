@@ -3,7 +3,7 @@
 đọc code base tôi và triển khai những cái chưa triển khai, kiểm tra logic tất cả api, dùng những api nào chưa dùng và làm chuẩn production giống fb vì tính năng tôi giống logic fb
 mỗi dấu - là 1 yêu cầu
 REQUIREMENT: 
--UI/UX hiện cần hiện đầy đủ trên mobile và vẫn đẹp(thiếu setting và userpage)
+
 - chatbot là mặc định, không có nút xóa và nằm ở 1 vị trí khác cố định không nằm ở conversation để user không thể xóa ,không có nút xem thành viên và nút tạo vote group...
 - chat bot khi user gửi tin nhắn thì sao nó đợi có response mới load ra tin nhắn user vậy 
 -group chat: 
