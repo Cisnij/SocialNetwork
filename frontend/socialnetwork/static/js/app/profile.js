@@ -51,6 +51,8 @@ async function init() {
     if (els.avatarBtn) els.avatarBtn.src = picture;
     if (els.dropdownName) els.dropdownName.textContent = fullName;
     if (els.profileLink && userId) els.profileLink.href = `/profile/${userId}`;
+    const mobileProfileLink = document.getElementById("mobileProfileLink");
+    if (mobileProfileLink && userId) mobileProfileLink.href = `/profile/${userId}`;
 
   } catch (err) {
     console.error("Lỗi khi khởi tạo thông tin Navbar:", err);
@@ -99,6 +101,8 @@ export function applyProfileToNavbar(user) {
   if (els.dropdownName) els.dropdownName.textContent = fullName;
   if (els.profileLink && user.id) els.profileLink.href = `/profile/${user.id}`;
   if (els.sidebarAvatar) els.sidebarAvatar.src = picture;
+  const mobileProfileLink = document.getElementById("mobileProfileLink");
+  if (mobileProfileLink && user.id) mobileProfileLink.href = `/profile/${user.id}`;
 }
 
 export { getCurrentUserId, fetchUserProfileShared };

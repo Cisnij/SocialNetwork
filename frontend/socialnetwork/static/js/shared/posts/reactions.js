@@ -26,28 +26,36 @@ export function getTotalReactions(reactions) {
   return reactions.reduce((sum, r) => sum + (r.total || 0), 0);
 }
 
-export function updateReactionButton(reactBtn, type) {
+export function updateReactionButton(reactBtn, type, isComment = false) {
   reactBtn.replaceChildren();
-  reactBtn.classList.remove("font-bold", "text-indigo-600");
+  reactBtn.classList.remove("text-indigo-600");
+  if (!isComment) reactBtn.classList.remove("font-bold");
 
   if (!type) {
     reactBtn.dataset.reaction = "";
-    const icon = document.createElement("span");
-    icon.textContent = "👍";
+    if (!isComment) {
+      const icon = document.createElement("span");
+      icon.textContent = "👍";
+      reactBtn.append(icon);
+    }
     const text = document.createElement("span");
     text.textContent = "Thích";
-    reactBtn.append(icon, text);
+    reactBtn.append(text);
     return;
   }
 
   const r = REACTIONS.find((x) => x.type === type) || REACTIONS[0];
-  const icon = document.createElement("span");
-  icon.textContent = r.icon;
+  if (!isComment) {
+    const icon = document.createElement("span");
+    icon.textContent = r.icon;
+    reactBtn.append(icon);
+  }
   const text = document.createElement("span");
   text.textContent = r.label;
-  reactBtn.append(icon, text);
+  reactBtn.append(text);
   reactBtn.dataset.reaction = r.type;
-  reactBtn.classList.add("font-bold", "text-indigo-600");
+  reactBtn.classList.add("text-indigo-600");
+  if (!isComment) reactBtn.classList.add("font-bold");
 }
 
 /**
@@ -95,7 +103,7 @@ export function createReactionBar(ctx) {
 }
 
 export function applyReactionResponse(
-  { reactBtn, reactionCount, entity, onApplied },
+  { reactBtn, reactionCount, entity, onApplied, isComment = false },
   res,
   fallbackType = ""
 ) {
@@ -104,7 +112,7 @@ export function applyReactionResponse(
       ? ""
       : res.reaction_type || fallbackType || "";
 
-  updateReactionButton(reactBtn, activeType);
+  updateReactionButton(reactBtn, activeType, isComment);
 
   if (Array.isArray(res.count)) {
     const total = getTotalReactions(res.count);

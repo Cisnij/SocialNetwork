@@ -573,31 +573,45 @@ def notify_tagged_users(sender,instance,action, pk_set,**kwargs):#pk_set lấy r
                 post_id=instance.post_id,
                 message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} tagged you on post {instance.post.title}'
             )
+
 @receiver(post_save, sender=UserReaction)
 def notify_reaction(sender, instance, created, **kwargs):
     if not created:
         return
-    instance = UserReaction.objects.select_related('user__profile', 'reaction').get(pk=instance.pk) #lấy ra user reaction vừa tạo
-    reaction = getattr(instance, 'reaction', None) # lấy ra reaction từ user reaction vì  pk với reaction
-    target = getattr(reaction, 'content_object', None) #lấy ra content type từ reaction vì pk
-    if not hasattr(target, 'user') or target.user == instance.user: # nếu content object k có user
-        return
-    # phân biệt react vào post hay comment
-    if isinstance(target, Comment): # content object có là comment không
-        msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} reacted to your comment'
-        type = 'reaction_on_comment'
-    else:
-        msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} reacted to your post'
-        type = 'reaction_on_post'
+    try:
+        instance = UserReaction.objects.select_related(
+            'user__profile', 'reaction__content_type'
+        ).get(pk=instance.pk)
+        reaction = instance.reaction
+        if reaction is None:
+            return
+        target = reaction.content_object
+        if target is None:
+            return
+        if not hasattr(target, 'user') or target.user_id == instance.user_id:
+            return  # không tự thông báo cho chính mình
 
-    Notification.objects.create(
-        reciever=target.user,
-        actor=instance.user,
-        type=type,
-        object_id=reaction.object_id,
-        post_id=target.post_id,
-        message=msg
-    )
+        if isinstance(target, Comment):
+            notif_type = 'reaction_on_comment'
+            msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} đã cảm xúc bình luận của bạn'
+            post_id = target.post_id  # Comment.post_id là FK → int
+        else:
+            notif_type = 'reaction_on_post'
+            msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} đã cảm xúc bài viết của bạn'
+            post_id = target.post_id  # Post.post_id là PK
+
+        Notification.objects.create(
+            reciever=target.user,
+            actor=instance.user,
+            type=notif_type,
+            object_id=reaction.object_id,
+            post_id=post_id,
+            message=msg,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception('[notify_reaction] Error: %s', e)
+
 @receiver(post_save, sender=Follow)
 def notify_follow(sender, instance, created, **kwargs):
     if created:

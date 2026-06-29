@@ -204,7 +204,7 @@ urlpatterns = [
     #SCHEDULE TASK
     path('api/chat/conversation/<int:conv_id>/create-event/', CreateEventChat.as_view()),
     path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/', EventDetailChat.as_view()),# sửa, xóa, detail
-    path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/update-status/',EventDetailChat.as_view())
+    path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/update-status/',EventAcceptChat.as_view())
 ] + router.urls
 
 

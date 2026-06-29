@@ -34,6 +34,111 @@ async function refreshBadge() {
   }
 }
 
+// ======= NOTIFICATION POPUP =======
+let notifPopupTimeout = null;
+let lastNotifCount = 0;
+
+const NOTIF_TYPE_LABELS = {
+  comment_on_post: "đã bình luận bài viết của bạn",
+  reply_on_comment: "đã trả lời bình luận của bạn",
+  tagged_in_reply: "đã nhắc đến bạn trong một bình luận",
+  reaction_on_post: "đã cảm xúc bài viết của bạn",
+  reaction_on_comment: "đã cảm xúc bình luận của bạn",
+  friend_request: "đã gửi lời mời kết bạn",
+  follow: "đã theo dõi bạn",
+};
+
+/**
+ * Show FB-style notification popup with data from WS event.
+ * @param {object} notif - { actor_name, actor_avatar, message, type }
+ */
+function showNotifPopup(notif) {
+  const popup = document.getElementById("notifPopup");
+  if (!popup) return;
+
+  // Build avatar element
+  const iconEl = document.getElementById("notifPopupIcon");
+  if (iconEl) {
+    if (notif.actor_avatar) {
+      iconEl.innerHTML = "";
+      iconEl.style.backgroundImage = `url('${notif.actor_avatar}')`;
+      iconEl.style.backgroundSize = "cover";
+      iconEl.style.backgroundPosition = "center";
+    } else {
+      iconEl.style.backgroundImage = "";
+      iconEl.innerHTML = "🔔";
+    }
+  }
+
+  // Name
+  const nameEl = document.getElementById("notifPopupName");
+  if (nameEl) nameEl.textContent = notif.actor_name || "Ai đó";
+
+  // Sub-text: use message field, fall back to type label
+  const subText = notif.message || NOTIF_TYPE_LABELS[notif.type] || "Thông báo mới";
+  const subEl = document.getElementById("notifPopupSub");
+  if (subEl) subEl.textContent = subText;
+
+  popup.classList.remove("hidden");
+
+  // Re-trigger slide-in animation
+  popup.style.animation = "none";
+  void popup.offsetWidth; // force reflow
+  popup.style.animation = "slideInRight 0.3s ease";
+
+  // Re-trigger shrink bar animation
+  const bar = document.getElementById("notifPopupProgress");
+  if (bar) {
+    bar.style.animation = "none";
+    void bar.offsetWidth;
+    bar.style.animation = "shrinkBar 5s linear forwards";
+  }
+
+  if (notifPopupTimeout) clearTimeout(notifPopupTimeout);
+  notifPopupTimeout = setTimeout(() => popup.classList.add("hidden"), 5000);
+}
+
+document.getElementById("closeNotifPopup")?.addEventListener("click", () => {
+  document.getElementById("notifPopup")?.classList.add("hidden");
+  if (notifPopupTimeout) clearTimeout(notifPopupTimeout);
+});
+
+// ======= INCOMING CALL =======
+let pendingCallConvId = null;
+
+function showIncomingCall(data) {
+  const modal = document.getElementById("incomingCallModal");
+  if (!modal) return;
+  const avatarEl = document.getElementById("incomingCallerAvatar");
+  const nameEl = document.getElementById("incomingCallerName");
+  if (avatarEl) avatarEl.src = data.caller_avatar || "";
+  if (nameEl) nameEl.textContent = data.caller_name || "Cuộc gọi đến";
+  pendingCallConvId = data.conv_id;
+  modal.classList.remove("hidden");
+  if (window._callDismissTimer) clearTimeout(window._callDismissTimer);
+  window._callDismissTimer = setTimeout(() => modal.classList.add("hidden"), 30000);
+}
+
+document.getElementById("declineCallBtn")?.addEventListener("click", async () => {
+  document.getElementById("incomingCallModal")?.classList.add("hidden");
+  if (pendingCallConvId) {
+    try { await authFetch(API.declineCall(pendingCallConvId), { method: "POST" }); } catch (_) {}
+    pendingCallConvId = null;
+  }
+});
+
+document.getElementById("acceptCallBtn")?.addEventListener("click", async () => {
+  document.getElementById("incomingCallModal")?.classList.add("hidden");
+  if (!pendingCallConvId) return;
+  try {
+    const res = await authFetch(API.joinVideoRoom(pendingCallConvId), { method: "POST" });
+    if (!res.ok) { alert("Cuộc gọi đã kết thúc"); return; }
+    const callData = await res.json();
+    if (window.startVideoCall) await window.startVideoCall(callData.token, callData.livekit_url, callData.room_name, pendingCallConvId);
+  } catch (e) { console.error("[nav] join call error", e); }
+  pendingCallConvId = null;
+});
+
 function connectNotifWs() {
   // Cancel any pending reconnect timer first
   if (notifWsReconnectTimer) {
@@ -54,22 +159,50 @@ function connectNotifWs() {
       resetNotifPingWatchdog();
     };
 
-    notifWs.onmessage = (ev) => {
+    notifWs.onmessage = async (ev) => {
       try {
         const data = JSON.parse(ev.data);
 
-        // Ping-pong (Task 5)
+        // Ping-pong
         if (data.type === "ping") {
           notifWs.send(JSON.stringify({ type: "pong" }));
           resetNotifPingWatchdog(); // reset watchdog on each server ping
           return;
         }
 
+        // Incoming call
+        if (data.type === "incoming_call") {
+          showIncomingCall(data);
+          return;
+        }
+
+        // Bị hủy cuộc gọi trước khi bắt máy (Caller bấm tắt)
+        if (data.type === "call_cancelled") {
+          const modal = document.getElementById("incomingCallModal");
+          if (modal) modal.classList.add("hidden");
+          if (pendingCallConvId === data.conv_id) {
+            pendingCallConvId = null;
+          }
+          if (window._callDismissTimer) {
+            clearTimeout(window._callDismissTimer);
+            window._callDismissTimer = null;
+          }
+          return;
+        }
+
         if (typeof data.unread_count === "number") {
-          if (data.unread_count > 0) {
-            badge.textContent = data.unread_count > 99 ? "99+" : data.unread_count;
+          const newCount = data.unread_count;
+          if (newCount > 0) {
+            badge.textContent = newCount > 99 ? "99+" : newCount;
             badge.classList.remove("hidden");
-          } else badge.classList.add("hidden");
+            // Show popup only on NEW notifications — use WS data directly (no extra REST call)
+            if (newCount > lastNotifCount && data.message) {
+              showNotifPopup(data);
+            }
+          } else {
+            badge.classList.add("hidden");
+          }
+          lastNotifCount = newCount;
         }
       } catch (_) {}
     };

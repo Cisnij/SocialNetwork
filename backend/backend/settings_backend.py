@@ -64,7 +64,8 @@ CACHEOPS = {
     'api.conversation': {'ops': 'all', 'timeout': 60 * 5},
     'api.conversationMember': {'ops': 'all', 'timeout': 60 * 5},
     'api.task':{'ops':'all', 'timeout': 60*5},
-    'api.vote':{'ops':'all', 'timeout': 60*5},
+    'api.event':{'ops':'all', 'timeout': 60*5},
+    'api.eventparticipant':{'ops':'all', 'timeout': 60*1},
     'api.voteoption':{'ops':'all', 'timeout': 60*2},
     'api.uservote':{'ops':'all', 'timeout': 60*1},
     # thư viện

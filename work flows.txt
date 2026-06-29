@@ -146,10 +146,14 @@ work flows
     #   → WS gửi end_call → end_reason = completed
     #   → broadcast call_ended trong ws/call/<conv_id>/
     #   → hiện system message thời gian cuộc gọi
+    #
+    # Sau N giây không gọi được
+    #  ->Nếu có người kết nối, LiveKit sẽ tự động bắn một sự kiện tên là RoomEvent.ParticipantConnected đến máy của caller
+    #  -> Fe set gọi settimeout sau 30 giây mà không nhận sự kiện connect vào thì gọi decline bởi chủ phòng hủy phòng
 
     # ngoài cuộc gọi(tức là tất cả chưa connect vào ws):
          # call incoming: notification
-         # created by hủy: notification
+         # call_cancled bởi caller hủy: notification
         # user decline: call consumer broadcast thông qua api
     # trong cuộc gọi tức là tất cả đã connect vào ws
          # user leave: call consumer

@@ -89,7 +89,7 @@ function buildCommentReactionUI(comment, meta) {
   const reactionCountBtn = document.createElement("button");
   reactionCountBtn.type = "button";
   reactionCountBtn.className =
-    "text-gray-500 dark:text-[#b0b3b8] hover:underline font-medium";
+    "text-xs text-gray-500 dark:text-[#b0b3b8] hover:underline font-medium";
   syncReactionCountBtn(reactionCountBtn, comment);
   reactionCountBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -102,8 +102,8 @@ function buildCommentReactionUI(comment, meta) {
   const reactBtn = document.createElement("button");
   reactBtn.type = "button";
   reactBtn.className =
-    "hover:text-fb-primary dark:hover:text-[#e4e6eb] transition px-0";
-  updateReactionButton(reactBtn, comment.user_is_reaction || "");
+    "text-xs font-semibold hover:text-fb-primary dark:hover:text-[#e4e6eb] transition px-0";
+  updateReactionButton(reactBtn, comment.user_is_reaction || "", true);
 
   const reactionCtx = {
     targetId: comment.id,

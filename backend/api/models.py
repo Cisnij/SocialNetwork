@@ -501,7 +501,7 @@ class Task(models.Model):
     #dùng để gắn vào nhiều model khác linh động mà k bị trói buộc foreign key khi gắn
     content_type= models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey('content_type', 'object_id') # ghép lại lấy ra từ model ở content_object với id là object_id
 
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=250)
@@ -594,7 +594,7 @@ class CallParticipant(models.Model):
 class Event(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey('content_type', 'object_id')# ghép lại lấy ra từ model ở content_object với id là object_id, ví dụ khi ctt là post và id là 7 thì nó sẽ lấy ra id 7 từ model post bao gồm các trường ở post luôn ví dụ user,post_id,photo...
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=250)
     description = models.TextField(null=True,blank=True)

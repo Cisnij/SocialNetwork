@@ -155,7 +155,10 @@ export const API = {
   taskMembers: (convId, taskId) => `${API_BASE_URL}/api/chat/conversation/${convId}/task/${taskId}/member/`,
   updateTask: (convId, taskId) => `${API_BASE_URL}/api/chat/conversation/${convId}/task/${taskId}/update/`,
   deleteTask: (convId, taskId) => `${API_BASE_URL}/api/chat/conversation/${convId}/task/${taskId}/delete/`,
-  listTasks: (convId) => `${API_BASE_URL}/api/chat/conversation/task/${convId}/list-task/`,
+  listTasks: (convId, search = "") => {
+    const base = `${API_BASE_URL}/api/chat/conversation/task/${convId}/list-task/`;
+    return search ? `${base}?search=${encodeURIComponent(search)}` : base;
+  },
   createVote: (convId) => `${API_BASE_URL}/api/chat/conversation/vote/${convId}/create-vote/`,
   deleteVote: (convId, voteId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/delete-vote/`,
   updateVote: (convId, voteId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/update-vote/`,
@@ -164,10 +167,24 @@ export const API = {
     `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/option/${optionId}/update-option/`,
   deleteVoteOption: (convId, voteId, optionId) =>
     `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/option/${optionId}/delete-option/`,
-  listVotes: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/list-vote/`,
+  listVotes: (convId, search = "") => {
+    const base = `${API_BASE_URL}/api/chat/conversation/${convId}/vote/list-vote/`;
+    return search ? `${base}?search=${encodeURIComponent(search)}` : base;
+  },
   listUserVotes: (convId, voteId, optionId) => `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/option/${optionId}/user/`,
   userVote: (convId, voteId, optionId) =>
     `${API_BASE_URL}/api/chat/conversation/${convId}/vote/${voteId}/option/${optionId}/vote/`,
+
+  // Video call
+  createVideoRoom: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/call-video/create/`,
+  joinVideoRoom: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/call-video/join/`,
+  declineCall: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/call-video/decline/`,
+
+  // Events
+  createEvent: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/create-event/`,
+  listEvents: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/create-event/`,
+  eventDetail: (convId, eventId) => `${API_BASE_URL}/api/chat/conversation/${convId}/event/${eventId}/`,
+  updateEventStatus: (convId, eventId) => `${API_BASE_URL}/api/chat/conversation/${convId}/event/${eventId}/update-status/`,
 
   emails: () => `${API_BASE_URL}/api/user/email/`,
   addEmail: () => `${API_BASE_URL}/api/email/add/`,

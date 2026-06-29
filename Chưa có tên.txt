@@ -21,7 +21,7 @@ chưa xong
 -xây search cho chat
 chat nhóm:
 	//call video
-	lên lịch
+	// lên lịch
 	// task to do
 	// tạo vote
 	// file nội bộ

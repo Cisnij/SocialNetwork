@@ -114,7 +114,7 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
             await self.channel_layer.group_discard(self.room_name, self.channel_name)  # rời khỏi group khi ngắt kết nối, xóa khỏi redis
 
     # ===== RECEIVE - nhận tin nhắn từ client =====
-    async def receive(self, text_data):
+    async def receive(self, text_data): # tên mặc định của class, hàm này chạy tự động khi fe gọi ws.send
         try:
             data = json.loads(text_data)
         except json.JSONDecodeError:

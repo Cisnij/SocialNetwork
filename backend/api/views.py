@@ -2,7 +2,6 @@ import uuid
 from datetime import timedelta
 from itertools import chain
 from adrf.views import APIView as AsyncAPIView
-from adrf.generics import ListCreateAPIView as AsyncListCreateAPIView
 
 
 from celery import app
@@ -3083,6 +3082,7 @@ class CreateVideoRoomView(AsyncAPIView):
         await CallParticipant.objects.filter(
             room=room, user=request.user
         ).aupdate(status='accepted', joined_at=timezone.now())
+        
         profile = request.user.profile
         full_name = profile.full_name
         avatar = getattr(profile.picture, "url", None) if profile else None
@@ -3260,53 +3260,69 @@ class DeclineCallView(AsyncAPIView):
         return msg
 
 #===============================EVENT===========================================
-class CreateEventChat(AsyncListCreateAPIView):
+class CreateEventChat(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = EventSerializer
-    pagination_class = LargePagePagination
-    async def get_queryset(self):
-        conv_id = self.kwargs.get("conv_id")
-        if not await ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).aexists():
-            raise PermissionDenied("Bạn không có trong group")
-        content_type = await sync_to_async(ContentType.objects.get_for_model)(Conversation)
+    serializer_class   = EventSerializer
+    pagination_class   = LargePagePagination
 
-        return Event.objects.filter(content_type=content_type,object_id=conv_id).select_related('created_by','created_by__profile').prefetch_related('participants__user__profile').order_by('start_time')
-
-    async def perform_create(self, serializer):
-        conv_id = self.kwargs.get("conv_id")
-        if not await ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).aexists():
+    def _check_member(self, conv_id, user):
+        if not ConversationMember.objects.filter(
+            conversation_id=conv_id, user=user, is_active=True
+        ).exists():
             raise PermissionDenied("Bạn không có trong group")
-        content_type = await sync_to_async(ContentType.objects.get_for_model)(Conversation)
-        event = await sync_to_async(serializer.save)(
+
+    def _get_content_type(self):
+        return ContentType.objects.get_for_model(Conversation)
+
+    def get_queryset(self):
+        conv_id = self.kwargs.get('conv_id')
+        self._check_member(conv_id, self.request.user)
+        content_type = self._get_content_type()
+        return (
+            Event.objects
+            .filter(content_type=content_type, object_id=conv_id)
+            .select_related('created_by', 'created_by__profile')
+            .prefetch_related('participants__user__profile')
+            .order_by('start_time')
+        )
+
+    def perform_create(self, serializer):
+        conv_id      = self.kwargs.get('conv_id')
+        user         = self.request.user
+        self._check_member(conv_id, user)
+        content_type = self._get_content_type()
+
+        # Save event vào DB
+        event = serializer.save(
             content_type=content_type,
             object_id=conv_id,
             created_by=user,
         )
 
-        member_ids = await (
-            ConversationMember.objects
-            .filter(conversation_id=conv_id, is_active=True)
-            .values_list('user_id', flat=True)
-            .alist()
-        ) # tạo participant cho tất cả trong group
+        # Tạo participant cho tất cả member trong group
+        member_ids = ConversationMember.objects.filter(
+            conversation_id=conv_id, is_active=True
+        ).values_list('user_id', flat=True)
 
-        await EventParticipant.objects.abulk_create([
+        EventParticipant.objects.bulk_create([
             EventParticipant(event=event, user_id=uid)
             for uid in member_ids
         ], ignore_conflicts=True)
 
-        #Đặt reminder trước 15p
-        start_time = serializer.validated_data.get('start_time')  #lấy ra trường này ở serializer khi truyền
-        remind_at = start_time - timedelta(minutes=5) # nhắc trước thời gian start 5p.Ví dụ 15p trước 3h thứ 2
-        if remind_at > timezone.now(): # chỉ đặt nếu thời gian start lớn hơn hiện tại, chưa trễ. Ví dụ t2 nhắc mà bây giờ t3 thì k đc nhắc, nếu hnay là cn và t2 start thì nhắc
-            task = send_event_reminder.apply_async( #apply_async để đặt lịch chạy, gọi deplay thì chạy ngay async
-                args=[event.id, content_type.id], # chạy cái nào
-                eta=remind_at, # thời gian chạy
+        # Đặt reminder trước 15p
+        # Ví dụ: event 3h thứ 2 → nhắc lúc 2h45 thứ 2
+        start_time = event.start_time
+        remind_at  = start_time - timedelta(minutes=15)
+        if remind_at > timezone.now():  # chỉ đặt nếu chưa trễ
+            task = send_event_reminder.apply_async(  # apply_async để đặt lịch chạy, delay thì chạy ngay
+                args=[event.id, content_type.id],   # truyền event_id và content_type_id để dùng chung
+                eta=remind_at,                       # thời điểm chạy
             )
-            await Event.objects.filter(id=event.id).aupdate(celery_task_id=task.id)
+            Event.objects.filter(id=event.id).update(celery_task_id=task.id)  # lưu task id để cancel sau nếu cần
 
-        profile = await sync_to_async(lambda: user.profile)()
-        msg = await Message.objects.acreate( #tạo system message
+        # Tạo system message thông báo vào chat
+        profile = user.profile
+        msg = Message.objects.create(
             conversation_id=conv_id,
             sender=user,
             content=f"{profile.full_name} đã tạo sự kiện: {event.title} lúc {start_time.strftime('%H:%M %d/%m/%Y')}",
@@ -3314,7 +3330,7 @@ class CreateEventChat(AsyncListCreateAPIView):
         )
         try:
             channel_layer = get_channel_layer()
-            await channel_layer.group_send(
+            async_to_sync(channel_layer.group_send)(  # sync vì đang trong sync context
                 f'chat_{conv_id}',
                 {
                     'type':         'system_message',
@@ -3347,10 +3363,12 @@ class EventDetailChat(generics.RetrieveUpdateDestroyAPIView):
         if event.created_by != self.request.user:
             raise PermissionDenied("Phải là người tạo mới có quyền update")
         if event.celery_task_id:
+            from backend.celery import app
             app.control.revoke(event.celery_task_id, terminate=True) #hủy task
         serializer.save()
         new_start = serializer.validated_data.get('start_time', event.start_time) # nếu có update thời gian thì phải update lại thgian celery chạy
         remind_at = new_start - timedelta(minutes=15)
+        content_type = ContentType.objects.get_for_model(Conversation)
         task = send_event_reminder.apply_async(
             args=[event.id, content_type.id],
             eta=remind_at,

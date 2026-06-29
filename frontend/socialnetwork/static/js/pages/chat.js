@@ -1213,20 +1213,31 @@ function updateChatHeaderActions(conv) {
 
 
   // Vote Button
-
   const voteBtn = document.createElement("button");
-
   voteBtn.type = "button";
-
   voteBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
-
   voteBtn.title = "Bình chọn";
-
   voteBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>`;
-
   voteBtn.onclick = () => showVoteModal(conv.id);
-
   chatHeaderActions.appendChild(voteBtn);
+
+  // Event Button
+  const eventBtn = document.createElement("button");
+  eventBtn.type = "button";
+  eventBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
+  eventBtn.title = "Sự kiện";
+  eventBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`;
+  eventBtn.onclick = () => showEventModal(conv.id);
+  chatHeaderActions.appendChild(eventBtn);
+
+  // Video Call Button
+  const callBtn = document.createElement("button");
+  callBtn.type = "button";
+  callBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
+  callBtn.title = "Video Call";
+  callBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>`;
+  callBtn.onclick = () => initVideoCall(conv.id);
+  chatHeaderActions.appendChild(callBtn);
 
 
 
@@ -1890,17 +1901,23 @@ function appendMessage(m, scroll = true, prepend = false) {
 
     const actions = document.createElement("div");
 
-    actions.className = "flex gap-2 mt-1 text-[10px] opacity-80 justify-end";
+    actions.className = "flex gap-2 mt-1 justify-end";
 
     const unsend = document.createElement("button");
 
-    unsend.type = "button"; unsend.textContent = "Thu hồi";
+    unsend.type = "button";
+
+    unsend.textContent = "Thu hồi";
+
+    unsend.className = "px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition text-[11px] font-semibold";
 
     unsend.onclick = async () => { await authFetch(API.unsendMessage(m.id), { method: "DELETE" }); wrap.remove(); };
 
     const edit = document.createElement("button");
 
-    edit.type = "button"; edit.textContent = "Sửa";
+    edit.type = "button";
+    edit.textContent = "Sửa";
+    edit.className = "px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition text-[11px] font-semibold";
 
     edit.onclick = () => showInlineEdit(m.id, text, bubble, edit);
 
@@ -2877,164 +2894,119 @@ async function showAddTaskMembersModal(convId, taskId) {
 
 
 
-async function loadTaskList(convId, container) {
-
+async function loadTaskList(convId, container, searchQuery = "") {
   const list = container?.querySelector(`#taskList_${convId}`) || document.getElementById("taskList");
-
   if (!list) return;
-
-  const res = await authFetch(withPageSize(API.listTasks(convId), 50));
-
+  const res = await authFetch(API.listTasks(convId, searchQuery));
   const data = res.ok ? await res.json() : { results: [] };
-
   const statusFilter = container?.querySelector(`#taskStatusFilter_${convId}`)?.value;
-
   const assigneeFilter = container?.querySelector(`#taskAssigneeFilter_${convId}`)?.value;
-
   let tasks = data.results || [];
 
-
-
   if (statusFilter) {
-
     tasks = tasks.filter(t => t.status === statusFilter || (statusFilter === 'done' && t.is_finished));
-
   }
-
   if (assigneeFilter) {
-
     tasks = tasks.filter(t => t.assigned_to?.some(u => Number(u.id) === Number(assigneeFilter)));
-
   }
-
-
 
   list.replaceChildren();
-
   tasks.forEach((t) => {
-
     const card = document.createElement("div");
+    card.className = "p-3 rounded-xl bg-white dark:bg-white/5 border dark:border-white/10 space-y-2";
 
-    card.className = "p-3 rounded-xl bg-white dark:bg-white/5 border dark:border-white/10";
+    const isCreator = t.created_by?.user === myUserId || Number(t.created_by?.id) === Number(myProfileId);
+    const isDone = t.status === 'done' || t.is_finished;
 
-    const canDelete = t.created_by?.user === myUserId;
+    const priorityClass = t.priority === 'high' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+      : t.priority === 'low' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+    const statusClass = isDone ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+      : t.status === 'in_progress' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+      : 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-400';
+    const statusLabel = isDone ? 'Hoàn thành' : t.status === 'in_progress' ? 'Đang làm' : 'Cần làm';
+    const creatorName = t.created_by ? (t.created_by.full_name || `${t.created_by.first_name || ''} ${t.created_by.last_name || ''}`.trim()) : '';
 
     card.innerHTML = `
-
-      <div class="flex items-start justify-between">
-
+      <div class="flex items-start justify-between gap-2">
         <div class="flex-1 min-w-0">
-
-          <p class="font-semibold text-sm dark:text-white ${t.is_finished ? 'line-through opacity-60' : ''}">${t.title}</p>
-
-          ${t.description ? `<p class="text-xs text-gray-500 mt-1">${t.description}</p>` : ''}
-
-          <div class="flex gap-2 mt-1 flex-wrap">
-
-            <span class="text-[10px] px-2 py-0.5 rounded-full ${t.priority === 'high' ? 'bg-red-100 text-red-600' : t.priority === 'low' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-700'}">${t.priority}</span>
-
-            <span class="text-[10px] px-2 py-0.5 rounded-full ${t.status === 'done' ? 'bg-green-100 text-green-600' : t.status === 'in_progress' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}">${t.status}</span>
-
+          <p class="font-semibold text-sm dark:text-white ${isDone ? 'line-through opacity-60' : ''}">${t.title}</p>
+          ${t.description ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${t.description}</p>` : ''}
+          <div class="flex gap-1.5 mt-1.5 flex-wrap items-center">
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${priorityClass}">${t.priority}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${statusClass}">${statusLabel}</span>
             ${t.deadline ? `<span class="text-[10px] text-gray-400">📅 ${new Date(t.deadline).toLocaleDateString('vi-VN')}</span>` : ''}
-
           </div>
-
-          ${t.assigned_to?.length ? `<div class="flex gap-1 mt-2 flex-wrap">${t.assigned_to.map((u) => `<span class="text-[10px] bg-fb-secondary dark:bg-white/10 px-2 py-0.5 rounded-full">@${u.full_name || ''}</span>`).join('')}</div>` : ''}
-
+          ${creatorName ? `<p class="text-[10px] text-gray-400 mt-1">👤 Giao bởi: <span class="font-semibold text-gray-500 dark:text-gray-300">${creatorName}</span></p>` : ''}
+          ${t.assigned_to?.length ? `<div class="flex gap-1 mt-1.5 flex-wrap">${t.assigned_to.map((u) => `<span class="text-[10px] bg-fb-secondary dark:bg-white/10 px-2 py-0.5 rounded-full dark:text-gray-300">@${u.full_name || u.first_name || ''}</span>`).join('')}</div>` : ''}
         </div>
-
-        <div class="flex gap-1 shrink-0">
-
-          ${canDelete ? `<button type="button" data-task-id="${t.id}" data-action="edit" class="text-xs px-2 py-1 rounded hover:bg-fb-secondary dark:hover:bg-white/10 text-blue-500">✏️</button>` : ''}
-
-          ${canDelete ? `<button type="button" data-task-id="${t.id}" data-action="add-members" class="text-xs px-2 py-1 rounded hover:bg-fb-secondary dark:hover:bg-white/10">➕</button>` : ''}
-
-          <button type="button" data-task-id="${t.id}" data-action="toggle" class="text-xs px-2 py-1 rounded hover:bg-fb-secondary dark:hover:bg-white/10 ${t.is_finished ? 'text-gray-400' : 'text-green-600'}">${t.is_finished ? '↩️' : '✅'}</button>
-
-          ${canDelete ? `<button type="button" data-task-id="${t.id}" data-action="delete" class="text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500">🗑️</button>` : ''}
-
+        <div class="flex gap-1 shrink-0 flex-col items-end">
+          ${isCreator ? `<button type="button" data-action="edit" class="text-xs px-2 py-1 rounded hover:bg-fb-secondary dark:hover:bg-white/10 text-blue-500" title="Sửa">✏️</button>` : ''}
+          ${isCreator ? `<button type="button" data-action="add-members" class="text-xs px-2 py-1 rounded hover:bg-fb-secondary dark:hover:bg-white/10 text-emerald-500" title="Thêm thành viên">➕</button>` : ''}
+          ${!isDone ? `<button type="button" data-action="mark-done" class="text-xs px-2 py-1 rounded hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600" title="Đánh dấu xong">✅</button>` : `<span class="text-[10px] text-green-500 font-semibold px-1">✓ Xong</span>`}
+          ${isCreator ? `<button type="button" data-action="delete" class="text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500" title="Xóa">🗑️</button>` : ''}
         </div>
-
-      </div>`;
+      </div>
+      ${isCreator && !isDone ? `
+      <div class="flex items-center gap-2 mt-1 pt-2 border-t dark:border-white/10">
+        <label class="text-[10px] text-gray-500 dark:text-gray-400 shrink-0">Trạng thái:</label>
+        <select data-action="change-status" class="task-status-select text-xs rounded-lg px-2 py-1 bg-gray-50 dark:bg-white/5 dark:text-white border dark:border-white/10 flex-1">
+          <option value="todo" ${t.status === 'todo' ? 'selected' : ''}>Cần làm</option>
+          <option value="in_progress" ${t.status === 'in_progress' ? 'selected' : ''}>Đang làm</option>
+          <option value="done" ${isDone ? 'selected' : ''}>Hoàn thành</option>
+        </select>
+      </div>` : ''}
+    `;
 
     list.appendChild(card);
 
-
-
     card.querySelector("[data-action='add-members']")?.addEventListener("click", () => showAddTaskMembersModal(convId, t.id));
 
-    card.querySelector("[data-action='toggle']")?.addEventListener("click", async () => {
+    card.querySelector("[data-action='mark-done']")?.addEventListener("click", async () => {
+      const body = { is_finished: true, status: 'done' };
+      const r = await authFetch(API.updateTask(convId, t.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (r.ok) loadTaskList(convId, container, searchQuery); else showToast("Cập nhật thất bại", "red");
+    });
 
-      const body = { is_finished: !t.is_finished, status: t.is_finished ? 'todo' : 'done' };
-
-      await authFetch(API.updateTask(convId, t.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-
-      loadTaskList(convId, container);
-
+    card.querySelector(".task-status-select")?.addEventListener("change", async (e) => {
+      const newStatus = e.target.value;
+      const body = { status: newStatus, is_finished: newStatus === 'done' };
+      const r = await authFetch(API.updateTask(convId, t.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (r.ok) loadTaskList(convId, container, searchQuery); else showToast("Cập nhật thất bại", "red");
     });
 
     card.querySelector("[data-action='delete']")?.addEventListener("click", async () => {
-
       if (!await confirmDialog("Xóa task này?")) return;
-
-      await authFetch(API.deleteTask(convId, t.id), { method: "DELETE" });
-
-      loadTaskList(convId, container);
-
+      const r = await authFetch(API.deleteTask(convId, t.id), { method: "DELETE" });
+      if (r.ok) loadTaskList(convId, container, searchQuery); else showToast("Xóa thất bại", "red");
     });
 
     card.querySelector("[data-action='edit']")?.addEventListener("click", () => {
-
       const dt = t.deadline ? new Date(t.deadline).toISOString().slice(0, 16) : '';
-
       card.innerHTML = `
-
         <div class="space-y-2 p-1">
-
           <input class="edit-title w-full rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 border dark:border-white/10 text-sm dark:text-white" value="${t.title}">
-
           <textarea class="edit-desc w-full rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 border dark:border-white/10 text-sm dark:text-white" rows="2">${t.description || ''}</textarea>
-
           <div class="flex gap-2">
-
-            <select class="edit-priority w-1/2 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 text-sm dark:text-white">
-
+            <select class="edit-priority w-1/2 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 text-sm dark:text-white border dark:border-white/10">
               <option value="medium" ${t.priority === 'medium' ? 'selected' : ''}>Medium</option>
-
               <option value="low" ${t.priority === 'low' ? 'selected' : ''}>Low</option>
-
               <option value="high" ${t.priority === 'high' ? 'selected' : ''}>High</option>
-
             </select>
-
-            <input class="edit-deadline w-1/2 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 text-sm dark:text-white" type="datetime-local" value="${dt}">
-
+            <input class="edit-deadline w-1/2 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-white/5 text-sm dark:text-white border dark:border-white/10" type="datetime-local" value="${dt}">
           </div>
-
           <div class="flex gap-2 justify-end mt-2">
-
             <button class="cancel-edit text-xs px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-white/10 dark:text-white">Hủy</button>
-
-            <button class="save-edit text-xs px-3 py-1.5 rounded-lg bg-fb-primary text-white">Lưu</button>
-
+            <button class="save-edit text-xs px-3 py-1.5 rounded-lg bg-fb-primary text-white font-semibold">Lưu</button>
           </div>
-
         </div>
-
       `;
-
-      card.querySelector(".cancel-edit").onclick = () => loadTaskList(convId, container);
-
+      card.querySelector(".cancel-edit").onclick = () => loadTaskList(convId, container, searchQuery);
       card.querySelector(".save-edit").onclick = async () => {
-
         const body = {
-
           title: card.querySelector(".edit-title").value.trim(),
-
           description: card.querySelector(".edit-desc").value.trim(),
-
           priority: card.querySelector(".edit-priority").value,
-
         };
 
         const dl = card.querySelector(".edit-deadline").value;
@@ -3158,7 +3130,13 @@ async function showVoteModal(convId, containerOverride) {
 
       <div class="glass-card rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col p-4">
 
-        <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">📊 Bình chọn</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-bold text-lg dark:text-white">📊 Bình chọn</h2>
+          <div class="flex gap-2">
+            <button type="button" id="refreshVoteBtn_${convId}" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-sm hover:bg-slate-200 transition-colors" title="Làm mới">🔄</button>
+            <button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl hover:bg-slate-200 transition-colors">&times;</button>
+          </div>
+        </div>
 
         <div id="voteContent_${convId}" class="flex-1 overflow-y-auto"></div>
 
@@ -3176,13 +3154,17 @@ async function showVoteModal(convId, containerOverride) {
 
   contentEl.innerHTML = `
 
-    <button type="button" id="showCreateVoteForm_${convId}" class="text-sm text-fb-primary font-semibold mb-3">+ Tạo bình chọn mới</button>
-
+    <div class="flex items-center justify-between mb-3">
+      <button type="button" id="showCreateVoteForm_${convId}" class="text-sm text-fb-primary font-semibold">+ Tạo bình chọn mới</button>
+    </div>
+    <div class="mb-3">
+      <input type="text" id="voteSearchInput_${convId}" placeholder="Tìm kiếm bình chọn..." class="w-full text-xs rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white border dark:border-white/10">
+    </div>
     <div id="createVoteForm_${convId}" class="hidden space-y-2 mb-3 p-3 bg-slate-50 dark:bg-white/5 rounded-xl">
 
-      <input id="voteTitleInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Câu hỏi">
+      <input id="voteTitleInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Câu hỏi bình chọn">
 
-      <div id="voteOptionsInput_${convId}" class="space-y-1">
+      <div id="voteOptionsInput_${convId}" class="space-y-2">
 
         <input class="vote-option-input w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Lựa chọn 1">
 
@@ -3190,7 +3172,7 @@ async function showVoteModal(convId, containerOverride) {
 
       </div>
 
-      <button type="button" id="addVoteOptionRow_${convId}" class="text-xs text-fb-primary">+ Thêm lựa chọn</button>
+      <button type="button" id="addVoteOptionRow_${convId}" class="text-xs text-fb-primary font-medium">+ Thêm lựa chọn</button>
 
       <button type="button" id="submitCreateVote_${convId}" class="w-full rounded-lg bg-fb-primary text-white font-semibold py-2 text-sm">Tạo bình chọn</button>
 
@@ -3227,22 +3209,23 @@ async function showVoteModal(convId, containerOverride) {
   contentEl.querySelector(`#submitCreateVote_${convId}`)?.addEventListener("click", async () => {
 
     const title = contentEl.querySelector(`#voteTitleInput_${convId}`)?.value.trim();
-
     if (!title) { showToast("Nhập câu hỏi", "red"); return; }
-
     const options = [...contentEl.querySelectorAll(".vote-option-input")].map((i) => i.value.trim()).filter(Boolean);
-
     if (options.length < 2) { showToast("Cần ít nhất 2 lựa chọn", "red"); return; }
-
     const res = await authFetch(API.createVote(convId), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, options }) });
-
     if (res.ok) { showToast("Đã tạo bình chọn", "green"); contentEl.querySelector(`#createVoteForm_${convId}`)?.classList.add("hidden"); loadVoteList(convId, contentEl); }
-
     else { showToast("Tạo thất bại", "red"); }
-
   });
 
+  const searchInput = contentEl.querySelector(`#voteSearchInput_${convId}`);
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => loadVoteList(convId, contentEl, e.target.value.trim()));
+  }
 
+  const refreshBtn = document.getElementById(`refreshVoteBtn_${convId}`);
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => loadVoteList(convId, contentEl, searchInput?.value?.trim() || ""));
+  }
 
   await loadVoteList(convId, contentEl);
 
@@ -3250,32 +3233,21 @@ async function showVoteModal(convId, containerOverride) {
 
 
 
-async function loadVoteList(convId, container) {
-
+async function loadVoteList(convId, container, searchQuery = "") {
   const list = container?.querySelector(`#voteList_${convId}`) || document.getElementById("voteList");
-
   if (!list) return;
-
-  const res = await authFetch(API.listVotes(convId));
-
+  const res = await authFetch(API.listVotes(convId, searchQuery));
   const data = res.ok ? await res.json() : { results: [] };
-
   list.replaceChildren();
 
   for (const v of (data.results || [])) {
-
     const card = document.createElement("div");
-
     card.className = "p-3 rounded-xl bg-white dark:bg-white/5 border dark:border-white/10 relative group";
-
     const totalVotes = (v.options || []).reduce((s, o) => s + o.count, 0);
-
-    const canDelete = v.created_by?.user === myUserId;
-
-
+    const canDelete = v.created_by?.user === myUserId || Number(v.created_by?.id) === Number(myProfileId);
+    const creatorName = v.created_by ? (v.created_by.full_name || `${v.created_by.first_name || ''} ${v.created_by.last_name || ''}`.trim()) : '';
 
     card.innerHTML = `
-
       ${canDelete ? `
         <button type="button" class="absolute top-3 right-12 hidden group-hover:flex w-7 h-7 bg-slate-50 dark:bg-white/10 hover:bg-blue-100 dark:hover:bg-blue-500/30 rounded-full items-center justify-center text-slate-500 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm" title="Sửa tiêu đề bình chọn" data-action="edit-vote" data-id="${v.id}">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -3284,68 +3256,60 @@ async function loadVoteList(convId, container) {
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
         </button>
       ` : ''}
-
-      <div class="flex items-start justify-between mb-3 pr-20">
-
-        <p class="font-semibold text-sm dark:text-white vote-title-display">${v.title}</p>
-
-        <span class="text-[10px] px-2 py-0.5 rounded-full ${v.is_closed ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">${v.is_closed ? 'Đã đóng' : 'Đang mở'}</span>
-
+      <div class="flex items-start justify-between mb-2 pr-20">
+        <div>
+          <p class="font-semibold text-sm dark:text-white vote-title-display">${v.title}</p>
+          ${creatorName ? `<p class="text-[10px] text-gray-400 mt-0.5">👤 Tạo bởi: <span class="font-semibold text-gray-500 dark:text-gray-300">${creatorName}</span></p>` : ''}
+        </div>
+        <div class="flex flex-col items-end gap-1">
+          <span class="text-[10px] px-2 py-0.5 rounded-full ${v.is_closed ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">${v.is_closed ? 'Đã đóng' : 'Đang mở'}</span>
+          ${canDelete ? `<button type="button" data-action="toggle-vote" class="text-[10px] px-2 py-0.5 rounded border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 dark:text-gray-300 transition-colors">${v.is_closed ? 'Mở lại' : 'Đóng vote'}</button>` : ''}
+        </div>
       </div>
 
       <div class="space-y-1">
-
-        ${(v.options || []).map((o) => {
-
-      const pct = totalVotes > 0 ? Math.round((o.count / totalVotes) * 100) : 0;
-
-      return `<div class="vote-option-item relative group/opt ${v.is_closed ? '' : 'cursor-pointer hover:bg-fb-secondary dark:hover:bg-white/5'} rounded-lg p-2 pr-20 ${o.is_voted ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''}" data-vote-id="${v.id}" data-option-id="${o.id}">
-
-            <div class="flex justify-between text-xs"><span class="dark:text-white vote-opt-text">${o.text}</span>
-
-              <div class="flex items-center gap-2">
-
-                <span class="text-gray-500">${o.count} phiếu (${pct}%)</span>
-
-                ${o.count > 0 ? `<button type="button" data-action="view-voters" class="text-fb-primary hover:underline px-1 z-10" data-vote-id="${v.id}" data-option-id="${o.id}">👥</button>` : ''}
-
+        ${(() => {
+          let optsHtml = ``;
+          (v.options || []).forEach(o => {
+            const pct = totalVotes ? Math.round((o.count / totalVotes) * 100) : 0;
+            const myVote = (v.user_votes || []).includes(o.id);
+            
+            optsHtml += `
+              <div class="vote-option-item cursor-pointer p-2 rounded-lg border border-transparent hover:border-fb-primary/30 transition-colors group/opt" data-option-id="${o.id}" data-vote-id="${v.id}">
+                <div class="flex items-center justify-between mb-1">
+                  <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <div class="w-4 h-4 shrink-0 rounded-full border border-gray-300 dark:border-gray-500 flex items-center justify-center ${myVote ? 'bg-fb-primary border-fb-primary' : ''}">
+                      ${myVote ? `<svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>` : ''}
+                    </div>
+                    <p class="text-sm dark:text-gray-200 truncate vote-opt-text" title="${o.text}">${o.text}</p>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" class="text-xs text-blue-500 hover:underline px-1" data-action="view-voters" data-option-id="${o.id}" data-vote-id="${v.id}">${o.count}</button>
+                    ${!v.is_closed ? `
+                      <div class="hidden group-hover/opt:flex gap-1 ml-2">
+                        <button type="button" class="text-xs w-5 h-5 rounded hover:bg-slate-200 dark:hover:bg-white/20 text-slate-500 dark:text-gray-400 flex items-center justify-center" data-action="edit-opt" data-option-id="${o.id}" data-option-text="${o.text}" title="Sửa">✏️</button>
+                        ${v.options.length > 2 ? `<button type="button" class="text-xs w-5 h-5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 flex items-center justify-center" data-action="delete-opt" data-option-id="${o.id}" title="Xóa">🗑️</button>` : ''}
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+                <div class="w-full h-1.5 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
+                  <div class="h-full bg-fb-primary transition-all" style="width: ${pct}%"></div>
+                </div>
               </div>
-
-            </div>
-
-            <div class="w-full h-1.5 bg-gray-200 dark:bg-white/10 rounded-full mt-1"><div class="h-1.5 rounded-full transition-all ${o.is_voted ? 'bg-fb-primary' : 'bg-gray-400 dark:bg-white/30'}" style="width:${pct}%"></div></div>
-
-            ${o.is_voted ? '<span class="text-[10px] text-fb-primary mt-1 inline-block">✓ Đã bình chọn</span>' : ''}
-
-            ${!v.is_closed ? `
-              <div class="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/opt:flex items-center gap-1 z-10 bg-white/90 dark:bg-[#242526]/90 p-1 rounded-lg shadow-sm border border-slate-200 dark:border-white/10 backdrop-blur-sm">
-                <button type="button" class="w-7 h-7 rounded-md hover:bg-blue-50 dark:hover:bg-blue-500/20 text-blue-500 flex items-center justify-center transition-colors" data-action="edit-opt" data-option-id="${o.id}" data-option-text="${o.text}" title="Sửa lựa chọn">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                </button>
-                ${canDelete ? `
-                <button type="button" class="w-7 h-7 rounded-md hover:bg-red-50 dark:hover:bg-red-500/20 text-red-500 flex items-center justify-center transition-colors" data-action="delete-opt" data-option-id="${o.id}" title="Xóa lựa chọn">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                </button>
-                ` : ''}
-              </div>` : ''}
-
-          </div>`;
-
-    }).join('')}
-
-        ${!v.is_closed ? `
-
-          <div class="flex gap-2 mt-2" onclick="event.stopPropagation()">
-
-            <input class="add-opt-input flex-1 text-xs px-2 py-1.5 rounded bg-gray-50 dark:bg-white/5 dark:text-white border dark:border-white/10" placeholder="Lựa chọn mới">
-
-            <button class="add-opt-btn text-xs px-3 py-1.5 bg-fb-primary text-white rounded font-medium">Thêm</button>
-
-          </div>
-
-        ` : ''}
-
-      </div>
+            `;
+          });
+          optsHtml += `</div>`;
+          if (!v.is_closed) {
+            optsHtml += `
+              <div class="mt-3 pt-3 border-t dark:border-white/10 flex gap-2">
+                <input type="text" class="add-opt-input flex-1 rounded-lg px-3 py-1.5 bg-white dark:bg-white/5 dark:text-white border dark:border-white/10 text-xs" placeholder="Thêm lựa chọn mới...">
+                <button type="button" class="add-opt-btn px-3 py-1.5 rounded-lg bg-fb-secondary dark:bg-white/10 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-white/20 transition-colors">Thêm</button>
+              </div>
+            `;
+          }
+          return optsHtml;
+        })()}
 
       <p class="text-[10px] text-gray-400 mt-2">Tổng: ${totalVotes} phiếu</p>
     </div>`;
@@ -3366,7 +3330,7 @@ async function loadVoteList(convId, container) {
 
         const resp = await authFetch(API.deleteVote(convId, v.id), { method: "DELETE" });
 
-        if (resp.ok) loadVoteList(convId, container);
+        if (resp.ok) loadVoteList(convId, container, searchQuery);
 
       });
 
@@ -3375,10 +3339,19 @@ async function loadVoteList(convId, container) {
         showPromptModal("Nhập tiêu đề bình chọn mới:", v.title, async (newTitle) => {
           if (newTitle && newTitle.trim() !== v.title) {
             const resp = await authFetch(API.updateVote(convId, v.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: newTitle.trim() }) });
-            if (resp.ok) loadVoteList(convId, container);
+            if (resp.ok) loadVoteList(convId, container, searchQuery);
           }
         });
       });
+
+      card.querySelectorAll("[data-action='toggle-vote']").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const resp = await authFetch(API.updateVote(convId, v.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_closed: !v.is_closed }) });
+          if (resp.ok) loadVoteList(convId, container, searchQuery);
+        });
+      });
+    }
 
       card.querySelectorAll("[data-action='edit-opt']").forEach(btn => {
         btn.addEventListener("click", async (e) => {
@@ -3388,7 +3361,7 @@ async function loadVoteList(convId, container) {
           showPromptModal("Sửa lựa chọn:", oldText, async (newText) => {
             if (newText && newText.trim() !== oldText) {
               const resp = await authFetch(API.updateVoteOption(convId, v.id, optionId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: newText.trim() }) });
-              if (resp.ok) loadVoteList(convId, container);
+              if (resp.ok) loadVoteList(convId, container, searchQuery);
             }
           });
         });
@@ -3404,7 +3377,7 @@ async function loadVoteList(convId, container) {
 
           const resp = await authFetch(API.deleteVoteOption(convId, v.id, optionId), { method: "DELETE" });
 
-          if (resp.ok) loadVoteList(convId, container);
+          if (resp.ok) loadVoteList(convId, container, searchQuery);
 
         });
 
@@ -3421,20 +3394,11 @@ async function loadVoteList(convId, container) {
           const inp = card.querySelector(".add-opt-input");
 
           const text = inp.value.trim();
-
           if (!text) return;
-
           const resp = await authFetch(API.addVoteOptions(convId, v.id), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ options: [text] }) });
-
-          if (resp.ok) loadVoteList(convId, container);
-
+          if (resp.ok) loadVoteList(convId, container, searchQuery);
         });
-
       }
-
-    }
-
-
 
     card.querySelectorAll("[data-action='view-voters']").forEach(btn => {
       btn.addEventListener("click", async (e) => {
@@ -3997,13 +3961,488 @@ function initResizer() {
   document.addEventListener("mouseup", () => {
 
     if (isResizing) {
-
       isResizing = false;
-
       document.body.style.cursor = "";
-
     }
+  });
+}
 
+// ==================== EVENT MODAL ====================
+async function showEventModal(convId) {
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 modal-backdrop z-[80] flex items-center justify-center p-4";
+  modal.innerHTML = `
+    <div class="glass-card rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-bold text-lg dark:text-white">📅 Sự kiện</h2>
+        <div class="flex gap-2">
+          <button type="button" id="refreshEventBtn_${convId}" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-sm hover:bg-slate-200 transition-colors" title="Làm mới">🔄</button>
+          <button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl hover:bg-slate-200 transition-colors">&times;</button>
+        </div>
+      </div>
+      <div id="eventContent_${convId}" class="flex-1 overflow-y-auto space-y-3 pr-1">
+        <button type="button" id="showCreateEventForm_${convId}" class="text-sm text-fb-primary font-semibold">+ Tạo sự kiện mới</button>
+        <div id="createEventForm_${convId}" class="hidden space-y-2 p-3 bg-slate-50 dark:bg-white/5 rounded-xl border dark:border-white/10">
+          <input id="eventTitleInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm border dark:border-white/10" placeholder="Tên sự kiện">
+          <textarea id="eventDescInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm border dark:border-white/10" placeholder="Mô tả" rows="2"></textarea>
+          <input id="eventLocationInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm border dark:border-white/10" placeholder="Địa điểm">
+          <div class="flex gap-2">
+            <div class="flex-1">
+              <label class="text-[10px] text-gray-500 mb-1 block">Bắt đầu</label>
+              <input id="eventStartInput_${convId}" type="datetime-local" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm border dark:border-white/10">
+            </div>
+            <div class="flex-1">
+              <label class="text-[10px] text-gray-500 mb-1 block">Kết thúc</label>
+              <input id="eventEndInput_${convId}" type="datetime-local" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm border dark:border-white/10">
+            </div>
+          </div>
+          <button type="button" id="submitCreateEvent_${convId}" class="w-full rounded-lg bg-fb-primary text-white font-semibold py-2 text-sm mt-2">Tạo sự kiện</button>
+        </div>
+        <div id="eventList_${convId}" class="space-y-3"></div>
+      </div>
+    </div>`;
+
+  modal.querySelector("[data-close]")?.addEventListener("click", () => modal.remove());
+  document.body.appendChild(modal);
+
+  modal.querySelector(`#showCreateEventForm_${convId}`)?.addEventListener("click", () => {
+    modal.querySelector(`#createEventForm_${convId}`)?.classList.toggle("hidden");
   });
 
+  modal.querySelector(`#submitCreateEvent_${convId}`)?.addEventListener("click", async () => {
+    const title = modal.querySelector(`#eventTitleInput_${convId}`).value.trim();
+    if (!title) { showToast("Nhập tên sự kiện", "red"); return; }
+    const start = modal.querySelector(`#eventStartInput_${convId}`).value;
+    const end = modal.querySelector(`#eventEndInput_${convId}`).value;
+    if (!start) { showToast("Nhập thời gian bắt đầu", "red"); return; }
+
+    const body = {
+      title,
+      description: modal.querySelector(`#eventDescInput_${convId}`).value.trim(),
+      location: modal.querySelector(`#eventLocationInput_${convId}`).value.trim(),
+      start_time: start,
+    };
+    if (end) body.end_time = end;
+
+    const res = await authFetch(API.createEvent(convId), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.ok) {
+      showToast("Đã tạo sự kiện", "green");
+      modal.querySelector(`#createEventForm_${convId}`).classList.add("hidden");
+      loadEventList(convId, modal);
+    } else {
+      showToast("Tạo thất bại", "red");
+    }
+  });
+
+  modal.querySelector(`#refreshEventBtn_${convId}`)?.addEventListener("click", () => loadEventList(convId, modal));
+  await loadEventList(convId, modal);
 }
+
+async function loadEventList(convId, modal) {
+  const list = modal.querySelector(`#eventList_${convId}`);
+  if (!list) return;
+  const res = await authFetch(API.listEvents(convId));
+  const data = res.ok ? await res.json() : { results: [] };
+  list.replaceChildren();
+
+  const events = data.results || [];
+  if (!events.length) {
+    list.innerHTML = `<p class="text-sm text-gray-400 text-center py-4">Chưa có sự kiện nào.</p>`;
+    return;
+  }
+
+  events.forEach(e => {
+    const card = document.createElement("div");
+    card.className = "p-3 rounded-xl bg-white dark:bg-white/5 border dark:border-white/10 relative";
+    const startStr = new Date(e.start_time).toLocaleString('vi-VN');
+    const endStr = e.end_time ? new Date(e.end_time).toLocaleString('vi-VN') : '';
+    const creatorName = e.created_by ? (e.created_by.full_name || `${e.created_by.first_name || ''} ${e.created_by.last_name || ''}`.trim()) : '';
+
+    const statuses = e.participant_statuses || {};
+    const myStatus = statuses[myUserId] || 'pending';
+    
+    const countGoing = Object.values(statuses).filter(v => v === 'going').length;
+    const countMaybe = Object.values(statuses).filter(v => v === 'maybe').length;
+    const countNotGoing = Object.values(statuses).filter(v => v === 'not_going').length;
+
+    card.innerHTML = `
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="font-bold text-sm dark:text-white text-fb-primary">${e.title}</h3>
+          ${creatorName ? `<p class="text-[10px] text-gray-400 mt-0.5">👤 Tạo bởi: <span class="font-semibold text-gray-500 dark:text-gray-300">${creatorName}</span></p>` : ''}
+        </div>
+      </div>
+      ${e.description ? `<p class="text-xs text-gray-600 dark:text-gray-300 mt-1">${e.description}</p>` : ''}
+      <div class="text-[10px] text-gray-500 mt-2 space-y-0.5">
+        <p>🕒 Bắt đầu: <span class="font-medium text-gray-700 dark:text-gray-300">${startStr}</span></p>
+        ${endStr ? `<p>🏁 Kết thúc: <span class="font-medium text-gray-700 dark:text-gray-300">${endStr}</span></p>` : ''}
+        ${e.location ? `<p>📍 Địa điểm: <span class="font-medium text-gray-700 dark:text-gray-300">${e.location}</span></p>` : ''}
+      </div>
+      <div class="mt-2 pt-2 border-t dark:border-white/10 flex items-center justify-between text-[10px]">
+        <div class="flex gap-2 text-gray-500">
+          <span class="text-green-600 font-semibold">✅ ${countGoing}</span>
+          <span class="text-yellow-600 font-semibold">❓ ${countMaybe}</span>
+          <span class="text-red-500 font-semibold">❌ ${countNotGoing}</span>
+        </div>
+      </div>
+      <div class="mt-2 flex gap-1 pt-2 border-t dark:border-white/10">
+        <button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors ${myStatus === 'going' ? 'bg-green-500 text-white border-green-500' : 'border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30'}" data-action="update-status" data-status="going" data-event-id="${e.id}">Tham gia</button>
+        <button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors ${myStatus === 'maybe' ? 'bg-yellow-500 text-white border-yellow-500' : 'border-yellow-500 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30'}" data-action="update-status" data-status="maybe" data-event-id="${e.id}">Có thể</button>
+        <button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors ${myStatus === 'not_going' ? 'bg-red-500 text-white border-red-500' : 'border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30'}" data-action="update-status" data-status="not_going" data-event-id="${e.id}">Không tham gia</button>
+      </div>
+    `;
+
+    card.querySelectorAll("[data-action='update-status']").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const s = btn.dataset.status;
+        const res = await authFetch(API.updateEventStatus(convId, e.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: s }) });
+        if (res.ok) loadEventList(convId, modal);
+        else showToast("Cập nhật trạng thái thất bại", "red");
+      });
+    });
+
+    list.appendChild(card);
+  });
+}
+
+// ==================== VIDEO CALL (LiveKit) ====================
+let currentVideoRoom = null;
+let callWs           = null;
+let isEndingCall     = false;
+let isInitingCall    = false;
+let ringingTimer     = null; // Timer chờ người khác bắt máy
+
+// ── Cleanup hoàn toàn ─────────────────────────────────────────
+function closeVideoCall() {
+  if (isEndingCall) return;
+  isEndingCall = true;
+
+  if (ringingTimer) {
+    clearTimeout(ringingTimer);
+    ringingTimer = null;
+  }
+
+  const modal     = document.getElementById("videoCallModal");
+  const loadingEl = document.getElementById("videoCallLoading");
+  const grid      = document.getElementById("videoTilesGrid");
+  const localWrap = document.getElementById("localVideoWrap");
+  const endBtn    = document.getElementById("endCallBtn");
+
+  modal?.classList.add("hidden");
+  loadingEl?.classList.remove("hidden"); // reset loading cho lần sau
+  if (grid) grid.innerHTML = '';
+  localWrap?.classList.add("hidden");
+
+  // Re-enable nút kết thúc cho lần gọi tiếp theo
+  if (endBtn) endBtn.disabled = false;
+
+  if (currentVideoRoom) {
+    try {
+      currentVideoRoom.removeAllListeners();
+      currentVideoRoom.localParticipant?.trackPublications?.forEach(pub => pub.track?.stop());
+      currentVideoRoom.disconnect();
+    } catch (_) {}
+    currentVideoRoom = null;
+  }
+
+  if (callWs) {
+    callWs.onclose = null; // tránh trigger reconnect sau khi chủ động đóng
+    callWs.close();
+    callWs = null;
+  }
+
+  isInitingCall = false; // reset để có thể gọi lại ngay
+  setTimeout(() => { isEndingCall = false; }, 500); // unlock sau 500ms
+}
+
+// ── Call WebSocket ─────────────────────────────────────────────
+function connectCallWs(convId) {
+  if (callWs) { callWs.onclose = null; callWs.close(); callWs = null; }
+
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  callWs = new WebSocket(`${proto}://${location.host}/ws/call/${convId}/`);
+
+  callWs.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.type === 'call_ended' || data.type === 'call_cancelled') {
+        closeVideoCall(); // server báo kết thúc → đóng modal
+      }
+      if (data.type === 'call_user_left') {
+        showToast(`${data.user_name} đã rời cuộc gọi`, "gray");
+      }
+    } catch (_) {}
+  };
+
+  // Reconnect nếu WS bị drop giữa chừng
+  callWs.onclose = () => {
+    callWs = null;
+    if (!isEndingCall && currentVideoRoom) {
+      setTimeout(() => connectCallWs(convId), 3000);
+    }
+  };
+}
+
+// ── Grid layout động theo số participant ──────────────────────
+function updateGridLayout() {
+  const grid = document.getElementById("videoTilesGrid");
+  if (!grid) return;
+  const count = grid.children.length;
+  grid.style.gridTemplateColumns =
+    count <= 1 ? '1fr' :
+    count <= 4 ? 'repeat(2, 1fr)' :
+                 'repeat(3, 1fr)';
+}
+
+// ── Entry point khi user bấm nút gọi ─────────────────────────
+async function initVideoCall(convId) {
+  if (isInitingCall) return; // chống double-click
+
+  // Đang trong phòng → hiện lại modal thay vì tạo phòng mới
+  if (currentVideoRoom) {
+    document.getElementById("videoCallModal")?.classList.remove("hidden");
+    return;
+  }
+
+  isInitingCall = true;
+  try {
+    const res = await authFetch(API.createVideoRoom(convId), { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showToast(err.detail || "Lỗi tạo video call", "red");
+      return;
+    }
+    const data = await res.json();
+    await startVideoCall(data.token, data.livekit_url, data.room_name, convId, true);
+  } catch (e) {
+    console.error(e);
+    showToast("Lỗi kết nối cuộc gọi", "red");
+  } finally {
+    isInitingCall = false;
+  }
+}
+
+// ── Main call function ─────────────────────────────────────────
+async function startVideoCall(token, url, roomName, convId, isCaller = false) {
+  const modal      = document.getElementById("videoCallModal");
+  const loadingEl  = document.getElementById("videoCallLoading");
+  const localWrap  = document.getElementById("localVideoWrap");
+  const localVideo = document.getElementById("localVideo");
+  const grid       = document.getElementById("videoTilesGrid");
+
+  // Khai báo tất cả buttons TRƯỚC khi dùng — tránh ReferenceError
+  const micBtn = document.getElementById("toggleMicBtn");
+  const camBtn = document.getElementById("toggleCamBtn");
+  const endBtn = document.getElementById("endCallBtn");
+
+  if (!modal) return;
+
+  // Reset UI về trạng thái ban đầu
+  modal.classList.remove("hidden");
+  loadingEl?.classList.remove("hidden");
+  grid.innerHTML = '';
+  localWrap.classList.add("hidden");
+
+  // Mặc định: mic bật, cam tắt
+  micBtn.innerHTML = "🎙️";
+  micBtn.classList.remove("bg-red-500/50");
+  camBtn.innerHTML = "🚫";
+  camBtn.classList.add("bg-red-500/50");
+
+  // Xóa onclick cũ trên endBtn tránh handler bị đăng ký nhiều lần
+  const freshEndBtn = endBtn.cloneNode(true);
+  endBtn.replaceWith(freshEndBtn);
+
+  // Kết nối WS để nhận sự kiện call_ended / call_cancelled từ server
+  connectCallWs(convId);
+
+  // Cleanup phòng cũ nếu có (trường hợp gọi lại)
+  if (currentVideoRoom) {
+    currentVideoRoom.removeAllListeners();
+    await currentVideoRoom.disconnect();
+    currentVideoRoom = null;
+  }
+
+  const { Room, RoomEvent, VideoPresets } = window.LivekitClient;
+  const room = new Room({
+    adaptiveStream: true,
+    dynacast: true,
+    videoCaptureDefaults: { resolution: VideoPresets.h720.resolution },
+  });
+  currentVideoRoom = room;
+
+  // Đặt timeout 30s nếu là người gọi (Caller)
+  if (isCaller) {
+    ringingTimer = setTimeout(() => {
+      // Tự động kết thúc nếu không ai bắt máy sau 30s
+      if (callWs?.readyState === WebSocket.OPEN) {
+        callWs.send(JSON.stringify({ type: 'end_call' }));
+        setTimeout(() => { if (!isEndingCall) closeVideoCall(); }, 3000);
+      } else {
+        authFetch(API.endVideoRoom ? API.endVideoRoom(convId) : `/api/video/${convId}/end/`, { method: 'POST' })
+          .catch(() => {})
+          .finally(() => closeVideoCall());
+      }
+      showToast("Không có người trả lời", "gray");
+    }, 30000);
+  }
+
+  try {
+    await room.connect(url, token);
+
+    // Bật mic mặc định — bỏ qua nếu máy không có mic
+    try {
+      await room.localParticipant.setMicrophoneEnabled(true);
+      micBtn.innerHTML = "🎙️";
+      micBtn.classList.remove("bg-red-500/50");
+    } catch (_) {
+      // Máy không có mic → vẫn vào được, chỉ không nói được
+      micBtn.innerHTML = "🔇";
+      micBtn.classList.add("bg-red-500/50");
+      showToast("Không tìm thấy microphone", "gray");
+    }
+
+    // Ẩn loading sau khi kết nối xong
+    loadingEl?.classList.add("hidden");
+
+    // ── Remote participant vào → tạo placeholder tile ──────────
+    room.on(RoomEvent.ParticipantConnected, (participant) => {
+      // Có người vào -> xóa timer chờ chuông
+      if (ringingTimer) {
+        clearTimeout(ringingTimer);
+        ringingTimer = null;
+      }
+      
+      if (!document.getElementById(`participant-${participant.identity}`)) {
+        const wrapper = document.createElement('div');
+        wrapper.id = `participant-${participant.identity}`;
+        wrapper.className = "relative rounded-xl overflow-hidden aspect-video bg-gray-800 flex items-center justify-center";
+        wrapper.innerHTML = `
+          <div class="flex flex-col items-center gap-2">
+            <div class="w-16 h-16 rounded-full bg-gray-600 flex items-center justify-center text-3xl">👤</div>
+            <p class="text-white/80 text-sm font-medium">${participant.name || participant.identity}</p>
+          </div>`;
+        grid.appendChild(wrapper);
+        updateGridLayout();
+      }
+    });
+
+    // ── Remote participant rời → xóa tile ─────────────────────
+    room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+      document.getElementById(`participant-${participant.identity}`)?.remove();
+      showToast(`${participant.name || 'Người dùng'} đã rời cuộc gọi`, "gray");
+      updateGridLayout();
+    });
+
+    // ── Track video remote → thay placeholder bằng video thật ─
+    room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+      if (track.kind === 'video') {
+        // Lấy tile đã có hoặc tạo mới
+        let wrapper = document.getElementById(`participant-${participant.identity}`);
+        if (!wrapper) {
+          wrapper = document.createElement('div');
+          wrapper.id = `participant-${participant.identity}`;
+          wrapper.className = "relative rounded-xl overflow-hidden aspect-video bg-gray-900";
+          grid.appendChild(wrapper);
+        }
+        wrapper.innerHTML = ''; // xóa placeholder avatar
+        const videoEl = track.attach();
+        videoEl.className = "w-full h-full object-cover";
+        const label = document.createElement('div');
+        label.className = "absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md font-medium";
+        label.textContent = participant.name || participant.identity;
+        wrapper.appendChild(videoEl);
+        wrapper.appendChild(label);
+        updateGridLayout();
+      } else if (track.kind === 'audio') {
+        track.attach(); // audio chỉ cần attach, không cần UI
+      }
+    });
+
+    // ── Track unsubscribed → detach ────────────────────────────
+    room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+      track.detach();
+      if (track.kind === 'video') {
+        document.getElementById(`participant-${participant.identity}`)?.remove();
+        updateGridLayout();
+      }
+    });
+
+    // ── Toggle mic ─────────────────────────────────────────────
+    micBtn.onclick = async () => {
+      try {
+        const isEnabled = room.localParticipant.isMicrophoneEnabled;
+        await room.localParticipant.setMicrophoneEnabled(!isEnabled);
+        const now = room.localParticipant.isMicrophoneEnabled;
+        micBtn.innerHTML = now ? "🎙️" : "🔇";
+        micBtn.classList.toggle("bg-red-500/50", !now);
+      } catch (e) {
+        console.error("Lỗi toggle mic:", e);
+        showToast("Không thể bật/tắt mic", "red");
+      }
+    };
+
+    // ── Toggle cam ─────────────────────────────────────────────
+    camBtn.onclick = async () => {
+      try {
+        const isEnabled = room.localParticipant.isCameraEnabled;
+        await room.localParticipant.setCameraEnabled(!isEnabled);
+        const now = room.localParticipant.isCameraEnabled;
+        camBtn.innerHTML = now ? "📷" : "🚫";
+        camBtn.classList.toggle("bg-red-500/50", !now);
+        if (now) {
+          // Bật cam → hiện local video
+          localWrap.classList.remove("hidden");
+          room.localParticipant.videoTrackPublications.forEach(p => {
+            if (p.track) p.track.attach(localVideo);
+          });
+        } else {
+          // Tắt cam → ẩn local video
+          localWrap.classList.add("hidden");
+        }
+      } catch (e) {
+        console.error("Lỗi toggle camera:", e);
+        showToast("Không tìm thấy camera", "red");
+      }
+    };
+
+    // ── Kết thúc cuộc gọi ─────────────────────────────────────
+    freshEndBtn.onclick = () => {
+      freshEndBtn.disabled = true; // chống bấm lại
+
+      if (callWs?.readyState === WebSocket.OPEN) {
+        // Gửi end_call → server sẽ broadcast call_ended về → closeVideoCall() sẽ được gọi từ onmessage
+        callWs.send(JSON.stringify({ type: 'end_call' }));
+        // Fallback: nếu WS không phản hồi trong 3s thì tự đóng
+        setTimeout(() => { if (!isEndingCall) closeVideoCall(); }, 3000);
+      } else {
+        // WS đã mất kết nối → gọi REST API end call rồi đóng UI
+        authFetch(API.endVideoRoom ? API.endVideoRoom(convId) : `/api/video/${convId}/end/`, { method: 'POST' })
+          .catch(() => {})
+          .finally(() => closeVideoCall());
+      }
+    };
+
+    // ── LiveKit server disconnect → đóng modal ─────────────────
+    room.on(RoomEvent.Disconnected, () => {
+      if (!isEndingCall) closeVideoCall();
+    });
+
+  } catch (error) {
+    console.error("Lỗi kết nối LiveKit:", error);
+    showToast("Không thể kết nối cuộc gọi", "red");
+    loadingEl?.classList.add("hidden");
+    closeVideoCall();
+  }
+}
+
+// ── Cleanup khi user đóng tab ─────────────────────────────────
+window.addEventListener("beforeunload", () => {
+  if (callWs?.readyState === WebSocket.OPEN) {
+    callWs.send(JSON.stringify({ type: 'end_call' }));
+  }
+  currentVideoRoom?.disconnect();
+});
+
+// Expose để notification consumer gọi khi callee bấm Accept
+window.startVideoCall = startVideoCall;

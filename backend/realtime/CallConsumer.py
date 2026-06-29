@@ -85,7 +85,7 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
             'leave_call': self.handle_leave_call,
             'end_call':   self.handle_end_call,
         }
-        handler = handlers.get(data.get('type'))
+        handler = handlers.get(data.get('type')) # FE truyền sẽ kiểm tra và lấy ra 2 type trên, kiểm tra có key thì gọi đúng function đó ra truyền data vào
         if handler:
             await handler(data)
 
@@ -114,59 +114,63 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
             await self.handle_end_call(data)
 
     async def handle_end_call(self, data):
-        room = await self._get_active_room()
-        if not room:
-            return
+        try:
+            room = await self._get_active_room()
+            if not room:
+                return
 
-        # Nhóm: chỉ caller mới được end toàn phòng, member thì chuyển sang leave
-        if room.conversation.is_group and room.created_by_id != self.user.id:
-            await self.handle_leave_call(data)
-            return
+            # Nhóm: chỉ caller mới được end toàn phòng, member thì chuyển sang leave
+            if room.conversation.is_group and room.created_by_id != self.user.id:
+                await self.handle_leave_call(data)
+                return
 
-        # nếu 1-1 hoặc là chủ phòng thì end luôn
-        has_others_joined = await CallParticipant.objects.filter(
-            room=room, status='accepted'
-        ).exclude(user=self.user).aexists()
+            # nếu 1-1 hoặc là chủ phòng thì end luôn
+            has_others_joined = await CallParticipant.objects.filter(
+                room=room, status='accepted'
+            ).exclude(user=self.user).aexists()
 
-        end_reason = 'completed' if has_others_joined else 'cancelled' # nếu có ng đã từng tham gia tồn tại thì completed không thì
-        await self._close_room(room, end_reason)
+            end_reason = 'completed' if has_others_joined else 'cancelled' # nếu có ng đã từng tham gia tồn tại thì completed không thì
+            await self._close_room(room, end_reason)
 
-        msg_type = (
-            'system_call_completed' if end_reason == 'completed'
-            else 'system_call_missed'
-        )
-        await self._create_system_message(room, msg_type)
-        duration = await self._get_duration(room)
+            msg_type = (
+                'system_call_completed' if end_reason == 'completed'
+                else 'system_call_missed'
+            )
+            await self._create_system_message(room, msg_type)
+            duration = await self._get_duration(room)
 
-        # Báo tất cả trong ws/call/<conv_id>/
-        await self.channel_layer.group_send(
-            self.room_name,
-            {
-                'type':             'call_ended',
-                'end_reason':       end_reason,
-                'duration_seconds': duration,
-                'conv_id':          self.conv_id,
-            }
-        )
+            # Báo tất cả trong ws/call/<conv_id>/
+            await self.channel_layer.group_send(
+                self.room_name,
+                {
+                    'type':             'call_ended',
+                    'end_reason':       end_reason,
+                    'duration_seconds': duration,
+                    'conv_id':          self.conv_id,
+                }
+            )
 
-        # Nếu cancelled (chưa ai bắt máy) → callee vẫn đang thấy popup
-        # cần push call_cancelled qua notification để FE tắt popup
-        if end_reason == 'cancelled':
-            member_ids = await self._get_member_ids(room)
-            channel_layer = get_channel_layer()
-            tasks = [
-                channel_layer.group_send(
-                    f'notification_{uid}',
-                    {
-                        'type':      'call_cancelled',
-                        'conv_id':   self.conv_id,
-                        'room_name': room.room_name,
-                    }
-                )
-                for uid in member_ids
-                if uid != self.user.id
-            ]
-            await asyncio.gather(*tasks)
+            # Nếu cancelled (chưa ai bắt máy) , callee vẫn đang thấy popup nên cần push call_cancelled qua notification để FE tắt popup
+            if end_reason == 'cancelled':
+                member_ids = await self._get_member_ids(room)
+                channel_layer = get_channel_layer()
+                tasks = [
+                    channel_layer.group_send(
+                        f'notification_{uid}',
+                        {
+                            'type':      'call_cancelled',
+                            'conv_id':   self.conv_id,
+                            'room_name': room.room_name,
+                        }
+                    )
+                    for uid in member_ids
+                    if uid != self.user.id
+                ]
+                await asyncio.gather(*tasks)
+        except Exception as e:
+            import traceback
+            print("ERROR IN handle_end_call:", e)
+            traceback.print_exc()
 
     # SERVER → CLIENT
     async def call_user_left(self, event):
