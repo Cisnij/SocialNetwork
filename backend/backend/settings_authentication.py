@@ -78,6 +78,20 @@ REST_FRAMEWORK={ #Cấu hình token
         'delete_member_group_chat':'20/m',
         'add_tasks':'30/m',
         'update_tasks':'20/m',
+
+        'add_member_tasks': '30/min',
+        'delete_tasks': '30/min',
+        'create_vote': '15/min',
+        'delete_vote': '20/min',
+        'user_vote': '20/min',
+        'update_vote': '20/min',
+        'add_option_vote': '20/min',
+        'update_option_vote': '20/min',
+        'delete_option_vote': '20/min',
+        'create_call': '10/min',
+        'create_event': '10/min',
+        'modify_event': '20/min',
+        'response_event': '30/min',
     },
 
     "DEFAULT_PARSER_CLASSES": [ #dùng cho phép nhận nhiều định dạng dữ liệu khác nhau 

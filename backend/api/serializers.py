@@ -494,7 +494,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
         if task and request and hasattr(task, 'created_by'): # truyền hasatrr để quertset không bị lỗi vì cái này k có instance của 1 task cụ thể mà là 1 querryset
             if task.created_by != request.user: #không phải người tạo thì k dc sửa những field sau
-                for field in ['title', 'description', 'priority', 'deadline', 'assigned_to_ids','status']:
+                for field in ['title', 'description', 'priority', 'deadline', 'assigned_to_ids']:
                     fields[field].read_only = True
         return fields # nếu ng đó tạo task thì return hết để update
 
@@ -529,7 +529,7 @@ class EventParticipantSerializer(serializers.ModelSerializer):
         fields=[
             'id',
             'full_name',
-            'avatar'
+            'avatar',
             'status',
         ]
     def get_avatar(self, obj):
@@ -539,20 +539,22 @@ class EventParticipantSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.profile.full_name', read_only=True)
     participants = EventParticipantSerializer(many=True, read_only=True)
-
+    is_accepted = serializers.SerializerMethodField()
     class Meta:
         model = Event
         fields = [
             'id',
+            'created_by',
             'created_by_name',
             'title',
             'description',
             'start_time',
             'end_time',
             'created_at',
-            'participants'
+            'participants',
+            'is_accepted',
         ]
-        read_only_fields = ['id', 'created_at', 'created_by_name', 'participants']
+        read_only_fields = ['id', 'created_at', 'created_by', 'created_by_name', 'participants']
 
     def validate_start_time(self, start_time): # validate đầu vào, validate_{field_name}
         if start_time < timezone.now():
@@ -565,3 +567,13 @@ class EventSerializer(serializers.ModelSerializer):
         if start and end and end <= start:
             raise serializers.ValidationError({'end_time': 'Thời gian kết thúc phải sau thời gian bắt đầu.'})
         return attrs
+
+    def get_is_accepted(self,obj):
+        request =self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+        participant = next( # nếu có user id = với user của user gửi request thì trả về không thì None
+            (p for p in obj.participants.all() if p.user_id == request.user.id),
+            None
+        )
+        return participant.status if participant else None #lấy ra status user gửi request

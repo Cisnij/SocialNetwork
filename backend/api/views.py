@@ -1,5 +1,6 @@
 import uuid
 from datetime import timedelta
+from django.utils.timezone import localtime
 from itertools import chain
 from adrf.views import APIView as AsyncAPIView
 
@@ -586,11 +587,11 @@ class PostUserShare(generics.ListAPIView): #tất cả share của 1 user
         blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
         blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
 
-        if target_user == user:
+        if target_user == user: # nếu target là chính user thì k có giới hạn
             privacy_filter = {}
-        elif Friend.objects.are_friends(user, target_user):
+        elif Friend.objects.are_friends(user, target_user): # nếu target user là bạn mình thì láy public và friends
             privacy_filter = {'privacy__in': ['public', 'friends']}
-        else:
+        else: # người lạ thì lấy public 
             privacy_filter = {'privacy': 'public'}
         '''đầu tiên là khi truyền vào 1 id để xem share của 1 người thì phải lấy ra những bài share mà user hiện tại đc xem thôi
          -> Check theo thứ tự gốc tới share, 
@@ -631,10 +632,10 @@ class PostFriendShare(generics.ListAPIView): # tất cả share của bạn bè
         following_ids = Follow.objects.filter(follower=user).values_list("followee_id", flat=True)
         blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
         blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
-        return (PostShare.objects.filter(
+        return (PostShare.objects.filter( # thỏa 1 trong những điều kiện ở filter 1 AND 1 trong điều kiện filter 2
             # share của mình
             Q(user=user) |
-            #post share của bạn bè
+            #post share của bạn bè cả public và friends
             Q(user_id__in=friend_ids, privacy='public') |
             Q(user_id__in=friend_ids, privacy='friends') |
             #post share của following
@@ -2564,6 +2565,8 @@ class CreateTaskGroupChat(generics.CreateAPIView):
 
 class AddMemberIntoTaskGroupChat(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='add_member_tasks'
     def post(self,request,conv_id):
         add_member_ids= request.data.get('add_member_ids')
         tasks_id = request.data.get('tasks_id')
@@ -2623,7 +2626,7 @@ class UpdateTaskGroupChat(generics.UpdateAPIView):
         task= get_object_or_404(Task.objects.select_related("created_by__profile"), id=task_id)
         if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
             raise PermissionDenied("Bạn không có trong group")
-        #không phải là người tạo và không phải là người đc giao
+        #không phải là người tạo và không phải là người đc giao thì không được lấy và sửa
         if task.created_by != self.request.user and not task.assigned_to.filter(id=self.request.user.id).exists():
             raise PermissionDenied("Bạn không có quyền")
         return task
@@ -2656,6 +2659,8 @@ class UpdateTaskGroupChat(generics.UpdateAPIView):
 
 class DeleteTaskGroupChat(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='delete_tasks'
     def delete(self, request, task_id, conv_id):
         profile = request.user.profile
         if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
@@ -2716,6 +2721,8 @@ class GetFileFromConversation(generics.ListAPIView):
 #==================VOTE==========================================================
 class CreateVoteGroupChat(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='create_vote'
     def post(self, request, *args, **kwargs):
         conv_id = self.kwargs.get("conv_id")
         title = self.request.data.get("title")
@@ -2764,6 +2771,8 @@ class CreateVoteGroupChat(APIView):
 
 class DeleteVoteGroupChat(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='delete_vote'
     def get_object(self):
         conv_id = self.kwargs.get('conv_id')
         vote_id = self.kwargs.get("vote_id")
@@ -2800,6 +2809,8 @@ class DeleteVoteGroupChat(generics.DestroyAPIView):
 
 class UserVoteGroupChat(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='user_vote'
     def post(self, request, conv_id, vote_id, vote_option_id):
         if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user, is_active=True).exists():
             raise PermissionDenied("Bạn không có trong group")
@@ -2865,6 +2876,8 @@ class UserVoteGroupChat(APIView):
 class UpdateVoteGroupChat(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VoteSerializer
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='update_vote'
     def get_object(self):
         vote_id = self.kwargs.get("vote_id")
         conv_id = self.kwargs.get("conv_id")
@@ -2905,6 +2918,8 @@ class UpdateVoteGroupChat(generics.UpdateAPIView):
 class AddOptionVoteGroupChat(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VoteOptionSerializer
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='add_option_vote'
     def create(self, request, *args, **kwargs):
         vote_id = self.kwargs.get("vote_id")
         conv_id = self.kwargs.get("conv_id")
@@ -2944,6 +2959,8 @@ class AddOptionVoteGroupChat(generics.CreateAPIView):
 class UpdateOptionVoteGroupChat(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VoteOptionSerializer
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='update_option_vote'
     def get_object(self):
         vote_id = self.kwargs.get("vote_id")
         option_id = self.kwargs.get("option_id")
@@ -2956,6 +2973,8 @@ class UpdateOptionVoteGroupChat(generics.UpdateAPIView):
 
 class DeleteOptionVoteGroupChat(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='delete_option_vote'
     def get_object(self):
         vote_id = self.kwargs.get("vote_id")
         option_id = self.kwargs.get("option_id")
@@ -3044,7 +3063,8 @@ class ListUserVoteGroupChat(generics.ListAPIView):
 """
 class CreateVideoRoomView(AsyncAPIView):
     permission_classes = [IsAuthenticated]
-
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='create_call'
     async def post(self, request, conv_id):
         is_member = await ConversationMember.objects.filter(
             conversation_id=conv_id, user=request.user, is_active=True
@@ -3175,7 +3195,6 @@ class JoinVideoRoomView(AsyncAPIView):
 
 class DeclineCallView(AsyncAPIView):
     permission_classes = [IsAuthenticated]
-
     async def post(self, request, conv_id):
         room = await VideoRoom.objects.select_related(
             'conversation', 'created_by'
@@ -3260,10 +3279,19 @@ class DeclineCallView(AsyncAPIView):
         return msg
 
 #===============================EVENT===========================================
-class CreateEventChat(generics.ListCreateAPIView):
+class ListCreateEventChat(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class   = EventSerializer
     pagination_class   = LargePagePagination
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = ['title']
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='create_event'
+
+    def get_throttles(self): #override throttle cho post trong api có listcreate
+        if self.request.method == 'POST':
+            return [ScopedRateThrottle()]
+        return []  # GET không throttle
 
     def _check_member(self, conv_id, user):
         if not ConversationMember.objects.filter(
@@ -3299,33 +3327,31 @@ class CreateEventChat(generics.ListCreateAPIView):
             created_by=user,
         )
 
-        # Tạo participant cho tất cả member trong group
-        member_ids = ConversationMember.objects.filter(
-            conversation_id=conv_id, is_active=True
-        ).values_list('user_id', flat=True)
-
-        EventParticipant.objects.bulk_create([
-            EventParticipant(event=event, user_id=uid)
-            for uid in member_ids
-        ], ignore_conflicts=True)
+        EventParticipant.objects.create(
+            event = event,
+            user= user,
+            status = 'accept'
+        )
 
         # Đặt reminder trước 15p
         # Ví dụ: event 3h thứ 2 → nhắc lúc 2h45 thứ 2
         start_time = event.start_time
         remind_at  = start_time - timedelta(minutes=15)
-        if remind_at > timezone.now():  # chỉ đặt nếu chưa trễ
-            task = send_event_reminder.apply_async(  # apply_async để đặt lịch chạy, delay thì chạy ngay
-                args=[event.id, content_type.id],   # truyền event_id và content_type_id để dùng chung
-                eta=remind_at,                       # thời điểm chạy
-            )
-            Event.objects.filter(id=event.id).update(celery_task_id=task.id)  # lưu task id để cancel sau nếu cần
+        eta = remind_at if remind_at > timezone.now() else timezone.now() # chỉ đặt nếu chưa trễ (nếu trễ thì chạy ngay)
+        task = send_event_reminder.apply_async(  # apply_async để đặt lịch chạy, delay thì chạy ngay
+            args=[event.id, content_type.id],   # truyền event_id và content_type_id để dùng chung
+            eta=eta,                             # thời điểm chạy(execute time at)
+        )
+        event.celery_task_id = task.id
+        event.save(update_fields=['celery_task_id'])# lưu task id để cancel sau nếu cần
 
         # Tạo system message thông báo vào chat
         profile = user.profile
+        local_start = localtime(start_time)
         msg = Message.objects.create(
             conversation_id=conv_id,
             sender=user,
-            content=f"{profile.full_name} đã tạo sự kiện: {event.title} lúc {start_time.strftime('%H:%M %d/%m/%Y')}",
+            content=f"{profile.full_name} đã tạo sự kiện: {event.title} lúc {local_start.strftime('%H:%M %d/%m/%Y')}",
             message_type='system_event_created',
         )
         try:
@@ -3344,6 +3370,8 @@ class CreateEventChat(generics.ListCreateAPIView):
 class EventDetailChat(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = EventSerializer
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='modify_event'
     def get_object(self):
         conv_id = self.kwargs.get("conv_id")
         event_id = self.kwargs.get("event_id")
@@ -3359,21 +3387,42 @@ class EventDetailChat(generics.RetrieveUpdateDestroyAPIView):
             object_id=conv_id,
         )
     def perform_update(self, serializer):
-        event = self.get_object()
+        event = serializer.instance
         if event.created_by != self.request.user:
             raise PermissionDenied("Phải là người tạo mới có quyền update")
-        if event.celery_task_id:
-            from backend.celery import app
-            app.control.revoke(event.celery_task_id, terminate=True) #hủy task
-        serializer.save()
-        new_start = serializer.validated_data.get('start_time', event.start_time) # nếu có update thời gian thì phải update lại thgian celery chạy
-        remind_at = new_start - timedelta(minutes=15)
-        content_type = ContentType.objects.get_for_model(Conversation)
-        task = send_event_reminder.apply_async(
-            args=[event.id, content_type.id],
-            eta=remind_at,
+        old_task_id = event.celery_task_id # lấy ra task_id celery cũ
+        serializer.save() # save cái thời gian mới
+        if 'start_time' in serializer.validated_data:  # chỉ reschedule khi start_time đổi
+            if old_task_id: # nếu đưa vào start time mới thì xóa celery cái cũ
+                from backend.celery import app
+                app.control.revoke(old_task_id, terminate=True)
+
+            remind_at = event.start_time - timedelta(minutes=15)
+            eta = remind_at if remind_at > timezone.now() else timezone.now() # nếu mà thời gian báo lớn hơn thời gian set thì mới đc set (nếu qua rồi thì cho chạy báo luôn)
+            content_type = ContentType.objects.get_for_model(Conversation)
+            task = send_event_reminder.apply_async(args=[event.id, content_type.id], eta=eta) #lên lịch chạy trong celery
+            Event.objects.filter(id=event.id).update(celery_task_id=task.id)
+
+        # Gửi system message thông báo cập nhật
+        local_start = localtime(event.start_time)
+        msg = Message.objects.create(
+            conversation_id=self.kwargs.get("conv_id"),
+            sender=self.request.user,
+            content=f"{self.request.user.profile.full_name} đã cập nhật sự kiện: {event.title} (bắt đầu lúc {local_start.strftime('%H:%M %d/%m/%Y')})",
+            message_type='system_event_updated',
         )
-        Event.objects.filter(id=event.id).update(celery_task_id=task.id)
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'chat_{self.kwargs.get("conv_id")}',
+                {
+                    'type': 'system_message',
+                    'message': msg.content,
+                    'message_type': msg.message_type,
+                }
+            )
+        except Exception:
+            pass
 
     def perform_destroy(self, instance):
         if instance.created_by != self.request.user:
@@ -3407,12 +3456,15 @@ class EventDetailChat(generics.RetrieveUpdateDestroyAPIView):
             pass
 
 
-class EventAcceptChat(generics.UpdateAPIView):
+class EventResponseChat(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = EventSerializer
-
-    def patch(self, request, conv_id, event_id):
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='response_event'
+    def patch(self, request, *args, **kwargs):
         user = request.user
+        conv_id = self.kwargs.get('conv_id')
+        event_id = self.kwargs.get('event_id')
+
         if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
             raise PermissionDenied("Bạn không có trong group")
 
@@ -3422,18 +3474,19 @@ class EventAcceptChat(generics.UpdateAPIView):
 
         content_type = ContentType.objects.get_for_model(Conversation)
         event = get_object_or_404(Event, id=event_id, content_type=content_type, object_id=conv_id)
-        #update status
-        participant = get_object_or_404(EventParticipant, event=event, user=request.user)
-        participant.status = new_status
-        participant.save(update_fields=['status'])
 
-        label = 'tham gia' if new_status == 'accept' else 'từ chối'
+        participant, created = EventParticipant.objects.update_or_create( # nếu chưa tham gia thì tạo, nếu đã tham gia rồi thì chỉ update status
+            event=event,
+            user=request.user,
+            defaults={'status': new_status} # khi update chỉ update default còn create sẽ gán event,user và default
+        )
         if new_status == 'accept':
-            msg = Message.objects.create(
+            profile = user.profile
+            message_system = Message.objects.create(
                 conversation_id=conv_id,
-                sender=user,
-                content=f"{user.profile.full_name} chấp nhận tham gia sự kiện: {event.title}",
-                message_type='system_event_attended',
+                sender=request.user,
+                content=f"{profile.full_name} sẽ tham gia sự kiện {event.title}",
+                message_type='system_event_attended'
             )
             try:
                 channel_layer = get_channel_layer()
@@ -3441,13 +3494,32 @@ class EventAcceptChat(generics.UpdateAPIView):
                     f'chat_{conv_id}',
                     {
                         'type': 'system_message',
-                        'message': msg.content,
-                        'message_type': msg.message_type,
+                        'message': message_system.content,
+                        'message_type': message_system.message_type,
                     }
                 )
             except Exception:
                 pass
         return Response(
-            {'detail': f'Bạn đã {label} sự kiện "{event.title}".'},
+            {'detail': f'Bạn đã {new_status} sự kiện "{event.title}".'},
             status=status.HTTP_200_OK,
         )
+
+class EventParticipantChat(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = EventParticipantSerializer
+    pagination_class   = SmallPagePagination
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = ['user__profile__first_name', 'user__profile__last_name']
+    def get_queryset(self):
+        conv_id = self.kwargs.get('conv_id')
+        event_id = self.kwargs.get('event_id')
+
+        if not ConversationMember.objects.filter(conversation_id=conv_id,user=self.request.user,is_active=True).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        content_type = ContentType.objects.get_for_model(Conversation)
+        return EventParticipant.objects.filter(
+           event__content_type = content_type,
+            event__object_id = conv_id,
+            event_id =event_id
+        ).select_related('user__profile')

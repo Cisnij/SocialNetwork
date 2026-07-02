@@ -703,6 +703,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
    -out standing token là chứa token còn và hết hạn, blacklisst token chứa token bị thu hồi vì đăng xuất
    - Generic FK khác FK là nó liên kết với nhiều model hơn mà bảng chính không cần chứa nhiều dữ liệu. Ví dụ 1 bảng liên kết với nhiều bảng khác thì phải cần nhiều FK thì giờ chỉ cần chứa 2 field 
         1 là contentType và 2 là object_id. ContentType sẽ chứa model theo dạng hàm băm ví dụ 1 là bảng User, 2 là bảng Post, 3 là bảng Comment...object_id sẽ chứa id của bảng đó
+        Khi migrate thì Content type sẽ tự tạo 1 cột duy nhất tới bảng đó
    -Các loại status:
         Status	Ý nghĩa	Khi dùng
         200 OK	Thành công	GET, PUT, PATCH

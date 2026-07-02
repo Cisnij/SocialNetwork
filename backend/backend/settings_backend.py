@@ -169,7 +169,6 @@ SPECTACULAR_SETTINGS = {
 #=======================StructLog=========================================================
 os.makedirs('logs', exist_ok=True) # lệnh win tạo dir
 
-import os
 
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
@@ -258,6 +257,12 @@ LOGGING = {
         # suppress annoying django host spam
         'django.security.DisallowedHost': {
             'handlers': [],
+            'propagate': False,
+        },
+        
+        'jazzmin': {
+            'handlers': ['console'],
+            'level': 'ERROR',   # chỉ log ERROR trở lên, bỏ qua WARNING
             'propagate': False,
         },
     },

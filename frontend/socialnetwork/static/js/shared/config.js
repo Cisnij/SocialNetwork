@@ -182,7 +182,10 @@ export const API = {
 
   // Events
   createEvent: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/create-event/`,
-  listEvents: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/create-event/`,
+  listEvents: (convId, search = "") => {
+    const base = `${API_BASE_URL}/api/chat/conversation/${convId}/create-event/`;
+    return search ? `${base}?search=${encodeURIComponent(search)}` : base;
+  },
   eventDetail: (convId, eventId) => `${API_BASE_URL}/api/chat/conversation/${convId}/event/${eventId}/`,
   updateEventStatus: (convId, eventId) => `${API_BASE_URL}/api/chat/conversation/${convId}/event/${eventId}/update-status/`,
 

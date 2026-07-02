@@ -8,11 +8,13 @@ from django.contrib.auth import get_user_model
 from api.firebase import push_to_user
 from django.utils import timezone
 from datetime import timedelta
-from api.models import Post, Message, ConversationMember, Profile, Event, EventParticipant, Conversation
+from api.models import Post, Message, ConversationMember, Profile, Event, EventParticipant, Conversation, Notification
 import subprocess
 import os
 from datetime import datetime
 from django.conf import settings
+from googleapiclient.channel import Notification
+
 logger = logging.getLogger(__name__)
 
 # shared_task: dùng được ở mọi app mà không cần import trực tiếp celery app
@@ -58,13 +60,32 @@ def send_event_reminder(self, event_id, content_type_id):
         if not event:
             return
 
-        participant_ids = EventParticipant.objects.filter(
-            event=event,
-            status = 'accept'
-        ).values_list('user_id', flat=True)
+        participant_ids = list(
+            EventParticipant.objects.filter(
+                event=event, status='accept'
+            ).values_list('user_id', flat=True)
+        )
+        if not participant_ids:
+            return
+
+        Notification.objects.bulk_create([
+            Notification(
+                reciever_id=uid,
+                actor_id=event.created_by_id,   # ai là "actor" của thông báo nhắc lịch
+                type='event_reminder',          # nhớ thêm choice này vào model
+                object_id=event.id,
+                message=f"Sự kiện {event.title} sắp diễn ra vào lúc {event.start_time}",
+            )
+            for uid in participant_ids
+        ])
 
         channel_layer = get_channel_layer()
         for uid in participant_ids:
+            Notification.objects.create(
+                reciever_id__in = participant_ids,
+                message = f"Event {event.title} sắp xảy ra vào lúc {event.start_time}"
+
+            )
             async_to_sync(channel_layer.group_send)(
                 f'notification_{uid}',
                 {
@@ -77,7 +98,7 @@ def send_event_reminder(self, event_id, content_type_id):
                 }
             )
     except Exception as exc:
-        raise self.retry(exc=exc, countdown=60)
+        raise self.retry(exc=exc, countdown=60) # thử lại sau 60s
 
 
 # ===== CLEANUP =====

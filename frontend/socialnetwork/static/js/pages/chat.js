@@ -24,7 +24,7 @@ let activeConvId = null;
 
 let chatWs = null;
 
-let convWs = null;
+// convWs is shared from nav.js (window.navConvWs) — no second connection opened here
 
 const convMap = new Map();
 
@@ -60,25 +60,17 @@ let typingSent = false;
 
 
 
-// ========= WS RECONNECT GUARDS =========
+
+
+// ========= WS RECONNECT GUARDS (chat only) =========
 
 let chatWsReconnectTimer = null;
 
-let convWsReconnectTimer = null;
-
 let chatWsGeneration = 0;
-
-
-
-// ========= WS PING WATCHDOG =========
 
 const PING_WATCHDOG_MS = 70 * 1000;
 
 let chatPingWatchdog = null;
-
-let convPingWatchdog = null;
-
-
 
 function resetChatPingWatchdog(convId, gen) {
 
@@ -94,21 +86,7 @@ function resetChatPingWatchdog(convId, gen) {
 
 }
 
-
-
-function resetConvPingWatchdog() {
-
-  if (convPingWatchdog) clearTimeout(convPingWatchdog);
-
-  convPingWatchdog = setTimeout(() => {
-
-    connectConvListWs();
-
-  }, PING_WATCHDOG_MS);
-
-}
-
-
+// convWs reconnect is managed by nav.js global WS
 
 /** DOM refs */
 
@@ -387,57 +365,8 @@ async function startChatWith(profileId, name) {
 
 
 // ==================== CONV LIST WS ====================
-
-function connectConvListWs() {
-
-  if (convWsReconnectTimer) { clearTimeout(convWsReconnectTimer); convWsReconnectTimer = null; }
-
-  try {
-
-    if (convWs) { convWs.onclose = null; convWs.close(); }
-
-    convWs = new WebSocket(API.wsConversations());
-
-
-
-    convWs.onopen = () => { resetConvPingWatchdog(); };
-
-
-
-    convWs.onmessage = (ev) => {
-
-      try {
-
-        const data = JSON.parse(ev.data);
-
-        if (data.type === "ping") { convWs.send(JSON.stringify({ type: "pong" })); resetConvPingWatchdog(); return; }
-
-        if (data.conversation_id) bumpConversation(data);
-
-      } catch (_) { }
-
-    };
-
-
-
-    convWs.onclose = () => {
-
-      if (convPingWatchdog) clearTimeout(convPingWatchdog);
-
-      if (!convWsReconnectTimer) {
-
-        convWsReconnectTimer = setTimeout(() => { convWsReconnectTimer = null; connectConvListWs(); }, 3000);
-
-      }
-
-    };
-
-    convWs.onerror = (e) => console.error("[chat] convWs error", e);
-
-  } catch (e) { console.error("[chat] conv ws", e); }
-
-}
-
+// Reuses the global convWs from nav.js — no second connection opened.
+// nav.js will call window.navBumpConversation(data) whenever a new message arrives.
 
 
 function bumpConversation(event) {
@@ -1190,9 +1119,16 @@ function updateChatHeaderActions(conv) {
 
 
 
+  // Video Call Button
+  const callBtn = document.createElement("button");
+  callBtn.type = "button";
+  callBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
+  callBtn.title = "Video Call";
+  callBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>`;
+  callBtn.onclick = () => initVideoCall(conv.id);
+  chatHeaderActions.appendChild(callBtn);
+
   if (!conv.is_group) return;
-
-
 
   // Task Button
 
@@ -1230,14 +1166,7 @@ function updateChatHeaderActions(conv) {
   eventBtn.onclick = () => showEventModal(conv.id);
   chatHeaderActions.appendChild(eventBtn);
 
-  // Video Call Button
-  const callBtn = document.createElement("button");
-  callBtn.type = "button";
-  callBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
-  callBtn.title = "Video Call";
-  callBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>`;
-  callBtn.onclick = () => initVideoCall(conv.id);
-  chatHeaderActions.appendChild(callBtn);
+
 
 
 
@@ -1281,9 +1210,11 @@ function showConvInfoModal(convId, conv) {
 
         <button type="button" data-tab="files" class="info-tab-btn text-xs px-3 py-1.5 rounded-full bg-fb-secondary dark:bg-white/10 dark:text-white">Tệp</button>
 
+        ${conv.is_group ? `
         <button type="button" data-tab="tasks" class="info-tab-btn text-xs px-3 py-1.5 rounded-full bg-fb-secondary dark:bg-white/10 dark:text-white">Công việc</button>
 
         <button type="button" data-tab="votes" class="info-tab-btn text-xs px-3 py-1.5 rounded-full bg-fb-secondary dark:bg-white/10 dark:text-white">Bình chọn</button>
+        ` : ''}
 
       </div>
 
@@ -1757,13 +1688,35 @@ function appendMessage(m, scroll = true, prepend = false) {
 
   const mine = (myUserId != null && Number(sid) === Number(myUserId)) || (myProfileId != null && Number(sid) === Number(myProfileId));
 
+  // Look up sender profile from members list or message.sender object
+  const senderProfile = m.sender || (activeConvMembers || []).find(
+    (mem) => Number(mem.user?.user) === Number(sid) || Number(mem.user?.id) === Number(sid)
+  )?.user || null;
+  const senderName = senderProfile
+    ? ((senderProfile.first_name || "") + " " + (senderProfile.last_name || "")).trim() || "?"
+    : "?";
+  const senderPicture = senderProfile?.picture || null;
+
+  // Check if the previous message is from the same sender (to collapse avatar)
+  const isGroup = activeConvMeta?.is_group;
+  const prevWrap = prepend ? null : messagesEl.lastElementChild;
+  const prevSenderId = prevWrap?.dataset?.senderId;
+  const sameAsPrev = !prepend && prevSenderId && String(prevSenderId) === String(sid);
+
+  // If same sender, hide the previous message's avatar placeholder visibility
+  if (sameAsPrev && !mine) {
+    const prevAvatar = prevWrap?.querySelector(".msg-sender-avatar");
+    if (prevAvatar) prevAvatar.style.visibility = "hidden";
+  }
+
 
 
   const wrap = document.createElement("div");
 
-  wrap.className = `flex ${mine ? "justify-end" : "justify-start"} mb-1 chat-msg-wrap`;
+  wrap.className = `flex ${mine ? "justify-end" : "justify-start"} mb-1 chat-msg-wrap items-end gap-1.5`;
 
   wrap.dataset.msgId = m.id;
+  wrap.dataset.senderId = String(sid ?? "");
 
 
 
@@ -1929,7 +1882,35 @@ function appendMessage(m, scroll = true, prepend = false) {
 
 
 
-  if (mine) { wrap.append(replyBtn, messageCol); } else { wrap.append(messageCol, replyBtn); }
+  if (mine) { wrap.append(replyBtn, messageCol); } else {
+    // --- Avatar column for received messages ---
+    const avatarWrap = document.createElement("div");
+    avatarWrap.className = "msg-sender-avatar shrink-0 w-8 h-8 rounded-full overflow-hidden self-end mb-1";
+    avatarWrap.title = senderName;
+
+    if (senderPicture) {
+      const avi = document.createElement("img");
+      avi.src = senderPicture;
+      avi.alt = senderName;
+      avi.className = "w-full h-full object-cover";
+      avatarWrap.appendChild(avi);
+    } else {
+      // Fallback: colored circle with first letter of name
+      const initials = senderName.charAt(0).toUpperCase();
+      avatarWrap.style.cssText = "background: linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:700;";
+      avatarWrap.textContent = initials;
+    }
+
+    // In group: show sender name label above bubble on first msg of group
+    if (isGroup && !sameAsPrev) {
+      const nameLabel = document.createElement("div");
+      nameLabel.className = "text-[10px] font-semibold text-gray-500 dark:text-gray-400 mb-0.5 ml-1";
+      nameLabel.textContent = senderName;
+      messageCol.prepend(nameLabel);
+    }
+
+    wrap.append(avatarWrap, messageCol, replyBtn);
+  }
 
 
 
@@ -2684,7 +2665,13 @@ async function showTaskModal(convId, containerOverride) {
 
       <div class="glass-card rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col p-4">
 
-        <div class="flex items-center justify-between mb-3"><h2 class="font-bold text-lg dark:text-white">📋 Công việc</h2><button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button></div>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-bold text-lg dark:text-white">📋 Công việc</h2>
+          <div class="flex gap-2">
+            <button type="button" id="refreshTaskBtn_${convId}" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-sm hover:bg-slate-200 transition-colors" title="Làm mới">🔄</button>
+            <button type="button" data-close class="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl">&times;</button>
+          </div>
+        </div>
 
         <div id="taskContent_${convId}" class="flex-1 overflow-y-auto"></div>
 
@@ -2710,16 +2697,22 @@ async function showTaskModal(convId, containerOverride) {
 
       <textarea id="taskDescInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm" placeholder="Mô tả" rows="2"></textarea>
 
-      <select id="taskPriorityInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm"><option value="medium">Medium</option><option value="low">Low</option><option value="high">High</option></select>
-
-      <input id="taskDeadlineInput_${convId}" type="datetime-local" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm">
+      <div>
+        <label class="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Mức độ ưu tiên</label>
+        <select id="taskPriorityInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm"><option value="medium">Trung bình</option><option value="low">Thấp</option><option value="high">Cao</option></select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Hạn chót</label>
+        <input id="taskDeadlineInput_${convId}" type="datetime-local" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm">
+      </div>
 
       <button type="button" id="submitCreateTask_${convId}" class="w-full rounded-lg bg-fb-primary text-white font-semibold py-2 text-sm">Tạo</button>
 
     </div>
-
+    <div class="mb-2">
+      <input type="text" id="taskSearchInput_${convId}" placeholder="Tìm kiếm task..." class="w-full text-xs rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white border dark:border-white/10 input-glow">
+    </div>
     <div class="flex gap-2 mb-3">
-
       <select id="taskStatusFilter_${convId}" class="text-xs rounded-lg px-2 py-1.5 bg-white dark:bg-white/10 dark:text-white border dark:border-white/10">
 
         <option value="">Tất cả trạng thái</option>
@@ -2810,9 +2803,51 @@ async function showTaskModal(convId, containerOverride) {
 
   contentEl.querySelector(`#taskStatusFilter_${convId}`)?.addEventListener("change", () => loadTaskList(convId, contentEl));
 
+  let taskSearchTimeout = null;
+  contentEl.querySelector(`#taskSearchInput_${convId}`)?.addEventListener("input", () => {
+    if (taskSearchTimeout) clearTimeout(taskSearchTimeout);
+    taskSearchTimeout = setTimeout(() => loadTaskList(convId, contentEl), 500);
+  });
+
+  const refreshBtn = containerOverride ? containerOverride.querySelector(`#refreshTaskBtn_${convId}`) : modal?.querySelector(`#refreshTaskBtn_${convId}`);
+  refreshBtn?.addEventListener("click", () => {
+    loadTaskList(convId, contentEl);
+  });
 }
 
-
+function showTaskAssigneeModal(user) {
+  document.getElementById("taskAssigneeModal")?.remove();
+  const modal = document.createElement("div");
+  modal.id = "taskAssigneeModal";
+  modal.className = "fixed inset-0 modal-backdrop z-[90] flex items-center justify-center p-4 opacity-0 transition-opacity duration-200";
+  setTimeout(() => modal.classList.remove("opacity-0"), 10);
+  
+  const pic = user.picture || DEFAULT_AVATAR;
+  const name = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Thành viên';
+  
+  modal.innerHTML = `
+    <div class="glass-card rounded-2xl p-6 flex flex-col items-center gap-3 animate-scale-in max-w-sm w-full relative">
+      <button type="button" data-close class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl flex items-center justify-center hover:bg-slate-200 transition-colors">&times;</button>
+      <div class="w-20 h-20 rounded-full overflow-hidden border-4 border-fb-primary/20 p-1">
+        <img src="${pic}" class="w-full h-full rounded-full object-cover bg-slate-200 dark:bg-slate-700" alt="Avatar">
+      </div>
+      <h3 class="font-bold text-lg dark:text-white">${name}</h3>
+      <div class="text-sm text-gray-500 dark:text-gray-400 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full">Người được giao việc</div>
+    </div>
+  `;
+  
+  const closeFn = () => {
+    modal.classList.add("opacity-0");
+    setTimeout(() => modal.remove(), 200);
+  };
+  
+  modal.querySelector("[data-close]").addEventListener("click", closeFn);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeFn();
+  });
+  
+  document.body.appendChild(modal);
+}
 
 async function showAddTaskMembersModal(convId, taskId) {
 
@@ -2894,9 +2929,10 @@ async function showAddTaskMembersModal(convId, taskId) {
 
 
 
-async function loadTaskList(convId, container, searchQuery = "") {
+async function loadTaskList(convId, container) {
   const list = container?.querySelector(`#taskList_${convId}`) || document.getElementById("taskList");
   if (!list) return;
+  const searchQuery = container?.querySelector(`#taskSearchInput_${convId}`)?.value.trim() || "";
   const res = await authFetch(API.listTasks(convId, searchQuery));
   const data = res.ok ? await res.json() : { results: [] };
   const statusFilter = container?.querySelector(`#taskStatusFilter_${convId}`)?.value;
@@ -2916,16 +2952,33 @@ async function loadTaskList(convId, container, searchQuery = "") {
     card.className = "p-3 rounded-xl bg-white dark:bg-white/5 border dark:border-white/10 space-y-2";
 
     const isCreator = t.created_by?.user === myUserId || Number(t.created_by?.id) === Number(myProfileId);
+    const isAssignee = t.assigned_to?.some(u => Number(u.id) === Number(myProfileId) || Number(u.user) === Number(myUserId));
+    const canEditStatus = isCreator || isAssignee;
+
     const isDone = t.status === 'done' || t.is_finished;
 
     const priorityClass = t.priority === 'high' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
       : t.priority === 'low' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
       : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-    const statusClass = isDone ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-      : t.status === 'in_progress' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-      : 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-400';
-    const statusLabel = isDone ? 'Hoàn thành' : t.status === 'in_progress' ? 'Đang làm' : 'Cần làm';
+
     const creatorName = t.created_by ? (t.created_by.full_name || `${t.created_by.first_name || ''} ${t.created_by.last_name || ''}`.trim()) : '';
+
+    let statusDisplayHtml = "";
+    if (canEditStatus) {
+      statusDisplayHtml = `
+        <select data-action="change-status" class="text-[10px] px-2 py-0.5 rounded-full font-medium cursor-pointer border-none outline-none appearance-none bg-fb-secondary dark:bg-white/10 dark:text-white" title="Đổi trạng thái">
+          <option value="todo" ${t.status === 'todo' && !isDone ? 'selected' : ''}>Cần làm</option>
+          <option value="in_progress" ${t.status === 'in_progress' ? 'selected' : ''}>Đang làm</option>
+          <option value="done" ${isDone ? 'selected' : ''}>Hoàn thành</option>
+        </select>
+      `;
+    } else {
+      const statusClass = isDone ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+        : t.status === 'in_progress' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+        : 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-400';
+      const statusLabel = isDone ? 'Hoàn thành' : t.status === 'in_progress' ? 'Đang làm' : 'Cần làm';
+      statusDisplayHtml = `<span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${statusClass}">${statusLabel}</span>`;
+    }
 
     card.innerHTML = `
       <div class="flex items-start justify-between gap-2">
@@ -2934,51 +2987,64 @@ async function loadTaskList(convId, container, searchQuery = "") {
           ${t.description ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${t.description}</p>` : ''}
           <div class="flex gap-1.5 mt-1.5 flex-wrap items-center">
             <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${priorityClass}">${t.priority}</span>
-            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${statusClass}">${statusLabel}</span>
+            ${statusDisplayHtml}
             ${t.deadline ? `<span class="text-[10px] text-gray-400">📅 ${new Date(t.deadline).toLocaleDateString('vi-VN')}</span>` : ''}
           </div>
           ${creatorName ? `<p class="text-[10px] text-gray-400 mt-1">👤 Giao bởi: <span class="font-semibold text-gray-500 dark:text-gray-300">${creatorName}</span></p>` : ''}
-          ${t.assigned_to?.length ? `<div class="flex gap-1 mt-1.5 flex-wrap">${t.assigned_to.map((u) => `<span class="text-[10px] bg-fb-secondary dark:bg-white/10 px-2 py-0.5 rounded-full dark:text-gray-300">@${u.full_name || u.first_name || ''}</span>`).join('')}</div>` : ''}
+          ${t.assigned_to?.length ? `<div class="flex gap-1 mt-1.5 flex-wrap">${t.assigned_to.map((u) => `<button type="button" class="task-assignee-chip text-[10px] bg-fb-secondary dark:bg-white/10 px-2 py-0.5 rounded-full hover:bg-slate-200 dark:hover:bg-white/20 transition-colors dark:text-gray-300" data-user='${encodeURIComponent(JSON.stringify(u))}'>@${u.full_name || u.first_name || ''}</button>`).join('')}</div>` : ''}
         </div>
         <div class="flex gap-1 shrink-0 flex-col items-end">
           ${isCreator ? `<button type="button" data-action="edit" class="text-xs px-2 py-1 rounded hover:bg-fb-secondary dark:hover:bg-white/10 text-blue-500" title="Sửa">✏️</button>` : ''}
           ${isCreator ? `<button type="button" data-action="add-members" class="text-xs px-2 py-1 rounded hover:bg-fb-secondary dark:hover:bg-white/10 text-emerald-500" title="Thêm thành viên">➕</button>` : ''}
-          ${!isDone ? `<button type="button" data-action="mark-done" class="text-xs px-2 py-1 rounded hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600" title="Đánh dấu xong">✅</button>` : `<span class="text-[10px] text-green-500 font-semibold px-1">✓ Xong</span>`}
           ${isCreator ? `<button type="button" data-action="delete" class="text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500" title="Xóa">🗑️</button>` : ''}
         </div>
       </div>
-      ${isCreator && !isDone ? `
-      <div class="flex items-center gap-2 mt-1 pt-2 border-t dark:border-white/10">
-        <label class="text-[10px] text-gray-500 dark:text-gray-400 shrink-0">Trạng thái:</label>
-        <select data-action="change-status" class="task-status-select text-xs rounded-lg px-2 py-1 bg-gray-50 dark:bg-white/5 dark:text-white border dark:border-white/10 flex-1">
-          <option value="todo" ${t.status === 'todo' ? 'selected' : ''}>Cần làm</option>
-          <option value="in_progress" ${t.status === 'in_progress' ? 'selected' : ''}>Đang làm</option>
-          <option value="done" ${isDone ? 'selected' : ''}>Hoàn thành</option>
-        </select>
-      </div>` : ''}
     `;
 
     list.appendChild(card);
 
+    const changeStatusSelect = card.querySelector('[data-action="change-status"]');
+    if (changeStatusSelect) {
+      changeStatusSelect.addEventListener("change", async (e) => {
+        const newStatus = e.target.value;
+        try {
+          const ures = await authFetch(API.updateTask(convId, t.id), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: newStatus, is_finished: newStatus === 'done' })
+          });
+          if (ures.ok) {
+            showToast("Đã cập nhật trạng thái", "green");
+            loadTaskList(convId, container);
+          } else {
+            showToast("Không thể cập nhật trạng thái", "red");
+            e.target.value = t.status;
+          }
+        } catch (error) {
+          showToast("Lỗi cập nhật", "red");
+          e.target.value = t.status;
+        }
+      });
+    }
+
+    card.querySelectorAll('.task-assignee-chip').forEach(btn => {
+      btn.addEventListener("click", () => {
+        try {
+          const userStr = decodeURIComponent(btn.getAttribute("data-user"));
+          const userObj = JSON.parse(userStr);
+          showTaskAssigneeModal(userObj);
+        } catch (e) {
+          console.error("Error parsing assignee", e);
+        }
+      });
+    });
+
     card.querySelector("[data-action='add-members']")?.addEventListener("click", () => showAddTaskMembersModal(convId, t.id));
-
-    card.querySelector("[data-action='mark-done']")?.addEventListener("click", async () => {
-      const body = { is_finished: true, status: 'done' };
-      const r = await authFetch(API.updateTask(convId, t.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (r.ok) loadTaskList(convId, container, searchQuery); else showToast("Cập nhật thất bại", "red");
-    });
-
-    card.querySelector(".task-status-select")?.addEventListener("change", async (e) => {
-      const newStatus = e.target.value;
-      const body = { status: newStatus, is_finished: newStatus === 'done' };
-      const r = await authFetch(API.updateTask(convId, t.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (r.ok) loadTaskList(convId, container, searchQuery); else showToast("Cập nhật thất bại", "red");
-    });
 
     card.querySelector("[data-action='delete']")?.addEventListener("click", async () => {
       if (!await confirmDialog("Xóa task này?")) return;
       const r = await authFetch(API.deleteTask(convId, t.id), { method: "DELETE" });
-      if (r.ok) loadTaskList(convId, container, searchQuery); else showToast("Xóa thất bại", "red");
+      if (r.ok) loadTaskList(convId, container); else showToast("Xóa thất bại", "red");
     });
 
     card.querySelector("[data-action='edit']")?.addEventListener("click", () => {
@@ -3001,7 +3067,7 @@ async function loadTaskList(convId, container, searchQuery = "") {
           </div>
         </div>
       `;
-      card.querySelector(".cancel-edit").onclick = () => loadTaskList(convId, container, searchQuery);
+      card.querySelector(".cancel-edit").onclick = () => loadTaskList(convId, container);
       card.querySelector(".save-edit").onclick = async () => {
         const body = {
           title: card.querySelector(".edit-title").value.trim(),
@@ -3880,7 +3946,10 @@ async function initChat() {
 
     await loadCurrentUser();
 
-    connectConvListWs();
+    // Hook into the global convWs from nav.js — no second connection needed
+    window.navBumpConversation = (data) => {
+      if (data.conversation_id) bumpConversation(data);
+    };
 
     await Promise.all([loadFriendsStrip(), loadConversations()]);
 
@@ -3981,6 +4050,9 @@ async function showEventModal(convId) {
         </div>
       </div>
       <div id="eventContent_${convId}" class="flex-1 overflow-y-auto space-y-3 pr-1">
+        <div class="mb-2">
+          <input type="text" id="eventSearchInput_${convId}" placeholder="Tìm kiếm sự kiện..." class="w-full text-xs rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white border dark:border-white/10 input-glow">
+        </div>
         <button type="button" id="showCreateEventForm_${convId}" class="text-sm text-fb-primary font-semibold">+ Tạo sự kiện mới</button>
         <div id="createEventForm_${convId}" class="hidden space-y-2 p-3 bg-slate-50 dark:bg-white/5 rounded-xl border dark:border-white/10">
           <input id="eventTitleInput_${convId}" class="w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm border dark:border-white/10" placeholder="Tên sự kiện">
@@ -4035,13 +4107,21 @@ async function showEventModal(convId) {
   });
 
   modal.querySelector(`#refreshEventBtn_${convId}`)?.addEventListener("click", () => loadEventList(convId, modal));
+
+  let eventSearchTimeout = null;
+  modal.querySelector(`#eventSearchInput_${convId}`)?.addEventListener("input", () => {
+    if (eventSearchTimeout) clearTimeout(eventSearchTimeout);
+    eventSearchTimeout = setTimeout(() => loadEventList(convId, modal), 500);
+  });
+
   await loadEventList(convId, modal);
 }
 
 async function loadEventList(convId, modal) {
   const list = modal.querySelector(`#eventList_${convId}`);
   if (!list) return;
-  const res = await authFetch(API.listEvents(convId));
+  const searchQuery = modal.querySelector(`#eventSearchInput_${convId}`)?.value.trim() || "";
+  const res = await authFetch(API.listEvents(convId, searchQuery));
   const data = res.ok ? await res.json() : { results: [] };
   list.replaceChildren();
 
@@ -4053,10 +4133,11 @@ async function loadEventList(convId, modal) {
 
   events.forEach(e => {
     const card = document.createElement("div");
-    card.className = "p-3 rounded-xl bg-white dark:bg-white/5 border dark:border-white/10 relative";
+    card.className = "group p-3 rounded-xl bg-white dark:bg-white/5 border dark:border-white/10 relative";
     const startStr = new Date(e.start_time).toLocaleString('vi-VN');
     const endStr = e.end_time ? new Date(e.end_time).toLocaleString('vi-VN') : '';
-    const creatorName = e.created_by ? (e.created_by.full_name || `${e.created_by.first_name || ''} ${e.created_by.last_name || ''}`.trim()) : '';
+    const creatorName = e.created_by_name || '';
+    const isCreator = (e.created_by === myUserId);
 
     const statuses = e.participant_statuses || {};
     const myStatus = statuses[myUserId] || 'pending';
@@ -4092,6 +4173,19 @@ async function loadEventList(convId, modal) {
       </div>
     `;
 
+    const delBtn = card.querySelector('[data-action="delete-event"]');
+    if (delBtn) {
+      delBtn.addEventListener("click", async () => {
+        if (!confirm("Bạn có chắc chắn muốn xóa sự kiện này?")) return;
+        const res = await authFetch(API.eventDetail(convId, e.id), { method: "DELETE" });
+        if (res.ok) {
+          showToast("Đã xóa sự kiện", "green");
+          loadEventList(convId, modal);
+        } else {
+          showToast("Xóa thất bại", "red");
+        }
+      });
+    }
     card.querySelectorAll("[data-action='update-status']").forEach(btn => {
       btn.addEventListener("click", async () => {
         const s = btn.dataset.status;

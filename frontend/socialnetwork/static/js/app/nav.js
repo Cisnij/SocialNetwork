@@ -349,5 +349,156 @@ mobileSearchBtn?.addEventListener("click", () => {
   }
 });
 
+// ======= CONVERSATION NOTIFICATION (Chat Badge) =======
+const chatBadge = document.getElementById("chatBadge");
+let convWs = null;
+let convWsReconnectTimer = null;
+let convPingWatchdog = null;
+
+function resetConvPingWatchdog() {
+  if (convPingWatchdog) clearTimeout(convPingWatchdog);
+  convPingWatchdog = setTimeout(() => {
+    console.warn("[nav] Conv WS ping watchdog fired — reconnecting");
+    connectConvWs();
+  }, PING_WATCHDOG_MS);
+}
+
+function connectConvWs() {
+  if (convWsReconnectTimer) {
+    clearTimeout(convWsReconnectTimer);
+    convWsReconnectTimer = null;
+  }
+  if (convWs) {
+    convWs.onclose = null;
+    convWs.close();
+  }
+  if (convPingWatchdog) clearTimeout(convPingWatchdog);
+
+  try {
+    convWs = new WebSocket(API.wsConversations());
+
+    convWs.onopen = () => {
+      resetConvPingWatchdog();
+    };
+
+    convWs.onmessage = async (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (data.type === "ping") {
+          convWs.send(JSON.stringify({ type: "pong" }));
+          resetConvPingWatchdog();
+          return;
+        }
+
+        // New message arrived in a conversation
+        if (data.conversation_id && data.last_message) {
+          if (String(data.sender_id) !== String(window.user_id)) {
+            // Show red badge (on non-chat pages)
+            if (chatBadge && window.location.pathname !== "/chat/") {
+              chatBadge.classList.remove("hidden");
+            }
+            // Show chat message popup (only outside of /chat/)
+            if (window.location.pathname !== "/chat/") {
+              showChatMsgPopup(data);
+            }
+          }
+          // Notify chat.js if it's listening
+          if (typeof window.navBumpConversation === "function") {
+            window.navBumpConversation(data);
+          }
+        }
+      } catch (e) {}
+    };
+
+    convWs.onclose = () => {
+      if (convPingWatchdog) clearTimeout(convPingWatchdog);
+      if (!convWsReconnectTimer) {
+        convWsReconnectTimer = setTimeout(() => {
+          convWsReconnectTimer = null;
+          connectConvWs();
+        }, 3000);
+      }
+    };
+
+    convWs.onerror = (err) => console.error("[nav] convWs error", err);
+  } catch (e) {
+    console.error("[nav] convWs connect error", e);
+  }
+
+  // expose so chat.js can reuse the same socket
+  window.navConvWs = convWs;
+}
+
+// Hide chat badge when clicking chat link
+const navChatLinkObj = document.getElementById("navChatLink");
+navChatLinkObj?.addEventListener("click", () => {
+  if (chatBadge) chatBadge.classList.add("hidden");
+});
+
+// ======= CHAT MESSAGE POPUP =======
+let chatMsgPopupTimeout = null;
+
+function showChatMsgPopup(data) {
+  const popup = document.getElementById("chatMsgPopup");
+  if (!popup) return;
+
+  // Avatar
+  const avatarEl = document.getElementById("chatMsgPopupAvatar");
+  if (avatarEl) {
+    if (data.sender_avatar) {
+      avatarEl.innerHTML = "";
+      avatarEl.style.backgroundImage = `url('${data.sender_avatar}')`;
+      avatarEl.style.backgroundSize = "cover";
+      avatarEl.style.backgroundPosition = "center";
+    } else {
+      avatarEl.style.backgroundImage = "";
+      avatarEl.innerHTML = "💬";
+    }
+  }
+
+  // Sender name
+  const nameEl = document.getElementById("chatMsgPopupName");
+  if (nameEl) nameEl.textContent = data.sender_name || "Tin nhắn mới";
+
+  // Last message preview
+  const textEl = document.getElementById("chatMsgPopupText");
+  if (textEl) {
+    const msg = data.last_message || "";
+    textEl.textContent = msg.length > 80 ? msg.slice(0, 80) + "…" : msg;
+  }
+
+  // Link to conversation
+  const linkEl = document.getElementById("chatMsgPopupLink");
+  if (linkEl && data.conversation_id) {
+    linkEl.href = `/chat/?conv=${data.conversation_id}`;
+  }
+
+  popup.classList.remove("hidden");
+
+  // Re-trigger slide-in animation
+  popup.style.animation = "none";
+  void popup.offsetWidth;
+  popup.style.animation = "slideInRight 0.3s ease";
+
+  // Progress bar
+  const bar = document.getElementById("chatMsgPopupProgress");
+  if (bar) {
+    bar.style.animation = "none";
+    void bar.offsetWidth;
+    bar.style.animation = "shrinkBar 5s linear forwards";
+  }
+
+  if (chatMsgPopupTimeout) clearTimeout(chatMsgPopupTimeout);
+  chatMsgPopupTimeout = setTimeout(() => popup.classList.add("hidden"), 5000);
+}
+
+document.getElementById("closeChatMsgPopup")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById("chatMsgPopup")?.classList.add("hidden");
+  if (chatMsgPopupTimeout) clearTimeout(chatMsgPopupTimeout);
+});
+
 refreshBadge();
 connectNotifWs();
+connectConvWs();

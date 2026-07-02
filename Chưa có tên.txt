@@ -4,9 +4,6 @@ chưa xong
 -thiếu phần đăng nhập:
     xác thực otp khi bật 2 bước có 2 setting là gửi otp qua mail hay gửi sms qua sdt dùng rapid api
 
-
-
--thêm signal
 -thêm setting default post privacy
 -thêm story 24h
 - thêm 1 cái là upload video và thêm model PostVideo luôn làm y chang PostPhoto

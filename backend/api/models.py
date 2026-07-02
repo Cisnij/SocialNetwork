@@ -318,6 +318,7 @@ class Message(SafeDeleteModel):
         ('system_event_created','Tạo sự kiện'),
         ('system_event_cancelled', 'Xóa sự kiện'),
         ('system_event_attended', 'Tham gia sự kiện'),
+        ('system_event_updated', 'Cập nhật sự kiện')
 
     ]
     _safedelete_policy = SOFT_DELETE_CASCADE
@@ -393,11 +394,12 @@ class Notification(models.Model):
         ('friend_request', 'Friend Request'),
         ('follow', 'Follow'),
         ('share_post', 'Share on Post'),
-        ('accepted_friend_request', 'Accept Friend')
+        ('accepted_friend_request', 'Accept Friend'),
+        ('event_reminder', 'Event Reminder'),
     ]
     reciever = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    type = models.CharField(max_length=25, choices=TYPE_CHOICES)
     object_id = models.PositiveIntegerField(null=True, blank=True)
     post_id = models.PositiveIntegerField(null=True, blank=True)
     message = models.TextField(blank=True)
