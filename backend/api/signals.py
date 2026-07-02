@@ -744,7 +744,7 @@ def log_post_share_created(sender, created, instance, **kwargs):  # đổi tên 
             "action_object_id": instance.pk,
             "target_type": "Post", # Đối tượng nhắm đến
             "target_id": instance.post_id,
-            "content": instance.content[:50],
+            "content": instance.content[:50] or '',
             "action": verb,
         }
     )
@@ -763,7 +763,7 @@ def log_post_share_deleted(sender, instance, **kwargs):  # đổi tên tránh tr
             "action_object_id": instance.pk,
             "target_type": "Post",
             "target_id": instance.post_id,
-            "content": instance.content[:50],
+            "content": instance.content[:50] or '',
             "action": "delete share post",
         }
     )

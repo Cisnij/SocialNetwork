@@ -57,6 +57,14 @@ def validate_birth_date(value): # hàm validate ngày sinh
     if value.year < 1900:
         raise ValidationError('Ngày sinh không hợp lệ')
 
+def group_avatar_upload_path(instance, filename):
+    ext = filename.split('.')[-1].lower()
+    return f'groups/group_{instance.id}/avatar/{uuid.uuid4()}.{ext}'
+
+def group_post_photo_upload_path(instance, filename):
+    ext = filename.split('.')[-1].lower()
+    return f'groups/group_{instance.post.group_id}/posts/{uuid.uuid4()}.{ext}'
+
 
 name_validator = RegexValidator(
     regex=r'^[a-zA-ZÀ-ỹ\s]+$',
@@ -117,6 +125,11 @@ class Post(SafeDeleteModel):
         ('friends', 'Bạn bè'),
         ('private', 'Chỉ mình tôi'),
     ]
+    POST_STATUS = [ # cho group
+        ('approved', 'Đã duyệt'),
+        ('pending', 'Chờ duyệt'),
+        ('rejected', 'Từ chối'),
+    ]
     post_id = models.BigAutoField(primary_key=True, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=200, null=False)
@@ -127,7 +140,11 @@ class Post(SafeDeleteModel):
     share_count=models.PositiveIntegerField(default=0)
     privacy= models.CharField(max_length=15,choices=PRIVACY_CHOICES,default='public')
     is_pinned= models.BooleanField(default=False)
-    # group=models.ForeignKey(Group,null=True,blank=True)
+
+    #group fields
+    group=models.ForeignKey('Group',null=True,blank=True, on_delete=models.CASCADE, related_name='posts')
+    post_status = models.CharField(max_length=10, choices=POST_STATUS,default='pending')
+
     def __str__(self):
         return f"Post {self.post_id} | user_id={self.user_id} | {self.title[:30]}"
 
@@ -138,6 +155,8 @@ class Post(SafeDeleteModel):
             models.Index(fields=['share_code']),
             models.Index(fields=['user','privacy','-is_pinned', '-created_at']),
             models.Index(fields=['privacy', '-created_at']),
+            #cho group
+            models.Index(fields=['group','post_status','is_pinned','-created_at']),
         ]
 
 
@@ -331,7 +350,7 @@ class Message(SafeDeleteModel):
         default='text'
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    reply_to=models.ForeignKey('self',on_delete=models.SET_NULL,related_name='replies',null=True,blank=True)
+    reply_to=models.ForeignKey('self',on_delete=models.SET_NULL,related_name='replies',null=True,blank=True) #khi message reply bị xóa thì cũng k xóa theo
 
     def __str__(self):
         return f"Message {self.id} | sender_id={self.sender_id} | conv_id={self.conversation_id} | {(self.content or '') [:30]}"
@@ -368,7 +387,7 @@ class MessageAttachment(models.Model):
 
 
 
-# ===================================Firebase Token==================================
+# ===================================Firebase Token================================================================================================
 
 class FCMToken(models.Model):  # đại diện cho 1 app, 1 thiết bị, 1 lần cài
     user = models.ForeignKey(User, on_delete=models.CASCADE)  # user là ai
@@ -383,7 +402,7 @@ class FCMToken(models.Model):  # đại diện cho 1 app, 1 thiết bị, 1 lầ
         indexes = [models.Index(fields=['user'])]
 
 
-# ==========================Notification=============================
+# ==========================Notification===========================================================================================
 class Notification(models.Model):
     TYPE_CHOICES = [
         ('comment_on_post', 'Comment on Post'),
@@ -396,6 +415,9 @@ class Notification(models.Model):
         ('share_post', 'Share on Post'),
         ('accepted_friend_request', 'Accept Friend'),
         ('event_reminder', 'Event Reminder'),
+        ('group_request_accepted', 'Accept join request'),
+        ('group_post_accepted', 'Accept post request'),
+        ('group_notification', 'Group important notification')
     ]
     reciever = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
@@ -422,7 +444,7 @@ class Notification(models.Model):
 
 
 
-# # ======================================================================
+# # ====================================================================================================================================
 class SearchHistory(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -438,15 +460,15 @@ class SearchHistory(SafeDeleteModel):
     def __str__(self):
         return f"Search user_id={self.user_id} | {self.content[:30]}"
 
-#==============================================================================
+#============================================================================================================================================
 class PostShare(SafeDeleteModel):
-    _safedelete_policy = SOFT_DELETE
+    _safedelete_policy = SOFT_DELETE # xóa mềm mà không xóa các object có liên quan, soft delete cascade thì xóa mềm luôn cả các object liên quan
     PRIVACY_CHOICES=[
         ('public', 'Công khai'),
         ('friends', 'Bạn bè'),
         ('private', 'Chỉ mình tôi'),
     ]
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='shares')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='shares',null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shared_posts')
     created_at = models.DateTimeField(auto_now_add=True)
     content = models.CharField(max_length=500, null=True, blank=True)  # không bắt buộc phải viết
@@ -462,7 +484,7 @@ class PostShare(SafeDeleteModel):
     def __str__(self):
         return f"{self.user} shared {self.post}"
 
-#=============================================================================================================
+#============================================================================================================================================
 
 class Report(models.Model):
     post=models.ForeignKey(Post, on_delete=models.CASCADE,null=True,blank=True)
@@ -490,7 +512,7 @@ class SupportTicket(models.Model):
     def __str__(self):
         return f"{self.user} | {self.status}"
 
-#=================TASK=================================
+#=================TASK==================================================================================================
 class Task(models.Model):
     STATUS=[
         ('todo','Cần làm'),
@@ -521,7 +543,7 @@ class Task(models.Model):
             models.Index(fields=['content_type','object_id','status','priority']),
         ]
 
-#=====================VOTE==========================================================
+#=====================VOTE===============================================================================================
 class Vote(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=250)
@@ -551,7 +573,7 @@ class UserVote(models.Model):
         indexes = [models.Index(fields=['option','created_by'])]
 
 
-#===================================ROOM CALL VIDEO==================================================
+#===================================ROOM CALL VIDEO================================================================
 
 class VideoRoom(models.Model):
     END_REASON = [
@@ -594,7 +616,8 @@ class CallParticipant(models.Model):
         unique_together = ('room', 'user')
         indexes = [models.Index(fields=['room', 'status'])]
 
-#================EVENT========================================================
+#================EVENT==========================================================================================================
+
 class Event(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
@@ -624,3 +647,83 @@ class EventParticipant(models.Model):
     status = models.CharField(max_length=10, choices=STATUS, default='pending')
     class Meta:
         unique_together = ('event', 'user') #1 user chỉ đc tham gia 1 lần
+
+#================GROUP========================================================
+
+class Group(SafeDeleteModel):
+    _safedelete_policy = SOFT_DELETE_CASCADE
+    name = models.CharField(max_length=250)
+    description = models.TextField(null=True,blank=True)
+    avatar = models.ImageField(upload_to=group_avatar_upload_path, null=True, blank=True,validators=[FileExtensionValidator(['png','jpg','jpeg'])])
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL,null=True,blank=True) #xóa user thì xóa luôn group
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return f"Group {self.id} | {self.name}"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['created_by', '-created_at']),
+        ]
+
+class GroupDepartment(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='departments')
+    name = models.CharField(max_length=100)
+    def __str__(self):
+        return f"Department {self.name} | group_id={self.group_id}"
+
+    class Meta:
+        unique_together = ('group', 'name')  # không trùng tên department trong cùng 1 group
+        indexes = [models.Index(fields=['group'])]
+
+class GroupRole(models.Model): # user tự tạo thì thường nên có bảng riêng
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='roles')
+    name = models.CharField(max_length=100)
+    class Meta:
+        unique_together = ('group', 'name')  # không trùng tên role trong cùng 1 group
+        indexes = [models.Index(fields=['group'])]
+
+class GroupMember(SafeDeleteModel):
+    _safedelete_policy = SOFT_DELETE_CASCADE
+    ROLE = [
+        ('owner','Chủ group'),
+        ('admin', 'Người kiểm duyệt'),
+        ('member', 'Thành viên')
+    ]
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='members')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    role = models.CharField(max_length=10, choices=ROLE, default='member')
+    job_role = models.ForeignKey(GroupRole, on_delete=models.SET_NULL,null=True,blank=True)
+    department= models.ForeignKey(GroupDepartment, on_delete=models.SET_NULL,null=True,blank=True)
+    joined_at= models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    def __str__(self):
+        return f"GroupMember user_id={self.user_id} | group_id={self.group_id} | {self.role}"
+
+    class Meta:
+        unique_together = ('group', 'user')
+        indexes = [
+            models.Index(fields=['group', 'user', 'is_active']),
+            models.Index(fields=['group', 'user', 'role']),
+            models.Index(fields=['group', 'is_active','joined_at']),
+        ]
+
+class GroupJoinRequest(models.Model):
+    STATUS = [
+        ('accepted','Đã chấp nhận'),
+        ('rejected', 'Đã từ chối'),
+        ('pending', 'Đang chờ duyệt')
+    ]
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='join_requests') #group.join_requests.all() lấy tẩt cả request của group đó (GroupJoinRequest.objects.filter(group=group))
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='group_join_requests') # user.group_join_requests.all() lấy tất cả request user này gửi (Group.objects.get(user=1))
+    status = models.CharField(max_length=10, choices=STATUS, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL,null=True,blank=True,related_name='reviewed_join_requests') #user.reviewed_join_requests.all() láy tất cả request của user đó duyệt (Group.objects.filter(reviewed_by=1))
+
+    def __str__(self):
+        return f'{self.user} | {self.group_id} | {self.status}'
+    class Meta:
+        unique_together = ('group','user')
+        indexes = [
+            models.Index(fields=['group', 'user', 'status']),
+        ]

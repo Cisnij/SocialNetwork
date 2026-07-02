@@ -52,6 +52,9 @@ CACHEOPS = {
 
     #  Cache vừa — thay đổi vừa
     'api.post': {'ops': 'all', 'timeout': 60 * 20},
+    'api.group': {'ops': 'all', 'timeout': 60 * 20},
+    'api.grouprole': {'ops': 'all', 'timeout': 60 * 20},
+    'api.groupdepartment': {'ops': 'all', 'timeout': 60 * 20},
     'api.postarticle': {'ops': 'all', 'timeout': 60 * 20},
     'api.postphoto': {'ops': 'all', 'timeout': 60 * 20},
     'api.comment': {'ops': 'all', 'timeout': 60 * 5},
@@ -63,15 +66,18 @@ CACHEOPS = {
     #  Cache ngắn — realtime
     'api.conversation': {'ops': 'all', 'timeout': 60 * 5},
     'api.conversationMember': {'ops': 'all', 'timeout': 60 * 5},
+    'api.groupmember': {'ops': 'all', 'timeout': 60 * 5},
     'api.task':{'ops':'all', 'timeout': 60*5},
     'api.event':{'ops':'all', 'timeout': 60*5},
     'api.eventparticipant':{'ops':'all', 'timeout': 60*1},
+    'api.groupjoinrequest':{'ops':'all', 'timeout': 60*2},
     'api.voteoption':{'ops':'all', 'timeout': 60*2},
     'api.uservote':{'ops':'all', 'timeout': 60*1},
     # thư viện
     'friendship.*': {'ops': 'all', 'timeout': 60 * 60},
     'actstream.action': {'ops': 'all', 'timeout': 60 * 5},
     'reaction.*': {'ops': 'all', 'timeout': 60 * 15},
+
 
 }
 

@@ -162,4 +162,12 @@ work flows
 
 63. EVENT TASK: CreateTask: Tạo event check conv member, sau đó add tất cả vào event và status=pending và tạo celery
                 Celery sẽ nhận
+64. Cập nhật signal
+65. Thêm Group function, Group model:
+    Thêm vào notification
+    Thêm vào models,serializers.api
+    Thêm vào signal (log,notification,activity(action.send))
+    Thêm vào setting gồm throttle, cacheops
+    Sủa lại model Post
+    Thêm vào regis admin và regis activity stream
 =====================================================================================

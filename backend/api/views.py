@@ -3521,5 +3521,8 @@ class EventParticipantChat(generics.ListAPIView):
         return EventParticipant.objects.filter(
            event__content_type = content_type,
             event__object_id = conv_id,
-            event_id =event_id
+            event_id =event_id,
+            status = 'accept'
         ).select_related('user__profile')
+
+#============================GROUP==========================================================================
