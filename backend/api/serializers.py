@@ -577,3 +577,55 @@ class EventSerializer(serializers.ModelSerializer):
             None
         )
         return participant.status if participant else None #lấy ra status user gửi request
+
+#==============================GROUP===========================================================================================
+
+class GroupSerializer(serializers.ModelSerializer):
+    member_count = serializers.IntegerField(read_only=True)
+    created_by = ProfileSerializer(source = 'created_by.profile', read_only=True)
+    role = serializers.SerializerMethodField()
+    belong_to_department = serializers.SerializerMethodField()
+    department_role = serializers.SerializerMethodField()
+    class Meta:
+        model = Group
+        fields = '__all__'
+
+class GroupDepartmentSerializer(serializers.ModelSerializer):
+    member_count = serializers.SerializerMethodField()
+    class Meta:
+        model = GroupDepartment
+        fields = ['group','name','member_count']
+        read_only_fields = ['group']
+    def get_member_count(self,obj):
+        if hasattr(obj, 'member_count'):
+            return obj.member_count # dùng cho get_object, nếu có truyền vào member_count trong annotate viết ở get_object thì lấy
+        counts= self.context.get('department_member_counts') # lấy ở context truyền từ queryset, lưu trong ram
+        return counts.get(obj.id, 0) #dùng cho get_queryset (tức là truyền vào department 1 thì lấy tất cả member department 1, k có thì 0)
+
+class GroupRoleSerializer(serializers.ModelSerializer):
+    member_count = serializers.SerializerMethodField()
+    class Meta:
+        model = GroupRole
+        fields = ['group', 'name','member_count']
+        read_only_fields = ['group']
+
+    def get_member_count(self,obj):
+        if hasattr(obj, 'member_count'):
+            return obj.member_count # dùng cho get_object
+        counts= self.context.get('role_member_counts')
+        return counts.get(obj.id, 0)
+
+class GroupMemberSerializer(serializers.ModelSerializer):
+    user = ProfileSerializer(source='user.profile',read_only=True)
+    department = serializers.CharField(source= 'department.name',read_only=True)
+    job_role = serializers.CharField(source= 'job_role.name',read_only=True)
+    class Meta:
+        model = GroupMember
+        fields = '__all__'
+
+class GroupJoinRequestSerializer(serializers.ModelSerializer):
+    user = ProfileSerializer(source='user.profile', read_only=True)
+    reviewed_by = ProfileSerializer(source='reviewed_by.profile', read_only=True)
+    class Meta:
+        model = GroupJoinRequest
+        fields = '__all__'

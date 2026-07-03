@@ -658,6 +658,7 @@ class Group(SafeDeleteModel):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL,null=True,blank=True) #xóa user thì xóa luôn group
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
+    is_company = models.BooleanField(default=False)
     def __str__(self):
         return f"Group {self.id} | {self.name}"
 
@@ -679,6 +680,7 @@ class GroupDepartment(models.Model):
 class GroupRole(models.Model): # user tự tạo thì thường nên có bảng riêng
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='roles')
     name = models.CharField(max_length=100)
+    department = models.ForeignKey(GroupDepartment,on_delete=models.CASCADE,related_name='department_roles',null=True,blank=True) # lấy tất cả role có department = x
     class Meta:
         unique_together = ('group', 'name')  # không trùng tên role trong cùng 1 group
         indexes = [models.Index(fields=['group'])]
@@ -693,8 +695,7 @@ class GroupMember(SafeDeleteModel):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='members')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     role = models.CharField(max_length=10, choices=ROLE, default='member')
-    job_role = models.ForeignKey(GroupRole, on_delete=models.SET_NULL,null=True,blank=True)
-    department= models.ForeignKey(GroupDepartment, on_delete=models.SET_NULL,null=True,blank=True)
+    job_role = models.ForeignKey(GroupRole, on_delete=models.SET_NULL,null=True,blank=True,related_name='job_role_members') #lấy tất cả member có role = ... Groupmember thì có thể truy cập jobrole qua objects.filter(jobrole=1), nhưng jobrole k có field trong bảng đó nên muốn truy cập phải dùng related jobrole.job_role_members.all()
     joined_at= models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     def __str__(self):

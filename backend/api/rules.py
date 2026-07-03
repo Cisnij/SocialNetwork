@@ -1,5 +1,7 @@
 import rules
+from api.models import GroupMember, Group
 from friendship.models import Friend
+from rules import is_active
 
 '''
 flow là đầu tiên định nghĩa predicate ở rules
@@ -25,18 +27,43 @@ def is_public_post(user,post):
 @rules.predicate
 def is_friends_post(user,post):
     return post.privacy == 'friends' #return True nếu là friends
-#==========================================================KẾT HỢP===================================================
-# @rules.predicate
-# def is_community_admin(user,community):
-#     return CommunityMember.objects.filter(user=user,community=community,is_admin=True).exists()
 
+#GROUP
+@rules.predicate
+def is_group_admin(user,obj):
+    group_id = obj.id if isinstance(obj, Group) else getattr(obj, 'group_id', None) # nếu truyền vào group object thì sẽ check obj có là is instance của group, kh thì lấy id từ obj đó ví dụ group_id từ group_member
+    if user.is_anonymous or not group_id:
+        return False
+    return GroupMember.objects.filter(group_id=group_id,user=user,is_active=True,role='admin').exists()
+@rules.predicate
+def is_group_owner(user,obj):
+    group_id = obj.id if isinstance(obj, Group) else getattr(obj, 'group_id', None)
+    if user.is_anonymous or not group_id:
+        return False
+    return GroupMember.objects.filter(group_id=group_id,user=user,is_active=True,role='owner').exists()
+@rules.predicate
+def is_group_member(user,obj):
+    group_id = obj.id if isinstance(obj, Group) else getattr(obj, 'group_id', None)
+    if user.is_anonymous or not group_id:
+        return False
+    return GroupMember.objects.filter(group_id=group_id,user=user,is_active=True,role='member').exists()
+@rules.predicate
+def is_group_post_author(user,obj):
+    return obj.user_id == user.id
+#==========================================================KẾT HỢP===================================================
 #RULE được xem
 can_view_post= is_post_author | is_public_post | (is_friend & is_friends_post) # phải thoả là bạn và post có chế độ là friends
 can_edit_post= is_post_author | rules.is_staff
-# #RULE dùng cho community
-# can_accept_community_post= rules.is_staff | is_community_admin
+#GROUP
+have_all_rights = is_group_owner | is_group_admin
+can_edit_post_group = is_group_owner | is_group_admin | is_group_post_author
 #===============================================================ĐĂNG KÍ==============================================
 
 rules.add_perm('api.view_post',can_view_post) # posts.view_post là name tự đặt
 rules.add_perm('api.edit_post',can_edit_post)
-# rules.add_perm('api.accept_community_posts',can_accept_community_post)
+#GROUP
+rules.add_perm('group.is_member',        is_group_member)
+rules.add_perm('group.is_admin',         have_all_rights)
+rules.add_perm('group.is_owner',         is_group_owner)
+rules.add_perm('group.delete_post',      is_group_post_author | have_all_rights)
+rules.add_perm('group.edit_post',        is_group_post_author)   # chỉ user tạo mới sửa

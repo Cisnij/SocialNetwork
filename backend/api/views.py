@@ -1,5 +1,7 @@
 import uuid
 from datetime import timedelta
+
+from _pytest import raises
 from django.utils.timezone import localtime
 from itertools import chain
 from adrf.views import APIView as AsyncAPIView
@@ -28,7 +30,7 @@ from .pagination import *
 from .signals import unfriended_log
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
 from django.db.models import Q, Prefetch, prefetch_related_objects, F, Exists, OuterRef
-from .permissions import IsConversationMember, PostViewPermission
+from .permissions import IsConversationMember, PostViewPermission, IsAdminOrOwnerGroup, IsMemberGroup
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
 from .utils import get_reactions_post_context,get_reactions_comment_context,get_reactions_share_context
@@ -507,7 +509,7 @@ class ChangePostPrivacy(APIView):
         return Response({'post_id': post.post_id, 'privacy': post.privacy})
 
 class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 bài viết
-    permission_classes = [IsAuthenticated,PostViewPermission]
+    permission_classes = [IsAuthenticated]
     serializer_class = PostShareSerializer
     pagination_class = LargePagePagination
     def get_queryset(self):
@@ -515,7 +517,7 @@ class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 b
         user = self.request.user
         # Lấy post gốc, check quyền xem trước, có là public hoặc user hiện có là bạn với post gốc privacy là friends
         post = get_object_or_404(Post.objects.select_related('user'), post_id=post_id)
-        if not user.has_perm('api.view_post', post): # dùng rules trực tiếp check post gốc vì nhận vào id post gốc
+        if not user.has_perm('api.view_post', post): # dùng rules trực tiếp check post gốc vì nhận vào id post gốc, khác là tự viết raise nhưng logic như nhau
             raise PermissionDenied()
 
         # Lọc block: loại share của người đã block / bị block
@@ -3526,3 +3528,212 @@ class EventParticipantChat(generics.ListAPIView):
         ).select_related('user__profile')
 
 #============================GROUP==========================================================================
+class CreateGroup(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = GroupSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'create_group'
+    def perform_create(self, serializer):
+        instance = serializer.save(created_by=self.request.user)
+        GroupMember.objects.create(
+            group= instance,
+            user= self.request.user,
+            role='owner'
+        )
+
+class AddRoleGroup(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
+    serializer_class = GroupRoleSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'add_role_group'
+    def perform_create(self, serializer):
+        group_id = self.kwargs.get("group_id")
+        department_id = self.request.data.get('department_id')
+        group = get_object_or_404(Group, id=group_id)
+        if not GroupDepartment.objects.filter(id=department_id, group=group).exists():
+            raise ValidationError("Phòng ban không thuộc group này")
+        self.check_object_permissions(self.request,group)
+        if not group.is_company:
+            raise ValidationError("Chỉ group công ty mới có thể thêm chức vụ")
+        serializer.save(group=group,department_id = department_id)
+
+class AddDepartmentGroup(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
+    serializer_class = GroupDepartmentSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'add_department_group'
+    def perform_create(self, serializer):
+        group_id = self.kwargs.get("group_id")
+        group = get_object_or_404(Group, id=group_id)
+        self.check_object_permissions(self.request, group)
+        if not group.is_company:
+            raise ValidationError("Chỉ group công ty mới có phòng ban")
+        serializer.save(group=group)
+
+class UpdateRoleGroup(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = GroupRoleSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'update_role_group'
+    def get_object(self):
+        group_id = self.kwargs.get("group_id")
+        role_id = self.kwargs.get("role_id")
+        if not GroupMember.objects.filter(group_id=group_id,user=self.request.user,is_active=True, role__in=['owner', 'admin']).exists():
+            raise PermissionDenied("Bạn phải là admin mới có thể thực hiện hành vi")
+        return get_object_or_404(
+            GroupRole.objects.annotate( #lấy tất cả member có role = ... và tất cả member đó phải is_active
+                member_count=Count(
+                    'job_role_members',
+                    filter=Q(job_role_members__is_active=True)
+                )
+            ),
+            id=role_id,
+            group_id=group_id,
+        )
+
+class UpdateDepartmentGroup(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = GroupDepartmentSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'update_department_group'
+    def get_object(self):
+        group_id = self.kwargs.get("group_id")
+        department_id = self.kwargs.get("department_id")
+        if not GroupMember.objects.filter(group_id=group_id,user=self.request.user,is_active=True, role__in=['owner', 'admin']).exists():
+            raise PermissionDenied("Bạn phải là admin mới có thể thực hiện hành vi")
+        return get_object_or_404(
+            GroupDepartment.objects.annotate( #lấy tất cả member có role = ... và tất cả member đó phải is_active
+                member_count=Count(# ví dụ department có 10 role, mà 1 role có 10 user thì là 100 count
+                    'department_roles__job_role_members', # có nghĩa lấy tất cả role trong department này join với member có role_id = role này (select * from role where department_id = x join groupmember on groupmember.role_id= role_id where is_Active=True)
+                    filter=Q(department_roles__job_role_members__is_active=True)
+                )
+            ),
+            id=department_id,
+            group_id=group_id,
+        )
+
+# accpept xong check is group sẽ gọi tiếp api gán vào api role/department
+class AcceptJoinRequest(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'accept_join_request_group'
+    def post(self,request,group_id,user_id):
+        target_user = get_object_or_404(User,pk=user_id)
+        user = request.user
+        group = get_object_or_404(Group,pk=group_id)
+        self.check_object_permissions(self.request,group)
+        #cập nhật request [lưu ý luôn dùng get khi update vì filter sẽ luôn update row dùng 0 có gì]
+        join_request = get_object_or_404(GroupJoinRequest,group=group, user=target_user, status__in=['pending', 'rejected']) #nếu đã accept hoặc k xin vào sẽ báo lỗi
+        join_request.status = 'accepted'
+        join_request.reviewed_by_id = user.id
+        join_request.reviewed_at = timezone.now()
+        join_request.save(update_fields=['status', 'reviewed_by_id', 'reviewed_at'])
+        # cập nhật bảng member
+        GroupMember.objects.update_or_create(
+            group = group,
+            user = target_user,
+            defaults = {
+                'role':'member',
+                'is_active' : True,
+            }
+        )
+        return Response({"detail": "success"},status = 200)
+
+class AddMemberIntoJobRole(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'add_member_job_role'
+    def post(self,request,group_id,user_id):
+        role_id = request.data.get("role_id")
+        group = get_object_or_404(Group,pk=group_id)
+        if not group.is_company: #check company
+            raise PermissionDenied("Group phải là công ty mới có chức năng này")
+        if not GroupRole.objects.filter(id=role_id, group=group).exists():
+            raise ValidationError("Chức vụ không thuộc group này")
+        #check admin mới cho thêm
+        if not IsAdminOrOwnerGroup().has_object_permission(self.request, self, group): #có thể dùng if not request.user.has_perm('group.is_admin', group):
+            raise PermissionDenied("Chỉ admin hoặc owner mới được thực hiện")
+        #check đã có trong group chưa
+        member =GroupMember.objects.filter(
+            group=group,
+            user_id = user_id,
+            is_active= True
+        )
+        if not member:
+            raise PermissionDenied("User này không có trong group")
+        #Add member vào role và department đó
+        member.update(job_role_id= role_id)
+        return Response({"detail":"success"},status=200)
+
+class ListDepartmentGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = GroupDepartmentSerializer
+    pagination_class = SmallPagePagination
+    def get_queryset(self):
+        group_id = self.kwargs.get('group_id')
+        if not GroupMember.objects.filter(
+            group_id=group_id, user=self.request.user, is_active=True
+        ).exists():
+            raise PermissionDenied("Bạn không có trong group")
+        return GroupDepartment.objects.filter(
+            group_id=group_id
+        ).annotate(
+            member_count=Count(
+                'department_roles__job_role_members',
+                filter=Q(department_roles__job_role_members__is_active=True)
+            )
+        )
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        group_id = self.kwargs.get('group_id')
+        counts = (
+            GroupMember.objects # lấy tất cả thành viên group,group by theo department_id và count department_id, chỉ trả về id depart và count
+            .filter(group_id=group_id, is_active=True, job_role__isnull=False)
+            .values('job_role__department_id')
+            .annotate(count=Count('id')) # tên lưu là count trong db
+        )
+        context['department_member_counts'] = {
+            item['job_role__department_id']: item['count'] # department tương ứng count ví dụ 1:10, 2:12
+            for item in counts
+        }
+        return context
+
+
+class ListRoleGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = GroupRoleSerializer
+    pagination_class = SmallPagePagination
+
+    def get_queryset(self):
+        group_id = self.kwargs.get('group_id')
+        department_id = self.kwargs.get('department_id')
+        if not GroupMember.objects.filter(
+            group_id=group_id, user=self.request.user, is_active=True
+        ).exists():
+            raise PermissionDenied("Bạn không có trong group")
+
+        qs = GroupRole.objects.filter(group_id=group_id).annotate(
+            member_count=Count(
+                'job_role_members',
+                filter=Q(job_role_members__is_active=True)
+            )
+        )
+        if department_id:
+            qs = qs.filter(department_id=department_id)
+        return qs
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        group_id = self.kwargs.get('group_id')
+        counts = (
+            GroupMember.objects
+            .filter(group_id=group_id, is_active=True, job_role__isnull=False)
+            .values('job_role_id') # count theo job_role_id
+            .annotate(count=Count('id'))
+        )
+        context['role_member_counts'] = {
+            item['job_role_id']: item['count']
+            for item in counts
+        }
+        return context
