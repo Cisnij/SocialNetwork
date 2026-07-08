@@ -2,46 +2,91 @@
 ** LÀM CHUẨN PRODUCTION VÀ ĐẸP Không rõ logic hay response gồm gì thi xem lại backend của tao ví dụ model,views,serializers,signal,consumer...Tôi không chấp nhận làm sai đặc biệt là khi thêm tính năng mới và và khiến cái cũ bị sai làm mất thời gian cực kì, tuy nhiên nếu cái nào sai logic hoặc chưa tối ưu thì có thể sửa hết refactor lại. Tất cả gọi api dùng auth fetch.
 đọc code base tôi và triển khai những cái chưa triển khai, kiểm tra logic tất cả api, dùng những api nào chưa dùng và làm chuẩn production giống fb vì tính năng tôi giống logic fb
 mỗi dấu - là 1 yêu cầu
+
 REQUIREMENT: 
-
-- chatbot là mặc định, không có nút xóa và nằm ở 1 vị trí khác cố định không nằm ở conversation để user không thể xóa ,không có nút xem thành viên và nút tạo vote group...
-- chat bot khi user gửi tin nhắn thì sao nó đợi có response mới load ra tin nhắn user vậy 
--group chat: 
-       - khi out group vẫn xem đc conversation. Nhưng fe show là bạn đã không còn trong group này replace cho ô chat 
-- thêm todo task: gom tất cả liên quan todo task vào 1 ô bấm ra modal trên thanh tên ở chat (vui lòng đọc kĩ lại logic task)
-	cái nào đã xong thì không hiện nút click đã xong nữa 
-	thiếu nút sửa status là đang làm, không thấy chỉnh status để biết cái nào đang làm 
-	chỉ có người tạo mới có nút ấn hoàn thành, người không tạo chỉ được thì k thể chỉnh sửa bất cứ thứ gì 
--tại sao khi tôi ấn qua 2 conv thì tới conv thứ 3 nó hiện đang tải, nhưng nhấn lần nữa là đc ngay, ý là nó bị treo dù gọi api đã xong 
-- thêm api search cho conversation api/chat/search-conversations/?search=
-- thêm search cho api/chat/conversation/<int:conv_id>/vote/list-vote/?search= title
-- thêm api/chat/conversation/task/<int:conv_id>/list-task/?search
+-chat thêm thời gian chat
+6. thêm api path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/participants/', EventParticipantChat.as_view())
+	- sủa lại khi nhấn vào event hiện tất cả event đang có, có trường is_accepted trong response đấy, nếu trả None là chưa accept/decline, néu trả accept thì cho nút hủy truyền 	data vào là pending và cho chọn lại, nếu trả decline cho nút hủy và truyền vào pending và cho chọn lại
+	-user được phép chọn lại 
+	- user nhấn vào người tham gia sẽ gọi api biết có bao ng tham gia
+	- chỉ có người tạo mới xóa và update đc, khi xóa và update nếu thời gian là đã quá trễ thì báo ngay còn nếu thgian chưa tới thì lên lịch celery báo(logic này của backend)
 
 
--thêm tạo vote: : gom tất cả liên quan tạo vote vào 1 ô bấm ra modal trên thanh tên ở chat (vui lòng đọc kĩ lại logic vote)
-	CreateVoteGroupChat:truyền conv_id và title và options và lấy option title gọi api crreate vote 
-	DeleteVoteGroupChat: phải là ng tạo mới được xóa vote, khi có list vote xem user hiện tại tạo cái nào thì vote đó mới xóa đc
-	UpdateVoteGroupChat: phải là người tạo mới đc sửa
-	AddOptionVoteGroupChat : bất cứ ai cũng được tạo option mới
-	UpdateOptionVoteGroupChat :bất cứ ai cũng được sửa option
-	DeleteOptionVoteGroupChat: phải là người tạo option mới được xóa
-	ListVoteGroupChat : list các vote hiện tại có option trong đó kèm count tính ra % (hiện nó k chịu load ra)
-	ListUserVoteGroupChat: gọi api lấy các user đã vote khi click vào option
-	UserVoteGroupChat : gọi api để vote option đó, nếu chưa có vote thì tạo mới, có rồi thì đổi và truyền vào trùng thì xóa
-- ngoài ra dò soát lại tất cả file hiện của tôi bị lỗi khi không gọi api nhiều lắm
+7 - THÊM CALL CỦA LIVEKIT giống fb, tức là gọi trước sau đó có quyền bật camera, mic thì luôn bật
+    path('api/chat/conversation/<int:conv_id>/call-video/create/', CreateVideoRoomView.as_view()),
+    path('api/chat/conversation/<int:conv_id>/call-video/join/', JoinVideoRoomView.as_view()),
+    path('api/chat/conversation/<int:conv_id>/call-video/decline/', DeclineCallView.as_view()),
+
+8. Thêm group: (group tất cả là riêng tư, và post không hiện bên ngoài nếu user chưa vào group sẽ k thấy post, k có privacy)
+- về mặt UI thì làm như facebook
+- vừa sửa lại post user và post friend phù hợp với group, yêu cầu xem thử có bị lỗi gì k
+- CreateGroup: Tạo group
+- AcceptJoinRequest 
+	- nếu không phải is_company thì k cần gọi api để thêm vào department nào và role nào(AddMemberIntoJobRole)
+	- nếu là is_company: đầu tiên là check quyền admin, fe load ra tất cả department và role của department đó khi ấn vào. Truyền data vào và gọi AddMemberIntoRole với department và role đó
+
+- AddDepartmentGroup,AddRoleGroup:( phải là admin)
+	- Tạo role mới: khi admin nhấn thêm role sẽ tạo role và truyền vào department nào
+	- Tạo department mới: Tạo department mới (role thuộc department)
+
+- UpdateDepartmentGroup và UpdateRoleGroup: (phải là admin)
+	- Chỉ admin mới đc update
+
+- ListDepartmentGroup,ListRoleGroup:
+	-trong group sẽ hiện tất cả department trước, sẽ có option chọn xem thành viên department hay xem role department
+	(nếu là chọn xem role) nhấn vào department mới load ra role của department đó ListRoleGroup,trong role cũng có option xem thành viên, nhấn vào load ra ListUserRoleGroup
+	(nếu chọn xem thành viên department) nhấn vào department nào thì load ra thành viên department đó ListUserDepartmentGroup
+-AddMemberIntoJobRole(Chỉ admin,owner):
+	- khi nhấn accept user vào group.is_company=True thì hiện department, nhấn vào department hiện role của department đó, nhấn vào role nào thì truyền id add user đó vào role(có thể bỏ qua, có nút bỏ qua là lựa chọn)
+
+-UpdateGroup:(phải là admin)
+	-Nếu update bth thì vẫn được
+	-Nếu update is_company thì xóa tất cả department và role
+-DeleteGroup:(phải là owner)
+	Chỉ owner mới đc update
+-ListUserGroup: (phải là member)
+	Lấy ra tất cả member group
+-ListGroupUser:
+	Lọc ra tất cả group của user
+-Accecpt Join request:
+	gửi lời tham gia(nếu đã gửi thì k đc gửi, là thành viên thì k đc gửi, sau đó update hoặc tạo lời mời pending=True)
+-Cancel Join request
+	- Xóa yêu cầu tham gia(láy ra join request status=pending, có thì mới đc xóa, status là accepted hay rejected sẽ k đc lọc và k thể xóa khi đã tham gia hoặc bị từ chối)
+-All join request(phải là admin)
+	Lấy ra tất cả join request trong group
+
+-AcceptJoinRequest(phải là admin):
+	update bảng group join request và tạo hoặc update(nếu đã rời trc đó is_active=False) groupmember
+-RejectJoinRequest(phải là admin):
+	update group join request thành rejected
+-KickMemberGroup(phải là admin):
+	check quyền, là owner thì k thể kick, update member đó thành is_active=False
+-AddAdminGroup(phải là owner)
+	check quyền nếu là owner thì mới đc thêm, admin thì báo đã là admin, owner thì báo đã là owner, update role member thành admin
+-LeaveGroup	
+	check nếu là owner thì phải truyền vào id user kế tiếp và lọc ra update user đó thành owner và owner cũ mới đc rời
+-PostReviewGroupList:
+	Lấy ra tất cả post cần được duyệt status =pending và chỉ user và owner mới đc duduyệt
+-ReviewPostGroup:
+	truyền vào action là accepted hay rejected để duyệt hoặc không duyệt post
+-DeletePostGroup:
+	chỉ admin hoặc post owner mới có quyền xóa
+-UpdatePostGroup:
+	chỉ post owner mới được update post, sau khi cập nhật thì status đổi lại là pending
+-PostListGroup(chỉ member)
+	lấy ra tất cả post trong group đã được duyệt, truyền vào odering=newest hoặc odering=oldest để lấy mới và cũ nhất
+-PinPostGroup(chỉ admin và owner)
+	post đã pin thì hủy, chưa pin update tất cả thành unpin và pin post đó(tức là 1 group chỉ đc pin 1 cái)
 
 
 
-
--triển khai Tích hợp Memory/Storage Cache vào auth.js: Viết thêm một hàm authFetchCache() hoặc nâng cấp authFetch để lưu lại kết quả của các API dùng chung (ví dụ: GET /api/user/profile/, GET /api/friends/).
-Khi người dùng vào trang, nó sẽ lấy Data từ bộ nhớ đệm (SessionStorage/RAM) ra hiển thị ngay lập tức trong 0.01 giây (Không có độ trễ loading).
-Cùng lúc đó, nó ngầm gọi API lên Server để lấy Data mới nhất. Nếu có thay đổi, nó tự cập nhật lại UI nhẹ nhàng (Đây là cách Facebook và React Query đang làm).
 
  -chuyển sang adrf https://github.com/em1208/adrf
 	from adrf.serializers import ModelSerializer
 	from adrf.generics import ListCreateAPIView
-
 chat
 elasticsearch
 cloudinary upload
 notification service
+
+- có thể tạo ws call khi user join

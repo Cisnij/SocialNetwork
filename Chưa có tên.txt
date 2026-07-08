@@ -28,23 +28,13 @@ tạo group
 	quy tắc nhóm
 	văn hóa nhóm
 	lên lịch
-	admin là chủ công ty duyệt post
+	// admin là chủ công ty duyệt post
 	có voting trong group
 	Góp ý ẩn danh trong group
-	group sẽ có nhiều role(ở đây là nhiều ban)
-	thông báo admin sẽ ở đầu trang
-	tạo vote
+	// group sẽ có nhiều role(ở đây là nhiều ban)
+	// thông báo admin sẽ ở đầu trang
 
-giữ nguyên codebase này
-trong chat có conv AI bot
-thêm 1 trang có thông báo công ty trong group
-Group — tên, mô tả, quy tắc, văn hóa, avatar, admin
-GroupMember — role (admin/member), trạng thái
-Event — lịch họp, gắn vào group hoặc conversation
-EventAttendee — accept/decline
-Task — title, assignee, deadline, status, gắn vào group
-Poll + PollChoice + PollVote — voting
-GroupFile — file nội bộ upload
+
 
 
 

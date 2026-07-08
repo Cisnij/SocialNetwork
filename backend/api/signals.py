@@ -110,6 +110,7 @@ def create_post_log(sender, instance, created, **kwargs):
             "title": instance.title,
             "is_deleted": getattr(instance, "is_deleted", False),
             "action": verb,
+            "group_id": instance.group_id if instance.group_id else None,
         }
     )
 
@@ -125,6 +126,7 @@ def delete_post_log(sender, instance, **kwargs):
             "target_id": instance.pk,
             "title": instance.title,
             "action": "deleted",
+            "group_id": instance.group_id if instance.group_id else None,
         }
     )
 
@@ -140,6 +142,7 @@ def post_undelete_log(sender, instance, **kwargs):
             "target_id": instance.pk,
             "title": instance.title,
             "action": "restored",
+            "group_id": instance.group_id if instance.group_id else None,
         }
     )
 @receiver(post_save, sender=PostArticle)
@@ -974,3 +977,44 @@ def log_add_conversationmember(sender, instance, created, **kwargs):
                 'joined_at': instance.joined_at.isoformat(),
             }, ensure_ascii=False)
         )
+
+#============GROUP===================
+accept_join_request_group=Signal()
+review_post_request_group=Signal()
+add_admin_group=Signal()
+owner_transfer_group=Signal()
+
+@receiver(accept_join_request_group)
+def notify_accept_join_request(user,admin_user,group,**kwargs):
+    Notification.objects.create(
+        reciever=user,
+        actor=admin_user,
+        type='group_request_accepted',
+        message=f'Bạn đã được duyệt vào group {group.name}'
+    )
+@receiver(review_post_request_group)
+def notify_accept_join_request(group,post,action,admin_user,**kwargs):
+    Notification.objects.create(
+        reciever=post.user,
+        actor=admin_user,
+        type='group_post_accepted' if action == 'approved' else 'group_request_rejected',
+        message=f'Bài viết {post.title} đã được duyệt trong group {group.name}'
+    )
+
+@receiver(add_admin_group)
+def notify_accept_join_request(group,new_admin,owner,**kwargs): #lấy từ view ra mỗi khi có tín hiệu
+    Notification.objects.create(
+        reciever=new_admin,
+        actor=owner,
+        type='group_admin_added',
+        message=f'Bạn đã được thêm làm admin trong group {group.name}'
+    )
+
+@receiver(owner_transfer_group) #log hủy kết bạn
+def notify_accept_join_request(group,next_owner,former_owner,admin_user): #lấy từ view ra mỗi khi có tín hiệu
+    Notification.objects.create(
+        reciever=next_owner,
+        actor=former_owner,
+        type='group_owner_transfer',
+        message=f'Bạn đã được chọn làm chủ group {group.name}'
+    )

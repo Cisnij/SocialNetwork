@@ -82,6 +82,7 @@ class PostSerializer(serializers.ModelSerializer):
     # reactions
     reactions= serializers.SerializerMethodField()
     user_is_reaction=serializers.SerializerMethodField()
+    group_name = serializers.CharField(source='group.name', read_only=True)
     class Meta:
         model=Post
         fields='__all__'
@@ -586,9 +587,20 @@ class GroupSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField()
     belong_to_department = serializers.SerializerMethodField()
     department_role = serializers.SerializerMethodField()
+    join_status = serializers.SerializerMethodField()
     class Meta:
         model = Group
         fields = '__all__'
+        read_only_fields = ['created_by','created_at']
+    def get_member_count(self, obj):
+        return getattr(obj, 'member_count', 0)
+
+    def get_join_status(self,obj):
+        if getattr(obj, 'is_member', False): # lấy ra cột từ obj, mặc đinh false
+            return 'member'
+        if getattr(obj, 'is_pending', False):
+            return 'pending'
+        return 'none'
 
 class GroupDepartmentSerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
@@ -617,11 +629,12 @@ class GroupRoleSerializer(serializers.ModelSerializer):
 
 class GroupMemberSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source='user.profile',read_only=True)
-    department = serializers.CharField(source= 'department.name',read_only=True)
+    department = serializers.CharField(source= 'job_role.department.name',read_only=True)
     job_role = serializers.CharField(source= 'job_role.name',read_only=True)
     class Meta:
         model = GroupMember
         fields = '__all__'
+        read_only_fields = ['group']
 
 class GroupJoinRequestSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source='user.profile', read_only=True)
@@ -629,3 +642,12 @@ class GroupJoinRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = GroupJoinRequest
         fields = '__all__'
+        read_only_fields = ['group']
+
+class GroupPostSerializer(serializers.ModelSerializer):
+    user =ProfileSerializer(source='user.profile', read_only=True)
+    photos = PostPhotoSerializer(many=True, read_only=True)
+    class Meta:
+        model = Post
+        fields = ['post_id', 'title', 'user', 'photos', 'created_at', 'post_status', 'group','is_pinned']
+        read_only_fields = ['post_id','user','created_at','group','post_status']

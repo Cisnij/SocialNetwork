@@ -31,7 +31,7 @@ def is_friends_post(user,post):
 #GROUP
 @rules.predicate
 def is_group_admin(user,obj):
-    group_id = obj.id if isinstance(obj, Group) else getattr(obj, 'group_id', None) # nếu truyền vào group object thì sẽ check obj có là is instance của group, kh thì lấy id từ obj đó ví dụ group_id từ group_member
+    group_id = obj.id if isinstance(obj, Group) else getattr(obj, 'group_id', None) # nếu truyền vào object thì sẽ check obj có là is instance của group, kh thì lấy id từ obj đó ví dụ group_id từ group_member
     if user.is_anonymous or not group_id:
         return False
     return GroupMember.objects.filter(group_id=group_id,user=user,is_active=True,role='admin').exists()
@@ -56,7 +56,6 @@ can_view_post= is_post_author | is_public_post | (is_friend & is_friends_post) #
 can_edit_post= is_post_author | rules.is_staff
 #GROUP
 have_all_rights = is_group_owner | is_group_admin
-can_edit_post_group = is_group_owner | is_group_admin | is_group_post_author
 #===============================================================ĐĂNG KÍ==============================================
 
 rules.add_perm('api.view_post',can_view_post) # posts.view_post là name tự đặt

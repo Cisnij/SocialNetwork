@@ -1,3 +1,5 @@
+import hashlib
+import logging
 import uuid
 from datetime import timedelta
 
@@ -6,7 +8,7 @@ from django.utils.timezone import localtime
 from itertools import chain
 from adrf.views import APIView as AsyncAPIView
 
-
+from django.db.models import Count, Case, When, BooleanField
 from celery import app
 from channels.db import database_sync_to_async
 from django.contrib.auth import authenticate
@@ -30,11 +32,12 @@ from .pagination import *
 from .signals import unfriended_log
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
 from django.db.models import Q, Prefetch, prefetch_related_objects, F, Exists, OuterRef
-from .permissions import IsConversationMember, PostViewPermission, IsAdminOrOwnerGroup, IsMemberGroup
+from .permissions import IsConversationMember, PostViewPermission, IsAdminOrOwnerGroup, IsMemberGroup, IsOwnerOnlyGroup, \
+    CanEditPost
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
 from .utils import get_reactions_post_context,get_reactions_comment_context,get_reactions_share_context
-from .tasks import push_notification_task, send_event_reminder
+from .tasks import push_notification_task, send_event_reminder, make_notification_group
 #filter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter,OrderingFilter
@@ -46,16 +49,16 @@ from friendship.models import Friend
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync,sync_to_async
 # elastic
-from .documents import PostDocument,ProfileDocument
+from .documents import PostDocument, ProfileDocument, GroupDocument
 from elasticsearch_dsl.query import MultiMatch
-from elasticsearch_dsl import Q as ESQ         # Django Q — dùng cho ORM filter
+from elasticsearch_dsl import Q as ESQ, MultiSearch  # Django Q — dùng cho ORM filter
 #cacheops
 from cacheops import invalidate_model
 #cloudinary
 import cloudinary.uploader
 # magic-bin
 from meta.views import MetadataMixin
-
+logger = logging.getLogger(__name__)
 def get_online_set(queryset):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
     ids = queryset.values_list('user_id',flat=True)  # lấy các user id trong queryset của serializer đưa vào list với 1 fields
     hits = cache.get_many([f"online_user:{uid}" for uid in ids])  # lấy 1 lúc hết các id onl trong query set trong redis thay vì gọi get 20 lần trong redis
@@ -294,16 +297,18 @@ class PostFriend(generics.ListAPIView):  # List tất cả post của bạn bè
             following_ids = Follow.objects.filter(follower=user).values_list("followee_id", flat=True)
             blocked_ids  = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
             blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+            group_ids = Group.objects.filter(members__user=user, members__is_active=True).values_list("id", flat=True)
             self._qs = (
                 Post.objects
                 .filter( # câu lệnh Q..| là OR
-                    Q(user_id=user.id) |  #lấy post của user
-                    Q(user_id__in=friend_ids,privacy__in=['public','friends']) |
-                    Q(user_id__in=following_ids, privacy='public') #lấy post của follow
+                    Q(user_id=user.id, group__isnull=True) |  #lấy post của user
+                    Q(user_id__in=friend_ids,privacy__in=['public','friends'], group__isnull=True) | #lấy post của bạn bè và chỉ lấy privacy là public hoặc bạn bè, bỏ qua private
+                    Q(user_id__in=following_ids, privacy='public', group__isnull=True) |#lấy post của follow
+                    Q(group_id__in=group_ids, post_status='approved') # lấy ra tất cả post có group_id trong group của user,status =approve
                 )
                 .exclude(user_id__in=blocked_ids) #loại block
                 .exclude(user_id__in=blocking_ids)
-                .select_related("user", "user__profile")
+                .select_related("user", "user__profile",'group')
                 .prefetch_related("photos")
                 .order_by("-created_at")
                 .distinct()
@@ -328,7 +333,7 @@ class PostModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa post
 
     def get_object(self):
         post_id = self.kwargs.get('pk')
-        post = get_object_or_404(Post.objects.select_related('user','user__profile').prefetch_related('photos'),post_id=post_id)
+        post = get_object_or_404(Post.objects.select_related('user','user__profile','group').prefetch_related('photos'),post_id=post_id,group__isnull=True)
         self.check_object_permissions(self.request, post)  #  rules chạy ở đây, nó sẽ check post public hay friends và có đc xem,edit
         return post
 
@@ -352,13 +357,13 @@ class PostUser(generics.ListAPIView):  # List tất cả post của user
                 raise PermissionDenied("Cannot see posts of this user")
             #là chính mình thì lấy tất cả
             if user==target_user:
-                self._qs= Post.objects.filter(user=target_user).select_related('user','user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
+                self._qs= Post.objects.filter(user=target_user,group__isnull=True,).select_related('user','user__profile','group').prefetch_related('photos').order_by('-is_pinned','-created_at')
             # là bạn thì lấy post public và friend
             elif Friend.objects.are_friends(user,target_user):
-                self._qs= Post.objects.filter(user=target_user,privacy__in=['public','friends']).select_related('user','user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
+                self._qs= Post.objects.filter(user=target_user,privacy__in=['public','friends'],group__isnull=True).select_related('user','user__profile','group').prefetch_related('photos').order_by('-is_pinned','-created_at')
             # là người lạ thì chỉ lấy public
             else:
-                self._qs = Post.objects.filter(user=target_user,privacy='public').select_related('user','user__profile').prefetch_related('photos').order_by('-is_pinned','-created_at')
+                self._qs = Post.objects.filter(user=target_user,privacy='public',group__isnull=True,).select_related('user','user__profile','group').prefetch_related('photos').order_by('-is_pinned','-created_at')
         return self._qs
 
     def get_serializer_context(self):
@@ -393,7 +398,7 @@ class PostListAll(generics.ListAPIView):
 
     def get_queryset(self):
         if not hasattr(self, '_qs'):
-            self._qs = Post.objects.all().select_related('user','user__profile').prefetch_related('photos').order_by(
+            self._qs = Post.objects.all().select_related('user','user__profile','group').prefetch_related('photos').order_by(
                 '-created_at')
         return self._qs
 
@@ -412,7 +417,7 @@ class PinPostView(generics.UpdateAPIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'pin_post'
     def get_object(self): #get_object để update dùng
-        post = get_object_or_404(Post.objects.select_for_update(), pk=self.kwargs.get('pin_id'))
+        post = get_object_or_404(Post.objects.select_for_update(), pk=self.kwargs.get('pin_id'),group__isnull=True)
         if post.user != self.request.user:
             raise PermissionDenied('You are not the post owner')
         return post
@@ -424,7 +429,7 @@ class PinPostView(generics.UpdateAPIView):
                 post.is_pinned = False
             else:
                 # Unpin post cũ của user này trước
-                Post.objects.filter(user=request.user, is_pinned=True).update(is_pinned=False)
+                Post.objects.filter(user=request.user, is_pinned=True,group__isnull=True).update(is_pinned=False)
                 post.is_pinned = True
             post.save(update_fields=['is_pinned'])
         return Response({'is_pinned': post.is_pinned}, status=status.HTTP_200_OK)
@@ -439,7 +444,7 @@ class PostShareView(MetadataMixin, DetailView): #  có preview card cho các thi
 
     def get_object(self):
         share_code=self.kwargs.get('share_code')
-        post = get_object_or_404(Post.objects.select_related('user','user__profile').prefetch_related('photos'), share_code=share_code)
+        post = get_object_or_404(Post.objects.select_related('user','user__profile').prefetch_related('photos'), share_code=share_code, group__isnull=True)
          #check thủ công xem post đc share thì user có đc xem
         if not PostViewPermission().has_object_permission(self.request,self,post):
             raise PermissionDenied() # 403 fe sẽ tự load không thể xem, 404 là lỗi thật
@@ -487,7 +492,7 @@ class PostShareDetailView(generics.RetrieveAPIView): # khi fe redirect thì load
 
     def get_object(self):
         share_code=self.kwargs.get('share_code')
-        post = get_object_or_404(Post.objects.select_related('user','user__profile').prefetch_related('photos'), share_code=share_code)
+        post = get_object_or_404(Post.objects.select_related('user','user__profile','group').prefetch_related('photos'), share_code=share_code, group__isnull=True)
         self.check_object_permissions(self.request, post) #check xem post đc share thì user có đc xem
         return post
 
@@ -496,7 +501,7 @@ class ChangePostPrivacy(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'change_post_privacy'
     def patch(self,request,post_id):
-        post= get_object_or_404(Post,post_id=post_id)
+        post= get_object_or_404(Post,post_id=post_id,group__isnull=True)
         self.check_object_permissions(request, post)
         privacy_type=request.data.get("privacy_type")
         if privacy_type not in ['public', 'friends', 'private']:
@@ -516,9 +521,9 @@ class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 b
         post_id = self.kwargs.get('post_id')
         user = self.request.user
         # Lấy post gốc, check quyền xem trước, có là public hoặc user hiện có là bạn với post gốc privacy là friends
-        post = get_object_or_404(Post.objects.select_related('user'), post_id=post_id)
+        post = get_object_or_404(Post.objects.select_related('user'), post_id=post_id, group__isnull=True)
         if not user.has_perm('api.view_post', post): # dùng rules trực tiếp check post gốc vì nhận vào id post gốc, khác là tự viết raise nhưng logic như nhau
-            raise PermissionDenied()
+            raise PermissionDenied("Bạn không thể xem bài viết này")
 
         # Lọc block: loại share của người đã block / bị block
         blocked_ids = Block.objects.filter(blocked=user).values_list('blocker_id', flat=True)
@@ -546,8 +551,9 @@ class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 b
         privacy = self.request.data.get('privacy', 'public') #key nhận là privacy và default là public
         if privacy not in ['public', 'friends', 'private']:
             return Response({'error': 'privacy không hợp lệ'}, status=400)
-        post=get_object_or_404(Post.objects.select_related('user','user__profile'),post_id=post_id)
-        self.check_object_permissions(self.request, post)
+        post=get_object_or_404(Post.objects.select_related('user','user__profile'),post_id=post_id, group__isnull=True)
+        if not request.user.has_perm('api.view_post', post):
+            raise PermissionDenied("Bạn không thể share bài viết này")
         PostShare.objects.create(post=post,user=self.request.user,content=content,privacy=privacy)
         post.share_count += 1
         post.save(update_fields=['share_count'])  # update_fields để patch update 1 phần thay vì toàn bộ
@@ -2090,114 +2096,244 @@ class SearchHistoryDeleteView(generics.DestroyAPIView):
         return Response(status=204)
 
 class SearchAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-    pagination_class = LargePagePagination
+    permission_classes = [IsAuthenticated]  # phải đăng nhập mới search được
+    throttle_classes = [ScopedRateThrottle]  # giới hạn số request
+    throttle_scope = 'search'  # dùng scope 'search' trong settings THROTTLE_RATES
 
     def get(self, request):
-        keyword = request.query_params.get('q', '').strip()  # láy từ url sau dấu ? mà k cần khai báo trong url
-        search_type = request.query_params.get('type',
-                                               'all')  # tìm kiếm theo mọi người/ post/all type ?q=nghi&type=all, all ở đây là giá trị mặc định khi k truyền
+        keyword = request.query_params.get('q', '').strip()  # lấy từ khóa từ ?q=... và xóa khoảng trắng thừa
+        search_type = request.query_params.get('type', 'all')  # ?type=all/posts/profiles/groups, mặc định all
+
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)  # ép về int, tối thiểu 1 tránh page=0 hoặc âm
+        except (ValueError, TypeError):
+            page = 1  # nếu truyền ?page=abc thì fallback về trang 1 thay vì crash 500
+
+        size = 20  # số kết quả mỗi trang
+        offset = (page - 1) * size  # page=1 → offset=0, page=2 → offset=20, dùng để slice ES
+
         if not keyword:
-            return Response({'posts': [], 'profiles': []})  # tra về rỗng nếu k có
+            return Response({'posts': [], 'profiles': [], 'groups': [], 'pagination': {}})
+
+        # cache key theo user_id + keyword + type + page
+        # per-user vì block/friend list khác nhau → cùng keyword nhưng kết quả khác nhau
+        cache_key = hashlib.md5(
+            f"search:{request.user.id}:{keyword}:{search_type}:{page}".encode()
+        ).hexdigest()  # md5 để key ngắn gọn
+        cached = cache.get(cache_key)
+        if cached:
+            return Response(cached)  # có cache → trả về ngay, không query ES hay DB
 
         user = request.user
-        posts = []
-        profiles = []
-        profiles_qs = Profile.objects.none()
-        # Lấy danh sách user bị block và block mình và bạn mình
-        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
-        friend_ids = Friend.objects.filter(from_user=user).values_list('to_user_id', flat=True)
 
-        if search_type in ('all', 'posts'):  # chỉ search post khi cần
-            try:
-                post_search = PostDocument.search().query( # chạy lấy ra các post tìm kiếm
-                    "bool",
-                    should=[
-                        # Gõ đúng cụm từ liền nhau — rank cao nhất
-                        ESQ("bool", must=[ESQ("match_phrase", title=keyword)], boost=4.0),
-                        # Match thường + sửa lỗi chính tả
-                        ESQ("match", title={
-                            "query": keyword,
-                            "boost": 2.0,
-                            "fuzziness": "AUTO",#sửa lỗi chính tả và cho ra kết quả
-                            "prefix_length": 1, # b ký tự đầu phải đúng ví dụ trần nghị thì t phải đúng
-                            "max_expansions": 50 #giới hạn biến thể mà tự sửa lỗi chính tả cho ra ví dụ trn :tran,trần...
-                        }),
-                    ],
-                    minimum_should_match=1  # bắt buộc match ít nhất 1 điều kiện, tránh trả về kết quả rác
-                )[:50]  # lấy tối đa 50 kết quả thay vì mặc định 10
+        # convert sang list để evaluate 1 lần, tránh subquery lồng nhau khi dùng trong Q()
+        blocked_ids  = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))   # người đã block mình
+        blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))   # người mình đã block
+        friend_ids   = list(Friend.objects.filter(from_user=user).values_list('to_user_id', flat=True))  # danh sách bạn bè
 
-                # giữ thứ tự relevance từ Elasticsearch (score cao nhất lên đầu)
-                post_hits = list(post_search)
-                post_ids = [hit.meta.id for hit in post_hits]  # lấy id của các bài post sau lọc
-                posts_qs = (Post.objects.filter(  # tìm id trong post và loại bỏ block
-                    post_id__in=post_ids,
-                    deleted__isnull=True
-                ).exclude(
-                    Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)  # loại bài post của người bị block
-                )
-                .filter(
-                    Q(privacy='public') | #public post thì hiện trên tìm kiếm
-                    Q(privacy='friends', user_id__in=friend_ids) | # privacy friend nếu chủ post là bạn mình thì hiện
-                    Q(privacy='friends', user=user) | # privacy friend và bài mình
-                    Q(privacy='private', user=user) # bài mình nếu private
-                )
-                .select_related('user','user__profile').prefetch_related('photos'))
-                # sắp xếp lại theo thứ tự relevance của ES vì Django filter không giữ thứ tự
-                posts_dict = {str(p.post_id): p for p in posts_qs}
-                posts = [posts_dict[pid] for pid in post_ids if pid in posts_dict]
-            except Exception:
-                posts = []
-        if search_type in ('all', 'profiles'):  # chỉ search profile khi cần
-            try:
-                profile_search = ProfileDocument.search().query(
-                    "bool",
-                    should=[
-                        # 1. Gõ đúng cụm — boost cao nhất: "tran nghi" → "Trần Nghị"
-                        ESQ("bool", must=[ESQ("match_phrase", full_name=keyword)], boost=5.0),
-                        # 2. Match full_name — gõ 1 phần cũng ra: "tran" → "Trần Nghị"
-                        ESQ("match", full_name={
-                            "query": keyword,
-                            "boost": 3.0,
-                            "fuzziness": "AUTO",  # sửa lỗi chính tả: "trna" → "tran"
-                            "prefix_length": 1,  # ký tự đầu phải đúng tránh a mà thành c ở đầu
-                            "max_expansions": 50  # giới hạn số biến thể fuzziness tạo ra
-                        }),
-                        # 3. Fallback họ hoặc tên riêng lẻ
-                        ESQ("match",first_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 1}),
-                        ESQ("match", last_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 1}),
-                    ],
-                    minimum_should_match=1  # bắt buộc match ít nhất 1 điều kiện
-                )[:50]
+        # Bước 1 lấy các data đã phân tách trong db của elastic và lấy các id
+        # ── POST QUERY ────────────────────────────────────────────────────────
+        post_search = PostDocument.search().query(
+            "bool",
+            should=[
+                # should = OR: match 1 trong các điều kiện là được
+                ESQ("bool", must=[ESQ("match_phrase", title=keyword)], boost=4.0),
+                # match_phrase: gõ đúng cụm liền nhau → rank cao nhất
+                ESQ("match", title={
+                    "query": keyword,
+                    "boost": 2.0,          # rank thấp hơn match_phrase
+                    "fuzziness": "AUTO",   # tự sửa lỗi chính tả: "tran" → "trần"
+                    "prefix_length": 1,    # ký tự đầu phải đúng tránh kết quả rác
+                    "max_expansions": 50   # giới hạn số biến thể fuzziness sinh ra
+                }),
+            ],
+            minimum_should_match=1  # bắt buộc match ít nhất 1 điều kiện
+        )
 
-                # giữ thứ tự relevance từ Elasticsearch (score cao nhất lên đầu)
-                profile_hits = list(profile_search)
-                profile_ids = [hit.meta.id for hit in profile_hits]  # lấy các id từ kết quả lọc
-                profiles_qs = Profile.objects.filter(
-                    id__in=profile_ids,
-                    deleted__isnull=True
-                ).exclude(
-                    Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)  # loại profile của người bị block
-                ).select_related('user')
-                # sắp xếp lại theo thứ tự relevance của ES vì Django filter không giữ thứ tự
-                profiles_dict = {str(p.id): p for p in profiles_qs}
-                profiles = [profiles_dict[pid] for pid in profile_ids if pid in profiles_dict]
-            except Exception as e:
-                profiles = []
-        # Paginate trước khi trả về
-        paginator = self.pagination_class()
-        posts_page = paginator.paginate_queryset(posts, request)
-        profile_paginator = self.pagination_class()
-        profiles_page = profile_paginator.paginate_queryset(profiles, request)
-        return Response({  # trả về serializer của 1 trong 2
-            'posts': PostSerializer(posts_page, many=True, context={'request': request}).data,
-            # vì serializer cần lấy request để lấy user ở trường get user is reaction nên cần truyền
-            'profiles': ProfileSerializer(profiles_page, many=True, context={'request': request,
-                                                                        'online_set': get_online_set(
-                                                                            profiles_qs) if profiles else set()}).data,
-        })
+        # ── PROFILE QUERY ─────────────────────────────────────────────────────
+        profile_search = ProfileDocument.search().query(
+            "bool",
+            should=[
+                ESQ("bool", must=[ESQ("match_phrase", full_name=keyword)], boost=5.0),
+                # gõ đúng họ tên đầy đủ → rank cao nhất
+                ESQ("match", full_name={"query": keyword, "boost": 3.0, "fuzziness": "AUTO", "prefix_length": 1, "max_expansions": 50}),
+                # match full_name: gõ 1 phần cũng ra "tran" → "Trần Nghị"
+                ESQ("match", first_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 1}),
+                # fallback: tìm theo tên riêng lẻ
+                ESQ("match", last_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 1}),
+                # fallback: tìm theo họ riêng lẻ
+            ],
+            minimum_should_match=1
+        )
 
+        # ── GROUP QUERY ───────────────────────────────────────────────────────
+        group_search = GroupDocument.search().query(
+            "bool",
+            should=[
+                ESQ("bool", must=[ESQ("match_phrase", name=keyword)], boost=5.0),
+                # gõ đúng tên group → rank cao nhất
+                ESQ("match", name={
+                    "query": keyword,
+                    "boost": 3.0,
+                    "fuzziness": "AUTO",
+                    "prefix_length": 1,
+                    "max_expansions": 50
+                }),
+                # match tên + sửa lỗi chính tả
+            ],
+            minimum_should_match=1
+        ).sort(
+            "_score",                            # ưu tiên relevance trước
+            {"member_count": {"order": "desc"}}  # cùng score → nhiều member lên trước
+        )
+
+        # khởi tạo mặc định tránh lỗi nếu 1 trong các search fail
+        posts        = []
+        profiles     = []
+        groups       = []
+        profiles_qs  = Profile.objects.none()  # dùng cho get_online_set bên dưới
+        total_posts  = total_profiles = total_groups = 0
+
+        try:
+            # ad vào để phân trang
+            ms = MultiSearch()
+            if search_type in ('all', 'posts'):
+                ms = ms.add(post_search[offset:offset + size])
+            if search_type in ('all', 'profiles'):
+                ms = ms.add(profile_search[offset:offset + size])
+            if search_type in ('all', 'groups'):
+                ms = ms.add(group_search[offset:offset + size])
+
+            responses = ms.execute()
+            # execute() gửi 1 request đến ES, trả list response theo thứ tự add
+            # total và hits từ cùng 1 response → không bị lệch data
+            idx = 0  # index để lấy đúng response theo thứ tự add vào MultiSearch
+
+            # Bước 2, từ cái id lấy trong db elastic đã filter search, lọc ra từ model
+            # ── XỬ LÝ POST ───────────────────────────────────────────────────
+            if search_type in ('all', 'posts'):
+                try:
+                    post_response = responses[idx]; idx += 1         # lấy response post, tăng idx
+                    total_posts   = post_response.hits.total.value   # tổng kết quả ES tìm được (ước tính, trước khi filter Django)
+                    post_ids      = [hit.meta.id for hit in post_response]  # lấy id từ ES hits
+                    # elastic trả id post chỉ cần lọc lấy ra trong post model
+                    posts_qs = (
+                        Post.objects
+                        .filter(
+                            post_id__in=post_ids,    # chỉ lấy post ES đã tìm được
+                            deleted__isnull=True,    # loại soft delete
+                            group__isnull=True       # group post không xuất hiện ở search ngoài
+                        )
+                        .exclude(Q(user_id__in=blocked_ids) | Q(user_id__in=blocking_ids))  # loại block 2 chiều
+                        .filter(
+                            Q(privacy='public') |                              # public → ai cũng thấy
+                            Q(privacy='friends', user_id__in=friend_ids) |    # friends → phải là bạn
+                            Q(privacy='friends', user=user) |                  # bài mình privacy friends
+                            Q(privacy='private', user=user)                    # bài mình privacy private
+                        )
+                        .select_related('user', 'user__profile')  # tránh N+1 khi serialize
+                        .prefetch_related('photos')               # tránh N+1 cho photos
+                    )
+                    posts_dict = {str(p.post_id): p for p in posts_qs}       # dict để lookup O(1)
+                    posts = [posts_dict[pid] for pid in post_ids if pid in posts_dict]
+                    # giữ thứ tự relevance từ ES, bỏ id bị filter bởi Django (block/privacy)
+                except Exception as e:
+                    logger.error(f"Post search error | user={user.id} keyword={keyword} | {e}")
+                    posts = []  # post fail không ảnh hưởng profiles và groups
+
+            # ── XỬ LÝ PROFILE ────────────────────────────────────────────────
+            if search_type in ('all', 'profiles'):
+                try:
+                    profile_response = responses[idx]; idx += 1
+                    total_profiles   = profile_response.hits.total.value
+                    profile_ids      = [hit.meta.id for hit in profile_response]
+
+                    profiles_qs = (
+                        Profile.objects
+                        .filter(id__in=profile_ids, deleted__isnull=True)
+                        .exclude(Q(user_id__in=blocked_ids) | Q(user_id__in=blocking_ids))  # loại block 2 chiều
+                        .select_related('user')  # tránh N+1
+                    )
+                    profiles_dict = {str(p.id): p for p in profiles_qs}
+                    profiles = [profiles_dict[pid] for pid in profile_ids if pid in profiles_dict]
+                    # giữ thứ tự relevance từ ES
+                except Exception as e:
+                    logger.error(f"Profile search error | user={user.id} keyword={keyword} | {e}")
+                    profiles = []
+
+            # ── XỬ LÝ GROUP ──────────────────────────────────────────────────
+            if search_type in ('all', 'groups'):
+                try:
+                    group_response = responses[idx]  # không tăng idx vì đây là cái cuối
+                    total_groups   = group_response.hits.total.value
+                    group_ids      = [hit.meta.id for hit in group_response]
+
+                    # convert sang list để tránh subquery lồng nhau trong Case/When
+                    user_group_ids = list(GroupMember.objects.filter(
+                        user=user, is_active=True
+                    ).values_list('group_id', flat=True))  # group user đang là member
+
+                    user_pending_ids = list(GroupJoinRequest.objects.filter(
+                        user=user, status='pending'
+                    ).values_list('group_id', flat=True))  # group user đang chờ duyệt
+
+                    groups_qs = (
+                        Group.objects
+                        .filter(id__in=group_ids, deleted__isnull=True)
+                        .annotate(
+                            member_count=Count('members', filter=Q(members__is_active=True)),
+                            # đếm member active để hiện lên UI, khác member_count trong ES (dùng để sort)
+                            is_member=Case(
+                                When(id__in=user_group_ids, then=True),
+                                default=False,
+                                output_field=BooleanField()
+                            ),  # True nếu user đang là member → join_status = 'member'
+                            is_pending=Case(
+                                When(id__in=user_pending_ids, then=True),
+                                default=False,
+                                output_field=BooleanField()
+                            )   # True nếu user đang chờ duyệt → join_status = 'pending'
+                        )
+                        .select_related('created_by', 'created_by__profile')  # tránh N+1
+                    )
+                    groups_dict = {str(g.id): g for g in groups_qs}
+                    groups = [groups_dict[gid] for gid in group_ids if gid in groups_dict]
+                    # giữ thứ tự relevance từ ES
+                except Exception as e:
+                    logger.error(f"Group search error | user={user.id} keyword={keyword} | {e}")
+                    groups = []
+
+        except Exception as e:
+            # MultiSearch fail hoàn toàn (ES down, network...) → trả rỗng, không crash server
+            logger.error(f"MultiSearch failed | user={user.id} keyword={keyword} | {e}")
+
+        result = {
+            'posts': PostSerializer(posts, many=True, context={'request': request}).data,
+            # context request để serializer lấy user hiện tại (dùng cho is_reaction...)
+            'profiles': ProfileSerializer(profiles, many=True, context={
+                'request': request,
+                'online_set': get_online_set(profiles_qs) if profiles else set()
+                # online_set: batch check online status, tránh N+1 query Redis
+            }).data,
+            'groups': GroupSerializer(groups, many=True, context={'request': request}).data,
+            'pagination': {
+                'page': page,
+                'size': size,
+                # total là ước tính từ ES, thực tế có thể ít hơn do filter block/privacy phía Django
+                'total_posts':       total_posts,
+                'total_profiles':    total_profiles,
+                'total_groups':      total_groups,
+                'has_next_posts':    offset + size < total_posts,    # còn trang tiếp không
+                'has_next_profiles': offset + size < total_profiles,
+                'has_next_groups':   offset + size < total_groups,
+            }
+        }
+
+        # chỉ cache khi có kết quả, tránh cache rỗng khi ES down
+        if any([posts, profiles, groups]):
+            cache.set(cache_key, result, timeout=30)  # cache 30s: đủ tránh spam, không quá cũ
+
+        return Response(result)
 
 # =========================Friend Suggest===========================================
 class FriendSuggestion(generics.ListAPIView):
@@ -3389,11 +3525,11 @@ class EventDetailChat(generics.RetrieveUpdateDestroyAPIView):
             object_id=conv_id,
         )
     def perform_update(self, serializer):
-        event = serializer.instance
+        event = serializer.instance # lấy event trước save
         if event.created_by != self.request.user:
             raise PermissionDenied("Phải là người tạo mới có quyền update")
         old_task_id = event.celery_task_id # lấy ra task_id celery cũ
-        serializer.save() # save cái thời gian mới
+        serializer.save() # save cái update mới(thời gian mới)
         if 'start_time' in serializer.validated_data:  # chỉ reschedule khi start_time đổi
             if old_task_id: # nếu đưa vào start time mới thì xóa celery cái cũ
                 from backend.celery import app
@@ -3541,6 +3677,65 @@ class CreateGroup(generics.CreateAPIView):
             role='owner'
         )
 
+class UpdateGroup(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
+    serializer_class = GroupSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'update_group'
+    def get_object(self):
+        group_id = self.kwargs.get('group_id')
+        group= get_object_or_404(Group, id=group_id)
+        self.check_object_permissions(self.request,group)
+        return group
+
+    def perform_update(self, serializer): # quy trình permissions > get_object > serializer > serializer.validated_data > perform_update > serializer.save()
+        old_is_company = serializer.instance.is_company # lấy ra true hay false của giá trị cũ truóc khi update
+        instance = serializer.save() # save gía trị update lại
+        if old_is_company and not instance.is_company: # nếu company là is group, is_company vừa update là false thì xóa hết (update là false tức là not false là true ->chạy)
+            GroupRole.objects.filter(group=instance).delete()
+            GroupDepartment.objects.filter(group=instance).delete()
+
+class ListGroupUser(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = GroupSerializer
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = ['name']
+    def get_queryset(self):
+        user =self.request.user
+        return Group.objects.filter(
+            members__user=user, #dùng related_name lấy vì group k thể truy cập tới groupmember
+            members__is_active = True,
+        ).annotate(
+            group_member_counts= Count('members',filter= Q(members__is_active=True)),
+            is_member = Exists(
+                GroupMember.objects.filter(group=OuterRef('pk') ,user=user,is_active=True) # lấy ra xem có user ở group hiện tại is_active
+            ),
+            is_pending = Exists(
+                GroupJoinRequest.objects.filter(group=OuterRef('pk'),user=user,status='pending')
+            )
+        ).select_related('created_by__profile')
+
+class DeleteGroup(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated,IsOwnerOnlyGroup]
+    def get_object(self):
+        group_id = self.kwargs.get('group_id')
+        group= get_object_or_404(Group, id=group_id)
+        self.check_object_permissions(self.request,group)
+        return group
+
+class ListUserGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = GroupMemberSerializer
+    pagination_class = LargePagePagination
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = ['user__profile__first_name', 'user__profile__last_name']
+    def get_queryset(self):
+        group_id = self.kwargs.get('group_id')
+        group = get_object_or_404(Group,pk=group_id)
+        if not self.request.user.has_perm('group.is_member',group):
+            raise PermissionDenied("Bạn không phải thành viên group")
+        return GroupMember.objects.filter(group=group,is_active=True).select_related('user__profile','job_role','job_role__department')
+
 class AddRoleGroup(generics.CreateAPIView):
     permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
     serializer_class = GroupRoleSerializer
@@ -3550,11 +3745,11 @@ class AddRoleGroup(generics.CreateAPIView):
         group_id = self.kwargs.get("group_id")
         department_id = self.request.data.get('department_id')
         group = get_object_or_404(Group, id=group_id)
+        if not group.is_company:
+            raise ValidationError("Chỉ group công ty mới có thể thêm chức vụ")
         if not GroupDepartment.objects.filter(id=department_id, group=group).exists():
             raise ValidationError("Phòng ban không thuộc group này")
         self.check_object_permissions(self.request,group)
-        if not group.is_company:
-            raise ValidationError("Chỉ group công ty mới có thể thêm chức vụ")
         serializer.save(group=group,department_id = department_id)
 
 class AddDepartmentGroup(generics.CreateAPIView):
@@ -3602,7 +3797,7 @@ class UpdateDepartmentGroup(generics.RetrieveUpdateDestroyAPIView):
         if not GroupMember.objects.filter(group_id=group_id,user=self.request.user,is_active=True, role__in=['owner', 'admin']).exists():
             raise PermissionDenied("Bạn phải là admin mới có thể thực hiện hành vi")
         return get_object_or_404(
-            GroupDepartment.objects.annotate( #lấy tất cả member có role = ... và tất cả member đó phải is_active
+            GroupDepartment.objects.annotate( #lấy tất cả member có role = ... và tất cả member đó phải is_active, chỉ lấy 1 cột duy nhất
                 member_count=Count(# ví dụ department có 10 role, mà 1 role có 10 user thì là 100 count
                     'department_roles__job_role_members', # có nghĩa lấy tất cả role trong department này join với member có role_id = role này (select * from role where department_id = x join groupmember on groupmember.role_id= role_id where is_Active=True)
                     filter=Q(department_roles__job_role_members__is_active=True)
@@ -3611,33 +3806,6 @@ class UpdateDepartmentGroup(generics.RetrieveUpdateDestroyAPIView):
             id=department_id,
             group_id=group_id,
         )
-
-# accpept xong check is group sẽ gọi tiếp api gán vào api role/department
-class AcceptJoinRequest(APIView):
-    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'accept_join_request_group'
-    def post(self,request,group_id,user_id):
-        target_user = get_object_or_404(User,pk=user_id)
-        user = request.user
-        group = get_object_or_404(Group,pk=group_id)
-        self.check_object_permissions(self.request,group)
-        #cập nhật request [lưu ý luôn dùng get khi update vì filter sẽ luôn update row dùng 0 có gì]
-        join_request = get_object_or_404(GroupJoinRequest,group=group, user=target_user, status__in=['pending', 'rejected']) #nếu đã accept hoặc k xin vào sẽ báo lỗi
-        join_request.status = 'accepted'
-        join_request.reviewed_by_id = user.id
-        join_request.reviewed_at = timezone.now()
-        join_request.save(update_fields=['status', 'reviewed_by_id', 'reviewed_at'])
-        # cập nhật bảng member
-        GroupMember.objects.update_or_create(
-            group = group,
-            user = target_user,
-            defaults = {
-                'role':'member',
-                'is_active' : True,
-            }
-        )
-        return Response({"detail": "success"},status = 200)
 
 class AddMemberIntoJobRole(APIView):
     permission_classes = [IsAuthenticated]
@@ -3659,7 +3827,7 @@ class AddMemberIntoJobRole(APIView):
             user_id = user_id,
             is_active= True
         )
-        if not member:
+        if not member.exists():
             raise PermissionDenied("User này không có trong group")
         #Add member vào role và department đó
         member.update(job_role_id= role_id)
@@ -3669,6 +3837,8 @@ class ListDepartmentGroup(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = GroupDepartmentSerializer
     pagination_class = SmallPagePagination
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = ['name']
     def get_queryset(self):
         group_id = self.kwargs.get('group_id')
         if not GroupMember.objects.filter(
@@ -3690,8 +3860,8 @@ class ListDepartmentGroup(generics.ListAPIView):
         counts = (
             GroupMember.objects # lấy tất cả thành viên group,group by theo department_id và count department_id, chỉ trả về id depart và count
             .filter(group_id=group_id, is_active=True, job_role__isnull=False)
-            .values('job_role__department_id')
-            .annotate(count=Count('id')) # tên lưu là count trong db
+            .values('job_role__department_id') # count theo department_id( department id đó có bao nhiêu member)
+            .annotate(count=Count('id')) # tên lưu tạm là count trong db
         )
         context['department_member_counts'] = {
             item['job_role__department_id']: item['count'] # department tương ứng count ví dụ 1:10, 2:12
@@ -3704,6 +3874,8 @@ class ListRoleGroup(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = GroupRoleSerializer
     pagination_class = SmallPagePagination
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = ['name']
 
     def get_queryset(self):
         group_id = self.kwargs.get('group_id')
@@ -3723,13 +3895,13 @@ class ListRoleGroup(generics.ListAPIView):
             qs = qs.filter(department_id=department_id)
         return qs
 
-    def get_serializer_context(self):
+    def get_serializer_context(self): # vì create/get_queryset chỉ trả về objects cho serializer làm việc nên muốn truyền thêm dùng context
         context = super().get_serializer_context()
         group_id = self.kwargs.get('group_id')
         counts = (
             GroupMember.objects
             .filter(group_id=group_id, is_active=True, job_role__isnull=False)
-            .values('job_role_id') # count theo job_role_id
+            .values('job_role_id') # count theo job_role_id( role đó có bao member)
             .annotate(count=Count('id'))
         )
         context['role_member_counts'] = {
@@ -3737,3 +3909,561 @@ class ListRoleGroup(generics.ListAPIView):
             for item in counts
         }
         return context
+
+class ListUserDepartmentGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProfileSerializer
+    pagination_class = LargePagePagination
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = ['first_name', 'last_name']
+    def get_queryset(self):
+        group_id = self.kwargs.get('group_id')
+        department_id = self.kwargs.get('department_id')
+        group = get_object_or_404(Group,pk=group_id)
+        if not self.request.user.has_perm('group.is_member',group):
+            raise PermissionDenied("Bạn không phải thành viên group")
+        member_ids = GroupMember.objects.filter(group=group,job_role__department_id=department_id,is_active=True).values_list('user_id',flat=True)
+        if not member_ids:
+            return Profile.objects.none()
+        return Profile.objects.filter(user_id__in= member_ids)
+
+    def get_serializer_context(self): #gọi hàm custome ở trên
+        context = super().get_serializer_context()
+        #  Lấy dữ liệu queryset đã lọc  (đã filter, đã phân trang)
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs=self.get_queryset() # gọi query set lại
+        context['online_set'] = get_online_set(objs) # truyền tất cả profile vào và lấy ra tất cả status onl
+        return context
+
+class ListUserRoleGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProfileSerializer
+    pagination_class = LargePagePagination
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = ['first_name', 'last_name']
+    def get_queryset(self):
+        group_id = self.kwargs.get('group_id')
+        department_id = self.kwargs.get('department_id')
+        role_id = self.kwargs.get('role_id')
+        group = get_object_or_404(Group,pk=group_id)
+        if not self.request.user.has_perm('group.is_member',group):
+            raise PermissionDenied("Bạn không phải thành viên group")
+        member_ids = GroupMember.objects.filter(group=group,job_role__department_id=department_id,job_role_id=role_id,is_active=True).values_list('user_id',flat=True)
+        if not member_ids:
+            return Profile.objects.none()
+        return Profile.objects.filter(
+            user_id__in= member_ids
+        )
+    def get_serializer_context(self): #gọi hàm custome ở trên
+        context = super().get_serializer_context()
+        #  Lấy dữ liệu queryset đã lọc  (đã filter, đã phân trang)
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs=self.get_queryset() # gọi query set lại
+        context['online_set'] = get_online_set(objs) # truyền tất cả profile vào và lấy ra tất cả status onl
+        return context
+
+class SendJoinRequestGroup(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'join_request_group'
+    def post(self,request,group_id):
+        group = get_object_or_404(Group,pk=group_id)
+        if self.request.user.has_perm('group.is_member',group):
+            raise ValidationError("Bạn đã là thành viên group")
+
+        existing = GroupJoinRequest.objects.filter(group=group, user=request.user, status='pending').exists()
+        if existing:
+            raise ValidationError("Bạn đã gửi yêu cầu tham gia rồi")
+
+        # tạo hoặc update lời mời nếu đã xin vào trước đó rồi
+        obj, created = GroupJoinRequest.objects.update_or_create(
+            group=group,
+            user= self.request.user,
+            defaults={
+                'status' : 'pending',
+                'reviewed_by': None
+            }
+        )
+
+        return Response({'detail': 'Đã gửi yêu cầu tham gia'},status=201 if created else 200)
+
+
+class CancelJoinRequestGroup(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'cancel_join_request_group'
+    def post(self,request,group_id):
+        group = get_object_or_404(Group,pk=group_id)
+        join_request =  get_object_or_404(GroupJoinRequest,group=group, user=request.user,status='pending')#chỉ cho hủy khi pending
+        join_request.delete()
+        return Response({"detail":"Bạn đã hủy yêu cầu tham gia"},status = 200)
+
+class AllJoinRequest(generics.ListAPIView):
+    permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
+    serializer_class = GroupJoinRequestSerializer
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    pagination_class = LargePagePagination
+    search_fields = ['user__profile__first_name', 'user__profile__last_name']
+    def get_queryset(self):
+        group_id = self.kwargs.get('group_id')
+        group= get_object_or_404(Group,pk=group_id)
+        self.check_object_permissions(self.request,group)
+        return GroupJoinRequest.objects.filter(group=group).select_related('user__profile','reviewed_by__profile')
+
+class AcceptJoinRequest(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'accept_join_request_group'
+
+    def post(self, request, group_id, request_id):
+        user = request.user
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        # update bảng JoinRequest
+        join_request = get_object_or_404(
+            GroupJoinRequest,
+            id=request_id,
+            group=group,
+            status='pending'
+        )
+        join_request.status = 'accepted'
+        join_request.reviewed_by_id = user.id
+        join_request.reviewed_at = timezone.now()
+        join_request.save(update_fields=['status', 'reviewed_by_id', 'reviewed_at'])
+        # Thêm hoặc update(nếu đã rời) user vào group
+        GroupMember.objects.update_or_create(
+            group=group,
+            user_id=join_request.user_id,  # dùng FK integer trực tiếp, không cần load User object
+            defaults={
+                'role': 'member',
+                'is_active': True,
+            }
+        )
+        return Response({"detail": "success"}, status=200)
+
+class RejectJoinRequest(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'reject_join_request_group'
+    def post(self, request, group_id, request_id):
+        group = get_object_or_404(Group,pk=group_id)
+        user = request.user
+        self.check_object_permissions(self.request,group)
+        join_request = get_object_or_404(
+            GroupJoinRequest,
+            id=request_id,
+            group=group,
+            status='pending'
+        )
+        join_request.status = 'rejected'
+        join_request.reviewed_by_id = user.id
+        join_request.reviewed_at = timezone.now()
+        join_request.save(update_fields=['status', 'reviewed_by_id', 'reviewed_at'])
+        return Response({"detail": "success"}, status=200)
+
+class KickMemberGroup(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'kick_member_group'
+    def post(self, request, group_id, user_id):
+        group = get_object_or_404(Group,pk=group_id)
+        self.check_object_permissions(self.request,group)
+        member = get_object_or_404(
+            GroupMember,
+            group=group,
+            user_id = user_id,
+            is_active=True
+        )
+        if member.role == 'owner':
+            raise PermissionDenied("Không thể kick owner")
+        member.is_active=False
+        member.save(update_fields=['is_active'])
+        return Response({"detail": "success"}, status=200)
+
+class AddAdminGroup(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerOnlyGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'add_admin_group'
+    def post(self, request, group_id, user_id):
+        group = get_object_or_404(Group,pk=group_id)
+        self.check_object_permissions(self.request,group)
+        member = get_object_or_404(
+            GroupMember,
+            group=group,
+            user_id=user_id,
+            is_active=True
+        )
+        if member.role == 'admin':
+            raise ValidationError("Đã là admin")
+        if member.role == 'owner':
+            raise ValidationError("Không thể hạ cấp owner")
+        member.role = 'admin'
+        member.save(update_fields=['role'])
+        return Response({"detail": "success"}, status=200)
+
+class LeaveGroup(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'leave_group'
+    def post(self, request, group_id):
+        group = get_object_or_404(Group,pk=group_id)
+        user = request.user
+        self.check_object_permissions(self.request,group)
+        member = get_object_or_404(
+            GroupMember,
+            group=group,
+            user_id = user.id,
+            is_active=True
+        )
+        if member.role == 'owner':
+            next_owner_id = request.data.get('next_owner_id')
+            if not next_owner_id:
+                raise ValidationError("Bạn cần chuyển nhượng chức vụ owner trước khi rời")
+            next_owner = get_object_or_404(
+                GroupMember,
+                group=group,
+                user_id=next_owner_id,
+                is_active=True
+            )
+            if next_owner.role == 'owner':
+                raise ValidationError("User này đã là owner")
+            next_owner.role = 'owner'
+            next_owner.save(update_fields=['role'])
+
+        member.is_active=False
+        member.save(update_fields=['is_active'])
+        return Response({"detail": "success"}, status=200)
+
+class CreatePostGroup(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'create_post_group'
+    def perform_create(self, serializer):
+        group_id = self.kwargs.get("group_id")
+        user =self.request.user
+        group = get_object_or_404(Group, id=group_id)
+        member = get_object_or_404(GroupMember, group=group, user_id=user.id,is_active=True)
+        post_status = 'approved' if member.role in ['owner', 'admin'] else 'pending'
+        serializer.save(user=user, group=group, post_status=post_status)
+
+class PostReviewGroupList(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
+    serializer_class = GroupPostSerializer
+    pagination_class = LargePagePagination
+
+    def get_queryset(self):
+        group_id = self.kwargs.get('group_id')
+        group = get_object_or_404(Group,pk=group_id)
+        self.check_object_permissions(self.request,group)
+        return Post.objects.filter(group=group,post_status='pending').select_related('user','user__profile','group').prefetch_related('photos').order_by('created_at')
+
+class ReviewPostGroup(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'review_post_group'
+
+    def post(self, request, group_id, post_id):
+        action = request.data.get('action')
+        if action not in ['approved', 'rejected']:
+            return Response({"detail": "action không hợp lệ"}, status=400)
+
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+
+        post = get_object_or_404(Post, pk=post_id, group=group, post_status='pending')
+        post.post_status = action
+        post.save(update_fields=['post_status'])
+        return Response({"detail": "success"}, status=200)
+
+class DeletePostGroup(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'delete_post_group'
+
+    def delete(self, request, group_id, post_id):
+        post = get_object_or_404(Post, pk=post_id, group_id=group_id)
+
+        if not request.user.has_perm('group.delete_post', post):  # chỉ truyền post, nó sẽ tự lấy group_id từ Post
+            return Response({"detail": "Không có quyền"}, status=403)
+
+        post.delete()
+        return Response({"detail": "success"}, status=204)
+
+class UpdatePostGroup(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated,CanEditPost]
+    serializer_class = GroupPostSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'update_post_group'
+    def get_object(self):
+        post_id = self.kwargs.get('post_id')
+        group_id = self.kwargs.get('group_id')
+        post= get_object_or_404(Post.objects.select_related('user__profile','user','group').prefetch_related('photos'), pk=post_id,group_id=group_id)
+        self.check_object_permissions(self.request, post)
+        return post
+    def perform_update(self, serializer):
+        serializer.save(post_status='pending')
+
+class PostListGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated,IsMemberGroup]
+    serializer_class = PostSerializer
+    pagination_class = LargePagePagination
+    def get_queryset(self):
+        if not hasattr(self, '_qs'):
+            group_id = self.kwargs.get('group_id')
+            group= get_object_or_404(Group,pk=group_id)
+            self.check_object_permissions(self.request, group)
+            ordering = self.request.query_params.get('ordering', 'newest') # mặc đinh là mới newest
+            sort = '-created_at' if ordering == 'newest' else 'created_at'
+            self._qs = (
+                Post.objects.filter(group=group,post_status='approved').select_related('user','user__profile').prefetch_related('photos')
+                .order_by('-is_pinned', sort)
+            )
+        return self._qs
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        objs = getattr(self, 'object_list', None)
+        if objs is None:
+            objs=self.get_queryset()
+        context.update(get_reactions_post_context(objs, self.request.user))
+        return context
+
+class PinPostGroup(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'pin_post_group'
+
+    def post(self, request, group_id, post_id):
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        post = get_object_or_404(Post, pk=post_id, group=group, post_status='approved')
+        if post.is_pinned:  # nếu bấm vào bài đang pin thì unpin luôn
+            post.is_pinned = False
+            post.save(update_fields=['is_pinned'])
+            return Response({"detail": "success", "is_pinned": False}, status=200)
+        
+        # nếu chưa pin
+        Post.objects.filter(group=group, is_pinned=True).update(is_pinned=False)
+        post.is_pinned = True
+        post.save(update_fields=['is_pinned'])
+        return Response({"detail": "success", "is_pinned": post.is_pinned}, status=200)
+
+
+class PostUserGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated,IsMemberGroup]
+    pagination_class = SmallPagePagination
+    serializer_class = GroupPostSerializer
+    def get_queryset(self):
+        group_id = self.kwargs.get('group_id')
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        filter = self.request.query_params.get('filter')
+        qs= Post.objects.filter(group_id=group_id,user=self.request.user)
+
+        if filter == 'rejected':
+            return qs.filter(post_status='rejected')
+        if filter == 'pending':
+            return qs.filter(post_status='pending')
+        return qs.filter(post_status='approved')
+
+class MakeNotification(APIView):
+    permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
+    def post(self, request, group_id, post_id):
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        make_notification_group.delay(
+            group_id=group_id,
+            post_id=post_id,
+            admin_id = self.request.user.id
+        )
+        return Response({'detail':'success'}, status=200)
+
+class PostGroupDetail(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated,IsMemberGroup]
+    serializer_class = GroupPostSerializer
+    def get_object(self):
+        post_id = self.kwargs.get('post_id')
+        group_id = self.kwargs.get('group_id')
+        post= get_object_or_404(Post.objects.select_related('user__profile','user','group').prefetch_related('photos'), pk=post_id,group_id=group_id, post_status='approved')
+        self.check_object_permissions(self.request, post)
+        return post
+
+class SearchInGroup(APIView):
+    permission_classes = [IsAuthenticated, IsMemberGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'search'
+    def get(self, request, group_id):
+        keyword = request.query_params.get('q', '').strip()
+        search_type = request.query_params.get('type', 'all')  # all/posts/members
+
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+        except (ValueError, TypeError):
+            page = 1
+
+        size = 20
+        offset = (page - 1) * size # =2 → offset=20 → ES lấy [20:40] → kết quả 21 đến 40
+
+        if not keyword:
+            return Response({'posts': [], 'members': [], 'pagination': {}})
+
+        group = get_object_or_404(Group, pk=group_id, deleted__isnull=True)
+        self.check_object_permissions(request, group)  # check phải là member
+
+        # cache không cần per-user vì member trong group thấy như nhau
+        cache_key = hashlib.md5(
+            f"search_in_group:{group_id}:{keyword}:{search_type}:{page}".encode()
+        ).hexdigest()
+        cached = cache.get(cache_key)
+        if cached:
+            return Response(cached)
+
+        posts   = []
+        members = []
+        total_posts   = 0
+        total_members = 0
+
+        try:
+            # Bước 1 lấy các data đã phân tách trong db của elastic và lấy các id
+            ms = MultiSearch()
+
+            if search_type in ('all', 'posts'):
+                post_search = PostDocument.search().query(
+                    "bool",
+                    must=[ #must là check điều kiện (AND)
+                        ESQ("term", group_id=group_id),      # bắt buộc đúng group
+                        ESQ("term", post_status="approved"), # chỉ lấy post đã duyệt
+                    ], 
+                    should=[ # điều kiện OR
+                        ESQ("bool", must=[ESQ("match_phrase", title=keyword)], boost=4.0), # uư tiên lấy đúng hết
+                        # gõ đúng cụm → rank cao nhất
+                        ESQ("match", title={ # phân tích title và tự đoán
+                            "query": keyword,
+                            "boost": 2.0,
+                            "fuzziness": "AUTO",  # tự sửa lỗi chính tả
+                            "prefix_length": 1,   # ký tự đầu phải đúng
+                            "max_expansions": 50
+                        }),
+                    ],
+                    minimum_should_match=1  # phải match ít nhất 1 should
+                )
+                ms = ms.add(post_search[offset:offset + size])
+
+            if search_type in ('all', 'members'):
+                member_search = ProfileDocument.search().query(
+                    "bool",
+                    should=[
+                        ESQ("bool", must=[ESQ("match_phrase", full_name=keyword)], boost=5.0),# gõ đúng họ tên → rank cao nhất
+
+                        #tự phân tích theo tự đoán cả full name hoặc user chỉ nhập first và last name
+                        ESQ("match", full_name={"query": keyword, "boost": 3.0, "fuzziness": "AUTO", "prefix_length": 1, "max_expansions": 50}),
+                        ESQ("match", first_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 1}),
+                        ESQ("match", last_name={"query": keyword, "boost": 2.0, "fuzziness": "AUTO", "prefix_length": 1}),
+                    ],
+                    minimum_should_match=1
+                )
+                ms = ms.add(member_search[offset:offset + size])
+
+            responses = ms.execute()
+            idx = 0
+
+            # Bước 2, từ cái id lấy trong db elastic đã filter search, lọc ra từ model
+            if search_type in ('all', 'posts'):
+                try:
+                    post_response = responses[idx]; idx += 1
+                    total_posts   = post_response.hits.total.value
+                    post_ids      = [hit.meta.id for hit in post_response]
+
+                    posts_qs = (
+                        Post.objects
+                        .filter(
+                            post_id__in=post_ids,
+                            group_id=group_id,           # double check đúng group
+                            post_status='approved',
+                            deleted__isnull=True
+                        )
+                        .select_related('user', 'user__profile')
+                        .prefetch_related('photos')
+                    )
+                    posts_dict = {str(p.post_id): p for p in posts_qs}
+                    posts = [posts_dict[pid] for pid in post_ids if pid in posts_dict]
+                    # giữ thứ tự relevance từ ES
+                except Exception as e:
+                    logger.error(f"Group post search error | group={group_id} keyword={keyword} | {e}")
+                    posts = []
+
+            if search_type in ('all', 'members'):
+                try:
+                    member_response = responses[idx]
+                    total_members   = member_response.hits.total.value
+                    profile_ids     = [hit.meta.id for hit in member_response]
+
+                    # filter thêm phía Django: chỉ lấy profile là member active trong group
+                    member_user_ids = GroupMember.objects.filter(
+                        group_id=group_id,
+                        is_active=True
+                    ).values_list('user_id', flat=True)  # danh sách user trong group
+
+                    members_qs = (
+                        Profile.objects
+                        .filter(
+                            id__in=profile_ids,
+                            deleted__isnull=True,
+                            user_id__in=member_user_ids  # chỉ lấy profile là member
+                        )
+                        .select_related('user')
+                        .prefetch_related(
+                            Prefetch(
+                                'user__group_memberships',  # lấy role trong group
+                                queryset=GroupMember.objects.filter(group_id=group_id, is_active=True),
+                                to_attr='group_member_info'
+                            )
+                        )
+                    )
+                    members_dict = {str(p.id): p for p in members_qs}
+                    members = [members_dict[pid] for pid in profile_ids if pid in members_dict]
+                    # giữ thứ tự relevance từ ES, bỏ profile không phải member
+                except Exception as e:
+                    logger.error(f"Group member search error | group={group_id} keyword={keyword} | {e}")
+                    members = []
+
+        except Exception as e:
+            # MultiSearch fail hoàn toàn → trả rỗng không crash
+            logger.error(f"SearchInGroup MultiSearch failed | group={group_id} keyword={keyword} | {e}")
+
+        result = {
+            'posts': PostSerializer(posts, many=True, context={'request': request}).data,
+            'members': ProfileSerializer(members, many=True, context={
+                'request': request,
+                'online_set': get_online_set(members_qs) if members else set()
+                # batch check online status tránh N+1 Redis
+            }).data,
+            'pagination': {
+                'page': page,
+                'size': size,
+                'total_posts':    total_posts,
+                'total_members':  total_members,
+                'has_next_posts':   offset + size < total_posts,
+                'has_next_members': offset + size < total_members,
+            }
+        }
+
+        if any([posts, members]):
+            cache.set(cache_key, result, timeout=30)  # cache 30s tránh spam
+
+        return Response(result)
+
+class PhotoInGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated,IsMemberGroup]
+    pagination_class = LargePagePagination
+    serializer_class = PostPhotoSerializer
+    def get_queryset(self):
+        group_id = self.kwargs.get('group_id')
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        return PostPhoto.objects.filter(
+            post__group = group,
+            post__post_status = 'approved'
+        )

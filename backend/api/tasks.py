@@ -8,7 +8,8 @@ from django.contrib.auth import get_user_model
 from api.firebase import push_to_user
 from django.utils import timezone
 from datetime import timedelta
-from api.models import Post, Message, ConversationMember, Profile, Event, EventParticipant, Conversation, Notification
+from api.models import Post, Message, ConversationMember, Profile, Event, EventParticipant, Conversation, Notification, \
+    GroupMember, Group
 import subprocess
 import os
 from datetime import datetime
@@ -81,11 +82,6 @@ def send_event_reminder(self, event_id, content_type_id):
 
         channel_layer = get_channel_layer()
         for uid in participant_ids:
-            Notification.objects.create(
-                reciever_id__in = participant_ids,
-                message = f"Event {event.title} sắp xảy ra vào lúc {event.start_time}"
-
-            )
             async_to_sync(channel_layer.group_send)(
                 f'notification_{uid}',
                 {
@@ -100,6 +96,48 @@ def send_event_reminder(self, event_id, content_type_id):
     except Exception as exc:
         raise self.retry(exc=exc, countdown=60) # thử lại sau 60s
 
+#=====GROUP==============
+@shared_task(bind=True, max_retries=3)
+def make_notification_group(self, group_id, post_id, admin_id):
+    try:
+        group = Group.objects.filter(id=group_id).first()
+        post = Post.objects.filter(id=post_id,group_id=group_id).first()
+        member_ids = list(
+            GroupMember.objects.filter(
+                group_id=group_id,
+                is_active=True
+            )
+            .exclude(user_id=admin_id) #k gửi cho admin
+            .values_list("user_id", flat=True)
+        )
+        Notification.objects.bulk_create([ #bulk create thì không chạy signal
+            Notification(
+                reciever_id=uid,
+                actor_id=admin_id,
+                type="group_notification",
+                object_id=group_id,
+                post_id=post_id,
+                message=f"Admin đã gửi thông báo thông qua post '{post.title}' trong group '{group.name}'",
+            )
+            for uid in member_ids
+        ])
+
+        channel_layer = get_channel_layer()
+
+        for uid in member_ids:
+            async_to_sync(channel_layer.group_send)(
+                f"notification_{uid}",
+                {
+                    "type": "group_notification",
+                    "object_id": group.id,
+                    "post_id": post.id,
+                    "message": f"Admin đã gửi thông báo thông qua post '{post.title}' trong group '{group.name}'",
+                },
+            )
+
+    except Exception as exc:
+        logger.exception(exc)
+        raise self.retry(exc=exc)
 
 # ===== CLEANUP =====
 @shared_task

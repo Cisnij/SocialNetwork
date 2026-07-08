@@ -117,7 +117,7 @@ class PendingProfile(models.Model):
     def __str__(self):
         return f"{self.user.username}- Pending"
 
-
+# nếu post là safedelete mà comment không có thì khi xóa post post sẽ xóa mềm nhưng comment sẽ xóa theo cái on_delete đã khai báo
 class Post(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE  # khi xóa post thì các comment, photo liên quan cũng bị xóa mềm theo
     PRIVACY_CHOICES=[
@@ -404,20 +404,27 @@ class FCMToken(models.Model):  # đại diện cho 1 app, 1 thiết bị, 1 lầ
 
 # ==========================Notification===========================================================================================
 class Notification(models.Model):
-    TYPE_CHOICES = [
+    TYPE_CHOICES = [ # bên trái là dùng để ORM bên phải là tên hiển thị
         ('comment_on_post', 'Comment on Post'),
         ('reply_on_comment', 'Reply on Comment'),
         ('tagged_in_reply', 'Tagged in Reply'),
+
         ('reaction_on_post', 'Reaction on Post'),
         ('reaction_on_comment', 'Reaction on Comment'),
+
         ('friend_request', 'Friend Request'),
         ('follow', 'Follow'),
         ('share_post', 'Share on Post'),
         ('accepted_friend_request', 'Accept Friend'),
+
         ('event_reminder', 'Event Reminder'),
+
         ('group_request_accepted', 'Accept join request'),
         ('group_post_accepted', 'Accept post request'),
-        ('group_notification', 'Group important notification')
+        ('group_post_declined', 'Decline post request'),
+        ('group_notification', 'Group important notification'),
+        ('group_admin_added', 'Transfer admin group'),
+        ('group_owner_transfer', 'Transfer admin group'),
     ]
     reciever = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')

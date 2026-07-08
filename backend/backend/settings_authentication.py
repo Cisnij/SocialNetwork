@@ -78,7 +78,7 @@ REST_FRAMEWORK={ #Cấu hình token
         'delete_member_group_chat':'20/m',
         'add_tasks':'30/m',
         'update_tasks':'20/m',
-
+        'search': '100/m',
         'add_member_tasks': '30/min',
         'delete_tasks': '30/min',
         'create_vote': '15/min',
