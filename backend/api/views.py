@@ -20,6 +20,7 @@ from livekit import api
 from backend.env_config import env
 from backend import settings_backend
 from rules import is_active
+from rules.templatetags.rules import has_perm
 from .models import Profile, Event
 from .serializers import *
 from rest_framework import generics,permissions
@@ -29,7 +30,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from .pagination import *
-from .signals import unfriended_log
+from .signals import unfriended_log, accept_join_request_group, notify_accept_post_request, notify_add_admin, owner_transfer_group
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
 from django.db.models import Q, Prefetch, prefetch_related_objects, F, Exists, OuterRef
 from .permissions import IsConversationMember, PostViewPermission, IsAdminOrOwnerGroup, IsMemberGroup, IsOwnerOnlyGroup, \
@@ -2110,7 +2111,7 @@ class SearchAPIView(APIView):
             page = 1  # nếu truyền ?page=abc thì fallback về trang 1 thay vì crash 500
 
         size = 20  # số kết quả mỗi trang
-        offset = (page - 1) * size  # page=1 → offset=0, page=2 → offset=20, dùng để slice ES
+        offset = (page - 1) * size  # page=1 → offset=0 và 0->20, page=2 → offset=20 và 20->40, dùng để slice ES
 
         if not keyword:
             return Response({'posts': [], 'profiles': [], 'groups': [], 'pagination': {}})
@@ -2294,7 +2295,15 @@ class SearchAPIView(APIView):
                                 output_field=BooleanField()
                             )   # True nếu user đang chờ duyệt → join_status = 'pending'
                         )
-                        .select_related('created_by', 'created_by__profile')  # tránh N+1
+                        .select_related('created_by', 'created_by__profile')  # tránh N+1\
+                        .prefetch_related(
+                            Prefetch(
+                                'members',
+                                queryset=GroupMember.objects.filter(user=user, is_active=True).select_related(
+                                    'job_role__department', 'job_role'),
+                                to_attr='my_membership'
+                            )
+                        )
                     )
                     groups_dict = {str(g.id): g for g in groups_qs}
                     groups = [groups_dict[gid] for gid in group_ids if gid in groups_dict]
@@ -2319,7 +2328,6 @@ class SearchAPIView(APIView):
             'pagination': {
                 'page': page,
                 'size': size,
-                # total là ước tính từ ES, thực tế có thể ít hơn do filter block/privacy phía Django
                 'total_posts':       total_posts,
                 'total_profiles':    total_profiles,
                 'total_groups':      total_groups,
@@ -2856,7 +2864,9 @@ class GetFileFromConversation(generics.ListAPIView):
         return MessageAttachment.objects.filter(
             conversation_id=conv_id,
         ).select_related("uploaded_by__profile").order_by('-created_at')
+
 #==================VOTE==========================================================
+
 class CreateVoteGroupChat(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes=[ScopedRateThrottle]
@@ -2884,7 +2894,7 @@ class CreateVoteGroupChat(APIView):
             VoteOption.objects.bulk_create([
                 VoteOption(vote=vote, text=opt) for opt in options
             ])
-        vote = Vote.objects.prefetch_related('options').select_related('created_by__profile').get(id=vote.id)
+        vote = Vote.objects.prefetch_related('options').select_related('created_by__profile').get(id=vote.id) #lấy get để đem vào serializer có prefetch tránh n+1
         message_system = Message.objects.create(
             conversation_id=conv_id,
             sender=self.request.user,
@@ -3094,7 +3104,7 @@ class AddOptionVoteGroupChat(generics.CreateAPIView):
         serializer = self.get_serializer(created, many=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-class UpdateOptionVoteGroupChat(generics.UpdateAPIView):
+class UpdateOptionVoteGroupChat(generics.UpdateAPIView): #tất cả đều update title đc
     permission_classes = [IsAuthenticated]
     serializer_class = VoteOptionSerializer
     throttle_classes=[ScopedRateThrottle]
@@ -3474,7 +3484,7 @@ class ListCreateEventChat(generics.ListCreateAPIView):
         # Đặt reminder trước 15p
         # Ví dụ: event 3h thứ 2 → nhắc lúc 2h45 thứ 2
         start_time = event.start_time
-        remind_at  = start_time - timedelta(minutes=15)
+        remind_at  = start_time - timedelta(minutes=15) #time delta dùng để lưu thời gian
         eta = remind_at if remind_at > timezone.now() else timezone.now() # chỉ đặt nếu chưa trễ (nếu trễ thì chạy ngay)
         task = send_event_reminder.apply_async(  # apply_async để đặt lịch chạy, delay thì chạy ngay
             args=[event.id, content_type.id],   # truyền event_id và content_type_id để dùng chung
@@ -3670,12 +3680,40 @@ class CreateGroup(generics.CreateAPIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'create_group'
     def perform_create(self, serializer):
-        instance = serializer.save(created_by=self.request.user)
-        GroupMember.objects.create(
-            group= instance,
-            user= self.request.user,
-            role='owner'
+        with transaction.atomic():
+            instance = serializer.save(created_by=self.request.user)
+            GroupMember.objects.create(
+                group= instance,
+                user= self.request.user,
+                role='owner'
+            )
+
+class GroupDetailView(generics.RetrieveAPIView): #view public để hiển thị group từ url
+    permission_classes = [IsAuthenticated]
+    serializer_class = GroupSerializer
+    def get_object(self):
+        user = self.request.user
+        group_id = self.kwargs.get('group_id')
+        group = get_object_or_404(
+            Group.objects.annotate(
+                member_count=Count('members', filter=Q(members__is_active=True)),
+                is_member=Exists(
+                    GroupMember.objects.filter(group=OuterRef('pk'), user=self.request.user, is_active=True)
+                ),
+                is_pending=Exists(
+                    GroupJoinRequest.objects.filter(group=OuterRef('pk'), user=self.request.user, status='pending')
+                )
+            ).select_related('created_by__profile')\
+            .prefetch_related(
+                Prefetch(
+                    'members', # lấy ra tất cả thành viên và lọc ra chính mình
+                    queryset = GroupMember.objects.filter(user=user,is_active=True).select_related('job_role__department','job_role'),
+                    to_attr = 'my_membership' #  lưu vào attribute riêng
+                )
+            ),
+            pk=group_id
         )
+        return group
 
 class UpdateGroup(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
@@ -3689,11 +3727,14 @@ class UpdateGroup(generics.UpdateAPIView):
         return group
 
     def perform_update(self, serializer): # quy trình permissions > get_object > serializer > serializer.validated_data > perform_update > serializer.save()
-        old_is_company = serializer.instance.is_company # lấy ra true hay false của giá trị cũ truóc khi update
-        instance = serializer.save() # save gía trị update lại
-        if old_is_company and not instance.is_company: # nếu company là is group, is_company vừa update là false thì xóa hết (update là false tức là not false là true ->chạy)
-            GroupRole.objects.filter(group=instance).delete()
-            GroupDepartment.objects.filter(group=instance).delete()
+        with transaction.atomic():
+            old_is_company = serializer.instance.is_company # lấy ra true hay false của giá trị cũ truóc khi update
+            instance = serializer.save() # save gía trị update lại
+            if old_is_company and not instance.is_company: # nếu company là is group, is_company vừa update là false thì xóa hết (update là false tức là not false là true ->chạy)
+                GroupRole.objects.filter(group=instance).delete()
+                GroupDepartment.objects.filter(group=instance).delete()
+
+
 
 class ListGroupUser(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -3706,14 +3747,21 @@ class ListGroupUser(generics.ListAPIView):
             members__user=user, #dùng related_name lấy vì group k thể truy cập tới groupmember
             members__is_active = True,
         ).annotate(
-            group_member_counts= Count('members',filter= Q(members__is_active=True)),
+            member_count= Count('members',filter= Q(members__is_active=True)),
             is_member = Exists(
                 GroupMember.objects.filter(group=OuterRef('pk') ,user=user,is_active=True) # lấy ra xem có user ở group hiện tại is_active
             ),
             is_pending = Exists(
                 GroupJoinRequest.objects.filter(group=OuterRef('pk'),user=user,status='pending')
             )
-        ).select_related('created_by__profile')
+        ).select_related('created_by__profile')\
+        .prefetch_related(
+            Prefetch(
+                'members', # lấy ra tất cả thành viên và lọc ra chính mình
+                queryset = GroupMember.objects.filter(user=user,is_active=True).select_related('job_role__department','job_role'),
+                to_attr = 'my_membership' #  lưu vào attribute riêng
+            )
+        )
 
 class DeleteGroup(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated,IsOwnerOnlyGroup]
@@ -4022,24 +4070,29 @@ class AcceptJoinRequest(APIView):
         group = get_object_or_404(Group, pk=group_id)
         self.check_object_permissions(self.request, group)
         # update bảng JoinRequest
-        join_request = get_object_or_404(
-            GroupJoinRequest,
-            id=request_id,
-            group=group,
-            status='pending'
-        )
-        join_request.status = 'accepted'
-        join_request.reviewed_by_id = user.id
-        join_request.reviewed_at = timezone.now()
-        join_request.save(update_fields=['status', 'reviewed_by_id', 'reviewed_at'])
-        # Thêm hoặc update(nếu đã rời) user vào group
-        GroupMember.objects.update_or_create(
-            group=group,
-            user_id=join_request.user_id,  # dùng FK integer trực tiếp, không cần load User object
-            defaults={
-                'role': 'member',
-                'is_active': True,
-            }
+        with transaction.atomic():
+            join_request = get_object_or_404(
+                GroupJoinRequest.objects.select_for_update(), #dùng select for update trong atomic để lock row chỉ cho sửa lần luọt tránh race condition
+                id=request_id, group=group, status='pending'
+            )
+            join_request.status = 'accepted'
+            join_request.reviewed_by_id = user.id
+            join_request.reviewed_at = timezone.now()
+            join_request.save(update_fields=['status', 'reviewed_by_id', 'reviewed_at'])
+            # Thêm hoặc update(nếu đã rời) user vào group
+            GroupMember.objects.update_or_create(
+                group=group,
+                user_id=join_request.user_id,  # dùng FK integer trực tiếp, không cần load User object
+                defaults={
+                    'role': 'member',
+                    'is_active': True,
+                }
+            )
+        accept_join_request_group.send(  # hook thẳng signal vào view
+            sender=self.__class__,  # khi gọi api này thì nó gọi signal truyền sender là api này vào
+            user=join_request.user,
+            admin_user=request.user,
+            group=group
         )
         return Response({"detail": "success"}, status=200)
 
@@ -4101,6 +4154,12 @@ class AddAdminGroup(APIView):
             raise ValidationError("Không thể hạ cấp owner")
         member.role = 'admin'
         member.save(update_fields=['role'])
+        notify_add_admin.send(  # ← thêm
+            sender=self.__class__,
+            group=group,
+            new_admin=member.user,
+            owner=request.user,
+        )
         return Response({"detail": "success"}, status=200)
 
 class LeaveGroup(APIView):
@@ -4117,23 +4176,29 @@ class LeaveGroup(APIView):
             user_id = user.id,
             is_active=True
         )
-        if member.role == 'owner':
-            next_owner_id = request.data.get('next_owner_id')
-            if not next_owner_id:
-                raise ValidationError("Bạn cần chuyển nhượng chức vụ owner trước khi rời")
-            next_owner = get_object_or_404(
-                GroupMember,
-                group=group,
-                user_id=next_owner_id,
-                is_active=True
-            )
-            if next_owner.role == 'owner':
-                raise ValidationError("User này đã là owner")
-            next_owner.role = 'owner'
-            next_owner.save(update_fields=['role'])
-
-        member.is_active=False
-        member.save(update_fields=['is_active'])
+        with transaction.atomic():
+            if member.role == 'owner':
+                next_owner_id = request.data.get('next_owner_id')
+                if not next_owner_id:
+                    raise ValidationError("Bạn cần chuyển nhượng chức vụ owner trước khi rời")
+                next_owner = get_object_or_404(
+                    GroupMember,
+                    group=group,
+                    user_id=next_owner_id,
+                    is_active=True
+                )
+                if next_owner.role == 'owner':
+                    raise ValidationError("User này đã là owner")
+                next_owner.role = 'owner'
+                next_owner.save(update_fields=['role'])
+                owner_transfer_group.send(
+                    sender=self.__class__,
+                    group=group,
+                    next_owner=next_owner.user,
+                    former_owner=request.user,
+                )
+            member.is_active=False
+            member.save(update_fields=['is_active'])
         return Response({"detail": "success"}, status=200)
 
 class CreatePostGroup(generics.CreateAPIView):
@@ -4173,9 +4238,20 @@ class ReviewPostGroup(APIView):
         group = get_object_or_404(Group, pk=group_id)
         self.check_object_permissions(self.request, group)
 
-        post = get_object_or_404(Post, pk=post_id, group=group, post_status='pending')
-        post.post_status = action
-        post.save(update_fields=['post_status'])
+        with transaction.atomic():
+            post = get_object_or_404(
+                Post.objects.select_for_update(),  # tránh 2 admin duyệt cùng lúc
+                pk=post_id, group=group, post_status='pending'
+            )
+            post.post_status = action
+            post.save(update_fields=['post_status'])
+        notify_accept_post_request.send(
+            sender=self.__class__,
+            post=post,
+            action=action,
+            admin_user=request.user,
+            group=group,
+        )
         return Response({"detail": "success"}, status=200)
 
 class DeletePostGroup(APIView):
@@ -4245,9 +4321,10 @@ class PinPostGroup(APIView):
             return Response({"detail": "success", "is_pinned": False}, status=200)
         
         # nếu chưa pin
-        Post.objects.filter(group=group, is_pinned=True).update(is_pinned=False)
-        post.is_pinned = True
-        post.save(update_fields=['is_pinned'])
+        with transaction.atomic():
+            Post.objects.filter(group=group, is_pinned=True).update(is_pinned=False) #update tất cả lại post khác bỏ pin
+            post.is_pinned = True
+            post.save(update_fields=['is_pinned'])
         return Response({"detail": "success", "is_pinned": post.is_pinned}, status=200)
 
 
@@ -4467,3 +4544,431 @@ class PhotoInGroup(generics.ListAPIView):
             post__group = group,
             post__post_status = 'approved'
         )
+class AdminGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated,IsMemberGroup]
+    pagination_class = LargePagePagination
+    serializer_class = GroupMemberSerializer
+    def get_queryset(self):
+        group_id = self.kwargs.get('group_id')
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        return GroupMember.objects.filter(
+            group=group,
+            role__in=['admin','owner'],
+            is_active=True
+        ).select_related('job_role','job_role__department','user__profile')
+#=================Vote Group===============================
+class CreateVoteGroup(APIView):
+    permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'create_vote'
+
+    def post(self, request, *args, **kwargs):
+        group_id = self.kwargs.get("group_id")
+        title = self.request.data.get("title")
+        options = self.request.data.get("options", [])  # mảng text option user truyền vào
+
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        contenttype = ContentType.objects.get_for_model(Group)
+        if not title:
+            return Response({"error": "Vui lòng nhập tiêu đề"}, status=400)
+        if len(options) < 2:
+            return Response({"error": "Vui lòng chọn ít nhất 2 option"}, status=400)
+
+        with transaction.atomic():
+            vote = Vote.objects.create(
+                created_by=request.user,
+                title=title,
+                content_type=contenttype,
+                object_id=group_id
+            )
+            VoteOption.objects.bulk_create([
+                VoteOption(vote=vote, text=opt) for opt in options
+            ])
+        vote = Vote.objects.prefetch_related('options').select_related('created_by__profile').get(id=vote.id)
+        serializer = VoteSerializer(vote, context={'request': request})
+        return Response(serializer.data, status=201)
+
+
+class DeleteVoteGroup(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'delete_vote'
+
+    def get_object(self):
+        group_id = self.kwargs.get("group_id")
+        vote_id = self.kwargs.get("vote_id")
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        contenttype = ContentType.objects.get_for_model(Group)
+        vote = get_object_or_404(Vote.objects.select_related('created_by__profile'), id=vote_id, object_id=group_id,content_type=contenttype)
+        return vote
+
+class UserVoteGroup(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'user_vote'
+
+    def post(self, request, group_id, vote_id, vote_option_id):
+        group = get_object_or_404(Group,pk=group_id)
+        if not self.request.user.has_perm('group.is_member',group):
+            raise PermissionDenied("Bạn không phải thành viên group")
+        contenttype = ContentType.objects.get_for_model(Group)
+        vote_option = get_object_or_404(  # lấy ra option user chọn
+            VoteOption,
+            id=vote_option_id,
+            vote__object_id=group_id,
+            vote__content_type=contenttype,
+            vote__is_closed=False
+        )
+
+        with transaction.atomic():
+            existing_vote = (  # lẩy ra xem user đã vote chưa
+                UserVote.objects
+                .select_for_update()
+                .select_related('option','created_by__profile')
+                .filter(option__vote_id=vote_id, created_by=request.user)
+                .first()
+            )
+
+            if not existing_vote:
+                # Chưa vote thì tạo mới
+                user_vote = UserVote.objects.create(option=vote_option, created_by=request.user)
+                VoteOption.objects.filter(id=vote_option.id).update(count=F('count') + 1)
+
+            elif existing_vote.option.id == vote_option_id:
+                # Đã vote option thì hủy
+                existing_vote.delete()
+                VoteOption.objects.filter(id=vote_option.id).update(count=F('count') - 1)
+                return Response({"message": "Đã hủy vote"}, status=200)
+
+            else:
+                # Đã vote option khác → đổi sang option mới
+                old_option_id = existing_vote.option.id
+                existing_vote.option = vote_option
+                existing_vote.save(update_fields=['option'])
+                VoteOption.objects.filter(id=old_option_id).update(count=F('count') - 1)
+                VoteOption.objects.filter(id=vote_option.id).update(count=F('count') + 1)
+                user_vote = existing_vote
+        serializer = UserVoteSerializer(user_vote, context={"request": request})
+        return Response(serializer.data, status=201)
+
+
+class UpdateVoteGroup(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
+    serializer_class = VoteSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'update_vote'
+
+    def get_object(self):
+        vote_id = self.kwargs.get("vote_id")
+        group_id = self.kwargs.get("group_id")
+        group = get_object_or_404(Group,pk=group_id)
+        self.check_object_permissions(self.request, group)
+        contenttype = ContentType.objects.get_for_model(Group)
+
+        vote = get_object_or_404(Vote.objects.prefetch_related('options').select_related('created_by__profile'),
+                                 id=vote_id, content_type=contenttype, object_id=group_id)
+        return vote
+
+class AddOptionVoteGroup(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = VoteOptionSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'add_option_vote'
+
+    def create(self, request, *args, **kwargs):
+        vote_id = self.kwargs.get("vote_id")
+        group_id = self.kwargs.get("group_id")
+        options = request.data.get("options", [])
+
+        group = get_object_or_404(Group,pk=group_id)
+        if not self.request.user.has_perm('group.is_member',group):
+            raise PermissionDenied("Bạn không phải thành viên group")
+        if not options:
+            return Response({"error": "Vui lòng truyền option"}, status=400)
+        contenttype = ContentType.objects.get_for_model(Group)
+        vote = get_object_or_404(Vote, id=vote_id, content_type=contenttype, object_id=group_id, is_closed=False)
+        created = VoteOption.objects.bulk_create([
+            VoteOption(vote=vote, text=opt)
+            for opt in options
+        ])
+        serializer = self.get_serializer(created, many=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class UpdateOptionVoteGroup(generics.UpdateAPIView): # cho thêm option nhưng chỉ admin sửa đc title
+    permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
+    serializer_class = VoteOptionSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'update_option_vote'
+
+    def get_object(self):
+        vote_id = self.kwargs.get("vote_id")
+        option_id = self.kwargs.get("option_id")
+        group_id = self.kwargs.get("group_id")
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        contenttype = ContentType.objects.get_for_model(Group)
+        vote = get_object_or_404(Vote, id=vote_id, content_type=contenttype, object_id=group_id, is_closed=False) # đã đóng thì k đc update
+        return get_object_or_404(VoteOption, id=option_id, vote=vote)
+
+
+class DeleteOptionVoteGroup(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'delete_option_vote'
+
+    def get_object(self):
+        vote_id = self.kwargs.get("vote_id")
+        option_id = self.kwargs.get("option_id")
+        group_id = self.kwargs.get("group_id")
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        contenttype = ContentType.objects.get_for_model(Group)
+        vote = get_object_or_404(Vote, id=vote_id, content_type=contenttype, object_id=group_id, is_closed=False) # đã đóng thì k đc delete option, muốn can thiệp phải xóa vote hẳn
+        option = get_object_or_404(VoteOption, id=option_id, vote=vote)
+        return option
+
+class ListVoteGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated,IsMemberGroup]
+    serializer_class = VoteSerializer
+    pagination_class = LargePagePagination
+    filter_backends = (DjangoFilterBackend, SearchFilter)
+    search_fields = ['title']
+
+    def get_queryset(self):
+        group_id = self.kwargs.get("group_id")
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        contenttype = ContentType.objects.get_for_model(Group)
+        options_prefetch = Prefetch(
+            'options',  # related name của vote option
+            queryset=VoteOption.objects.annotate(  # annotate thêm tạm 1 cột trong db và xử lý ở db
+                is_voted=Exists(  # trả true false nếu vote option có bảng tham chiếu tới uservote có user
+                    UserVote.objects.filter(
+                        option=OuterRef('pk'),
+                        # OuterRef('pk') = id của VoteOption đang được duyệt qua có liên kết tới user vote có user trong đó
+                        created_by=self.request.user
+                    )
+                )
+            )
+        )
+
+        return (
+            Vote.objects
+            .filter(content_type=contenttype, object_id=group_id)
+            .select_related('created_by__profile')
+            .prefetch_related(
+                options_prefetch)  # từ vote , lấy vote option in vote, và với mỗi vote option thì có tồn tại uservote của user
+            .order_by('is_closed', '-created_at')  # vote đang mở lên trước, mới nhất trên cùng
+        )
+
+class ListUserVoteGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated,IsMemberGroup]
+    serializer_class = UserVoteSerializer
+    pagination_class = LargePagePagination
+
+    def get_queryset(self):
+        vote_id = self.kwargs.get("vote_id")
+        option_id = self.kwargs.get("option_id")
+        group_id = self.kwargs.get("group_id")
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        contenttype = ContentType.objects.get_for_model(Group)
+        return UserVote.objects.filter(option_id=option_id, option__vote_id=vote_id,option__vote__content_type=contenttype,option__vote__object_id=group_id).select_related('created_by__profile', 'option','option__vote')
+
+class DetailVoteGroup(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated, IsMemberGroup]
+    serializer_class = VoteSerializer
+    def get_object(self):
+        group_id = self.kwargs.get("group_id")
+        vote_id = self.kwargs.get("vote_id")  # ← thêm
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        contenttype = ContentType.objects.get_for_model(Group)
+
+        options_prefetch = Prefetch(
+            'options',
+            queryset=VoteOption.objects.annotate(
+                is_voted=Exists(
+                    UserVote.objects.filter(
+                        option=OuterRef('pk'),
+                        created_by=self.request.user
+                    )
+                )
+            )
+        )
+
+        return get_object_or_404(  # ← trả về 1 object
+            Vote.objects
+            .select_related('created_by__profile')
+            .prefetch_related(options_prefetch),
+            id=vote_id,
+            content_type=contenttype,
+            object_id=group_id,
+        )
+
+# Event group
+class ListCreateEventGroup(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class   = EventSerializer
+    pagination_class   = LargePagePagination
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = ['title']
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='create_event'
+
+    def get_throttles(self): #override throttle cho post trong api có listcreate
+        if self.request.method == 'POST':
+            return [ScopedRateThrottle()]
+        return []  # GET không throttle
+
+    def _get_group(self):
+        # cache tránh query group 2 lần khi GET gọi get_queryset rồi POST gọi perform_create
+        if not hasattr(self, '_group'):
+            self._group = get_object_or_404(Group, pk=self.kwargs.get('group_id'))
+        return self._group
+
+    def get_queryset(self):
+        group = self._get_group()
+        if not self.request.user.has_perm('group.is_member', group):
+            raise PermissionDenied("Bạn không phải thành viên group")
+        content_type = ContentType.objects.get_for_model(Group)
+        return (
+            Event.objects
+            .filter(content_type=content_type, object_id=group.id)
+            .select_related('created_by', 'created_by__profile')
+            .prefetch_related('participants__user__profile')
+            .order_by('start_time')
+        )
+
+    def perform_create(self, serializer):
+        user         = self.request.user
+        group = self._get_group()
+        if not self.request.user.has_perm('group.is_admin', group):
+            raise PermissionDenied("Chỉ admin/owner mới tạo được event")
+        content_type = ContentType.objects.get_for_model(Group)
+
+        # Save event vào DB
+        event = serializer.save(
+            content_type=content_type,
+            object_id=group.id,
+            created_by=user,
+        )
+
+        EventParticipant.objects.create(
+            event = event,
+            user= user,
+            status = 'accept'
+        )
+        # Đặt reminder trước 15p
+        # Ví dụ: event 3h thứ 2 → nhắc lúc 2h45 thứ 2
+        start_time = event.start_time
+        remind_at  = start_time - timedelta(minutes=15) #time delta dùng để lưu thời gian
+        eta = remind_at if remind_at > timezone.now() else timezone.now() # chỉ đặt nếu chưa trễ (nếu trễ thì chạy ngay)
+        task = send_event_reminder.apply_async(  # apply_async để đặt lịch chạy, delay thì chạy ngay
+            args=[event.id, content_type.id],   # truyền event_id và content_type_id để dùng chung
+            eta=eta,                             # thời điểm chạy(execute time at)
+        )
+        event.celery_task_id = task.id
+        event.save(update_fields=['celery_task_id'])# lưu task id để cancel sau nếu cần
+
+class EventDetailGroup(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated,IsMemberGroup]
+    serializer_class = EventSerializer
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='modify_event'
+    def get_object(self):
+        event_id = self.kwargs.get("event_id")
+        group_id = self.kwargs.get("group_id")
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        content_type = ContentType.objects.get_for_model(Group)
+        return get_object_or_404(
+            Event.objects
+            .select_related('created_by', 'created_by__profile')
+            .prefetch_related('participants__user__profile'),
+            id=event_id,
+            content_type=content_type,
+            object_id=group_id,
+        )
+    def perform_update(self, serializer):
+        event = serializer.instance # lấy event trước save
+        old_task_id = event.celery_task_id # lấy ra task_id celery cũ
+        serializer.save() # save cái update mới(thời gian mới)
+
+        group = event.content_object
+        if not self.request.user.has_perm('group.is_admin', group):
+            raise PermissionDenied("Chỉ admin/owner mới sửa được event")
+
+        if 'start_time' in serializer.validated_data:  # chỉ reschedule khi start_time đổi
+            if old_task_id: # nếu đưa vào start time mới thì xóa celery cái cũ
+                from backend.celery import app
+                app.control.revoke(old_task_id, terminate=True)
+
+            remind_at = event.start_time - timedelta(minutes=15)
+            eta = remind_at if remind_at > timezone.now() else timezone.now() # nếu mà thời gian báo lớn hơn thời gian set thì mới đc set (nếu qua rồi thì cho chạy báo luôn)
+            content_type = ContentType.objects.get_for_model(Group)
+            task = send_event_reminder.apply_async(args=[event.id, content_type.id], eta=eta) #lên lịch chạy trong celery
+            Event.objects.filter(id=event.id).update(celery_task_id=task.id)
+
+    def perform_destroy(self, instance):
+        group = instance.content_object  # Group object
+        if not self.request.user.has_perm('group.is_admin', group):
+            raise PermissionDenied("Chỉ admin/owner mới xóa được event")
+        # Hủy celery task trước khi xóa
+        if instance.celery_task_id:
+            from backend.celery import app
+            app.control.revoke(instance.celery_task_id, terminate=True)
+
+class EventResponseGroup(APIView):
+    permission_classes = [IsAuthenticated,IsMemberGroup]
+    throttle_classes=[ScopedRateThrottle]
+    throttle_scope='response_event'
+    def patch(self, request, *args, **kwargs):
+        user = request.user
+        event_id = self.kwargs.get('event_id')
+        group_id = self.kwargs.get("group_id")
+
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        content_type = ContentType.objects.get_for_model(Group)
+
+        new_status = request.data.get('status')
+        if new_status not in ('accept', 'decline'):
+            raise ValidationError({'status': 'Chỉ chấp nhận "accept" hoặc "decline".'})
+
+        event = get_object_or_404(Event, id=event_id, content_type=content_type, object_id=group_id)
+
+        participant, created = EventParticipant.objects.update_or_create( # nếu chưa tham gia thì tạo, nếu đã tham gia rồi thì chỉ update status
+            event=event,
+            user=request.user,
+            defaults={'status': new_status} # khi update chỉ update default còn create sẽ gán event,user và default
+        )
+        return Response(
+            {'detail': f'Bạn đã {new_status} sự kiện "{event.title}".'},
+            status=status.HTTP_200_OK,
+        )
+
+class EventParticipantGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated,IsMemberGroup]
+    serializer_class = EventParticipantSerializer
+    pagination_class   = SmallPagePagination
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = ['user__profile__first_name', 'user__profile__last_name']
+    def get_queryset(self):
+        event_id = self.kwargs.get('event_id')
+        group_id = self.kwargs.get("group_id")
+
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        content_type = ContentType.objects.get_for_model(Group)
+
+        return EventParticipant.objects.filter(
+           event__content_type = content_type,
+            event__object_id = group_id,
+            event_id =event_id,
+            status = 'accept'
+        ).select_related('user__profile')

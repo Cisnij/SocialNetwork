@@ -6,7 +6,7 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .models import Profile, PendingProfile, Setting, Post, PostArticle, Comment, Log, Notification, Message, PostShare, \
     Vote, Conversation, ConversationMember, MessageAttachment, Report, SupportTicket, SearchHistory, Task, VideoRoom, \
-    Event
+    Event, Group, GroupDepartment, GroupRole, GroupMember, GroupJoinRequest
 from reaction.models import UserReaction
 from allauth.account.signals import email_confirmed, user_logged_in
 
@@ -31,12 +31,14 @@ from .firebase import push_to_user
 #safe delete
 from safedelete.signals import post_softdelete, post_undelete
 
-# #xây tín hiệu tự động tạo pending profile khi tạo user
-# @receiver(post_save,sender=User)# có nghĩa là chạy sau khi sender là user gửi tín hiệu, đây là mặc định, post la sau khi tạo user
-# def auto_create_profile(sender, instance, created, **kwargs):
-#     if created:
-#         PendingProfile.objects.get_or_create(user=instance)
-
+'''
+    chuẩn của activity stream : thần chú là cái nào tạo trong cái nào( member tạo trong group, event tạo trong chat)
+    
+            'action_object_type': ' Group Member', # cái gì đc tạo
+            'action_object_id': instance.pk,
+            'target_type': 'Group', # tạo ở đâu
+            'target_id': instance.group_id,
+'''
 #tự động tạo profile và xóa pending profile khi xác nhân email, kèm theo tạo setting default
 @receiver(email_confirmed)
 def create_profile(sender, request, email_address, **kwargs):
@@ -111,6 +113,7 @@ def create_post_log(sender, instance, created, **kwargs):
             "is_deleted": getattr(instance, "is_deleted", False),
             "action": verb,
             "group_id": instance.group_id if instance.group_id else None,
+            'post_status':instance.post_status if instance.group_id else None,
         }
     )
 
@@ -127,6 +130,7 @@ def delete_post_log(sender, instance, **kwargs):
             "title": instance.title,
             "action": "deleted",
             "group_id": instance.group_id if instance.group_id else None,
+            'post_status': instance.post_status if instance.group_id else None,
         }
     )
 
@@ -733,8 +737,6 @@ def noti_friend_request_accepted(sender, **kwargs):
 
 @receiver(post_save, sender=PostShare)
 def log_post_share_created(sender, created, instance, **kwargs):  # đổi tên tránh trùng với hàm post_delete bên dưới
-    if not created:
-        return
     verb = "shared post" if created else "updated share post"
     action.send(
         instance.user,
@@ -792,7 +794,7 @@ def log_report(sender, instance, created, **kwargs):
     if created:
         Log.objects.create(
             metadata_json=json.dumps({
-                'action': 'reported',
+                'action_object_type': 'reported',
                 'actor_id': instance.user_id,
                 'target_type': 'post' if instance.post_id else 'comment',
                 'target_id': instance.post_id or instance.comment_id,
@@ -805,7 +807,7 @@ def log_support_ticket(sender, instance, created, **kwargs):
     if created:
         Log.objects.create(
             metadata_json=json.dumps({
-                'action': 'support ticket',
+                'action_object_type': 'support ticket',
                 'actor_id': instance.user_id,
                 'content': instance.content,
             }, ensure_ascii=False)
@@ -816,7 +818,7 @@ def log_search(sender, instance, created, **kwargs):
     if created:
         Log.objects.create(
             metadata_json=json.dumps({
-                'action': 'search',
+                'action_object_type': 'search',
                 'actor_id': instance.user_id,
                 'content': instance.content,
             }, ensure_ascii=False)
@@ -824,8 +826,6 @@ def log_search(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender= Task)
 def log_task_created(sender,created,instance,**kwargs):
-    if not created:
-        return
     verb = "task created" if created else "updated task"
     action.send(
         instance.created_by,
@@ -861,8 +861,6 @@ def log_task_deleted(sender, instance, **kwargs):
 
 @receiver(post_save, sender= Vote)
 def log_vote_created(sender,created,instance,**kwargs):
-    if not created:
-        return
     verb = "vote created" if created else "updated vote"
     action.send(
         instance.created_by,
@@ -916,8 +914,6 @@ def log_call(sender, instance, created, **kwargs):
     )
 @receiver(post_save, sender= Event)
 def log_create_event(sender,created,instance,**kwargs):
-    if not created:
-        return
     verb = "created event" if created else "updated event"
     action.send(
         instance.created_by,
@@ -956,7 +952,7 @@ def log_create_conversation(sender, instance, created, **kwargs):
     if created:
         Log.objects.create(
             metadata_json=json.dumps({
-                'action': 'conversation',
+                'action_object_type': 'Conversation',
                 'action_object_id': instance.pk,
                 'actor_id': instance.created_by_id,
                 'is_group': instance.is_group,
@@ -966,17 +962,18 @@ def log_create_conversation(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=ConversationMember)
 def log_add_conversationmember(sender, instance, created, **kwargs):
-    if created:
-        Log.objects.create(
-            metadata_json=json.dumps({
-                'action': 'conversation',
-                'action_object_id': instance.conversation_id,
-                'target':'conversationmember',
-                'target_id':instance.pk,
-                'add_user': instance.user_id,
-                'joined_at': instance.joined_at.isoformat(),
-            }, ensure_ascii=False)
-        )
+    verb = 'conversation member join' if created else 'conversation member left or join again'
+    Log.objects.create(
+        metadata_json=json.dumps({
+            'action_object_type': 'Conversation Member',
+            'action_object_id': instance.pk,
+            'target':'Conversation',
+            'target_id':instance.conversation_id,
+            'add_user': instance.user_id,
+            'verb': verb,
+            'joined_at': instance.joined_at.isoformat(),
+        }, ensure_ascii=False)
+    )
 
 #============GROUP===================
 accept_join_request_group=Signal()
@@ -985,36 +982,227 @@ add_admin_group=Signal()
 owner_transfer_group=Signal()
 
 @receiver(accept_join_request_group)
-def notify_accept_join_request(user,admin_user,group,**kwargs):
+def notify_accept_join_request(sender, user, admin_user, group, **kwargs):
     Notification.objects.create(
         reciever=user,
         actor=admin_user,
         type='group_request_accepted',
+        object_id=group.id,
         message=f'Bạn đã được duyệt vào group {group.name}'
     )
 @receiver(review_post_request_group)
-def notify_accept_join_request(group,post,action,admin_user,**kwargs):
+def notify_accept_post_request(sender,group,post,action,admin_user,**kwargs):
     Notification.objects.create(
         reciever=post.user,
         actor=admin_user,
-        type='group_post_accepted' if action == 'approved' else 'group_request_rejected',
-        message=f'Bài viết {post.title} đã được duyệt trong group {group.name}'
+        object_id=group.id,
+        post_id=post.pk,
+        type='group_post_accepted' if action == 'approved' else 'group_post_declined',
+        message=f"Bài viết '{post.title}' {'đã được duyệt' if action == 'approved' else 'đã bị từ chối'} trong group '{group.name}'"
     )
 
 @receiver(add_admin_group)
-def notify_accept_join_request(group,new_admin,owner,**kwargs): #lấy từ view ra mỗi khi có tín hiệu
+def notify_add_admin(sender,group,new_admin,owner,**kwargs): #lấy từ view ra mỗi khi có tín hiệu
     Notification.objects.create(
         reciever=new_admin,
         actor=owner,
+        object_id=group.id,
         type='group_admin_added',
         message=f'Bạn đã được thêm làm admin trong group {group.name}'
     )
 
 @receiver(owner_transfer_group) #log hủy kết bạn
-def notify_accept_join_request(group,next_owner,former_owner,admin_user): #lấy từ view ra mỗi khi có tín hiệu
+def notify_owner_transfer(sender,group,next_owner,former_owner,**kwargs): #lấy từ view ra mỗi khi có tín hiệu
     Notification.objects.create(
         reciever=next_owner,
         actor=former_owner,
+        object_id=group.id,
         type='group_owner_transfer',
         message=f'Bạn đã được chọn làm chủ group {group.name}'
     )
+
+@receiver(post_save, sender= Group)
+def log_create_group(sender,created,instance,**kwargs):
+    verb = "created group" if created else "updated group"
+    action.send(
+        instance.created_by,
+        verb=verb,
+        target=instance,
+        data={
+            "user_id": instance.created_by_id,
+            "action_object_type": 'Group',
+            "action_object_id": instance.pk,
+            "group_name": instance.name,
+            "action": verb,
+        }
+    )
+
+
+@receiver(post_delete, sender=Group)
+def log_delete_group(sender, instance, **kwargs):
+    action.send(
+        instance.created_by,
+        verb='delete group',
+        target=instance,
+        data={
+            "user_id": instance.created_by_id,
+            "action_object_type": 'Group',
+            "action_object_id": instance.pk,
+            "group_name": instance.name,
+            "action": 'delete group',
+        }
+    )
+
+@receiver(post_save, sender= GroupDepartment)
+def log_create_group_department(sender,created,instance,**kwargs):
+    verb = "created department" if created else "updated department"
+    Log.objects.create(
+        metadata_json=json.dumps({
+            'action_object_type': 'Group Department',
+            'action_object_id': instance.pk,
+            'target_type': 'Group',
+            'target_id': instance.group_id,
+            'verb': verb,
+            'joined_at': instance.joined_at.isoformat(),
+        }, ensure_ascii=False)
+    )
+
+
+@receiver(post_delete, sender=GroupDepartment)
+def log_delete_group_department(sender, instance, **kwargs):
+    Log.objects.create(
+        metadata_json=json.dumps({
+            'action_object_type': 'Group Department',
+            'action_object_id': instance.pk,
+            'target_type': 'Group',
+            'target_id': instance.group_id,
+            'verb': 'delete department',
+            'joined_at': instance.joined_at.isoformat(),
+        }, ensure_ascii=False)
+    )
+
+@receiver(post_save, sender= GroupRole)
+def log_create_group_role(sender,created,instance,**kwargs):
+    verb = "created role" if created else "updated role"
+    Log.objects.create(
+        metadata_json=json.dumps({
+            'action_object_type': ' Group Role',
+            'action_object_id': instance.pk,
+            'target_type': 'Group',
+            'target_id': instance.group_id,
+            'verb': verb,
+            'joined_at': instance.joined_at.isoformat(),
+        }, ensure_ascii=False)
+    )
+
+
+@receiver(post_delete, sender=GroupRole)
+def log_delete_group_role(sender, instance, **kwargs):
+    Log.objects.create(
+        metadata_json=json.dumps({
+            'action_object_type': ' Group Role',
+            'action_object_id': instance.pk,
+            'target_type': 'Group',
+            'target_id': instance.group_id,
+            'verb': 'delete role',
+            'joined_at': instance.joined_at.isoformat(),
+        }, ensure_ascii=False)
+    )
+
+@receiver(post_save, sender= GroupMember)
+def log_join_member_group(sender,created,instance,**kwargs):
+    verb = "member join" if created else "member leave or join again"
+    Log.objects.create(
+        metadata_json=json.dumps({
+            'action_object_type': ' Group Member',
+            'action_object_id': instance.pk,
+            'target_type': 'Group',
+            'target_id': instance.group_id,
+            'verb': verb,
+            'joined_at': instance.joined_at.isoformat(),
+        }, ensure_ascii=False)
+    )
+
+
+@receiver(post_save, sender= GroupJoinRequest)
+def log_group_join_request_created(sender,created,instance,**kwargs):
+    if not created:
+        return
+    action.send(
+        instance.user,
+        verb='group join request create',
+        target=instance.group,
+        data={
+            "user_id": instance.user_id,
+            "action_object_type": 'Group join request',
+            "target_type": 'Group',
+            "target_id": instance.group_id,
+            "group_name": instance.group.name,
+            "action": 'join request',
+        }
+    )
+@receiver(post_delete, sender= GroupJoinRequest)
+def log_group_join_request_cancelled(sender,created,instance,**kwargs):
+    action.send(
+        instance.user,
+        verb='group join request cancel',
+        target=instance.group,
+        data={
+            "user_id": instance.user_id,
+            "action_object_type": 'Group join request',
+            "target_type": 'Group',
+            "target_id": instance.group_id,
+            "group_name": instance.group.name,
+            "action": 'join request cancel',
+        }
+    )
+
+@receiver(post_save, sender= Event)
+def notify_event_created(sender,created,instance,**kwargs):
+    if not created:
+        return
+    target = instance.content_object # vì content_object tham chiếu thẳng tới object group(chỉ notify group)
+    if not isinstance(target, Group):
+        return
+    member_ids = list(GroupMember.objects.filter(
+        group=target, is_active=True
+    ).exclude(user=instance.created_by).values_list('user_id', flat=True))
+    if not member_ids:
+        return
+
+    Notification.objects.bulk_create([
+        Notification(
+            reciever_id=uid,
+            actor=instance.created_by,
+            type='group_event_create',
+            object_id=target.id,
+            message=f"{instance.created_by.profile.full_name} đã tạo sự kiện '{instance.title}' trong group '{target.name}'"
+        )
+        for uid in member_ids
+    ])
+
+@receiver(post_save, sender=Vote)
+def notify_vote_created(sender, instance, created, **kwargs):
+    if not created:
+        return
+    target = instance.content_object
+    if not isinstance(target, Group):  # chỉ notify cho group vote
+        return
+
+    member_ids = list(GroupMember.objects.filter(
+        group=target, is_active=True
+    ).exclude(user=instance.created_by).values_list('user_id', flat=True))
+
+    if not member_ids:
+        return
+
+    Notification.objects.bulk_create([
+        Notification(
+            reciever_id=uid,
+            actor=instance.created_by,
+            type='group_notification',
+            object_id=target.id,
+            message=f"{instance.created_by.profile.full_name} đã tạo cuộc bình chọn '{instance.title}' trong group '{target.name}'"
+        )
+        for uid in member_ids
+    ])

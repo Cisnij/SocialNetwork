@@ -31,11 +31,11 @@ synonym_filter = token_filter(
 #=============================ÁP DỤNG FILTER VÀO TÌM KIẾM===============================================
 vn_index_analyzer  = analyzer( # chuyển thành chuỗi thường và băt đầu phân tích băm nhỏ( dùng cho lưu)
     "vn_index_analyzer",
-    tokenizer="standard", #chia câu thành từ đơn lẻ ví dụ con cò-> con và cò và lưu
+    tokenizer="standard", #chia câu thành từ đơn lẻ ví dụ con cò-> con và cò và lưu dạng token
     filter=["lowercase", ascii_fold, synonym_filter, shingle_filter, ngram_filter] # chuyển thành chữ thường và lọc
 )
 
-vn_search_analyzer = analyzer(#tìm kiếm không băm ngram, chỉ lowercase + bỏ dấu dùng cho tìm kiếm)
+vn_search_analyzer = analyzer(#tìm kiếm không băm ngram, chỉ lowercase + bỏ dấu ( dùng cho tìm kiếm)
     "vn_search_analyzer",
     tokenizer="standard",
     filter=["lowercase", ascii_fold,synonym_filter,]  # không có ngram_filter
@@ -58,7 +58,7 @@ class PostDocument(Document):
     class Django:
         model = Post #model để map dữ liệu sang
         fields = [] # Để trống vì đã khai báo title ở trên
-        signals = 'auto'
+        signals = 'auto' # đăng kí signal để khi có update hoặc create sẽ tự phân tách là lưu token trong db elastic cho search
 
     def get_queryset(self):
         return super().get_queryset().filter(deleted__isnull=True)
@@ -111,7 +111,7 @@ class GroupDocument(Document):
     def get_queryset(self):
         return super().get_queryset().filter(deleted__isnull=True)
 
-    def prepare_member_count(self, instance):
+    def prepare_member_count(self, instance): # trường ảo tạo trong db elastic 
         return instance.members.filter(is_active=True).count()
 
 # # 1. Xóa index cũ (nếu có)

@@ -782,7 +782,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
     -self.kwargs['pk'] để lấy khóa truyền vào trong url, còn request.data['pk'] để lấy khóa truyền vào trong body của frontend
     - nếu k có related name thì conversation.conversationmember_set.all() để lấy ra tất cả, nếu có thì conversation.members.all() (conversation là model cha, conversationmember là model con)
     -ORM nâng cao
-        - transaction.atomic() : dùng để thực hiện các câu lệnh truy vấn db theo thứ tự, hoặc là thành công hết, nếu 1 cái lỗi thì roll back, .select_for_update() dùng trong atomic để lock bản ghi cho tới khi thực hiện update xong tránh trường hợp bug 2 ng thực hiện cùng lúc
+        - transaction.atomic() : dùng để thực hiện các câu lệnh truy vấn db theo thứ tự, hoặc là thành công hết, nếu 1 cái lỗi thì roll back, .select_for_update() dùng trong atomic để lock bản ghi cho tới khi thực hiện update xong tránh trường hợp bug 2 ng thực hiện cùng lúc(race condition). Transaction atomic cũng dùng để lock row trong db ví dụ có 2 request đều hướng tới update user a thì request a thực hiện trước sau đó request b mới đc chạy
         -Conversation.objects.only("id", "status").get(id=conv_id) : thay vì lấy hết object ra thì chỉ lấy các field cần 
         -ConversationMember.objects.filter(conversation=conv).values_list("user_id", flat=True) : values list để lấy ra list của field cần thiết ví dụ ở đây là user_id [1,2,4]
             còn values sẽ trả về dict {'username':'an'}

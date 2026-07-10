@@ -101,7 +101,10 @@ def send_event_reminder(self, event_id, content_type_id):
 def make_notification_group(self, group_id, post_id, admin_id):
     try:
         group = Group.objects.filter(id=group_id).first()
-        post = Post.objects.filter(id=post_id,group_id=group_id).first()
+        post = Post.objects.filter(id=post_id,group_id=group_id,post_status='approved').first()
+        if not group or not post:
+            logger.error(f"make_notification_group: group={group_id} hoặc post={post_id} không tồn tại")
+            return
         member_ids = list(
             GroupMember.objects.filter(
                 group_id=group_id,
@@ -129,8 +132,8 @@ def make_notification_group(self, group_id, post_id, admin_id):
                 f"notification_{uid}",
                 {
                     "type": "group_notification",
-                    "object_id": group.id,
-                    "post_id": post.id,
+                    "object_id": group_id,
+                    "post_id": post_id,
                     "message": f"Admin đã gửi thông báo thông qua post '{post.title}' trong group '{group.name}'",
                 },
             )

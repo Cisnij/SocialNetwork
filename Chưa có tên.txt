@@ -25,12 +25,11 @@ chat nhóm:
 	// AI
 
 tạo group
-	quy tắc nhóm
-	văn hóa nhóm
-	lên lịch
+	//quy tắc nhóm
+	//lên lịch
 	// admin là chủ công ty duyệt post
-	có voting trong group
-	Góp ý ẩn danh trong group
+	//có voting trong group
+	Góp ý ẩn danh trong group, chỉ cho khi group là company
 	// group sẽ có nhiều role(ở đây là nhiều ban)
 	// thông báo admin sẽ ở đầu trang
 

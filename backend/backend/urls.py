@@ -206,6 +206,60 @@ urlpatterns = [
     path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/', EventDetailChat.as_view()),# sửa, xóa, detail
     path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/update-status/',EventResponseChat.as_view()),
     path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/participants/', EventParticipantChat.as_view()), # thành viên tham gia event participant
+    #GROUP
+    path('api/group/create/',CreateGroup.as_view()), # tạo group
+    path('api/group/<int:group_id>/detail/',GroupDetailView.as_view()),# view group page
+    path('api/group/<int:group_id>/update/',UpdateGroup.as_view()),
+    path('api/group/<int:group_id>/delete/',DeleteGroup.as_view()),
+    path('api/group/user/group/',ListGroupUser.as_view()), #lấy tất cả group của user
+    path('api/group/<int:group_id>/user-list/',ListUserGroup.as_view()),#list tất cả user của group
+    path('api/group/<int:group_id>/department/<int:department_id>/add-role/',AddRoleGroup.as_view()),# add role vào department
+    path('api/group/<int:group_id>/department-add/', AddDepartmentGroup.as_view()), # add department
+    path('api/group/<int:group_id>/role/<int:role_id>/', UpdateRoleGroup.as_view()),# update/delete role
+    path('api/group/<int:group_id>/department/<int:department_id>/',UpdateDepartmentGroup.as_view()), #update/delete department
+    path('api/group/<int:group_id>/user/<int:user_id>/add-role/',AddMemberIntoJobRole.as_view()), # thêm thành viên vào role
+    path('api/group/<int:group_id>/department-list/',ListDepartmentGroup.as_view()), #list tất cả department
+    path('api/group/<int:group_id>/department/<int:department_id>/role/',ListRoleGroup.as_view()), #list tất cả role trong department
+    path('api/group/<int:group_id>/department/<int:department_id>/user-list/',ListUserDepartmentGroup.as_view()), #list các user trong department
+    path('api/group/<int:group_id>/department/<int:department_id>/role/<int:role_id>/user-list/',ListUserRoleGroup.as_view()), #list các user trong role
+    path('api/group/<int:group_id>/send-request/',SendJoinRequestGroup.as_view()), # gửi lời mời tham gia
+    path('api/group/<int:group_id>/cancel-request/',CancelJoinRequestGroup.as_view()), #cancel request
+    path('api/group/<int:group_id>/all-request/',AllJoinRequest.as_view()), #tất cả request
+    path('api/group/<int:group_id>/request/<int:request_id>/accept/',AcceptJoinRequest.as_view()), #accept requyest
+    path('api/group/<int:group_id>/request/<int:request_id>/reject/',RejectJoinRequest.as_view()), #reject request
+    path('api/group/<int:group_id>/user/<int:user_id>/kick/',KickMemberGroup.as_view()), #kick user
+    path('api/group/<int:group_id>/user/<int:user_id>/add-admin/',AddAdminGroup.as_view()), # thêm admin
+    path('api/group/<int:group_id>/leave/',LeaveGroup.as_view()), # leave group
+    path('api/group/<int:group_id>/create-post/',CreatePostGroup.as_view()), # tạo post group
+    path('api/group/<int:group_id>/post/<int:post_id>/delete/',DeletePostGroup.as_view()), # xóa post group
+    path('api/group/<int:group_id>/post/<int:post_id>/update/',UpdatePostGroup.as_view()), # update post group
+    path('api/group/<int:group_id>/post/list/',PostListGroup.as_view()), # list post group
+    path('api/group/<int:group_id>/post/<int:post_id>/pin/',PinPostGroup.as_view()), # pin post
+    path('api/group/<int:group_id>/post-user/',PostUserGroup.as_view()), # tất cả post user đã đăng trong group
+    path('api/group/<int:group_id>/review-post/list/',PostReviewGroupList.as_view()), # list các post cần duyệt
+    path('api/group/<int:group_id>/post/<int:post_id/review/',ReviewPostGroup.as_view()), # leave group
+    path('api/group/<int:group_id>/post/<int:post_id>/highlight/',MakeNotification.as_view()), # thông báo nổi bật của admin
+    path('api/group/<int:group_id>/post/<int:post_id>/detail/',PostGroupDetail.as_view()), # lấy ra post từ notification nếu user đã tham gia group
+    path('api/group/<int:group_id>/search/',SearchInGroup.as_view()), # search trong group
+    path('api/group/<int:group_id>/photos/',PhotoInGroup.as_view()), # ảnh trong group
+
+    path('api/group/<int:group_id>/create-vote/',CreateVoteGroup.as_view()), # tạo vote
+    path('api/group/<int:group_id>/vote/<int:vote_id>/delete/',DeleteVoteGroup.as_view()), # xóa vote
+    path('api/group/<int:group_id>/vote/<int:vote_id>/option/<int:vote_option_id>/vote/',UserVoteGroup.as_view()), #user thực hiện vote
+    path('api/group/<int:group_id>/vote/<int:vote_id>/update/',UpdateVoteGroup.as_view()), # update vote
+    path('api/group/<int:group_id>/vote/<int:vote_id>/add-options/',AddOptionVoteGroup.as_view()), # thêm option vote
+    path('api/group/<int:group_id>/vote/<int:vote_id>/option/<int:option_id>/update/',UpdateOptionVoteGroup.as_view()), #update option
+    path('api/group/<int:group_id>/vote/<int:vote_id>/option/<int:option_id>/delete/',DeleteOptionVoteGroup.as_view()), #xóa option
+    path('api/group/<int:group_id>/list-vote/', ListVoteGroup.as_view()),  # lấy all vote
+    path('api/group/<int:group_id>/vote/<int:vote_id>/option/<int:vote_option_id>/user-list/',ListUserVoteGroup.as_view()), #tất cả user đã list của option
+    path('api/group/<int:group_id>/vote/<int:vote_id>/detail/', DetailVoteGroup.as_view()),  # detail vote
+
+    path('api/group/<int:group_id>/event/', ListCreateEventGroup.as_view()), #list, tạo event
+    path('api/group/<int:group_id>/event/<int:event_id>/', EventDetailGroup.as_view()),# sửa, xóa, detail
+    path('api/group/<int:group_id>/event/<int:event_id>/update-status/',EventResponseGroup.as_view()), #phản hồi sự kiện
+    path('api/group/<int:group_id>/event/<int:event_id>/participants/',EventParticipantGroup.as_view()),
+
+
 ] + router.urls
 
 

@@ -424,7 +424,9 @@ class Notification(models.Model):
         ('group_post_declined', 'Decline post request'),
         ('group_notification', 'Group important notification'),
         ('group_admin_added', 'Transfer admin group'),
-        ('group_owner_transfer', 'Transfer admin group'),
+        ('group_owner_transfer', 'Transfer owner group'),
+        ('group_event_create', 'Event Create Group'),
+        ('group_vote_create', 'Vote Create Group'),
     ]
     reciever = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
@@ -660,6 +662,7 @@ class EventParticipant(models.Model):
 class Group(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
     name = models.CharField(max_length=250)
+    rules = models.TextField(null=True, blank=True)
     description = models.TextField(null=True,blank=True)
     avatar = models.ImageField(upload_to=group_avatar_upload_path, null=True, blank=True,validators=[FileExtensionValidator(['png','jpg','jpeg'])])
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL,null=True,blank=True) #xóa user thì xóa luôn group

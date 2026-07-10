@@ -150,7 +150,7 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
                 }
             )
 
-            # Nếu cancelled (chưa ai bắt máy) , callee vẫn đang thấy popup nên cần push call_cancelled qua notification để FE tắt popup
+            # Nếu cancelled (chưa ai bắt máy mà caller đang gọi nhấn hủy) , callee vẫn đang thấy popup nên cần push call_cancelled qua notification để FE tắt popup
             if end_reason == 'cancelled':
                 member_ids = await self._get_member_ids(room)
                 channel_layer = get_channel_layer()

@@ -505,6 +505,7 @@ class VoteOptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = VoteOption
         fields = ['id', 'text', 'count','is_voted']
+        read_only_fields = ['count','is_voted']
 
 class VoteSerializer(serializers.ModelSerializer):
     options = VoteOptionSerializer(many=True, read_only=True) #1-n
@@ -513,6 +514,7 @@ class VoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vote
         fields = ['id', 'created_by', 'title', 'created_at', 'is_closed', 'options']
+        read_only_fields = ['created_at','created_by']
 
 class UserVoteSerializer(serializers.ModelSerializer):
     option = VoteOptionSerializer(read_only=True)
@@ -520,6 +522,7 @@ class UserVoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserVote
         fields = ['option','created_by']
+        read_only_fields = ['created_by']
 
 #=============== Event ====================
 class EventParticipantSerializer(serializers.ModelSerializer):
@@ -592,6 +595,7 @@ class GroupSerializer(serializers.ModelSerializer):
         model = Group
         fields = '__all__'
         read_only_fields = ['created_by','created_at']
+
     def get_member_count(self, obj):
         return getattr(obj, 'member_count', 0)
 
@@ -601,6 +605,22 @@ class GroupSerializer(serializers.ModelSerializer):
         if getattr(obj, 'is_pending', False):
             return 'pending'
         return 'none'
+
+    def get_role(self,obj):
+        memberships = getattr(obj, 'my_membership', []) #lấy ra atr lưu trong ram
+        return memberships[0].role if memberships else None
+
+    def get_belong_to_department(self, obj):
+        memberships = getattr(obj, 'my_membership', [])
+        if memberships and memberships[0].job_role and memberships[0].job_role.department: # có job role và có department mới lấy
+            return memberships[0].job_role.department.name
+        return None
+
+    def get_department_role(self, obj):
+        memberships = getattr(obj, 'my_membership', [])
+        if memberships and memberships[0].job_role:
+            return memberships[0].job_role.name
+        return None
 
 class GroupDepartmentSerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
