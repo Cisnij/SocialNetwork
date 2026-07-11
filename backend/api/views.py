@@ -3484,14 +3484,14 @@ class ListCreateEventChat(generics.ListCreateAPIView):
         # Đặt reminder trước 15p
         # Ví dụ: event 3h thứ 2 → nhắc lúc 2h45 thứ 2
         start_time = event.start_time
-        remind_at  = start_time - timedelta(minutes=15) #time delta dùng để lưu thời gian
-        eta = remind_at if remind_at > timezone.now() else timezone.now() # chỉ đặt nếu chưa trễ (nếu trễ thì chạy ngay)
-        task = send_event_reminder.apply_async(  # apply_async để đặt lịch chạy, delay thì chạy ngay
-            args=[event.id, content_type.id],   # truyền event_id và content_type_id để dùng chung
-            eta=eta,                             # thời điểm chạy(execute time at)
-        )
+        remind_at  = start_time - timedelta(minutes=15) #lấy 15p trước khi bắt đầu
+        delta = int((remind_at - timezone.now()).total_seconds()) # tính số giây đếm ngược
+        if delta > 0:
+            task = send_event_reminder.apply_async(args=[event.id, content_type.id], countdown=delta) # apply async để đặt lịch chạy
+        else:
+            task = send_event_reminder.apply_async(args=[event.id, content_type.id]) # nếu set thời gian đã cũ thì chạy ngay
         event.celery_task_id = task.id
-        event.save(update_fields=['celery_task_id'])# lưu task id để cancel sau nếu cần
+        event.save(update_fields=['celery_task_id'])
 
         # Tạo system message thông báo vào chat
         profile = user.profile
@@ -3546,9 +3546,12 @@ class EventDetailChat(generics.RetrieveUpdateDestroyAPIView):
                 app.control.revoke(old_task_id, terminate=True)
 
             remind_at = event.start_time - timedelta(minutes=15)
-            eta = remind_at if remind_at > timezone.now() else timezone.now() # nếu mà thời gian báo lớn hơn thời gian set thì mới đc set (nếu qua rồi thì cho chạy báo luôn)
             content_type = ContentType.objects.get_for_model(Conversation)
-            task = send_event_reminder.apply_async(args=[event.id, content_type.id], eta=eta) #lên lịch chạy trong celery
+            delta = int((remind_at - timezone.now()).total_seconds())
+            if delta > 0:
+                task = send_event_reminder.apply_async(args=[event.id, content_type.id], countdown=delta)
+            else:
+                task = send_event_reminder.apply_async(args=[event.id, content_type.id])
             Event.objects.filter(id=event.id).update(celery_task_id=task.id)
 
         # Gửi system message thông báo cập nhật
@@ -3622,6 +3625,12 @@ class EventResponseChat(APIView):
 
         content_type = ContentType.objects.get_for_model(Conversation)
         event = get_object_or_404(Event, id=event_id, content_type=content_type, object_id=conv_id)
+
+        if event.created_by == request.user:
+            raise PermissionDenied("Người tạo sự kiện không cần phản hồi")
+
+        if event.end_time and event.end_time < timezone.now():  # hết hạn
+            raise ValidationError("Sự kiện đã kết thúc, không thể phản hồi")
 
         participant, created = EventParticipant.objects.update_or_create( # nếu chưa tham gia thì tạo, nếu đã tham gia rồi thì chỉ update status
             event=event,
@@ -4868,12 +4877,12 @@ class ListCreateEventGroup(generics.ListCreateAPIView):
         # Đặt reminder trước 15p
         # Ví dụ: event 3h thứ 2 → nhắc lúc 2h45 thứ 2
         start_time = event.start_time
-        remind_at  = start_time - timedelta(minutes=15) #time delta dùng để lưu thời gian
-        eta = remind_at if remind_at > timezone.now() else timezone.now() # chỉ đặt nếu chưa trễ (nếu trễ thì chạy ngay)
-        task = send_event_reminder.apply_async(  # apply_async để đặt lịch chạy, delay thì chạy ngay
-            args=[event.id, content_type.id],   # truyền event_id và content_type_id để dùng chung
-            eta=eta,                             # thời điểm chạy(execute time at)
-        )
+        remind_at  = start_time - timedelta(minutes=15)
+        delta = int((remind_at - timezone.now()).total_seconds())
+        if delta > 0:
+            task = send_event_reminder.apply_async(args=[event.id, content_type.id], countdown=delta)
+        else:
+            task = send_event_reminder.apply_async(args=[event.id, content_type.id])
         event.celery_task_id = task.id
         event.save(update_fields=['celery_task_id'])# lưu task id để cancel sau nếu cần
 
@@ -4911,9 +4920,12 @@ class EventDetailGroup(generics.RetrieveUpdateDestroyAPIView):
                 app.control.revoke(old_task_id, terminate=True)
 
             remind_at = event.start_time - timedelta(minutes=15)
-            eta = remind_at if remind_at > timezone.now() else timezone.now() # nếu mà thời gian báo lớn hơn thời gian set thì mới đc set (nếu qua rồi thì cho chạy báo luôn)
             content_type = ContentType.objects.get_for_model(Group)
-            task = send_event_reminder.apply_async(args=[event.id, content_type.id], eta=eta) #lên lịch chạy trong celery
+            delta = int((remind_at - timezone.now()).total_seconds())
+            if delta > 0:
+                task = send_event_reminder.apply_async(args=[event.id, content_type.id], countdown=delta)
+            else:
+                task = send_event_reminder.apply_async(args=[event.id, content_type.id])
             Event.objects.filter(id=event.id).update(celery_task_id=task.id)
 
     def perform_destroy(self, instance):

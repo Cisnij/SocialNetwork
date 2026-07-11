@@ -544,6 +544,7 @@ class EventSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.profile.full_name', read_only=True)
     participants = EventParticipantSerializer(many=True, read_only=True)
     is_accepted = serializers.SerializerMethodField()
+    is_expired = serializers.SerializerMethodField()
     class Meta:
         model = Event
         fields = [
@@ -557,6 +558,7 @@ class EventSerializer(serializers.ModelSerializer):
             'created_at',
             'participants',
             'is_accepted',
+            'is_expired',
         ]
         read_only_fields = ['id', 'created_at', 'created_by', 'created_by_name', 'participants']
 
@@ -581,6 +583,12 @@ class EventSerializer(serializers.ModelSerializer):
             None
         )
         return participant.status if participant else None #lấy ra status user gửi request
+
+    def get_is_expired(self, obj):
+        now = timezone.now()
+        if obj.end_time:
+            return obj.end_time < now
+        return obj.start_time < now if obj.start_time else False
 
 #==============================GROUP===========================================================================================
 

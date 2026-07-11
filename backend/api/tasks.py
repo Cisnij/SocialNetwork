@@ -14,7 +14,6 @@ import subprocess
 import os
 from datetime import datetime
 from django.conf import settings
-from googleapiclient.channel import Notification
 
 logger = logging.getLogger(__name__)
 
@@ -72,10 +71,10 @@ def send_event_reminder(self, event_id, content_type_id):
         Notification.objects.bulk_create([
             Notification(
                 reciever_id=uid,
-                actor_id=event.created_by_id,   # ai là "actor" của thông báo nhắc lịch
-                type='event_reminder',          # nhớ thêm choice này vào model
+                actor_id=event.created_by_id,
+                type='event_reminder',
                 object_id=event.id,
-                message=f"Sự kiện {event.title} sắp diễn ra vào lúc {event.start_time}",
+                message=f"Sự kiện {event.title} sắp diễn ra trong ít phút nữa",
             )
             for uid in participant_ids
         ])
@@ -90,7 +89,7 @@ def send_event_reminder(self, event_id, content_type_id):
                     'title':      event.title,
                     'start_time': event.start_time.isoformat(),
                     'conv_id':    event.object_id,
-                    'message':    f'Sắp bắt đầu: {event.title} lúc {event.start_time.strftime("%H:%M")}',
+                    'message':    f'Sắp bắt đầu: {event.title}',
                 }
             )
     except Exception as exc:

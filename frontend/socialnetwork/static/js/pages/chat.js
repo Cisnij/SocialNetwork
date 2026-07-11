@@ -40,7 +40,7 @@ let activeConvMembers = [];
 
 let firstMessageInConv = null;
 
-
+let lastMsgTimestampISO = null;
 
 // ========= REPLY STATE =========
 
@@ -1010,6 +1010,7 @@ async function openConversation(conv, titleName) {
   pendingConv = conv.status === "pending";
 
   firstMessageInConv = null;
+  lastMsgTimestampISO = null;
 
   loadingMessages = false; // Reset to allow loadMessages to run
 
@@ -1560,6 +1561,8 @@ function connectChatWs(convId) {
 
             reply_to_id: data.reply_to_id, reply_to_id_content: data.reply_to_id_content,
 
+            created_at: data.created_at || new Date().toISOString(),
+
           }, true);
 
           if (pendingConv && activeConvMeta && !firstMessageInConv) {
@@ -1653,6 +1656,52 @@ async function loadMessages(reset) {
 
 
 // ==================== APPEND MESSAGE ====================
+function dateDayKey(isoStr) {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function formatMsgTime(isoStr) {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  const now = new Date();
+  
+  const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = d.getDate() === yesterday.getDate() && d.getMonth() === yesterday.getMonth() && d.getFullYear() === yesterday.getFullYear();
+  
+  const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  
+  if (isToday) return timeStr;
+  if (isYesterday) return `Hôm qua lúc ${timeStr}`;
+  
+  const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+  if (diffDays < 7) {
+    const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    return `${days[d.getDay()]} lúc ${timeStr}`;
+  }
+  
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  if (d.getFullYear() === now.getFullYear()) {
+    return `${day} Thg ${month} lúc ${timeStr}`;
+  }
+  return `${day}/${month}/${d.getFullYear()} lúc ${timeStr}`;
+}
+
+function createDateDivider(label) {
+  const div = document.createElement("div");
+  div.className = "flex items-center gap-3 my-5 px-2";
+  div.innerHTML = `
+    <div class="flex-1 h-px bg-gray-200 dark:bg-white/10"></div>
+    <span class="text-[11px] text-gray-400 dark:text-gray-500 font-semibold whitespace-nowrap shrink-0">${label}</span>
+    <div class="flex-1 h-px bg-gray-200 dark:bg-white/10"></div>
+  `;
+  return div;
+}
 
 function appendMessage(m, scroll = true, prepend = false) {
 
@@ -1709,11 +1758,35 @@ function appendMessage(m, scroll = true, prepend = false) {
     if (prevAvatar) prevAvatar.style.visibility = "hidden";
   }
 
-
+  // ---- Date/Time divider (only when appending, not prepending old messages) ----
+  const msgTimestamp = m.created_at || null;
+  if (!prepend && msgTimestamp) {
+    let shouldAddDivider = false;
+    
+    if (!lastMsgTimestampISO) {
+      shouldAddDivider = true;
+    } else {
+      const curr = new Date(msgTimestamp);
+      const prev = new Date(lastMsgTimestampISO);
+      const diffMins = (curr - prev) / (1000 * 60);
+      const dayKeyCurr = dateDayKey(msgTimestamp);
+      const dayKeyPrev = dateDayKey(lastMsgTimestampISO);
+      
+      if (dayKeyCurr !== dayKeyPrev) {
+        shouldAddDivider = true;
+      }
+    }
+    
+    if (shouldAddDivider) {
+      lastMsgTimestampISO = msgTimestamp;
+      const label = formatMsgTime(msgTimestamp);
+      if (label) messagesEl.appendChild(createDateDivider(label));
+    }
+  }
 
   const wrap = document.createElement("div");
 
-  wrap.className = `flex ${mine ? "justify-end" : "justify-start"} mb-1 chat-msg-wrap items-end gap-1.5`;
+  wrap.className = `flex ${mine ? "justify-end" : "justify-start"} mb-1 chat-msg-wrap items-end gap-1.5 group`;
 
   wrap.dataset.msgId = m.id;
   wrap.dataset.senderId = String(sid ?? "");
@@ -1882,7 +1955,11 @@ function appendMessage(m, scroll = true, prepend = false) {
 
 
 
-  if (mine) { wrap.append(replyBtn, messageCol); } else {
+  const timeHoverEl = document.createElement("span");
+  timeHoverEl.className = "text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap self-center mx-1";
+  timeHoverEl.textContent = m.created_at ? formatMsgTime(m.created_at) : "";
+
+  if (mine) { wrap.append(timeHoverEl, replyBtn, messageCol); } else {
     // --- Avatar column for received messages ---
     const avatarWrap = document.createElement("div");
     avatarWrap.className = "msg-sender-avatar shrink-0 w-8 h-8 rounded-full overflow-hidden self-end mb-1";
@@ -1909,7 +1986,7 @@ function appendMessage(m, scroll = true, prepend = false) {
       messageCol.prepend(nameLabel);
     }
 
-    wrap.append(avatarWrap, messageCol, replyBtn);
+    wrap.append(avatarWrap, messageCol, replyBtn, timeHoverEl);
   }
 
 
@@ -4140,18 +4217,44 @@ async function loadEventList(convId, modal) {
     const isCreator = (e.created_by === myUserId);
 
     const statuses = e.participant_statuses || {};
-    const myStatus = statuses[myUserId] || 'pending';
-    
-    const countGoing = Object.values(statuses).filter(v => v === 'going').length;
-    const countMaybe = Object.values(statuses).filter(v => v === 'maybe').length;
-    const countNotGoing = Object.values(statuses).filter(v => v === 'not_going').length;
+    const myStatus = e.is_accepted || null;
+    const isExpired = e.is_expired === true;
+
+    const countAccept = (e.participants || []).filter(p => p.status === 'accept').length;
+    const countDecline = (e.participants || []).filter(p => p.status === 'decline').length;
+
+    // Build creator action buttons
+    let creatorBtns = '';
+    if (isCreator) {
+      if (!isExpired) {
+        creatorBtns += '<button type="button" class="w-6 h-6 flex items-center justify-center rounded bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-white/10 dark:hover:bg-white/20 dark:text-gray-300 transition-colors" data-action="edit-event" title="Sửa sự kiện"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button>';
+      }
+      creatorBtns += '<button type="button" class="w-6 h-6 flex items-center justify-center rounded bg-red-50 hover:bg-red-100 text-red-500 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors" data-action="delete-event" title="Xóa sự kiện"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>';
+    }
+
+    // Build member response buttons
+    let memberBtns = '';
+    if (!isCreator && !isExpired) {
+      if (myStatus === 'accept') {
+        memberBtns = '<button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30" data-action="update-status" data-status="decline" data-event-id="' + e.id + '">Hủy tham gia</button>';
+      } else if (myStatus === 'decline') {
+        memberBtns = '<button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30" data-action="update-status" data-status="accept" data-event-id="' + e.id + '">Tham gia lại</button>';
+      } else {
+        memberBtns = '<button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30" data-action="update-status" data-status="accept" data-event-id="' + e.id + '">Tham gia</button>'
+                   + '<button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30" data-action="update-status" data-status="decline" data-event-id="' + e.id + '">Từ chối</button>';
+      }
+    }
+    const memberButtonsHtml = memberBtns ? '<div class="mt-2 flex gap-1 pt-2 border-t dark:border-white/10">' + memberBtns + '</div>' : '';
+    const creatorBtnsHtml = creatorBtns ? '<div class="flex flex-col gap-1 shrink-0">' + creatorBtns + '</div>' : '';
 
     card.innerHTML = `
       <div class="flex items-start justify-between">
-        <div>
+        <div class="flex-1 pr-2">
           <h3 class="font-bold text-sm dark:text-white text-fb-primary">${e.title}</h3>
           ${creatorName ? `<p class="text-[10px] text-gray-400 mt-0.5">👤 Tạo bởi: <span class="font-semibold text-gray-500 dark:text-gray-300">${creatorName}</span></p>` : ''}
+          ${isExpired ? '<span class="text-[10px] text-red-400 font-semibold">⏰ Đã kết thúc</span>' : ''}
         </div>
+        ${creatorBtnsHtml}
       </div>
       ${e.description ? `<p class="text-xs text-gray-600 dark:text-gray-300 mt-1">${e.description}</p>` : ''}
       <div class="text-[10px] text-gray-500 mt-2 space-y-0.5">
@@ -4160,32 +4263,123 @@ async function loadEventList(convId, modal) {
         ${e.location ? `<p>📍 Địa điểm: <span class="font-medium text-gray-700 dark:text-gray-300">${e.location}</span></p>` : ''}
       </div>
       <div class="mt-2 pt-2 border-t dark:border-white/10 flex items-center justify-between text-[10px]">
-        <div class="flex gap-2 text-gray-500">
-          <span class="text-green-600 font-semibold">✅ ${countGoing}</span>
-          <span class="text-yellow-600 font-semibold">❓ ${countMaybe}</span>
-          <span class="text-red-500 font-semibold">❌ ${countNotGoing}</span>
+        <div class="flex gap-2 text-gray-500 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 p-1 rounded transition-colors" data-action="view-participants" title="Xem người tham gia">
+          <span class="text-green-600 font-semibold">✔️ ${countAccept}</span>
+          <span class="text-red-500 font-semibold">❌ ${countDecline}</span>
         </div>
       </div>
-      <div class="mt-2 flex gap-1 pt-2 border-t dark:border-white/10">
-        <button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors ${myStatus === 'going' ? 'bg-green-500 text-white border-green-500' : 'border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30'}" data-action="update-status" data-status="going" data-event-id="${e.id}">Tham gia</button>
-        <button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors ${myStatus === 'maybe' ? 'bg-yellow-500 text-white border-yellow-500' : 'border-yellow-500 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30'}" data-action="update-status" data-status="maybe" data-event-id="${e.id}">Có thể</button>
-        <button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors ${myStatus === 'not_going' ? 'bg-red-500 text-white border-red-500' : 'border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30'}" data-action="update-status" data-status="not_going" data-event-id="${e.id}">Không tham gia</button>
-      </div>
+      <div id="event-participants-${e.id}" class="hidden mt-2 border-t dark:border-white/10 pt-2 text-[10px] text-gray-700 dark:text-gray-300 max-h-32 overflow-y-auto scrollbar-thin"></div>
+      ${memberButtonsHtml}
     `;
 
     const delBtn = card.querySelector('[data-action="delete-event"]');
     if (delBtn) {
-      delBtn.addEventListener("click", async () => {
-        if (!confirm("Bạn có chắc chắn muốn xóa sự kiện này?")) return;
-        const res = await authFetch(API.eventDetail(convId, e.id), { method: "DELETE" });
-        if (res.ok) {
-          showToast("Đã xóa sự kiện", "green");
-          loadEventList(convId, modal);
-        } else {
-          showToast("Xóa thất bại", "red");
-        }
+      delBtn.addEventListener("click", () => {
+        // Custom confirm modal
+        const overlay = document.createElement("div");
+        overlay.className = "fixed inset-0 z-[200] flex items-center justify-center p-4";
+        overlay.style.cssText = "background:rgba(0,0,0,0.5); backdrop-filter:blur(4px);";
+        overlay.innerHTML = `
+          <div class="bg-white dark:bg-[#1e1e2e] rounded-2xl shadow-2xl max-w-sm w-full p-6 border dark:border-white/10 animate-[fadeInScale_0.2s_ease]">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-gray-800 dark:text-white text-base">Xóa sự kiện?</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Sự kiện "<strong>${e.title}</strong>" sẽ bị xóa vĩnh viễn.</p>
+              </div>
+            </div>
+            <div class="flex gap-2 mt-2">
+              <button class="confirm-cancel-btn flex-1 rounded-xl border dark:border-white/10 text-gray-600 dark:text-gray-300 font-semibold py-2 text-sm hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">Hủy</button>
+              <button class="confirm-delete-btn flex-1 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold py-2 text-sm transition-colors">Xóa</button>
+            </div>
+          </div>
+        `;
+
+        const close = () => overlay.remove();
+        overlay.querySelector('.confirm-cancel-btn').onclick = close;
+        overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
+
+        overlay.querySelector('.confirm-delete-btn').onclick = async () => {
+          close();
+          const res = await authFetch(API.eventDetail(convId, e.id), { method: "DELETE" });
+          if (res.ok) {
+            showToast("Đã xóa sự kiện", "green");
+            loadEventList(convId, modal);
+          } else {
+            showToast("Xóa thất bại", "red");
+          }
+        };
+
+        document.body.appendChild(overlay);
       });
     }
+    const editBtn = card.querySelector('[data-action="edit-event"]');
+    if (editBtn) {
+      editBtn.addEventListener("click", () => {
+        // Toggle inline edit form
+        const existing = card.querySelector('.event-edit-form');
+        if (existing) { existing.remove(); return; }
+
+        const startVal = e.start_time ? e.start_time.slice(0, 16) : '';
+        const endVal   = e.end_time   ? e.end_time.slice(0, 16)   : '';
+
+        const form = document.createElement('div');
+        form.className = 'event-edit-form mt-3 pt-3 border-t dark:border-white/10 space-y-2';
+        form.innerHTML = `
+          <input class="edit-ev-title w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm border dark:border-white/10" value="${e.title || ''}">
+          <textarea class="edit-ev-desc w-full rounded-lg px-3 py-2 bg-white dark:bg-white/10 dark:text-white text-sm border dark:border-white/10" rows="2" placeholder="Mô tả">${e.description || ''}</textarea>
+          <div class="flex gap-2">
+            <div class="flex-1">
+              <label class="text-[10px] text-gray-500 mb-1 block">Bắt đầu</label>
+              <input type="datetime-local" class="edit-ev-start w-full rounded-lg px-2 py-1.5 bg-white dark:bg-white/10 dark:text-white text-xs border dark:border-white/10" value="${startVal}">
+            </div>
+            <div class="flex-1">
+              <label class="text-[10px] text-gray-500 mb-1 block">Kết thúc</label>
+              <input type="datetime-local" class="edit-ev-end w-full rounded-lg px-2 py-1.5 bg-white dark:bg-white/10 dark:text-white text-xs border dark:border-white/10" value="${endVal}">
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" class="ev-save-btn flex-1 rounded-lg bg-fb-primary text-white font-semibold py-1.5 text-xs">Lưu</button>
+            <button type="button" class="ev-cancel-btn flex-1 rounded-lg bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 font-semibold py-1.5 text-xs">Hủy</button>
+          </div>
+        `;
+
+        form.querySelector('.ev-cancel-btn').onclick = () => form.remove();
+
+        form.querySelector('.ev-save-btn').onclick = async () => {
+          const title = form.querySelector('.edit-ev-title').value.trim();
+          if (!title) { showToast("Nhập tên sự kiện", "red"); return; }
+          const start = form.querySelector('.edit-ev-start').value;
+          const end   = form.querySelector('.edit-ev-end').value;
+          if (!start) { showToast("Nhập thời gian bắt đầu", "red"); return; }
+          const body = {
+            title,
+            description: form.querySelector('.edit-ev-desc').value.trim(),
+            start_time: start,
+          };
+          if (end) body.end_time = end;
+          const res = await authFetch(API.eventDetail(convId, e.id), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          if (res.ok) {
+            showToast("Đã cập nhật sự kiện", "green");
+            loadEventList(convId, modal);
+          } else {
+            const err = await res.json().catch(() => ({}));
+            showToast(err?.start_time?.[0] || err?.detail || "Cập nhật thất bại", "red");
+          }
+        };
+
+        card.appendChild(form);
+      });
+    }
+
     card.querySelectorAll("[data-action='update-status']").forEach(btn => {
       btn.addEventListener("click", async () => {
         const s = btn.dataset.status;
@@ -4194,6 +4388,42 @@ async function loadEventList(convId, modal) {
         else showToast("Cập nhật trạng thái thất bại", "red");
       });
     });
+
+    const viewPartsBtn = card.querySelector('[data-action="view-participants"]');
+    if (viewPartsBtn) {
+      viewPartsBtn.addEventListener("click", async () => {
+        const container = card.querySelector(`#event-participants-${e.id}`);
+        if (!container.classList.contains("hidden")) {
+          container.classList.add("hidden");
+          return;
+        }
+        container.classList.remove("hidden");
+        container.innerHTML = '<p class="text-center py-1">Đang tải...</p>';
+        try {
+          const res = await authFetch(API.eventDetail(convId, e.id) + "participants/");
+          if (res.ok) {
+            const data = await res.json();
+            const parts = data.results || data;
+            if (!parts.length) {
+              container.innerHTML = '<p class="text-center text-gray-400 py-1">Chưa có ai tham gia.</p>';
+              return;
+            }
+            container.innerHTML = parts.map(p => {
+              const name = p.full_name || p.user?.profile?.full_name || "Thành viên";
+              const statusStr = p.status === 'accept' ? '<span class="text-green-500">✔️</span>' : '<span class="text-red-500">❌</span>';
+              return `<div class="flex justify-between items-center py-1 border-b dark:border-white/10 last:border-0">
+                        <span class="font-medium">${name}</span>
+                        ${statusStr}
+                      </div>`;
+            }).join('');
+          } else {
+            container.innerHTML = '<p class="text-center text-red-500 py-1">Lỗi tải danh sách</p>';
+          }
+        } catch (err) {
+          container.innerHTML = '<p class="text-center text-red-500 py-1">Có lỗi xảy ra</p>';
+        }
+      });
+    }
 
     list.appendChild(card);
   });
