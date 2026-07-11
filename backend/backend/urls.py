@@ -259,7 +259,8 @@ urlpatterns = [
     path('api/group/<int:group_id>/event/<int:event_id>/update-status/',EventResponseGroup.as_view()), #phản hồi sự kiện
     path('api/group/<int:group_id>/event/<int:event_id>/participants/',EventParticipantGroup.as_view()),
 
-
+    path('api/group/<int:group_id>/create-suggestion/', CreateSuggestionGroup.as_view()), #list, tạo event
+    path('api/group/<int:group_id>/list-suggestion/', ListSuggestionGroup.as_view()), #list, tạo event
 ] + router.urls
 
 

@@ -738,3 +738,10 @@ class GroupJoinRequest(models.Model):
         indexes = [
             models.Index(fields=['group', 'user', 'status']),
         ]
+
+class GroupSuggestion(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='suggestions')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f'{self.group} | {self.content[:30]}'

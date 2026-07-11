@@ -671,3 +671,9 @@ class GroupPostSerializer(serializers.ModelSerializer):
         model = Post
         fields = ['post_id', 'title', 'user', 'photos', 'created_at', 'post_status', 'group','is_pinned']
         read_only_fields = ['post_id','user','created_at','group','post_status']
+
+class GroupSuggestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GroupSuggestion
+        fields = '__all__'
+        read_only_fields = ['group']

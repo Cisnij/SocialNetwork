@@ -4347,6 +4347,8 @@ class PostUserGroup(generics.ListAPIView):
 
 class MakeNotification(APIView):
     permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'make_notification_group'
     def post(self, request, group_id, post_id):
         group = get_object_or_404(Group, pk=group_id)
         self.check_object_permissions(self.request, group)
@@ -4972,3 +4974,22 @@ class EventParticipantGroup(generics.ListAPIView):
             event_id =event_id,
             status = 'accept'
         ).select_related('user__profile')
+
+class CreateSuggestionGroup(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated, IsMemberGroup]
+
+    def perform_create(self, serializer):
+        group = get_object_or_404(Group, pk=self.kwargs.get('group_id'))
+        self.check_object_permissions(self.request, group)
+        if not group.is_company:
+            raise PermissionDenied("Chỉ group công ty mới có chức năng này")
+        serializer.save(group=group)  # không lưu user
+
+
+class ListSuggestionGroup(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
+
+    def get_queryset(self):
+        group = get_object_or_404(Group, pk=self.kwargs.get('group_id'))
+        self.check_object_permissions(self.request, group)
+        return GroupSuggestion.objects.filter(group=group).order_by('-created_at')
