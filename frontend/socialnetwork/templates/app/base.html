@@ -981,6 +981,13 @@
             d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
       </a>
+      <a href="/groups/" data-nav="groups"
+        class="fb-nav-icon hover-scale flex-1 sm:flex-none flex justify-center h-full sm:h-10 rounded-none sm:rounded-full"
+        title="Nhóm">
+        <svg class="w-6 h-6 sm:w-7 sm:h-7 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path>
+        </svg>
+      </a>
       <a href="/finance/" data-nav="finance"
         class="fb-nav-icon hover-scale flex-1 sm:flex-none flex justify-center h-full sm:h-10 rounded-none sm:rounded-full"
         title="Tài chính">
@@ -1073,6 +1080,11 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
       </svg>
     </a>
+    <a href="/groups/" data-nav="groups" class="fb-nav-icon hover-scale flex-1 flex justify-center h-full rounded-none" title="Nhóm">
+      <svg class="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+         <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path>
+      </svg>
+    </a>
     <a href="/finance/" data-nav="finance" class="fb-nav-icon hover-scale flex-1 flex justify-center h-full rounded-none" title="Tài chính">
       <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
@@ -1124,6 +1136,13 @@
               d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
           Bạn bè
+        </a>
+        <a href="/groups/"
+          class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+             <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path>
+          </svg>
+          Nhóm
         </a>
         <hr class="border-gray-200 dark:border-gray-700 my-2">
         <a href="/profile/" id="mobileProfileLink"
@@ -1251,21 +1270,60 @@
 
   <!-- Video Call Modal (full screen) -->
   <div id="videoCallModal" class="hidden fixed inset-0 z-[499] bg-gray-950 flex flex-col">
-    <div class="flex items-center justify-between px-5 py-3 bg-gray-900/80 backdrop-blur-md border-b border-white/10">
-      <p class="text-white font-semibold text-base" id="videoCallTitle">Video Call</p>
-      <div class="flex items-center gap-2">
-        <button id="toggleMicBtn" type="button"
-          class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white text-lg flex items-center justify-center transition-all" title="Mic">🎙️</button>
-        <button id="toggleCamBtn" type="button"
-          class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white text-lg flex items-center justify-center transition-all" title="Camera">📷</button>
-        <button id="endCallBtn" type="button"
-          class="px-5 py-2 rounded-full bg-red-600 hover:bg-red-500 text-white font-semibold text-sm transition-all shadow-lg shadow-red-500/30">Kết thúc</button>
+
+    <!-- ── RINGING SCREEN (caller: đang đổ chuông / callee: đang kết nối) ── -->
+    <div id="callRingingScreen" class="hidden absolute inset-0 flex flex-col items-center justify-between py-16 px-8 bg-gradient-to-b from-gray-900 via-gray-950 to-black">
+      <!-- Avatar người nhận/người gọi -->
+      <div class="flex flex-col items-center gap-4 mt-8">
+        <div class="relative">
+          <img id="callRemoteAvatar" src="" alt=""
+            class="w-28 h-28 rounded-full object-cover border-4 border-white/20 shadow-2xl"/>
+          <!-- Pulse rings -->
+          <span class="absolute inset-0 rounded-full border-2 border-white/30 animate-ping"></span>
+          <span class="absolute -inset-2 rounded-full border border-white/15 animate-ping" style="animation-delay:0.3s"></span>
+        </div>
+        <p id="callRemoteName" class="text-white text-2xl font-bold tracking-wide">...</p>
+        <p id="callStatusText" class="text-white/60 text-sm animate-pulse">Đang đổ chuông...</p>
+      </div>
+
+      <!-- Timer đổ chuông -->
+      <div id="callRingTimer" class="text-white/30 text-xs font-mono tabular-nums"></div>
+
+      <!-- Nút kết thúc khi đang chuông -->
+      <button id="cancelCallBtn" type="button"
+        class="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 text-white text-3xl flex items-center justify-center shadow-2xl shadow-red-500/40 transition-all active:scale-95">
+        📵
+      </button>
+    </div>
+
+    <!-- ── IN-CALL SCREEN (đang trong cuộc gọi thực sự) ── -->
+    <div id="callInCallScreen" class="hidden flex-1 flex flex-col">
+      <!-- Topbar -->
+      <div class="flex items-center justify-between px-5 py-3 bg-gray-900/80 backdrop-blur-md border-b border-white/10 flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <p class="text-white font-semibold text-base" id="videoCallTitle">Video Call</p>
+          <span id="callDurationDisplay" class="text-white/50 text-xs font-mono tabular-nums"></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="toggleMicBtn" type="button"
+            class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white text-lg flex items-center justify-center transition-all" title="Mic">🎙️</button>
+          <button id="toggleCamBtn" type="button"
+            class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white text-lg flex items-center justify-center transition-all" title="Camera">📵</button>
+          <button id="endCallBtn" type="button"
+            class="px-5 py-2 rounded-full bg-red-600 hover:bg-red-500 text-white font-semibold text-sm transition-all shadow-lg shadow-red-500/30">Kết thúc</button>
+        </div>
+      </div>
+
+      <!-- Video grid -->
+      <div id="videoTilesGrid" class="flex-1 grid p-3 gap-3 overflow-hidden"
+        style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: center;"></div>
+
+      <!-- Local (self) video PiP -->
+      <div id="localVideoWrap" class="hidden absolute bottom-24 right-4 w-36 h-24 rounded-xl overflow-hidden border-2 border-white/20 shadow-xl bg-black">
+        <video id="localVideo" autoplay muted playsinline class="w-full h-full object-cover"></video>
       </div>
     </div>
-    <div id="videoTilesGrid" class="flex-1 grid p-3 gap-3 overflow-hidden" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: center;"></div>
-    <div id="localVideoWrap" class="absolute bottom-24 right-4 w-36 h-24 rounded-xl overflow-hidden border-2 border-white/20 shadow-xl bg-black">
-      <video id="localVideo" autoplay muted playsinline class="w-full h-full object-cover"></video>
-    </div>
+
   </div>
 
   {% block main_content %}{% endblock main_content %}

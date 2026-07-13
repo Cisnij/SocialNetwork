@@ -3280,11 +3280,12 @@ class CreateVideoRoomView(AsyncAPIView):
         })
 
     async def _create_token(self, room_name, user):
+        display_name = user.profile.full_name if hasattr(user, 'profile') else user.username
         token = api.AccessToken(
             env("LIVEKIT_API_KEY"),
             env("LIVEKIT_API_SECRET")
         ).with_identity(str(user.id)) \
-         .with_name(user.profile.full_name) \
+         .with_name(display_name) \
          .with_grants(api.VideoGrants(
              room_join=True,
              room=room_name,
@@ -3330,11 +3331,12 @@ class JoinVideoRoomView(AsyncAPIView):
             env("LIVEKIT_API_KEY"),
             env("LIVEKIT_API_SECRET")
         )
+        display_name = user.profile.full_name if hasattr(user, 'profile') else user.username
         token = api.AccessToken(
             env("LIVEKIT_API_KEY"),
             env("LIVEKIT_API_SECRET")
         ).with_identity(str(user.id)) \
-         .with_name(user.profile.full_name) \
+         .with_name(display_name) \
          .with_grants(api.VideoGrants(
              room_join=True,
              room=room_name,
@@ -3769,6 +3771,32 @@ class ListGroupUser(generics.ListAPIView):
                 'members', # lấy ra tất cả thành viên và lọc ra chính mình
                 queryset = GroupMember.objects.filter(user=user,is_active=True).select_related('job_role__department','job_role'),
                 to_attr = 'my_membership' #  lưu vào attribute riêng
+            )
+        )
+
+class ListGroupSuggestion(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = GroupSerializer
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = ['name']
+    def get_queryset(self):
+        user = self.request.user
+        return Group.objects.exclude(
+            members__user=user,
+            members__is_active=True
+        ).annotate(
+            member_count=Count('members', filter=Q(members__is_active=True)),
+            is_member=Exists(
+                GroupMember.objects.filter(group=OuterRef('pk'), user=user, is_active=True)
+            ),
+            is_pending=Exists(
+                GroupJoinRequest.objects.filter(group=OuterRef('pk'), user=user, status='pending')
+            )
+        ).select_related('created_by__profile').prefetch_related(
+            Prefetch(
+                'members', 
+                queryset=GroupMember.objects.filter(user=user, is_active=True).select_related('job_role__department', 'job_role'),
+                to_attr='my_membership' 
             )
         )
 
@@ -4374,9 +4402,12 @@ class PostGroupDetail(generics.RetrieveAPIView):
     def get_object(self):
         post_id = self.kwargs.get('post_id')
         group_id = self.kwargs.get('group_id')
-        post= get_object_or_404(Post.objects.select_related('user__profile','user','group').prefetch_related('photos'), pk=post_id,group_id=group_id, post_status='approved')
-        self.check_object_permissions(self.request, post)
-        return post
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)  # check đúng group, không phải post
+        return get_object_or_404(
+            Post.objects.select_related('user__profile','user','group').prefetch_related('photos'),
+            pk=post_id, group_id=group_id, post_status='approved'
+        )
 
 class SearchInGroup(APIView):
     permission_classes = [IsAuthenticated, IsMemberGroup]
@@ -4989,6 +5020,7 @@ class EventParticipantGroup(generics.ListAPIView):
 
 class CreateSuggestionGroup(generics.CreateAPIView):
     permission_classes = [IsAuthenticated, IsMemberGroup]
+    serializer_class = GroupSuggestionSerializer
 
     def perform_create(self, serializer):
         group = get_object_or_404(Group, pk=self.kwargs.get('group_id'))
@@ -5000,6 +5032,8 @@ class CreateSuggestionGroup(generics.CreateAPIView):
 
 class ListSuggestionGroup(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
+    serializer_class = GroupSuggestionSerializer
+    pagination_class = LargePagePagination
 
     def get_queryset(self):
         group = get_object_or_404(Group, pk=self.kwargs.get('group_id'))

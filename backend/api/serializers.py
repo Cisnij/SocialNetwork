@@ -634,7 +634,7 @@ class GroupDepartmentSerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
     class Meta:
         model = GroupDepartment
-        fields = ['group','name','member_count']
+        fields = ['id', 'group', 'name', 'member_count']
         read_only_fields = ['group']
     def get_member_count(self,obj):
         if hasattr(obj, 'member_count'):
@@ -646,7 +646,7 @@ class GroupRoleSerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
     class Meta:
         model = GroupRole
-        fields = ['group', 'name','member_count']
+        fields = ['id', 'group', 'name', 'member_count']
         read_only_fields = ['group']
 
     def get_member_count(self,obj):

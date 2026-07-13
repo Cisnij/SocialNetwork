@@ -91,3 +91,9 @@ def getTestDarkmode(request):
 
 def getFinanceDashboard(request):
     return render(request, 'app/finance-dashboard.html')
+
+def getGroupPage(request, group_id):
+    return render(request, 'app/group.html', {'group_id': group_id})
+
+def getGroupList(request):
+    return render(request, 'app/groups.html')

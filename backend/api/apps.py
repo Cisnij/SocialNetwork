@@ -1,5 +1,6 @@
+
 from django.apps import AppConfig
-from django.db import models
+
 #Phần khởi động đầu tiên khi chạy app
 
 class ApiConfig(AppConfig):
@@ -14,13 +15,13 @@ class ApiConfig(AppConfig):
         #chạy activity stream 
         from django.contrib.auth import get_user_model
         from actstream import registry
-        from .models import Profile, Post, PostArticle, Comment,Conversation,Message,Notification,SearchHistory,PostShare,Report,SupportTicket,Task,Vote,VideoRoom,Event,ConversationMember,Group,GroupJoinRequest,GroupMember,GroupRole,GroupDepartment
+        from .models import Profile, Post, PostArticle, Comment,Conversation,Message,Notification,SearchHistory,PostShare,Report,SupportTicket,Task,Vote,VideoRoom,Event,ConversationMember,Group,GroupJoinRequest,GroupMember,GroupRole,GroupDepartment,Setting
         from reaction.models import UserReaction
         from friendship.models import Friend, FriendshipRequest,Follow,Block
         
         #registry để giúp đăng ký các model với activity stream ghi log
         registry.register(get_user_model()) #đăng ký model User
-        registry.register(Profile, Post, PostArticle, Comment, UserReaction, Friend, FriendshipRequest, Follow, Block, Conversation,Message,Notification,SearchHistory,PostShare,Report,SupportTicket,Task,Vote,VideoRoom,Event,ConversationMember,Group,GroupJoinRequest,GroupMember,GroupRole,GroupDepartment)
+        registry.register(Profile, Post, PostArticle, Comment, UserReaction, Friend, FriendshipRequest, Follow, Block, Conversation,Message,Notification,SearchHistory,Setting,PostShare,Report,SupportTicket,Task,Vote,VideoRoom,Event,ConversationMember,Group,GroupJoinRequest,GroupMember,GroupRole,GroupDepartment)
         
         #import firebase
         from api.firebase import init_firebase#file firebase.py đã tạo 

@@ -116,13 +116,13 @@ function showIncomingCall(data) {
   pendingCallConvId = data.conv_id;
   modal.classList.remove("hidden");
   if (window._callDismissTimer) clearTimeout(window._callDismissTimer);
-  window._callDismissTimer = setTimeout(() => modal.classList.add("hidden"), 30000);
+  window._callDismissTimer = setTimeout(() => modal.classList.add("hidden"), 60000);
 }
 
 document.getElementById("declineCallBtn")?.addEventListener("click", async () => {
   document.getElementById("incomingCallModal")?.classList.add("hidden");
   if (pendingCallConvId) {
-    try { await authFetch(API.declineCall(pendingCallConvId), { method: "POST" }); } catch (_) {}
+    try { await authFetch(API.declineCall(pendingCallConvId), { method: "POST" }); } catch (_) { }
     pendingCallConvId = null;
   }
 });
@@ -204,7 +204,7 @@ function connectNotifWs() {
           }
           lastNotifCount = newCount;
         }
-      } catch (_) {}
+      } catch (_) { }
     };
 
     notifWs.onclose = () => {
@@ -256,7 +256,7 @@ async function loadSearchHistory() {
       };
       searchDropdown.appendChild(btn);
     });
-  } catch (_) {}
+  } catch (_) { }
 }
 
 searchInput?.addEventListener("keydown", (e) => {
@@ -407,7 +407,7 @@ function connectConvWs() {
             window.navBumpConversation(data);
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     };
 
     convWs.onclose = () => {

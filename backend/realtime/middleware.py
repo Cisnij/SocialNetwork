@@ -1,7 +1,8 @@
 from urllib.parse import parse_qs
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -12,26 +13,47 @@ User = get_user_model()
 @database_sync_to_async
 def get_user_from_token(token_key): # hàm nhận vào token 
     try:
-        token = AccessToken(token_key) # xác minh token 
+        token = AccessToken(token_key) # xác minh token lấy ra id user
         return User.objects.get(id=token['user_id']) # lấy user qua token 
     except Exception:
-        return AnonymousUser() # không thì là anon 
+        return AnonymousUser() # không thì là anon
 
+@database_sync_to_async
+def get_user_from_refresh_token(token):
+    # dùng cho web — refresh token từ cookie
+    try:
+        refresh = RefreshToken(token)# xác minh token lấy ra id user
+        user_id = refresh['user_id']
+        return get_user_model().objects.get(id=user_id)# lấy user qua token
+    except (TokenError, Exception):
+        return AnonymousUser()
 
 class JwtOrSessionMiddleware: #api websocket cho cả web và mobile, web thì dùng cookie để biết user, mobile thì dùng token truyền vào url biết user 
     def __init__(self, inner):
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
-        query = parse_qs(scope["query_string"].decode()) #giải mã từ url 
-        token = query.get("token", [None])[0] #lấy ra sau token
+        query = parse_qs(scope["query_string"].decode()) # lấy từ url nếu có truyền token
+        token = query.get("token", [None])[0] # lấy ?token=
 
-        # Nếu có token → dùng JWT cho mobile
         if token:
-            scope["user"] = await get_user_from_token(token) #lấy ra user  
+            # Mobile → token qua URL
+            scope["user"] = await get_user_from_token(token) # gán user cho scope['user] qua token
+        else:
+            # Web → refreshToken từ cookie
+            cookies = {}
+            for header in scope.get('headers', []):
+                if header[0] == b'cookie':
+                    for part in header[1].decode().split(';'):
+                        if '=' in part:
+                            k, v = part.strip().split('=', 1)
+                            cookies[k.strip()] = v.strip()
 
-        # Nếu không có token → KHÔNG set user
-        # để AuthMiddlewareStack xử lý session cookie
+            refresh_token = cookies.get('refreshToken')
+            if refresh_token:
+                scope["user"] = await get_user_from_refresh_token(refresh_token)
+            else:
+                scope["user"] = AnonymousUser()
 
         return await self.inner(scope, receive, send)
     

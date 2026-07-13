@@ -89,7 +89,7 @@ function buildCommentReactionUI(comment, meta) {
   const reactionCountBtn = document.createElement("button");
   reactionCountBtn.type = "button";
   reactionCountBtn.className =
-    "text-xs text-gray-500 dark:text-[#b0b3b8] hover:underline font-medium";
+    "text-xs text-gray-500 dark:text-[#b0b3b8] hover:underline font-medium !bg-transparent border-none p-0 hover:!bg-transparent dark:hover:!bg-transparent";
   syncReactionCountBtn(reactionCountBtn, comment);
   reactionCountBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -102,7 +102,7 @@ function buildCommentReactionUI(comment, meta) {
   const reactBtn = document.createElement("button");
   reactBtn.type = "button";
   reactBtn.className =
-    "text-xs font-semibold hover:text-fb-primary dark:hover:text-[#e4e6eb] transition px-0";
+    "text-xs font-semibold hover:text-fb-primary dark:hover:text-[#e4e6eb] transition px-0 !bg-transparent border-none hover:!bg-transparent dark:hover:!bg-transparent";
   updateReactionButton(reactBtn, comment.user_is_reaction || "", true);
 
   const reactionCtx = {
@@ -241,6 +241,7 @@ function renderComment(c, depth = 0, ownerId = postOwnerId, threadParentId = nul
   const reply = document.createElement("button");
   reply.type = "button";
   reply.textContent = "Trả lời";
+  reply.className = "hover:underline !bg-transparent border-none p-0 text-gray-500 dark:text-[#b0b3b8] hover:!bg-transparent dark:hover:!bg-transparent";
   reply.onclick = () => {
     const parentInput = document.getElementById("commentParentId");
     const hint = document.getElementById("commentParentHint");
@@ -257,6 +258,7 @@ function renderComment(c, depth = 0, ownerId = postOwnerId, threadParentId = nul
     const pin = document.createElement("button");
     pin.type = "button";
     pin.textContent = c.is_pinned ? "Bỏ ghim" : "Ghim";
+    pin.className = "hover:underline !bg-transparent border-none p-0 text-gray-500 dark:text-[#b0b3b8] hover:!bg-transparent dark:hover:!bg-transparent";
     pin.onclick = async () => {
       const res = await authFetch(API.pinComment(c.id), { method: "PATCH" });
       if (res.ok) {
@@ -275,7 +277,7 @@ function renderComment(c, depth = 0, ownerId = postOwnerId, threadParentId = nul
     const reportBtn = document.createElement("button");
     reportBtn.type = "button";
     reportBtn.textContent = "Báo cáo";
-    reportBtn.className = "text-red-400 hover:text-red-600";
+    reportBtn.className = "text-red-400 hover:text-red-600 !bg-transparent border-none p-0 hover:underline hover:!bg-transparent dark:hover:!bg-transparent";
     reportBtn.onclick = (e) => {
       e.stopPropagation();
       showReportModal(c.id, "comment");
@@ -287,13 +289,14 @@ function renderComment(c, depth = 0, ownerId = postOwnerId, threadParentId = nul
     const edit = document.createElement("button");
     edit.type = "button";
     edit.textContent = "Sửa";
+    edit.className = "hover:underline !bg-transparent border-none p-0 text-gray-500 dark:text-[#b0b3b8] hover:!bg-transparent dark:hover:!bg-transparent";
     edit.onclick = () => showInlineCommentEdit(c.id, textNode, bubble, edit);
     meta.appendChild(edit);
 
     const del = document.createElement("button");
     del.type = "button";
     del.textContent = "Xóa";
-    del.className = "text-red-500 hover:text-red-700";
+    del.className = "text-red-500 hover:text-red-700 !bg-transparent border-none p-0 hover:underline hover:!bg-transparent dark:hover:!bg-transparent";
     del.onclick = async () => {
       if (!await confirmDialog("Xóa bình luận này?")) return;
       const res = await authFetch(API.comment(c.id), { method: "DELETE" });

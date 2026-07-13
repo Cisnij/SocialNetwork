@@ -38,6 +38,10 @@ export function profileUrl(profileId) {
   return `/profile/${profileId}`;
 }
 
+export function groupUrl(groupId) {
+  return `/group/${groupId}/`;
+}
+
 /** Append query params to an absolute API list URL. */
 export function buildListUrl(basePath, pageSize, ordering = "") {
   const url = new URL(basePath);
@@ -202,15 +206,86 @@ export const API = {
   supportTicket: () => `${API_BASE_URL}/api/support/`,
 
   wsChat: (convId) => {
-    // Web: session cookie auth via AuthMiddlewareStack (no token param)
-    return `${WS_BASE_URL}/ws/chat/${convId}/`;
+    const token = localStorage.getItem("accessToken") || "";
+    const qs = token ? `?token=${token}` : "";
+    return `${WS_BASE_URL}/ws/chat/${convId}/${qs}`;
   },
   wsNotifications: () => {
-    // Web: session cookie auth via AuthMiddlewareStack (no token param)
-    return `${WS_BASE_URL}/ws/notifications/`;
+    const token = localStorage.getItem("accessToken") || "";
+    const qs = token ? `?token=${token}` : "";
+    return `${WS_BASE_URL}/ws/notifications/${qs}`;
   },
   wsConversations: () => {
-    // Web: session cookie auth via AuthMiddlewareStack (no token param)
-    return `${WS_BASE_URL}/ws/conversations/`;
+    const token = localStorage.getItem("accessToken") || "";
+    const qs = token ? `?token=${token}` : "";
+    return `${WS_BASE_URL}/ws/conversations/${qs}`;
   },
+
+  // ==================== GROUP ====================
+  groupCreate: () => `${API_BASE_URL}/api/group/create/`,
+  groupDetail: (id) => `${API_BASE_URL}/api/group/${id}/detail/`,
+  groupUpdate: (id) => `${API_BASE_URL}/api/group/${id}/update/`,
+  groupDelete: (id) => `${API_BASE_URL}/api/group/${id}/delete/`,
+  groupUserGroups: () => `${API_BASE_URL}/api/group/user/group/`,
+  groupExplore: () => `${API_BASE_URL}/api/group/explore/`,
+
+  groupMembers: (id) => `${API_BASE_URL}/api/group/${id}/user-list/`,
+  groupAdmins: (id) => `${API_BASE_URL}/api/group/${id}/admin/`,
+
+  groupSendRequest: (id) => `${API_BASE_URL}/api/group/${id}/send-request/`,
+  groupCancelRequest: (id) => `${API_BASE_URL}/api/group/${id}/cancel-request/`,
+  groupAllRequests: (id) => `${API_BASE_URL}/api/group/${id}/all-request/`,
+  groupAcceptRequest: (id, rid) => `${API_BASE_URL}/api/group/${id}/request/${rid}/accept/`,
+  groupRejectRequest: (id, rid) => `${API_BASE_URL}/api/group/${id}/request/${rid}/reject/`,
+  groupKickMember: (id, uid) => `${API_BASE_URL}/api/group/${id}/user/${uid}/kick/`,
+  groupAddAdmin: (id, uid) => `${API_BASE_URL}/api/group/${id}/user/${uid}/add-admin/`,
+  groupLeave: (id) => `${API_BASE_URL}/api/group/${id}/leave/`,
+
+  groupPostList: (id) => `${API_BASE_URL}/api/group/${id}/post/list/`,
+  groupCreatePost: (id) => `${API_BASE_URL}/api/group/${id}/create-post/`,
+  groupUpdatePost: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/update/`,
+  groupDeletePost: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/delete/`,
+  groupPinPost: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/pin/`,
+  groupPostDetail: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/detail/`,
+  groupPostUser: (id) => `${API_BASE_URL}/api/group/${id}/post-user/`,
+
+  groupReviewList: (id) => `${API_BASE_URL}/api/group/${id}/review-post/list/`,
+  groupReviewPost: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/review/`,
+  groupHighlightPost: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/highlight/`,
+  groupSearch: (id, q, type = "all") =>
+    `${API_BASE_URL}/api/group/${id}/search/?q=${encodeURIComponent(q)}&type=${type}`,
+  groupPhotos: (id) => `${API_BASE_URL}/api/group/${id}/photos/`,
+
+  // Vote trong group
+  groupVoteList: (id) => `${API_BASE_URL}/api/group/${id}/list-vote/`,
+  groupCreateVote: (id) => `${API_BASE_URL}/api/group/${id}/create-vote/`,
+  groupDeleteVote: (id, vid) => `${API_BASE_URL}/api/group/${id}/vote/${vid}/delete/`,
+  groupUpdateVote: (id, vid) => `${API_BASE_URL}/api/group/${id}/vote/${vid}/update/`,
+  groupVoteDetail: (id, vid) => `${API_BASE_URL}/api/group/${id}/vote/${vid}/detail/`,
+  groupUserVote: (id, vid, oid) => `${API_BASE_URL}/api/group/${id}/vote/${vid}/option/${oid}/vote/`,
+  groupAddVoteOption: (id, vid) => `${API_BASE_URL}/api/group/${id}/vote/${vid}/add-options/`,
+  groupUpdateVoteOption: (id, vid, oid) => `${API_BASE_URL}/api/group/${id}/vote/${vid}/option/${oid}/update/`,
+  groupDeleteVoteOption: (id, vid, oid) => `${API_BASE_URL}/api/group/${id}/vote/${vid}/option/${oid}/delete/`,
+  groupListUserVote: (id, vid, oid) => `${API_BASE_URL}/api/group/${id}/vote/${vid}/option/${oid}/user-list/`,
+
+  // Event trong group
+  groupEventList: (id) => `${API_BASE_URL}/api/group/${id}/event/`,
+  groupEventDetail: (id, eid) => `${API_BASE_URL}/api/group/${id}/event/${eid}/`,
+  groupEventResponse: (id, eid) => `${API_BASE_URL}/api/group/${id}/event/${eid}/update-status/`,
+  groupEventParticipants: (id, eid) => `${API_BASE_URL}/api/group/${id}/event/${eid}/participants/`,
+
+  // Department & Role
+  groupDepartmentList: (id) => `${API_BASE_URL}/api/group/${id}/department-list/`,
+  groupAddDepartment: (id) => `${API_BASE_URL}/api/group/${id}/department-add/`,
+  groupUpdateDepartment: (id, did) => `${API_BASE_URL}/api/group/${id}/department/${did}/`,
+  groupRoleList: (id, did) => `${API_BASE_URL}/api/group/${id}/department/${did}/role/`,
+  groupAddRole: (id, did) => `${API_BASE_URL}/api/group/${id}/department/${did}/add-role/`,
+  groupUpdateRole: (id, rid) => `${API_BASE_URL}/api/group/${id}/role/${rid}/`,
+  groupDeptMembers: (id, did) => `${API_BASE_URL}/api/group/${id}/department/${did}/user-list/`,
+  groupRoleMembers: (id, did, rid) => `${API_BASE_URL}/api/group/${id}/department/${did}/role/${rid}/user-list/`,
+  groupAddMemberJobRole: (id, uid) => `${API_BASE_URL}/api/group/${id}/user/${uid}/add-role/`,
+
+  // Suggestion (is_company)
+  groupCreateSuggestion: (id) => `${API_BASE_URL}/api/group/${id}/create-suggestion/`,
+  groupListSuggestion: (id) => `${API_BASE_URL}/api/group/${id}/list-suggestion/`,
 };

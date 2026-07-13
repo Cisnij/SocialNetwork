@@ -730,6 +730,7 @@ class GroupJoinRequest(models.Model):
     status = models.CharField(max_length=10, choices=STATUS, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL,null=True,blank=True,related_name='reviewed_join_requests') #user.reviewed_join_requests.all() láy tất cả request của user đó duyệt (Group.objects.filter(reviewed_by=1))
+    reviewed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f'{self.user} | {self.group_id} | {self.status}'

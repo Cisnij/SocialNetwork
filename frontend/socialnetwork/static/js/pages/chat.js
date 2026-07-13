@@ -1666,24 +1666,24 @@ function formatMsgTime(isoStr) {
   if (!isoStr) return "";
   const d = new Date(isoStr);
   const now = new Date();
-  
+
   const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  
+
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   const isYesterday = d.getDate() === yesterday.getDate() && d.getMonth() === yesterday.getMonth() && d.getFullYear() === yesterday.getFullYear();
-  
+
   const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-  
+
   if (isToday) return timeStr;
   if (isYesterday) return `Hôm qua lúc ${timeStr}`;
-  
+
   const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
   if (diffDays < 7) {
     const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     return `${days[d.getDay()]} lúc ${timeStr}`;
   }
-  
+
   const day = d.getDate().toString().padStart(2, '0');
   const month = (d.getMonth() + 1).toString().padStart(2, '0');
   if (d.getFullYear() === now.getFullYear()) {
@@ -1762,7 +1762,7 @@ function appendMessage(m, scroll = true, prepend = false) {
   const msgTimestamp = m.created_at || null;
   if (!prepend && msgTimestamp) {
     let shouldAddDivider = false;
-    
+
     if (!lastMsgTimestampISO) {
       shouldAddDivider = true;
     } else {
@@ -1771,12 +1771,12 @@ function appendMessage(m, scroll = true, prepend = false) {
       const diffMins = (curr - prev) / (1000 * 60);
       const dayKeyCurr = dateDayKey(msgTimestamp);
       const dayKeyPrev = dateDayKey(lastMsgTimestampISO);
-      
+
       if (dayKeyCurr !== dayKeyPrev) {
         shouldAddDivider = true;
       }
     }
-    
+
     if (shouldAddDivider) {
       lastMsgTimestampISO = msgTimestamp;
       const label = formatMsgTime(msgTimestamp);
@@ -2679,10 +2679,10 @@ async function showLeaveGroupModal(convId) {
 
     const res = await authFetch(API.leaveGroupChat(convId), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
-    if (res.ok) { 
-      showToast("Đã rời nhóm", "green"); 
-      modal.remove(); 
-      loadConversations(); 
+    if (res.ok) {
+      showToast("Đã rời nhóm", "green");
+      modal.remove();
+      loadConversations();
       if (Number(activeConvId) === Number(convId)) {
         if (chatForm) chatForm.classList.add("hidden");
         let leftBanner = document.getElementById("leftGroupBanner");
@@ -2898,10 +2898,10 @@ function showTaskAssigneeModal(user) {
   modal.id = "taskAssigneeModal";
   modal.className = "fixed inset-0 modal-backdrop z-[90] flex items-center justify-center p-4 opacity-0 transition-opacity duration-200";
   setTimeout(() => modal.classList.remove("opacity-0"), 10);
-  
+
   const pic = user.picture || DEFAULT_AVATAR;
   const name = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Thành viên';
-  
+
   modal.innerHTML = `
     <div class="glass-card rounded-2xl p-6 flex flex-col items-center gap-3 animate-scale-in max-w-sm w-full relative">
       <button type="button" data-close class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-xl flex items-center justify-center hover:bg-slate-200 transition-colors">&times;</button>
@@ -2912,17 +2912,17 @@ function showTaskAssigneeModal(user) {
       <div class="text-sm text-gray-500 dark:text-gray-400 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full">Người được giao việc</div>
     </div>
   `;
-  
+
   const closeFn = () => {
     modal.classList.add("opacity-0");
     setTimeout(() => modal.remove(), 200);
   };
-  
+
   modal.querySelector("[data-close]").addEventListener("click", closeFn);
   modal.addEventListener("click", (e) => {
     if (e.target === modal) closeFn();
   });
-  
+
   document.body.appendChild(modal);
 }
 
@@ -3036,7 +3036,7 @@ async function loadTaskList(convId, container) {
 
     const priorityClass = t.priority === 'high' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
       : t.priority === 'low' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+        : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
 
     const creatorName = t.created_by ? (t.created_by.full_name || `${t.created_by.first_name || ''} ${t.created_by.last_name || ''}`.trim()) : '';
 
@@ -3052,7 +3052,7 @@ async function loadTaskList(convId, container) {
     } else {
       const statusClass = isDone ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
         : t.status === 'in_progress' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-        : 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-400';
+          : 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-400';
       const statusLabel = isDone ? 'Hoàn thành' : t.status === 'in_progress' ? 'Đang làm' : 'Cần làm';
       statusDisplayHtml = `<span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${statusClass}">${statusLabel}</span>`;
     }
@@ -3192,7 +3192,7 @@ function showPromptModal(title, defaultValue, onSave) {
     </div>
   `;
   document.body.appendChild(modal);
-  
+
   const inputEl = modal.querySelector(`#promptInput_${modalId}`);
   inputEl.focus();
   inputEl.select();
@@ -3210,7 +3210,7 @@ function showVotersModal(title, usersData) {
   const modal = document.createElement("div");
   modal.id = modalId;
   modal.className = "fixed inset-0 modal-backdrop z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm";
-  
+
   let listHtml = "";
   if (!usersData || !usersData.length) {
     listHtml = `<p class="text-sm text-gray-500 text-center py-6">Chưa có ai bình chọn.</p>`;
@@ -3412,12 +3412,12 @@ async function loadVoteList(convId, container, searchQuery = "") {
 
       <div class="space-y-1">
         ${(() => {
-          let optsHtml = ``;
-          (v.options || []).forEach(o => {
-            const pct = totalVotes ? Math.round((o.count / totalVotes) * 100) : 0;
-            const myVote = (v.user_votes || []).includes(o.id);
-            
-            optsHtml += `
+        let optsHtml = ``;
+        (v.options || []).forEach(o => {
+          const pct = totalVotes ? Math.round((o.count / totalVotes) * 100) : 0;
+          const myVote = (v.user_votes || []).includes(o.id);
+
+          optsHtml += `
               <div class="vote-option-item cursor-pointer p-2 rounded-lg border border-transparent hover:border-fb-primary/30 transition-colors group/opt" data-option-id="${o.id}" data-vote-id="${v.id}">
                 <div class="flex items-center justify-between mb-1">
                   <div class="flex items-center gap-2 flex-1 min-w-0">
@@ -3441,18 +3441,18 @@ async function loadVoteList(convId, container, searchQuery = "") {
                 </div>
               </div>
             `;
-          });
-          optsHtml += `</div>`;
-          if (!v.is_closed) {
-            optsHtml += `
+        });
+        optsHtml += `</div>`;
+        if (!v.is_closed) {
+          optsHtml += `
               <div class="mt-3 pt-3 border-t dark:border-white/10 flex gap-2">
                 <input type="text" class="add-opt-input flex-1 rounded-lg px-3 py-1.5 bg-white dark:bg-white/5 dark:text-white border dark:border-white/10 text-xs" placeholder="Thêm lựa chọn mới...">
                 <button type="button" class="add-opt-btn px-3 py-1.5 rounded-lg bg-fb-secondary dark:bg-white/10 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-white/20 transition-colors">Thêm</button>
               </div>
             `;
-          }
-          return optsHtml;
-        })()}
+        }
+        return optsHtml;
+      })()}
 
       <p class="text-[10px] text-gray-400 mt-2">Tổng: ${totalVotes} phiếu</p>
     </div>`;
@@ -3496,52 +3496,52 @@ async function loadVoteList(convId, container, searchQuery = "") {
       });
     }
 
-      card.querySelectorAll("[data-action='edit-opt']").forEach(btn => {
-        btn.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          const optionId = btn.dataset.optionId;
-          const oldText = btn.dataset.optionText;
-          showPromptModal("Sửa lựa chọn:", oldText, async (newText) => {
-            if (newText && newText.trim() !== oldText) {
-              const resp = await authFetch(API.updateVoteOption(convId, v.id, optionId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: newText.trim() }) });
-              if (resp.ok) loadVoteList(convId, container, searchQuery);
-            }
-          });
+    card.querySelectorAll("[data-action='edit-opt']").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const optionId = btn.dataset.optionId;
+        const oldText = btn.dataset.optionText;
+        showPromptModal("Sửa lựa chọn:", oldText, async (newText) => {
+          if (newText && newText.trim() !== oldText) {
+            const resp = await authFetch(API.updateVoteOption(convId, v.id, optionId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: newText.trim() }) });
+            if (resp.ok) loadVoteList(convId, container, searchQuery);
+          }
         });
       });
+    });
 
-      card.querySelectorAll("[data-action='delete-opt']").forEach(btn => {
+    card.querySelectorAll("[data-action='delete-opt']").forEach(btn => {
 
-        btn.addEventListener("click", async (e) => {
+      btn.addEventListener("click", async (e) => {
 
-          e.stopPropagation();
+        e.stopPropagation();
 
-          const optionId = btn.dataset.optionId;
+        const optionId = btn.dataset.optionId;
 
-          const resp = await authFetch(API.deleteVoteOption(convId, v.id, optionId), { method: "DELETE" });
+        const resp = await authFetch(API.deleteVoteOption(convId, v.id, optionId), { method: "DELETE" });
 
-          if (resp.ok) loadVoteList(convId, container, searchQuery);
-
-        });
+        if (resp.ok) loadVoteList(convId, container, searchQuery);
 
       });
 
-      const addBtn = card.querySelector(".add-opt-btn");
+    });
 
-      if (addBtn) {
+    const addBtn = card.querySelector(".add-opt-btn");
 
-        addBtn.addEventListener("click", async (e) => {
+    if (addBtn) {
 
-          e.stopPropagation();
+      addBtn.addEventListener("click", async (e) => {
 
-          const inp = card.querySelector(".add-opt-input");
+        e.stopPropagation();
 
-          const text = inp.value.trim();
-          if (!text) return;
-          const resp = await authFetch(API.addVoteOptions(convId, v.id), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ options: [text] }) });
-          if (resp.ok) loadVoteList(convId, container, searchQuery);
-        });
-      }
+        const inp = card.querySelector(".add-opt-input");
+
+        const text = inp.value.trim();
+        if (!text) return;
+        const resp = await authFetch(API.addVoteOptions(convId, v.id), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ options: [text] }) });
+        if (resp.ok) loadVoteList(convId, container, searchQuery);
+      });
+    }
 
     card.querySelectorAll("[data-action='view-voters']").forEach(btn => {
       btn.addEventListener("click", async (e) => {
@@ -3550,7 +3550,7 @@ async function loadVoteList(convId, container, searchQuery = "") {
         const voteId = btn.dataset.voteId;
         const optTextEl = btn.closest(".vote-option-item")?.querySelector(".vote-opt-text");
         const optName = optTextEl ? optTextEl.textContent : "Lựa chọn này";
-        
+
         const res = await authFetch(API.listUserVotes(convId, voteId, optionId));
         const data = res.ok ? await res.json() : { results: [] };
         showVotersModal(`Những người chọn "${optName}"`, data.results || []);
@@ -4241,7 +4241,7 @@ async function loadEventList(convId, modal) {
         memberBtns = '<button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30" data-action="update-status" data-status="accept" data-event-id="' + e.id + '">Tham gia lại</button>';
       } else {
         memberBtns = '<button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30" data-action="update-status" data-status="accept" data-event-id="' + e.id + '">Tham gia</button>'
-                   + '<button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30" data-action="update-status" data-status="decline" data-event-id="' + e.id + '">Từ chối</button>';
+          + '<button type="button" class="flex-1 text-[10px] py-1 rounded border font-medium transition-colors border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30" data-action="update-status" data-status="decline" data-event-id="' + e.id + '">Từ chối</button>';
       }
     }
     const memberButtonsHtml = memberBtns ? '<div class="mt-2 flex gap-1 pt-2 border-t dark:border-white/10">' + memberBtns + '</div>' : '';
@@ -4325,7 +4325,7 @@ async function loadEventList(convId, modal) {
         if (existing) { existing.remove(); return; }
 
         const startVal = e.start_time ? e.start_time.slice(0, 16) : '';
-        const endVal   = e.end_time   ? e.end_time.slice(0, 16)   : '';
+        const endVal = e.end_time ? e.end_time.slice(0, 16) : '';
 
         const form = document.createElement('div');
         form.className = 'event-edit-form mt-3 pt-3 border-t dark:border-white/10 space-y-2';
@@ -4354,7 +4354,7 @@ async function loadEventList(convId, modal) {
           const title = form.querySelector('.edit-ev-title').value.trim();
           if (!title) { showToast("Nhập tên sự kiện", "red"); return; }
           const start = form.querySelector('.edit-ev-start').value;
-          const end   = form.querySelector('.edit-ev-end').value;
+          const end = form.querySelector('.edit-ev-end').value;
           if (!start) { showToast("Nhập thời gian bắt đầu", "red"); return; }
           const body = {
             title,
@@ -4431,33 +4431,86 @@ async function loadEventList(convId, modal) {
 
 // ==================== VIDEO CALL (LiveKit) ====================
 let currentVideoRoom = null;
-let callWs           = null;
-let isEndingCall     = false;
-let isInitingCall    = false;
-let ringingTimer     = null; // Timer chờ người khác bắt máy
+let callWs = null;
+let isEndingCall = false;
+let isInitingCall = false;
+let ringingTimer = null;     // Timer timeout đổ chuông
+let callDurationTimer = null;    // Timer đồng hồ thời gian gọi
+let callStartTs = null;     // Timestamp khi bắt đầu cuộc gọi thực sự
+
+// ── Đảm bảo leave call khi đóng tab ──────────────────────────
+window.addEventListener('beforeunload', () => {
+  if (callWs?.readyState === WebSocket.OPEN) {
+    callWs.send(JSON.stringify({ type: 'leave_call' }));
+  }
+  currentVideoRoom?.disconnect();
+});
+
+// ── UI helpers: chuyển giữa Ringing / In-Call screen ─────────
+function showRingingScreen(name, avatar, statusText = 'Đang đổ chuông...') {
+  document.getElementById('callRingingScreen')?.classList.remove('hidden');
+  document.getElementById('callInCallScreen')?.classList.add('hidden');
+  const nameEl = document.getElementById('callRemoteName');
+  const avatarEl = document.getElementById('callRemoteAvatar');
+  const statusEl = document.getElementById('callStatusText');
+  if (nameEl) nameEl.textContent = name || 'Đang kết nối...';
+  if (avatarEl) { avatarEl.src = avatar || ''; avatarEl.onerror = () => { avatarEl.style.display = 'none'; }; }
+  if (statusEl) statusEl.textContent = statusText;
+}
+
+function showInCallScreen() {
+  document.getElementById('callRingingScreen')?.classList.add('hidden');
+  document.getElementById('callInCallScreen')?.classList.remove('hidden');
+  // Bắt đầu đồng hồ
+  callStartTs = Date.now();
+  if (callDurationTimer) clearInterval(callDurationTimer);
+  const durationEl = document.getElementById('callDurationDisplay');
+  callDurationTimer = setInterval(() => {
+    if (!durationEl) return;
+    const secs = Math.floor((Date.now() - callStartTs) / 1000);
+    const m = Math.floor(secs / 60).toString().padStart(2, '0');
+    const s = (secs % 60).toString().padStart(2, '0');
+    durationEl.textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+// ── Ringing ticker (0s, 1s, 2s...) ──────────────────────────
+let ringTick = 0;
+let ringTickTimer = null;
+function startRingTicker() {
+  ringTick = 0;
+  if (ringTickTimer) clearInterval(ringTickTimer);
+  const el = document.getElementById('callRingTimer');
+  ringTickTimer = setInterval(() => {
+    ringTick++;
+    if (el) el.textContent = `${ringTick}s`;
+  }, 1000);
+}
+function stopRingTicker() {
+  if (ringTickTimer) { clearInterval(ringTickTimer); ringTickTimer = null; }
+  const el = document.getElementById('callRingTimer');
+  if (el) el.textContent = '';
+}
 
 // ── Cleanup hoàn toàn ─────────────────────────────────────────
 function closeVideoCall() {
   if (isEndingCall) return;
   isEndingCall = true;
 
-  if (ringingTimer) {
-    clearTimeout(ringingTimer);
-    ringingTimer = null;
-  }
+  if (ringingTimer) { clearTimeout(ringingTimer); ringingTimer = null; }
+  if (callDurationTimer) { clearInterval(callDurationTimer); callDurationTimer = null; }
+  stopRingTicker();
 
-  const modal     = document.getElementById("videoCallModal");
-  const loadingEl = document.getElementById("videoCallLoading");
-  const grid      = document.getElementById("videoTilesGrid");
-  const localWrap = document.getElementById("localVideoWrap");
-  const endBtn    = document.getElementById("endCallBtn");
+  const modal = document.getElementById('videoCallModal');
+  const grid = document.getElementById('videoTilesGrid');
 
-  modal?.classList.add("hidden");
-  loadingEl?.classList.remove("hidden"); // reset loading cho lần sau
+  modal?.classList.add('hidden');
+  document.getElementById('callRingingScreen')?.classList.add('hidden');
+  document.getElementById('callInCallScreen')?.classList.add('hidden');
+  document.getElementById('localVideoWrap')?.classList.add('hidden');
   if (grid) grid.innerHTML = '';
-  localWrap?.classList.add("hidden");
 
-  // Re-enable nút kết thúc cho lần gọi tiếp theo
+  const endBtn = document.getElementById('endCallBtn');
   if (endBtn) endBtn.disabled = false;
 
   if (currentVideoRoom) {
@@ -4465,21 +4518,22 @@ function closeVideoCall() {
       currentVideoRoom.removeAllListeners();
       currentVideoRoom.localParticipant?.trackPublications?.forEach(pub => pub.track?.stop());
       currentVideoRoom.disconnect();
-    } catch (_) {}
+    } catch (_) { }
     currentVideoRoom = null;
   }
 
   if (callWs) {
-    callWs.onclose = null; // tránh trigger reconnect sau khi chủ động đóng
+    callWs.onclose = null;
     callWs.close();
     callWs = null;
   }
 
-  isInitingCall = false; // reset để có thể gọi lại ngay
-  setTimeout(() => { isEndingCall = false; }, 500); // unlock sau 500ms
+  callStartTs = null;
+  isInitingCall = false;
+  setTimeout(() => { isEndingCall = false; }, 500);
 }
 
-// ── Call WebSocket ─────────────────────────────────────────────
+// ── Call WebSocket (nhận sự kiện call_ended / call_user_left) ─
 function connectCallWs(convId) {
   if (callWs) { callWs.onclose = null; callWs.close(); callWs = null; }
 
@@ -4490,15 +4544,14 @@ function connectCallWs(convId) {
     try {
       const data = JSON.parse(e.data);
       if (data.type === 'call_ended' || data.type === 'call_cancelled') {
-        closeVideoCall(); // server báo kết thúc → đóng modal
+        closeVideoCall();
       }
       if (data.type === 'call_user_left') {
-        showToast(`${data.user_name} đã rời cuộc gọi`, "gray");
+        showToast(`${data.user_name} đã rời cuộc gọi`, 'gray');
       }
-    } catch (_) {}
+    } catch (_) { }
   };
 
-  // Reconnect nếu WS bị drop giữa chừng
   callWs.onclose = () => {
     callWs = null;
     if (!isEndingCall && currentVideoRoom) {
@@ -4509,264 +4562,277 @@ function connectCallWs(convId) {
 
 // ── Grid layout động theo số participant ──────────────────────
 function updateGridLayout() {
-  const grid = document.getElementById("videoTilesGrid");
+  const grid = document.getElementById('videoTilesGrid');
   if (!grid) return;
   const count = grid.children.length;
   grid.style.gridTemplateColumns =
     count <= 1 ? '1fr' :
-    count <= 4 ? 'repeat(2, 1fr)' :
-                 'repeat(3, 1fr)';
+      count <= 4 ? 'repeat(2, 1fr)' :
+        'repeat(3, 1fr)';
 }
 
 // ── Entry point khi user bấm nút gọi ─────────────────────────
 async function initVideoCall(convId) {
-  if (isInitingCall) return; // chống double-click
+  if (isInitingCall) return;
 
-  // Đang trong phòng → hiện lại modal thay vì tạo phòng mới
+  // Đang trong phòng → hiện lại modal
   if (currentVideoRoom) {
-    document.getElementById("videoCallModal")?.classList.remove("hidden");
+    document.getElementById('videoCallModal')?.classList.remove('hidden');
     return;
   }
 
   isInitingCall = true;
   try {
-    const res = await authFetch(API.createVideoRoom(convId), { method: "POST" });
+    const res = await authFetch(API.createVideoRoom(convId), { method: 'POST' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      showToast(err.detail || "Lỗi tạo video call", "red");
+      showToast(err.detail || 'Lỗi tạo video call', 'red');
+      isInitingCall = false;
       return;
     }
     const data = await res.json();
-    await startVideoCall(data.token, data.livekit_url, data.room_name, convId, true);
+    await startVideoCall(data.token, data.livekit_url, data.room_name, convId, true, data.remote_name, data.remote_avatar);
   } catch (e) {
     console.error(e);
-    showToast("Lỗi kết nối cuộc gọi", "red");
-  } finally {
+    showToast('Lỗi kết nối cuộc gọi', 'red');
     isInitingCall = false;
   }
 }
 
 // ── Main call function ─────────────────────────────────────────
-async function startVideoCall(token, url, roomName, convId, isCaller = false) {
-  const modal      = document.getElementById("videoCallModal");
-  const loadingEl  = document.getElementById("videoCallLoading");
-  const localWrap  = document.getElementById("localVideoWrap");
-  const localVideo = document.getElementById("localVideo");
-  const grid       = document.getElementById("videoTilesGrid");
-
-  // Khai báo tất cả buttons TRƯỚC khi dùng — tránh ReferenceError
-  const micBtn = document.getElementById("toggleMicBtn");
-  const camBtn = document.getElementById("toggleCamBtn");
-  const endBtn = document.getElementById("endCallBtn");
-
+// isCaller=true: mình là người gọi (caller), hiện ringing screen
+// isCaller=false: mình là người nhận (callee vừa accept), kết nối thẳng vào phòng
+async function startVideoCall(token, url, roomName, convId, isCaller = false, remoteName = '', remoteAvatar = '') {
+  const modal = document.getElementById('videoCallModal');
   if (!modal) return;
 
-  // Reset UI về trạng thái ban đầu
-  modal.classList.remove("hidden");
-  loadingEl?.classList.remove("hidden");
-  grid.innerHTML = '';
-  localWrap.classList.add("hidden");
+  // Hiện modal
+  modal.classList.remove('hidden');
 
-  // Mặc định: mic bật, cam tắt
-  micBtn.innerHTML = "🎙️";
-  micBtn.classList.remove("bg-red-500/50");
-  camBtn.innerHTML = "🚫";
-  camBtn.classList.add("bg-red-500/50");
-
-  // Xóa onclick cũ trên endBtn tránh handler bị đăng ký nhiều lần
-  const freshEndBtn = endBtn.cloneNode(true);
-  endBtn.replaceWith(freshEndBtn);
-
-  // Kết nối WS để nhận sự kiện call_ended / call_cancelled từ server
+  // Kết nối WS để nhận sự kiện từ server
   connectCallWs(convId);
 
-  // Cleanup phòng cũ nếu có (trường hợp gọi lại)
+  // Cleanup phòng cũ
   if (currentVideoRoom) {
     currentVideoRoom.removeAllListeners();
     await currentVideoRoom.disconnect();
     currentVideoRoom = null;
   }
 
-  const { Room, RoomEvent, VideoPresets } = window.LivekitClient;
-  const room = new Room({
-    adaptiveStream: true,
-    dynacast: true,
-    videoCaptureDefaults: { resolution: VideoPresets.h720.resolution },
-  });
+  const { Room, RoomEvent } = window.LivekitClient;
+  const room = new Room({ adaptiveStream: true, dynacast: true });
   currentVideoRoom = room;
 
-  // Đặt timeout 30s nếu là người gọi (Caller)
-  if (isCaller) {
-    ringingTimer = setTimeout(() => {
-      // Tự động kết thúc nếu không ai bắt máy sau 30s
+  // ── Hook nút cancel (ringing) ──────────────────────────────
+  const cancelBtn = document.getElementById('cancelCallBtn');
+  if (cancelBtn) {
+    // Clone để xóa listener cũ
+    const freshCancel = cancelBtn.cloneNode(true);
+    cancelBtn.replaceWith(freshCancel);
+    freshCancel.onclick = () => {
+      if (callWs?.readyState === WebSocket.OPEN) {
+        callWs.send(JSON.stringify({ type: 'end_call' }));
+        setTimeout(() => { if (!isEndingCall) closeVideoCall(); }, 2000);
+      } else {
+        closeVideoCall();
+      }
+    };
+  }
+
+  // ── Hook nút End (in-call) ─────────────────────────────────
+  const endBtn = document.getElementById('endCallBtn');
+  if (endBtn) {
+    const freshEnd = endBtn.cloneNode(true);
+    endBtn.replaceWith(freshEnd);
+    freshEnd.onclick = () => {
+      freshEnd.disabled = true;
       if (callWs?.readyState === WebSocket.OPEN) {
         callWs.send(JSON.stringify({ type: 'end_call' }));
         setTimeout(() => { if (!isEndingCall) closeVideoCall(); }, 3000);
       } else {
-        authFetch(API.endVideoRoom ? API.endVideoRoom(convId) : `/api/video/${convId}/end/`, { method: 'POST' })
-          .catch(() => {})
-          .finally(() => closeVideoCall());
+        closeVideoCall();
       }
-      showToast("Không có người trả lời", "gray");
-    }, 30000);
+    };
   }
 
+  // ── Hook Toggle Mic ────────────────────────────────────────
+  const micBtn = document.getElementById('toggleMicBtn');
+  if (micBtn) {
+    const freshMic = micBtn.cloneNode(true);
+    micBtn.replaceWith(freshMic);
+    freshMic.onclick = async () => {
+      if (!currentVideoRoom) return;
+      try {
+        const enabled = currentVideoRoom.localParticipant.isMicrophoneEnabled;
+        await currentVideoRoom.localParticipant.setMicrophoneEnabled(!enabled);
+        const now = currentVideoRoom.localParticipant.isMicrophoneEnabled;
+        freshMic.innerHTML = now ? '🎙️' : '🔇';
+        freshMic.classList.toggle('bg-red-500/50', !now);
+      } catch (e) { showToast('Không thể bật/tắt mic', 'red'); }
+    };
+    // Default icon: mic off (chưa bật)
+    freshMic.innerHTML = '🔇';
+    freshMic.classList.add('bg-red-500/50');
+  }
+
+  // ── Hook Toggle Cam ────────────────────────────────────────
+  const camBtn = document.getElementById('toggleCamBtn');
+  if (camBtn) {
+    const freshCam = camBtn.cloneNode(true);
+    camBtn.replaceWith(freshCam);
+    freshCam.onclick = async () => {
+      if (!currentVideoRoom) return;
+      try {
+        const enabled = currentVideoRoom.localParticipant.isCameraEnabled;
+        await currentVideoRoom.localParticipant.setCameraEnabled(!enabled);
+        const now = currentVideoRoom.localParticipant.isCameraEnabled;
+        freshCam.innerHTML = now ? '📷' : '📵';
+        freshCam.classList.toggle('bg-red-500/50', !now);
+        const localWrap = document.getElementById('localVideoWrap');
+        const localVideo = document.getElementById('localVideo');
+        if (now && localWrap && localVideo) {
+          localWrap.classList.remove('hidden');
+          currentVideoRoom.localParticipant.videoTrackPublications.forEach(p => {
+            if (p.track) p.track.attach(localVideo);
+          });
+        } else {
+          localWrap?.classList.add('hidden');
+        }
+      } catch (e) { showToast('Không tìm thấy camera', 'red'); }
+    };
+    // Default icon: cam off
+    freshCam.innerHTML = '📵';
+    freshCam.classList.add('bg-red-500/50');
+  }
+
+  // ── Kết nối LiveKit ────────────────────────────────────────
   try {
     await room.connect(url, token);
 
-    // Bật mic mặc định — bỏ qua nếu máy không có mic
-    try {
-      await room.localParticipant.setMicrophoneEnabled(true);
-      micBtn.innerHTML = "🎙️";
-      micBtn.classList.remove("bg-red-500/50");
-    } catch (_) {
-      // Máy không có mic → vẫn vào được, chỉ không nói được
-      micBtn.innerHTML = "🔇";
-      micBtn.classList.add("bg-red-500/50");
-      showToast("Không tìm thấy microphone", "gray");
+    const grid = document.getElementById('videoTilesGrid');
+
+    if (isCaller) {
+      // ── CALLER: Hiện ringing screen, chờ ai vào phòng ──────
+      showRingingScreen(remoteName, remoteAvatar, 'Đang đổ chuông...');
+      startRingTicker();
+
+      // Timeout 60s không ai bắt → tự end
+      ringingTimer = setTimeout(() => {
+        showToast('Không có người trả lời', 'gray');
+        if (callWs?.readyState === WebSocket.OPEN) {
+          callWs.send(JSON.stringify({ type: 'end_call' }));
+          setTimeout(() => { if (!isEndingCall) closeVideoCall(); }, 2000);
+        } else {
+          closeVideoCall();
+        }
+      }, 60000);
+
+      // Khi callee vào → chuyển sang in-call screen
+      room.on(RoomEvent.ParticipantConnected, async (participant) => {
+        if (ringingTimer) { clearTimeout(ringingTimer); ringingTimer = null; }
+        stopRingTicker();
+        showInCallScreen();
+
+        // Bây giờ mới bật mic (không yêu cầu trước)
+        try {
+          await room.localParticipant.setMicrophoneEnabled(true);
+          const mic = document.getElementById('toggleMicBtn');
+          if (mic) { mic.innerHTML = '🎙️'; mic.classList.remove('bg-red-500/50'); }
+        } catch (_) { }
+
+        // Tạo tile cho callee
+        _addParticipantTile(grid, participant);
+        updateGridLayout();
+      });
+
+    } else {
+      // ── CALLEE: Vào thẳng in-call screen ───────────────────
+      showInCallScreen();
+
+      // Bật mic ngay khi callee accept
+      try {
+        await room.localParticipant.setMicrophoneEnabled(true);
+        const mic = document.getElementById('toggleMicBtn');
+        if (mic) { mic.innerHTML = '🎙️'; mic.classList.remove('bg-red-500/50'); }
+      } catch (_) { }
+
+      // Tạo tile cho những người đã có trong phòng
+      room.remoteParticipants.forEach(p => { _addParticipantTile(grid, p); });
+      updateGridLayout();
+
+      // Caller vào (hoặc đã có sẵn)
+      room.on(RoomEvent.ParticipantConnected, (participant) => {
+        _addParticipantTile(grid, participant);
+        updateGridLayout();
+      });
     }
 
-    // Ẩn loading sau khi kết nối xong
-    loadingEl?.classList.add("hidden");
-
-    // ── Remote participant vào → tạo placeholder tile ──────────
-    room.on(RoomEvent.ParticipantConnected, (participant) => {
-      // Có người vào -> xóa timer chờ chuông
-      if (ringingTimer) {
-        clearTimeout(ringingTimer);
-        ringingTimer = null;
-      }
-      
-      if (!document.getElementById(`participant-${participant.identity}`)) {
-        const wrapper = document.createElement('div');
-        wrapper.id = `participant-${participant.identity}`;
-        wrapper.className = "relative rounded-xl overflow-hidden aspect-video bg-gray-800 flex items-center justify-center";
-        wrapper.innerHTML = `
-          <div class="flex flex-col items-center gap-2">
-            <div class="w-16 h-16 rounded-full bg-gray-600 flex items-center justify-center text-3xl">👤</div>
-            <p class="text-white/80 text-sm font-medium">${participant.name || participant.identity}</p>
-          </div>`;
-        grid.appendChild(wrapper);
-        updateGridLayout();
-      }
-    });
-
-    // ── Remote participant rời → xóa tile ─────────────────────
+    // ── Các event chung ────────────────────────────────────────
     room.on(RoomEvent.ParticipantDisconnected, (participant) => {
       document.getElementById(`participant-${participant.identity}`)?.remove();
-      showToast(`${participant.name || 'Người dùng'} đã rời cuộc gọi`, "gray");
+      showToast(`${participant.name || 'Người dùng'} đã rời cuộc gọi`, 'gray');
       updateGridLayout();
     });
 
-    // ── Track video remote → thay placeholder bằng video thật ─
     room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
       if (track.kind === 'video') {
-        // Lấy tile đã có hoặc tạo mới
         let wrapper = document.getElementById(`participant-${participant.identity}`);
-        if (!wrapper) {
-          wrapper = document.createElement('div');
-          wrapper.id = `participant-${participant.identity}`;
-          wrapper.className = "relative rounded-xl overflow-hidden aspect-video bg-gray-900";
-          grid.appendChild(wrapper);
-        }
-        wrapper.innerHTML = ''; // xóa placeholder avatar
+        if (!wrapper) { wrapper = _addParticipantTile(grid, participant); }
+        wrapper.innerHTML = '';
         const videoEl = track.attach();
-        videoEl.className = "w-full h-full object-cover";
+        videoEl.className = 'w-full h-full object-cover';
         const label = document.createElement('div');
-        label.className = "absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md font-medium";
+        label.className = 'absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md font-medium';
         label.textContent = participant.name || participant.identity;
         wrapper.appendChild(videoEl);
         wrapper.appendChild(label);
         updateGridLayout();
       } else if (track.kind === 'audio') {
-        track.attach(); // audio chỉ cần attach, không cần UI
+        track.attach();
       }
     });
 
-    // ── Track unsubscribed → detach ────────────────────────────
     room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
       track.detach();
       if (track.kind === 'video') {
-        document.getElementById(`participant-${participant.identity}`)?.remove();
+        const wrapper = document.getElementById(`participant-${participant.identity}`);
+        if (wrapper) {
+          // Về lại placeholder avatar
+          wrapper.innerHTML = `
+            <div class="flex flex-col items-center gap-2">
+              <div class="w-16 h-16 rounded-full bg-gray-600 flex items-center justify-center text-3xl">👤</div>
+              <p class="text-white/80 text-sm font-medium">${participant.name || participant.identity}</p>
+            </div>`;
+        }
         updateGridLayout();
       }
     });
 
-    // ── Toggle mic ─────────────────────────────────────────────
-    micBtn.onclick = async () => {
-      try {
-        const isEnabled = room.localParticipant.isMicrophoneEnabled;
-        await room.localParticipant.setMicrophoneEnabled(!isEnabled);
-        const now = room.localParticipant.isMicrophoneEnabled;
-        micBtn.innerHTML = now ? "🎙️" : "🔇";
-        micBtn.classList.toggle("bg-red-500/50", !now);
-      } catch (e) {
-        console.error("Lỗi toggle mic:", e);
-        showToast("Không thể bật/tắt mic", "red");
-      }
-    };
-
-    // ── Toggle cam ─────────────────────────────────────────────
-    camBtn.onclick = async () => {
-      try {
-        const isEnabled = room.localParticipant.isCameraEnabled;
-        await room.localParticipant.setCameraEnabled(!isEnabled);
-        const now = room.localParticipant.isCameraEnabled;
-        camBtn.innerHTML = now ? "📷" : "🚫";
-        camBtn.classList.toggle("bg-red-500/50", !now);
-        if (now) {
-          // Bật cam → hiện local video
-          localWrap.classList.remove("hidden");
-          room.localParticipant.videoTrackPublications.forEach(p => {
-            if (p.track) p.track.attach(localVideo);
-          });
-        } else {
-          // Tắt cam → ẩn local video
-          localWrap.classList.add("hidden");
-        }
-      } catch (e) {
-        console.error("Lỗi toggle camera:", e);
-        showToast("Không tìm thấy camera", "red");
-      }
-    };
-
-    // ── Kết thúc cuộc gọi ─────────────────────────────────────
-    freshEndBtn.onclick = () => {
-      freshEndBtn.disabled = true; // chống bấm lại
-
-      if (callWs?.readyState === WebSocket.OPEN) {
-        // Gửi end_call → server sẽ broadcast call_ended về → closeVideoCall() sẽ được gọi từ onmessage
-        callWs.send(JSON.stringify({ type: 'end_call' }));
-        // Fallback: nếu WS không phản hồi trong 3s thì tự đóng
-        setTimeout(() => { if (!isEndingCall) closeVideoCall(); }, 3000);
-      } else {
-        // WS đã mất kết nối → gọi REST API end call rồi đóng UI
-        authFetch(API.endVideoRoom ? API.endVideoRoom(convId) : `/api/video/${convId}/end/`, { method: 'POST' })
-          .catch(() => {})
-          .finally(() => closeVideoCall());
-      }
-    };
-
-    // ── LiveKit server disconnect → đóng modal ─────────────────
     room.on(RoomEvent.Disconnected, () => {
       if (!isEndingCall) closeVideoCall();
     });
 
   } catch (error) {
-    console.error("Lỗi kết nối LiveKit:", error);
-    showToast("Không thể kết nối cuộc gọi", "red");
-    loadingEl?.classList.add("hidden");
+    console.error('Lỗi kết nối LiveKit:', error);
+    showToast('Không thể kết nối cuộc gọi', 'red');
     closeVideoCall();
   }
 }
 
-// ── Cleanup khi user đóng tab ─────────────────────────────────
-window.addEventListener("beforeunload", () => {
-  if (callWs?.readyState === WebSocket.OPEN) {
-    callWs.send(JSON.stringify({ type: 'end_call' }));
-  }
-  currentVideoRoom?.disconnect();
-});
+// ── Helper: tạo placeholder tile cho một participant ─────────
+function _addParticipantTile(grid, participant) {
+  if (document.getElementById(`participant-${participant.identity}`)) return;
+  const wrapper = document.createElement('div');
+  wrapper.id = `participant-${participant.identity}`;
+  wrapper.className = 'relative rounded-xl overflow-hidden aspect-video bg-gray-800 flex items-center justify-center';
+  wrapper.innerHTML = `
+    <div class="flex flex-col items-center gap-2">
+      <div class="w-16 h-16 rounded-full bg-gray-600 flex items-center justify-center text-3xl">👤</div>
+      <p class="text-white/80 text-sm font-medium">${participant.name || participant.identity}</p>
+    </div>`;
+  grid.appendChild(wrapper);
+  return wrapper;
+}
 
 // Expose để notification consumer gọi khi callee bấm Accept
 window.startVideoCall = startVideoCall;

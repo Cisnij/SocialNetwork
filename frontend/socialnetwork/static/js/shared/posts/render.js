@@ -185,14 +185,20 @@ export function renderPostCard(post, options = {}) {
 
   // --- Counts container (reaction + share) ---
   const countsContainer = document.createElement("div");
-  countsContainer.className = "flex items-center justify-between mb-2 text-sm min-h-[20px]";
+  countsContainer.className = "flex items-center mb-2 text-sm min-h-[20px] w-full";
+
+  const leftCounts = document.createElement("div");
+  leftCounts.className = "flex items-center gap-2";
+
+  const rightCounts = document.createElement("div");
+  rightCounts.className = "flex items-center gap-2 ml-auto";
 
   // --- Reaction count ---
   const totalReactions = getTotalReactions(post.reactions);
   const reactionCount = document.createElement("button");
   reactionCount.type = "button";
   reactionCount.className =
-    "text-gray-600 dark:text-fb-muted hover:underline font-medium";
+    "text-gray-600 dark:text-fb-muted hover:underline font-medium !bg-transparent border-none p-0 hover:!bg-transparent dark:hover:!bg-transparent";
   reactionCount.textContent =
     totalReactions > 0 ? `${totalReactions} lượt thích` : "";
   reactionCount.classList.toggle("hidden", totalReactions === 0);
@@ -205,13 +211,15 @@ export function renderPostCard(post, options = {}) {
   if ((post.share_count || 0) > 0) {
     shareCount = document.createElement("button");
     shareCount.type = "button";
-    shareCount.className = "text-gray-500 dark:text-fb-muted hover:underline font-medium";
+    shareCount.className = "text-gray-500 dark:text-fb-muted hover:underline font-medium !bg-transparent border-none p-0 hover:!bg-transparent dark:hover:!bg-transparent";
     shareCount.textContent = `${post.share_count} lượt chia sẻ`;
     shareCount.addEventListener("click", () => openSharersModal(post.post_id));
   }
 
-  countsContainer.appendChild(reactionCount);
-  if (shareCount) countsContainer.appendChild(shareCount);
+  leftCounts.appendChild(reactionCount);
+  if (shareCount) rightCounts.appendChild(shareCount);
+
+  countsContainer.append(leftCounts, rightCounts);
 
   // --- Actions ---
   const actions = document.createElement("div");

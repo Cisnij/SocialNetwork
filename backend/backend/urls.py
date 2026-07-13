@@ -208,10 +208,12 @@ urlpatterns = [
     path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/participants/', EventParticipantChat.as_view()), # thành viên tham gia event participant
     #GROUP
     path('api/group/create/',CreateGroup.as_view()), # tạo group
+    
     path('api/group/<int:group_id>/detail/',GroupDetailView.as_view()),# view group page
     path('api/group/<int:group_id>/update/',UpdateGroup.as_view()),
     path('api/group/<int:group_id>/delete/',DeleteGroup.as_view()),
     path('api/group/user/group/',ListGroupUser.as_view()), #lấy tất cả group của user
+    path('api/group/explore/',ListGroupSuggestion.as_view()), # lấy danh sách group chưa tham gia (khám phá)
     path('api/group/<int:group_id>/user-list/',ListUserGroup.as_view()),#list tất cả user của group
     path('api/group/<int:group_id>/department/<int:department_id>/add-role/',AddRoleGroup.as_view()),# add role vào department
     path('api/group/<int:group_id>/department-add/', AddDepartmentGroup.as_view()), # add department

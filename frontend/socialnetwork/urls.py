@@ -33,5 +33,7 @@ urlpatterns = [
     path('search-history/', views.getSearchHistory, name='search-history'),
     path('support/', views.getSupport, name='support'),
     path('finance/', views.getFinanceDashboard, name='finance-dashboard'),
+    path('group/<int:group_id>/', views.getGroupPage, name='group-page'),
+    path('groups/', views.getGroupList, name='groups'),
 
 ]

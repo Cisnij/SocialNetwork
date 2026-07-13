@@ -31,22 +31,33 @@ class CookieLoginView(LoginView): #ghi đè hàm login để trả về token tr
             )
         return original_response
 
-class CookieTokenRefreshView(TokenRefreshView): #ghi đè lấy refresh token từ cookie và trả về access token mới
-    throttle_classes=[ScopedRateThrottle]
-    throttle_scope='cookie_refresh' 
+class CookieTokenRefreshView(TokenRefreshView): #ghi đè lấy refresh token từ cookie và trả về access token mới (endpoint mặc định là lấy refresh token truyền vào thay vì lấy từ cookie đúng k)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'cookie_refresh'
 
     def post(self, request, *args, **kwargs):
-        refreshToken= request.COOKIES.get('refreshToken')#lấy refresh token từ cookie
-        
-        if not refreshToken: # nếu không có 
-            return Response({"detail": "No refresh token cookie."}, status=status.HTTP_401_UNAUTHORIZED)
-        
-        try: #nếu có 
-            refresh=RefreshToken(refreshToken) # xác minh refresh token được gửi từ cookie
-            access_token=str(refresh.access_token)# tạo access token từ refresh token
-            return Response({"access": access_token}, status=status.HTTP_200_OK)
+        refreshToken = request.COOKIES.get('refreshToken') # lấy token từ cookie
+        if not refreshToken:
+            return Response({"detail": "No refresh token cookie."}, status=401)
+
+        try:
+            refresh = RefreshToken(refreshToken) #tạo refresh token mới từ token cũ
+            access_token = str(refresh.access_token) # tạo access token mới
+            new_refresh = str(refresh)
+
+            response = Response({"access": access_token}, status=200) # trả access token
+            response.set_cookie(  # ← set refresh token mới vào cookie
+                key='refreshToken',
+                value=new_refresh,
+                httponly=True,
+                secure=False,
+                samesite='Lax',
+                path='/api/auth/web/',
+                max_age=7*24*60*60
+            )
+            return response
         except Exception:
-            return Response({"detail": "Invalid refresh token."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"detail": "Invalid refresh token."}, status=401)
         
 
 class CookieLogoutView(LogoutView): #ghi đè hàm logout để xóa cookie

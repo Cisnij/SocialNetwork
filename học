@@ -823,7 +823,9 @@ Database chỉ lưu refreshtoken và sẽ tự tạo accesstoken từ đó mới
 Flow của Frontend
 Access token lưu local, Refresh lưu cookie
 Khi login thì sẽ được cấp access token, backend set chỉ tồn tại trong 5p
-nếu 5p sau gọi api kèm bearer<token> mà backend check bị hết thời gian thì phải gọi refresh access token dùng refresh token lấy cái mới
+nếu 5p sau gọi api kèm bearer<token> mà backend check bị hết thời gian thì phải gọi refresh access token dùng refresh token lấy cái mới và tạo lại access cả refresh luôn
+nếu sau 7 ngày vô app dùng refresh token đó gửi lên nó thấy hết hạn k cung cấp lại accesstoken mà bắt login lại
+
 Authfetch sẽ truyền vào đó 1 là url, 2 là method là post put hay delete, 3 là các kiểu content-type hay multi-part
     Khi truyền url vào chạy sẽ check accessToken xem có trong local không, nếu không thì tạo mới RefreshAccessToken
                                                                           , nếu có thì fetch kèm theo accessToken đó,  không lỗi thì chưa hết hạn và trả data, nếu lỗi thì là hết hạn và chạy RefreshAccessToken tạo mới và chạy lại fetch lần nữa không đc thì login lại luôn

@@ -70,6 +70,8 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         await self.stop_heartbeat()
         if getattr(self, 'room_name', None):
+            # Tự động leave/end call nếu user đóng tab đột ngột
+            await self.handle_leave_call({'type': 'leave_call'})
             await self.channel_layer.group_discard(self.room_name, self.channel_name)
 
     async def receive(self, text_data):
