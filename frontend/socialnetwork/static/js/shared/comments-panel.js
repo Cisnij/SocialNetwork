@@ -93,7 +93,7 @@ function buildCommentReactionUI(comment, meta) {
   syncReactionCountBtn(reactionCountBtn, comment);
   reactionCountBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    openReactionsModal(comment.id, "comment");
+    openReactionsModal(comment.id, "comment", comment.reactions);
   });
 
   const reactionWrapper = document.createElement("div");

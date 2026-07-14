@@ -13,6 +13,9 @@ let currentReactionId = null;
 let currentReactionKind = "post";
 let loadingReactions = false;
 let reactionsAbort = null;
+let currentReactionFilter = null; // null means all, or a reaction type (e.g., "like")
+let currentReactionCounts = null;
+let allReactionsResults = []; // Store all loaded reactions for filtering
 
 let postToDeleteId = null;
 let deleteCallbacks = { onDeleted: null, cacheKey: null };
@@ -94,11 +97,92 @@ function setupReactionsModal() {
 }
 
 /** @param {'post'|'comment'} kind */
-export function openReactionsModal(targetId, kind = "post") {
+export function openReactionsModal(targetId, kind = "post", reactionCounts = null) {
   const modal = document.getElementById("reactionsModal");
   if (!modal) return;
+  currentReactionCounts = reactionCounts || [];
+  currentReactionFilter = null;
+  allReactionsResults = [];
+  renderReactionCounts();
   loadReactions(targetId, kind, true);
   modal.classList.remove("hidden");
+}
+
+function renderReactionCounts() {
+  const countsContainer = document.getElementById("reactionsCounts");
+  if (!countsContainer) return;
+  countsContainer.replaceChildren();
+
+  // Add "Tất cả" button
+  const allBtn = document.createElement("button");
+  allBtn.type = "button";
+  allBtn.dataset.reactionType = "all";
+  allBtn.className = `flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium transition ${
+    currentReactionFilter === null ? "bg-gray-100 dark:bg-gray-700 text-fb-primary" : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+  }`;
+  allBtn.textContent = "Tất cả";
+  allBtn.addEventListener("click", () => {
+    currentReactionFilter = null;
+    renderReactionCounts();
+    filterAndRenderReactions();
+  });
+  countsContainer.appendChild(allBtn);
+
+  // Add buttons for each reaction type that has count > 0
+  currentReactionCounts.forEach((r) => {
+    const reactionType = r.settings__name || r.type;
+    if (r.total <= 0) return;
+    const foundReaction = REACTIONS.find((x) => x.type === reactionType);
+    if (!foundReaction) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.reactionType = reactionType;
+    btn.className = `flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium transition ${
+      currentReactionFilter === reactionType ? "bg-gray-100 dark:bg-gray-700 text-fb-primary" : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+    }`;
+    btn.innerHTML = `${foundReaction.icon} ${r.total}`;
+    btn.addEventListener("click", () => {
+      currentReactionFilter = reactionType;
+      renderReactionCounts();
+      filterAndRenderReactions();
+    });
+    countsContainer.appendChild(btn);
+  });
+}
+
+function filterAndRenderReactions() {
+  const list = document.getElementById("reactionsList");
+  if (!list) return;
+  list.replaceChildren();
+
+  const filtered = currentReactionFilter
+    ? allReactionsResults.filter((r) => r.slug === currentReactionFilter)
+    : allReactionsResults;
+
+  const fragment = document.createDocumentFragment();
+  filtered.forEach((r) => {
+    const item = document.createElement("div");
+    item.className = "flex items-center gap-3 py-2 px-1 hover:bg-gray-50 dark:hover:bg-[#3a3b3c] rounded";
+
+    const img = document.createElement("img");
+    img.src = r.user?.picture || "/static/default-avatar.png";
+    img.className = "w-8 h-8 rounded-full object-cover";
+
+    const name = document.createElement("span");
+    name.className = "font-medium flex-1 truncate text-gray-900 dark:text-[#e4e6eb]";
+    name.textContent = `${r.user?.first_name || ""} ${r.user?.last_name || ""}`.trim();
+
+    const emoji = document.createElement("span");
+    const found = REACTIONS.find((x) => x.type === r.slug);
+    emoji.textContent = found ? found.icon : "👍";
+    emoji.className = "text-xl";
+
+    item.append(img, name, emoji);
+    fragment.appendChild(item);
+  });
+
+  list.appendChild(fragment);
 }
 
 async function loadReactions(targetId, kind = "post", initial = true) {
@@ -112,7 +196,7 @@ async function loadReactions(targetId, kind = "post", initial = true) {
       kind === "comment"
         ? buildListUrl(API.commentReactions(targetId), 20)
         : POST_ENDPOINTS.reactions(targetId);
-    list.replaceChildren();
+    allReactionsResults = [];
     currentReactionId = targetId;
     currentReactionKind = kind;
   }
@@ -125,32 +209,10 @@ async function loadReactions(targetId, kind = "post", initial = true) {
       nextReactionsUrl,
       reactionsAbort?.signal
     );
-    const fragment = document.createDocumentFragment();
-    (data.results || []).forEach((r) => {
-      const item = document.createElement("div");
-      item.className =
-        "flex items-center gap-3 py-2 px-1 hover:bg-gray-50 dark:hover:bg-[#3a3b3c] rounded";
-
-      const img = document.createElement("img");
-      img.src = r.user?.picture || "/static/default-avatar.png";
-      img.className = "w-8 h-8 rounded-full object-cover";
-
-      const name = document.createElement("span");
-      name.className =
-        "font-medium flex-1 truncate text-gray-900 dark:text-[#e4e6eb]";
-      name.textContent = `${r.user?.first_name || ""} ${r.user?.last_name || ""}`.trim();
-
-      const emoji = document.createElement("span");
-      const found = REACTIONS.find((x) => x.type === r.slug);
-      emoji.textContent = found ? found.icon : "👍";
-      emoji.className = "text-xl";
-
-      item.append(img, name, emoji);
-      fragment.appendChild(item);
-    });
-
-    list.appendChild(fragment);
-
+    // Add new results to our allReactionsResults array
+    allReactionsResults = allReactionsResults.concat(data.results || []);
+    // Filter and render
+    filterAndRenderReactions();
     nextReactionsUrl = data.next;
   } catch (err) {
     if (err.name !== "AbortError") console.error("Reactions load error:", err);

@@ -203,7 +203,7 @@ export function renderPostCard(post, options = {}) {
     totalReactions > 0 ? `${totalReactions} lượt thích` : "";
   reactionCount.classList.toggle("hidden", totalReactions === 0);
   reactionCount.addEventListener("click", () =>
-    onOpenReactions?.(post.post_id)
+    onOpenReactions?.(post.post_id, "post", post.reactions)
   );
 
   // --- Share count ---
