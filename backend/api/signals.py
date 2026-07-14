@@ -548,7 +548,7 @@ def notify_comment(sender, instance, created, **kwargs):
                 type='reply_on_comment',
                 object_id=instance.id,
                 post_id=instance.parent.post_id,
-                message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} replied to your comment'
+                message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} replied to your comment on post "{instance.post.title}"'
             )
 
 @receiver(m2m_changed,sender=Comment.tagged_users.through) #nếu trong comment field tagged user mà many to many field change thì chạy
@@ -563,7 +563,7 @@ def notify_tagged_users(sender,instance,action, pk_set,**kwargs):#pk_set lấy r
                 type='tagged_in_reply',
                 object_id=instance.id,
                 post_id=instance.post_id,
-                message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} tagged you on post {instance.post.title}'
+                message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} tagged you on post "{instance.post.title}"'
             )
 
 @receiver(post_save, sender=UserReaction)
@@ -585,11 +585,11 @@ def notify_reaction(sender, instance, created, **kwargs):
 
         if isinstance(target, Comment):
             notif_type = 'reaction_on_comment'
-            msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} đã cảm xúc bình luận của bạn'
+            msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} đã thả cảm xúc bình luận của bạn "{target.content[:10]}"'
             post_id = target.post_id  # Comment.post_id là FK → int
         else:
             notif_type = 'reaction_on_post'
-            msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} đã cảm xúc bài viết của bạn'
+            msg = f'{instance.user.profile.first_name} {instance.user.profile.last_name} đã thả cảm xúc bài viết của bạn "{target.title}"'
             post_id = target.post_id  # Post.post_id là PK
 
         Notification.objects.create(
@@ -639,7 +639,7 @@ def notify_post_share(sender,instance,created,**kwargs):
             type='share_post',
             object_id=instance.pk,
             post_id=instance.post.post_id,
-            message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} share your post'
+            message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} share bài viết của bạn "{instance.post.title}"'
         )
 
 from django.db import transaction
