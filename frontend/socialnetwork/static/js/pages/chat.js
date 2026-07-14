@@ -112,6 +112,15 @@ let cancelReplyBtn;
 
 let chatHeaderActions;
 
+// ========= SEARCH STATE =========
+let chatSearchBtn;
+let chatSearchBar;
+let chatSearchInput;
+let closeChatSearch;
+let isSearchMode = false;
+let searchResults = [];
+let searchNext = null;
+
 
 
 function $(id) { return document.getElementById(id); }

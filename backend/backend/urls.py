@@ -208,7 +208,6 @@ urlpatterns = [
     path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/participants/', EventParticipantChat.as_view()), # thành viên tham gia event participant
     #GROUP
     path('api/group/create/',CreateGroup.as_view()), # tạo group
-    
     path('api/group/<int:group_id>/detail/',GroupDetailView.as_view()),# view group page
     path('api/group/<int:group_id>/update/',UpdateGroup.as_view()),
     path('api/group/<int:group_id>/delete/',DeleteGroup.as_view()),

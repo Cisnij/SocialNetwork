@@ -3,41 +3,50 @@
 {% block title %}Nhóm | SocialNetwork{% endblock %}
 {% block main_content %}
 <div class="max-w-[1400px] mx-auto px-2 sm:px-4 py-4 grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
-  
+
   <!-- Left sidebar -->
   <aside class="hidden lg:block lg:col-span-3 h-fit sticky top-20">
     <div class="glass-card rounded-2xl p-5 shadow-lg border border-white/40 dark:border-white/5">
       <div class="flex items-center justify-between mb-5">
-        <h2 class="text-2xl font-black bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">Nhóm</h2>
-        <button id="btnSettingsGroup" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover-scale">
+        <h2
+          class="text-2xl font-black bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
+          Nhóm</h2>
+        <button id="btnSettingsGroup"
+          class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover-scale">
           <i class="fas fa-cog text-gray-500"></i>
         </button>
       </div>
-      
+
       <div class="relative mb-6">
-        <input type="text" id="searchGroupInput" placeholder="Tìm kiếm nhóm..." 
-               class="w-full bg-gray-50 dark:bg-gray-800 rounded-xl py-3 px-4 pl-11 focus:outline-none focus:ring-2 focus:ring-fb-primary text-sm shadow-inner transition-all border border-gray-200 dark:border-gray-700">
+        <input type="text" id="searchGroupInput" placeholder="Tìm kiếm nhóm..."
+          class="w-full bg-gray-50 dark:bg-gray-800 rounded-xl py-3 px-4 pl-11 focus:outline-none focus:ring-2 focus:ring-fb-primary text-sm shadow-inner transition-all border border-gray-200 dark:border-gray-700">
         <i class="fas fa-search absolute left-4 top-3.5 text-gray-400"></i>
       </div>
-      
+
       <nav class="space-y-2" id="groupSidebarNav">
-        <a href="#" id="tabMyGroups" class="nav-tab flex items-center gap-3 p-3 rounded-xl bg-fb-primary/10 text-fb-primary font-bold shadow-sm transition">
-          <div class="w-9 h-9 rounded-full bg-fb-primary text-white flex items-center justify-center shadow-md icon-wrap">
-             <i class="fas fa-users"></i>
+        <a href="#" id="tabMyGroups"
+          class="nav-tab flex items-center gap-3 p-3 rounded-xl bg-fb-primary/10 text-fb-primary font-bold shadow-sm transition">
+          <div
+            class="w-9 h-9 rounded-full bg-fb-primary text-white flex items-center justify-center shadow-md icon-wrap">
+            <i class="fas fa-users"></i>
           </div>
           Nhóm của bạn
         </a>
-        <a href="#" id="tabExplore" class="nav-tab flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold transition hover-lift">
-          <div class="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 flex items-center justify-center icon-wrap">
-             <i class="fas fa-compass"></i>
+        <a href="#" id="tabExplore"
+          class="nav-tab flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold transition hover-lift">
+          <div
+            class="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 flex items-center justify-center icon-wrap">
+            <i class="fas fa-compass"></i>
           </div>
           Khám phá
         </a>
       </nav>
-      
+
       <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
-        <button id="btnCreateGroup" class="w-full bg-fb-primary text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-500/40 transition-all flex items-center justify-center gap-2 relative overflow-hidden group">
-          <span class="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover:animate-[shimmer_1s_forwards]"></span>
+        <button id="btnCreateGroup"
+          class="w-full bg-fb-primary text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-500/40 transition-all flex items-center justify-center gap-2 relative overflow-hidden group">
+          <span
+            class="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover:animate-[shimmer_1s_forwards]"></span>
           <i class="fas fa-plus"></i> Tạo nhóm mới
         </button>
       </div>
@@ -48,61 +57,71 @@
   <main class="lg:col-span-9 space-y-6">
     <!-- Header/Filter mobile only -->
     <div class="lg:hidden flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x" id="groupMobileNav">
-      <button id="tabMyGroupsMobile" class="nav-tab-mobile px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-bold whitespace-nowrap shadow-md snap-start">Nhóm của bạn</button>
-      <button id="tabExploreMobile" class="nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start">Khám phá</button>
-      <button id="btnCreateGroupMobile" class="px-5 py-2.5 bg-fb-primary/10 text-fb-primary rounded-full font-bold whitespace-nowrap snap-start flex items-center gap-2"><i class="fas fa-plus"></i> Tạo nhóm mới</button>
+      <button id="tabMyGroupsMobile"
+        class="nav-tab-mobile px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-bold whitespace-nowrap shadow-md snap-start">Nhóm
+        của bạn</button>
+      <button id="tabExploreMobile"
+        class="nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start">Khám
+        phá</button>
+      <button id="btnCreateGroupMobile"
+        class="px-5 py-2.5 bg-fb-primary/10 text-fb-primary rounded-full font-bold whitespace-nowrap snap-start flex items-center gap-2"><i
+          class="fas fa-plus"></i> Tạo nhóm mới</button>
     </div>
 
     <div class="glass-card p-6 rounded-2xl shadow-sm border border-white/40 dark:border-white/5">
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2" id="groupListTitle">
-            <i class="fas fa-layer-group text-fb-primary"></i> Tất cả nhóm bạn đã tham gia
-        </h3>
-        
-        <!-- Skeletons Loader -->
-        <div id="loadingGroups" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            <div class="animate-pulse rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div class="h-32 bg-gray-300 dark:bg-gray-700"></div>
-                <div class="p-4 space-y-3">
-                    <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
-                    <div class="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
-                </div>
-            </div>
-            <div class="animate-pulse rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hidden md:block">
-                <div class="h-32 bg-gray-300 dark:bg-gray-700"></div>
-                <div class="p-4 space-y-3">
-                    <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
-                    <div class="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
-                </div>
-            </div>
-            <div class="animate-pulse rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hidden xl:block">
-                <div class="h-32 bg-gray-300 dark:bg-gray-700"></div>
-                <div class="p-4 space-y-3">
-                    <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
-                    <div class="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
-                </div>
-            </div>
-        </div>
+      <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2" id="groupListTitle">
+        <i class="fas fa-layer-group text-fb-primary"></i> Tất cả nhóm bạn đã tham gia
+      </h3>
 
-        <div id="groupListContainer" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 hidden">
-            <!-- Group cards rendered by JS -->
+      <!-- Skeletons Loader -->
+      <div id="loadingGroups" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div class="animate-pulse rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="h-32 bg-gray-300 dark:bg-gray-700"></div>
+          <div class="p-4 space-y-3">
+            <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+            <div class="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
         </div>
+        <div
+          class="animate-pulse rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hidden md:block">
+          <div class="h-32 bg-gray-300 dark:bg-gray-700"></div>
+          <div class="p-4 space-y-3">
+            <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+            <div class="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
+        </div>
+        <div
+          class="animate-pulse rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hidden xl:block">
+          <div class="h-32 bg-gray-300 dark:bg-gray-700"></div>
+          <div class="p-4 space-y-3">
+            <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+            <div class="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="groupListContainer" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 hidden">
+        <!-- Group cards rendered by JS -->
+      </div>
     </div>
   </main>
 </div>
 
 <!-- Modal Create Group -->
 <div id="createGroupModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-backdrop">
-  <div class="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] animate-scale-in border border-white/20">
+  <div
+    class="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] animate-scale-in border border-white/20">
     <div class="relative px-6 py-4 border-b dark:border-gray-800 flex items-center justify-center">
       <h3 class="text-xl font-black text-gray-900 dark:text-white">Tạo nhóm mới</h3>
-      <button type="button" class="close-modal absolute right-4 top-4 w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+      <button type="button"
+        class="close-modal absolute right-4 top-4 w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition">
         <i class="fas fa-times text-gray-500"></i>
       </button>
     </div>
-    
+
     <div class="p-6 overflow-y-auto flex-1 custom-scrollbar">
       <div class="flex items-center gap-3 mb-6">
-        <img src="{{ request.user.profile.picture|default:'/static/default-avatar.png' }}" class="w-12 h-12 rounded-full object-cover">
+        <img id="createGroupAdminAvatar" src="/static/default-avatar.png" class="w-12 h-12 rounded-full object-cover">
         <div>
           <p class="font-bold text-sm text-gray-900 dark:text-white">Quản trị viên</p>
           <p class="text-xs text-gray-500">Bạn sẽ là quản trị viên của nhóm này.</p>
@@ -111,54 +130,65 @@
 
       <form id="createGroupForm" class="space-y-5">
         <div class="space-y-1">
-          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Tên nhóm <span class="text-red-500">*</span></label>
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Tên nhóm <span
+              class="text-red-500">*</span></label>
           <input type="text" name="name" required placeholder="Nhập tên nhóm..."
-                 class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 focus:ring-2 focus:ring-fb-primary focus:outline-none transition-all input-glow text-sm font-medium">
-        </div>
-        
-        <div class="space-y-1">
-          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Mô tả nhóm</label>
-          <textarea name="description" rows="3" placeholder="Mô tả mục đích của nhóm..."
-                    class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 focus:ring-2 focus:ring-fb-primary focus:outline-none transition-all input-glow text-sm resize-none"></textarea>
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 focus:ring-2 focus:ring-fb-primary focus:outline-none transition-all input-glow text-sm font-medium">
         </div>
 
         <div class="space-y-1">
-            <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Nội quy nhóm</label>
-            <textarea name="rules" rows="2" placeholder="Nội quy dành cho thành viên..."
-                      class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 focus:ring-2 focus:ring-fb-primary focus:outline-none transition-all input-glow text-sm resize-none"></textarea>
-          </div>
-        
-        <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4 transition-colors">
-            <div class="flex items-start gap-3">
-                <div class="mt-0.5">
-                    <input type="checkbox" id="isCompany" name="is_company" class="w-5 h-5 text-fb-primary rounded focus:ring-fb-primary border-gray-300 shadow-sm cursor-pointer">
-                </div>
-                <div>
-                    <label for="isCompany" class="text-sm font-bold text-gray-900 dark:text-white cursor-pointer block">Nhóm Tổ chức / Công ty</label>
-                    <p class="text-xs text-gray-500 mt-1 leading-relaxed">Kích hoạt các tính năng quản lý nhân sự: phân chia Phòng ban, Chức vụ và Góp ý ẩn danh.</p>
-                </div>
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Mô tả nhóm</label>
+          <textarea name="description" rows="3" placeholder="Mô tả mục đích của nhóm..."
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 focus:ring-2 focus:ring-fb-primary focus:outline-none transition-all input-glow text-sm resize-none"></textarea>
+        </div>
+
+        <div class="space-y-1">
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Nội quy nhóm</label>
+          <textarea name="rules" rows="2" placeholder="Nội quy dành cho thành viên..."
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 focus:ring-2 focus:ring-fb-primary focus:outline-none transition-all input-glow text-sm resize-none"></textarea>
+        </div>
+
+        <div
+          class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4 transition-colors">
+          <div class="flex items-start gap-3">
+            <div class="mt-0.5">
+              <input type="checkbox" id="isCompany" name="is_company"
+                class="w-5 h-5 text-fb-primary rounded focus:ring-fb-primary border-gray-300 shadow-sm cursor-pointer">
             </div>
+            <div>
+              <label for="isCompany" class="text-sm font-bold text-gray-900 dark:text-white cursor-pointer block">Nhóm
+                Tổ chức / Công ty</label>
+              <p class="text-xs text-gray-500 mt-1 leading-relaxed">Kích hoạt các tính năng quản lý nhân sự: phân chia
+                Phòng ban, Chức vụ và Góp ý ẩn danh.</p>
+            </div>
+          </div>
         </div>
 
         <div class="space-y-2">
           <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Ảnh bìa</label>
-          <div class="relative w-full h-40 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition overflow-hidden" id="uploadCoverBox">
-            <input type="file" id="groupAvatarInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+          <div
+            class="relative w-full h-40 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition overflow-hidden"
+            id="uploadCoverBox">
+            <input type="file" id="groupAvatarInput" accept="image/*"
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
             <div id="uploadCoverIcon" class="text-center">
-                <i class="fas fa-image text-3xl text-gray-400 mb-2"></i>
-                <p class="text-sm text-gray-500 font-semibold">Tải ảnh lên (Tùy chọn)</p>
+              <i class="fas fa-image text-3xl text-gray-400 mb-2"></i>
+              <p class="text-sm text-gray-500 font-semibold">Tải ảnh lên (Tùy chọn)</p>
             </div>
             <img src="" id="groupAvatarPreview" class="absolute inset-0 w-full h-full object-cover hidden z-0">
-            <div id="removeCoverBtn" class="hidden absolute top-2 right-2 z-20 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-sm transition">
-                <i class="fas fa-times text-sm"></i>
+            <div id="removeCoverBtn"
+              class="hidden absolute top-2 right-2 z-20 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-sm transition">
+              <i class="fas fa-times text-sm"></i>
             </div>
           </div>
         </div>
       </form>
     </div>
     <div class="p-6 border-t dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 flex justify-end gap-3">
-      <button type="button" class="close-modal px-6 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition">Hủy</button>
-      <button type="button" id="submitCreateGroup" class="px-8 py-2.5 rounded-xl font-bold bg-fb-primary text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center gap-2">
+      <button type="button"
+        class="close-modal px-6 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition">Hủy</button>
+      <button type="button" id="submitCreateGroup"
+        class="px-8 py-2.5 rounded-xl font-bold bg-fb-primary text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center gap-2">
         Tạo nhóm
       </button>
     </div>
@@ -166,12 +196,24 @@
 </div>
 
 <style>
-@keyframes shimmer {
-    100% { transform: translateX(100%); }
-}
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
 </style>
 {% endblock %}
 {% block post_scripts %}

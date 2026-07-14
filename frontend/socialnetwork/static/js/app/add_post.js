@@ -85,7 +85,11 @@ function setupBaseModal() {
       submitBtn.textContent = "Đang đăng...";
 
       try {
-        const resPost = await authFetch(POST_ENDPOINTS.create(), {
+        // Check if posting in a group
+        const groupId = window.GROUP_POSTING_MODE || null;
+        const postUrl = groupId ? API.groupCreatePost(groupId) : POST_ENDPOINTS.create();
+
+        const resPost = await authFetch(postUrl, {
           method: "POST",
           body: formData,
         });

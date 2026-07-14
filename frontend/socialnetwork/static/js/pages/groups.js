@@ -1,4 +1,4 @@
-import { API, groupUrl, DEFAULT_AVATAR } from "../shared/config.js";
+import { API, groupUrl, DEFAULT_AVATAR, API_BASE_URL } from "../shared/config.js";
 import { authFetch, authFetchCache } from "../authenticate/auth.js";
 
 // ============ HELPERS ============
@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function setActiveTab(isExplore) {
         // Desktop
-        if (tabMyGroups) tabMyGroups.className = isExplore 
+        if (tabMyGroups) tabMyGroups.className = isExplore
             ? "nav-tab flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold transition hover-lift"
             : "nav-tab flex items-center gap-3 p-3 rounded-xl bg-fb-primary/10 text-fb-primary font-bold shadow-sm transition";
         if (tabMyGroups) tabMyGroups.querySelector('.icon-wrap').className = isExplore
@@ -109,6 +109,29 @@ document.addEventListener("DOMContentLoaded", () => {
     function openModal() {
         createGroupModal.classList.remove("hidden");
         document.body.style.overflow = 'hidden';
+        loadAdminAvatar();
+    }
+
+    async function loadAdminAvatar() {
+        const avatarImg = document.getElementById("createGroupAdminAvatar");
+        if (!avatarImg) return;
+        try {
+            // Dùng cache từ profile.js nếu có
+            if (window.currentUserProfile && window.currentUserProfile.picture) {
+                avatarImg.src = window.currentUserProfile.picture;
+                return;
+            }
+            // Nếu chưa có, fetch từ API
+            const res = await authFetch(`${API_BASE_URL}/api/user/`);
+            if (res.ok) {
+                const user = await res.json();
+                if (user.picture) {
+                    avatarImg.src = user.picture;
+                }
+            }
+        } catch (e) {
+            console.warn("loadAdminAvatar error:", e);
+        }
     }
 
     function closeModal() {
@@ -210,8 +233,9 @@ function loadMyGroups() {
         if (isFromCache && !renderedFromCache) renderedFromCache = true;
 
         container.innerHTML = "";
-        if (data.results && data.results.length > 0) {
-            data.results.forEach(group => {
+        const groups = data.results || (Array.isArray(data) ? data : []);
+        if (groups.length > 0) {
+            groups.forEach(group => {
                 container.insertAdjacentHTML('beforeend', createGroupCard(group));
             });
         } else {
@@ -252,8 +276,9 @@ function loadExploreGroups() {
         if (isFromCache && !renderedFromCache) renderedFromCache = true;
 
         container.innerHTML = "";
-        if (data.results && data.results.length > 0) {
-            data.results.forEach(group => {
+        const groups = data.results || (Array.isArray(data) ? data : []);
+        if (groups.length > 0) {
+            groups.forEach(group => {
                 container.insertAdjacentHTML('beforeend', createGroupCard(group, true)); // true -> is explore
             });
         } else {
@@ -291,7 +316,7 @@ async function searchGroups(query) {
         loading.classList.add("hidden");
         container.classList.remove("hidden");
 
-        const groups = data.groups || data.results || [];
+        const groups = data.groups || data.results || (Array.isArray(data) ? data : []);
         if (groups.length > 0) {
             groups.forEach(group => container.insertAdjacentHTML('beforeend', createGroupCard(group)));
         } else {

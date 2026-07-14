@@ -46,7 +46,7 @@ def is_group_member(user,obj):
     group_id = obj.id if isinstance(obj, Group) else getattr(obj, 'group_id', None)
     if user.is_anonymous or not group_id:
         return False
-    return GroupMember.objects.filter(group_id=group_id,user=user,is_active=True,role='member').exists()
+    return GroupMember.objects.filter(group_id=group_id,user=user,is_active=True).exists()
 @rules.predicate
 def is_group_post_author(user,obj):
     return obj.user_id == user.id

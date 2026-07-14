@@ -100,7 +100,8 @@ class Profile(SafeDeleteModel):
         ]
 
     def __str__(self):
-        return f"Profile {self.id} | user_id={self.user_id} | {self.first_name} {self.last_name}"
+        return f"{self.first_name} {self.last_name}".strip() or f"Profile {self.id}"
+
     @property
     def full_name(self):
         return f'{self.first_name} {self.last_name}'.strip() #strip bỏ khoảng trắng đầu cuối
@@ -115,7 +116,7 @@ class PendingProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
-        return f"{self.user.username}- Pending"
+        return f"{self.user_id}- Pending"
 
 # nếu post là safedelete mà comment không có thì khi xóa post post sẽ xóa mềm nhưng comment sẽ xóa theo cái on_delete đã khai báo
 class Post(SafeDeleteModel):
@@ -146,7 +147,7 @@ class Post(SafeDeleteModel):
     post_status = models.CharField(max_length=10, choices=POST_STATUS,default='pending')
 
     def __str__(self):
-        return f"Post {self.post_id} | user_id={self.user_id} | {self.title[:30]}"
+        return self.title
 
     class Meta:
         indexes = [
@@ -168,7 +169,7 @@ class PostPhoto(SafeDeleteModel):
         FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])])  # sẽ dùng media_root để lưu
 
     def __str__(self):
-        return f"Photo {self.id} | post_id={self.post_id}"
+        return f"Photo {self.id}"
 
     class Meta:
         indexes = [
@@ -187,7 +188,7 @@ class PostArticle(SafeDeleteModel):
     reactions = GenericRelation(Reaction)
 
     def __str__(self):
-        return f"Article {self.postA_id} | user_id={self.user_id} | {self.title[:30]}"
+        return self.title
 
     class Meta:
         indexes = [
@@ -210,7 +211,7 @@ class Comment(SafeDeleteModel):
     reactions = GenericRelation(Reaction)
 
     def __str__(self):
-        return f"Comment {self.id} | user_id={self.user_id} | post_id={self.post_id} | {self.content[:30]}"
+        return self.content[:50]
 
     class Meta:
         indexes = [
@@ -222,9 +223,14 @@ class Comment(SafeDeleteModel):
 
 
 class Setting(models.Model):
+    PRIVACY_CHOICES=[
+        ('public', 'Công khai'),
+        ('friends', 'Bạn bè'),
+        ('private', 'Chỉ mình tôi'),
+    ]
     darkmode = models.BooleanField(default=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    #sau này thêm default post privacy để lưu giá trị privacy user set mỗi khi đăng bài, khi perform create thì lấy ra và gán luôn nếu có gán thủ công thì lấy thủ công
+    default_post_privacy = models.CharField(max_length=15,choices=PRIVACY_CHOICES,default='public')
     def __str__(self):
         return f"Setting of {self.user.username}"
 
@@ -266,7 +272,7 @@ class Conversation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Conversation {self.id} | group={self.is_group} | {self.status}"
+        return self.name or f"Conversation {self.id}"
 
     class Meta:
         indexes = [
@@ -292,7 +298,7 @@ class ConversationMember(models.Model):
     is_active=models.BooleanField(default=True)
     left_at = models.DateTimeField(null=True, blank=True)
     def __str__(self):
-        return f"Member user_id={self.user_id} | conv_id={self.conversation_id}"
+        return f"{self.user.id} in {self.conversation}"
 
     class Meta:
         unique_together = ('conversation',
@@ -353,7 +359,7 @@ class Message(SafeDeleteModel):
     reply_to=models.ForeignKey('self',on_delete=models.SET_NULL,related_name='replies',null=True,blank=True) #khi message reply bị xóa thì cũng k xóa theo
 
     def __str__(self):
-        return f"Message {self.id} | sender_id={self.sender_id} | conv_id={self.conversation_id} | {(self.content or '') [:30]}"
+        return (self.content or '')[:50]
 
     class Meta:
         indexes = [models.Index(fields=['conversation', '-created_at']),
@@ -376,7 +382,8 @@ class MessageAttachment(models.Model):
     file_name = models.CharField(max_length=255)
     file_size = models.PositiveIntegerField(null=True)  # bytes
     created_at = models.DateTimeField(auto_now_add=True)
-
+    def __str__(self):
+        return f"{self.file_type} - {self.file_name[:30]}"
     class Meta:
         indexes = [
             models.Index(fields=['message']),
@@ -396,7 +403,7 @@ class FCMToken(models.Model):  # đại diện cho 1 app, 1 thiết bị, 1 lầ
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"FCMToken user_id={self.user_id} | {self.device}"
+        return f"{self.device} - user {self.user_id}"
 
     class Meta:
         indexes = [models.Index(fields=['user'])]
@@ -438,7 +445,7 @@ class Notification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Notif {self.id} | {self.type} | receiver_id={self.reciever_id} | actor_id={self.actor_id}"
+        return f"{self.type} → {self.reciever}"
 
     class Meta:  # Meta là cách thiết lập model hoạt động , kiểu setting mặc định
         ordering = ['-created_at']  # auto sắp xếp giảm dần
@@ -467,7 +474,7 @@ class SearchHistory(SafeDeleteModel):
         ]
 
     def __str__(self):
-        return f"Search user_id={self.user_id} | {self.content[:30]}"
+        return self.content[:30]
 
 #============================================================================================================================================
 class PostShare(SafeDeleteModel):
@@ -491,7 +498,7 @@ class PostShare(SafeDeleteModel):
         ]
 
     def __str__(self):
-        return f"{self.user} shared {self.post}"
+        return f"{self.user_id} shared {self.post}"
 
 #============================================================================================================================================
 
@@ -502,7 +509,8 @@ class Report(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     reason= models.CharField(max_length=250)
     def __str__(self):
-        return f"{self.post} |{self.comment} | {self.reason}"
+        return f"Report by {self.user_id} | {self.reason[:30]}"
+
     class Meta:
         unique_together = (
             ('post','user'),
@@ -519,7 +527,7 @@ class SupportTicket(models.Model):
     ], default='pending')
 
     def __str__(self):
-        return f"{self.user} | {self.status}"
+        return f"{self.user_id} | {self.status}"
 
 #=================TASK==================================================================================================
 class Task(models.Model):
@@ -547,6 +555,8 @@ class Task(models.Model):
     assigned_to=models.ManyToManyField(User,blank=True, related_name='assigned_tasks')
     deadline = models.DateTimeField(null=True,blank=True)
     updated_at= models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return self.title
     class Meta:
         indexes= [
             models.Index(fields=['content_type','object_id','status','priority']),
@@ -561,6 +571,8 @@ class Vote(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
     created_at = models.DateTimeField(auto_now_add=True)
     is_closed = models.BooleanField(default=False)
+    def __str__(self):
+        return self.title
     class Meta:
         indexes=[
             models.Index(fields=['content_type','object_id','is_closed','created_at']),
@@ -570,6 +582,8 @@ class VoteOption(models.Model):
     vote = models.ForeignKey(Vote, on_delete=models.CASCADE, related_name='options')
     text = models.CharField(max_length=255)
     count = models.PositiveIntegerField(default=0)
+    def __str__(self):
+        return self.text[:50]
     class Meta:
         unique_together = (('vote', 'text'),) # Không cho phép tạo 2 option trùng tên trong 1 vote
         indexes = [models.Index(fields=['vote','count'])]
@@ -577,6 +591,8 @@ class VoteOption(models.Model):
 class UserVote(models.Model):
     option = models.ForeignKey(VoteOption, on_delete=models.CASCADE,related_name='votes')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    def __str__(self):
+        return f"Vote {self.created_by_id} → option {self.option_id}"
     class Meta:
         unique_together = (('option', 'created_by'),) # Mỗi user chỉ được vote 1 option 1 lần
         indexes = [models.Index(fields=['option','created_by'])]
@@ -599,7 +615,8 @@ class VideoRoom(models.Model):
     started_at   = models.DateTimeField(null=True, blank=True) # chỉ khi bắt máy mới có
     ended_at     = models.DateTimeField(null=True, blank=True)
     end_reason   = models.CharField(max_length=15, choices=END_REASON, null=True, blank=True)
-
+    def __str__(self):
+        return self.room_name
     @property
     def duration_call(self):
         if self.started_at and self.ended_at:
@@ -621,6 +638,8 @@ class CallParticipant(models.Model):
     status = models.CharField(max_length=10, choices=STATUS, default='pending')
     joined_at = models.DateTimeField(auto_now_add=True)
     left_at= models.DateTimeField(null=True)
+    def __str__(self):
+        return f"user {self.user_id} | {self.status}"
     class Meta:
         unique_together = ('room', 'user')
         indexes = [models.Index(fields=['room', 'status'])]
@@ -638,7 +657,8 @@ class Event(models.Model):
     end_time = models.DateTimeField(null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     celery_task_id = models.CharField(max_length=255, null=True, blank=True)  # lưu task id để cancel
-
+    def __str__(self):
+        return self.title
     class Meta:
         indexes = [
             models.Index(fields=['content_type', 'object_id', 'start_time']),  # list event theo giờ
@@ -654,6 +674,8 @@ class EventParticipant(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='participants')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=STATUS, default='pending')
+    def __str__(self):
+        return f"user {self.user_id} | {self.status}"
     class Meta:
         unique_together = ('event', 'user') #1 user chỉ đc tham gia 1 lần
 
@@ -670,7 +692,7 @@ class Group(SafeDeleteModel):
     updated_at  = models.DateTimeField(auto_now=True)
     is_company = models.BooleanField(default=False)
     def __str__(self):
-        return f"Group {self.id} | {self.name}"
+        return self.name
 
     class Meta:
         indexes = [
@@ -681,7 +703,7 @@ class GroupDepartment(models.Model):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='departments')
     name = models.CharField(max_length=100)
     def __str__(self):
-        return f"Department {self.name} | group_id={self.group_id}"
+        return self.name
 
     class Meta:
         unique_together = ('group', 'name')  # không trùng tên department trong cùng 1 group
@@ -691,6 +713,8 @@ class GroupRole(models.Model): # user tự tạo thì thường nên có bảng 
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='roles')
     name = models.CharField(max_length=100)
     department = models.ForeignKey(GroupDepartment,on_delete=models.CASCADE,related_name='department_roles',null=True,blank=True) # lấy tất cả role có department = x
+    def __str__(self):
+        return self.name
     class Meta:
         unique_together = ('group', 'name')  # không trùng tên role trong cùng 1 group
         indexes = [models.Index(fields=['group'])]
@@ -709,7 +733,7 @@ class GroupMember(SafeDeleteModel):
     joined_at= models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     def __str__(self):
-        return f"GroupMember user_id={self.user_id} | group_id={self.group_id} | {self.role}"
+        return f"{self.user_id} - {self.role}"
 
     class Meta:
         unique_together = ('group', 'user')
@@ -733,7 +757,7 @@ class GroupJoinRequest(models.Model):
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f'{self.user} | {self.group_id} | {self.status}'
+        return f"{self.user_id} → {self.group} ({self.status})"
     class Meta:
         unique_together = ('group','user')
         indexes = [
@@ -745,4 +769,4 @@ class GroupSuggestion(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
-        return f'{self.group} | {self.content[:30]}'
+        return self.content[:30]

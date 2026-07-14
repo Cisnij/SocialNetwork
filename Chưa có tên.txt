@@ -4,16 +4,15 @@ chưa xong
 -thiếu phần đăng nhập:
     xác thực otp khi bật 2 bước có 2 setting là gửi otp qua mail hay gửi sms qua sdt dùng rapid api
 
--thêm setting default post privacy
 -thêm story 24h
 - thêm 1 cái là upload video và thêm model PostVideo luôn làm y chang PostPhoto
 -áp dụng proxy sql, ngày mai deploy gộp vào 1 container duy nhất
+
 - áp dung rapid api dùng lấy api bên thứ 3 free như
-    Video call (Daily.co/WebRTC) — họp nhóm trong group chat LiveKit
     Translation API — dịch tin nhắn/post cho công ty đa quốc gia
 
 -xem tất cả các api được gọi ở 1 trang xem có thừa, test đủ các api và fe đã dùng đủ chức năng chưa và đúng logic chưa
--xây search cho chat
+
 chat nhóm:
 	reaction cho message
 	thêm vào setting cho chat

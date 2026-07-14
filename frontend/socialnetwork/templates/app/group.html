@@ -3,310 +3,402 @@
 {% block title %}Nhóm | SocialNetwork{% endblock %}
 {% block main_content %}
 <div class="max-w-[1400px] mx-auto pb-12 pt-2 px-2 sm:px-4">
-  
-  <!-- Group Hero Header -->
-  <div class="glass-strong rounded-3xl shadow-xl mb-6 border border-white/40 dark:border-white/5 overflow-hidden relative z-10 animate-slide-up">
-    <!-- Cover Image Wrapper with Parallax -->
-    <div class="relative h-64 md:h-96 w-full overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 group parallax">
-      <img id="groupCoverImage" src="" class="w-full h-full object-cover hidden transition-transform duration-700 group-hover:scale-105">
-      <div id="groupCoverPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
-         <i class="fas fa-layer-group text-7xl mb-4 opacity-50"></i>
-      </div>
-      
-      <!-- Gradient Overlay for better text readability -->
-      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-      
-      <!-- Edit Cover button for Admin -->
-      <button id="btnEditGroupCover" class="hidden absolute bottom-6 right-6 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-xl font-bold text-sm shadow-lg border border-white/30 transition-all hover-scale flex items-center gap-2">
-        <i class="fas fa-camera"></i> <span class="hidden sm:inline">Chỉnh sửa ảnh bìa</span>
-      </button>
-      <input type="file" id="groupCoverInput" class="hidden" accept="image/*">
-    </div>
-    
-    <!-- Group Info & Actions -->
-    <div class="px-6 sm:px-10 pb-6 pt-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative -mt-16 md:-mt-20 z-20">
-      
-      <!-- Avatar (Mobile Only visually, desktop integrated into cover potentially, but standard FB puts it on the left overlapping) -->
-      <div class="flex-1 flex flex-col md:flex-row items-start md:items-end gap-6 w-full">
-          <!-- Group Avatar (Square rounded) -->
-          <div class="w-32 h-32 md:w-40 md:h-40 rounded-2xl border-4 border-white dark:border-gray-900 shadow-2xl bg-white overflow-hidden shrink-0">
-             <img id="groupAvatarImageHero" src="/static/default-avatar.png" class="w-full h-full object-cover">
-          </div>
-          
-          <div class="flex-1 pb-2">
-            <h1 id="groupName" class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight break-words line-clamp-2 shadow-sm">
-                Đang tải...
-            </h1>
-            <div class="flex items-center gap-3 text-gray-600 dark:text-gray-300 mt-2">
-              <span class="flex items-center gap-1.5 font-semibold bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md text-sm border dark:border-gray-700">
-                  <i class="fas fa-globe-asia text-gray-500"></i> <span id="groupPrivacyText">Riêng tư</span>
-              </span>
-              <span class="font-bold text-gray-400">•</span>
-              <span id="groupMemberCount" class="font-bold text-sm bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded-md border border-blue-100 dark:border-blue-800/50">
-                  <i class="fas fa-users mr-1"></i> 0 thành viên
-              </span>
+
+    <!-- Group Hero Header -->
+    <div
+        class="glass-strong rounded-3xl shadow-xl mb-6 border border-white/40 dark:border-white/5 overflow-hidden relative z-10 animate-slide-up">
+        <!-- Cover Image Wrapper with Parallax -->
+        <div
+            class="relative h-64 md:h-96 w-full overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 group parallax">
+            <img id="groupCoverImage" src=""
+                class="w-full h-full object-cover hidden transition-transform duration-700 group-hover:scale-105">
+            <div id="groupCoverPlaceholder"
+                class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                <i class="fas fa-layer-group text-7xl mb-4 opacity-50"></i>
             </div>
-          </div>
-      </div>
-      
-      <!-- Action Buttons -->
-      <div class="flex flex-wrap gap-2 w-full md:w-auto" id="groupActionButtons">
-        <!-- Rendered dynamically -->
-        <div class="animate-pulse bg-gray-200 dark:bg-gray-700 w-32 h-10 rounded-xl"></div>
-      </div>
-    </div>
-    
-    <!-- Divider -->
-    <div class="w-full h-px bg-gray-200 dark:bg-gray-700 mx-6 sm:mx-10" style="width: calc(100% - 3rem md:5rem)"></div>
 
-    <!-- Navigation -->
-    <div class="px-4 sm:px-8 bg-gray-50/50 dark:bg-gray-900/30">
-      <nav class="flex gap-2 overflow-x-auto scrollbar-hide py-3" id="groupNav">
-        <button class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all bg-fb-primary/10 text-fb-primary shadow-sm" data-tab="posts">
-            Bài viết
-        </button>
-        <button class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" data-tab="rules">
-            Nội quy
-        </button>
-        <button class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" data-tab="members">
-            Thành viên
-        </button>
-        <button class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hidden company-only" data-tab="events">
-            Sự kiện
-        </button>
-        <button class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" data-tab="votes">
-            Bình chọn
-        </button>
-        <button class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hidden" id="navAdmin" data-tab="admin">
-            Quản trị <span id="pendingBadge" class="ml-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full hidden">0</span>
-        </button>
-      </nav>
-    </div>
-  </div>
+            <!-- Gradient Overlay for better text readability -->
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
 
-  <!-- Main Content Area -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
-    
-    <!-- Left/Center Content (Posts etc.) -->
-    <main class="lg:col-span-8 space-y-6" id="mainContentArea">
-      
-      <!-- TAB: POSTS -->
-      <div id="tabPosts" class="group-tab-content animate-fade-in">
-        
-        <!-- Composer -->
-        <div id="groupComposerContainer" class="glass-card rounded-2xl shadow-sm p-4 flex gap-3 items-center cursor-pointer card-hover hidden border border-white/40 dark:border-white/5 mb-6">
-          <div class="avatar-container shrink-0">
-            <img id="myAvatarComposer" src="/static/default-avatar.png" class="w-12 h-12 rounded-full object-cover shadow-sm border border-gray-100 dark:border-gray-700">
-          </div>
-          <div class="flex-1 py-3 px-5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-              Viết bài trong nhóm...
-          </div>
-          <div class="flex gap-2 hidden sm:flex shrink-0">
-              <button class="w-10 h-10 rounded-full hover:bg-green-50 text-green-500 flex items-center justify-center transition"><i class="fas fa-image text-lg"></i></button>
-              <button class="w-10 h-10 rounded-full hover:bg-blue-50 text-blue-500 flex items-center justify-center transition"><i class="fas fa-user-tag text-lg"></i></button>
-          </div>
-        </div>
-        
-        <!-- Pinned Post -->
-        <div id="pinnedPostContainer" class="hidden mb-6 relative">
-            <div class="absolute -left-3 top-4 bottom-4 w-1 bg-fb-primary rounded-r-md z-10"></div>
-            <div class="flex items-center gap-2 mb-3 text-fb-primary">
-                <i class="fas fa-thumbtack text-lg"></i>
-                <h3 class="font-black text-sm uppercase tracking-wider">Bài viết đã ghim</h3>
-            </div>
-            <div id="pinnedPostContent"></div>
+            <!-- Edit Cover button for Admin -->
+            <button id="btnEditGroupCover"
+                class="hidden absolute bottom-6 right-6 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-xl font-bold text-sm shadow-lg border border-white/30 transition-all hover-scale flex items-center gap-2">
+                <i class="fas fa-camera"></i> <span class="hidden sm:inline">Chỉnh sửa ảnh bìa</span>
+            </button>
+            <input type="file" id="groupCoverInput" class="hidden" accept="image/*">
         </div>
 
-        <div class="flex items-center gap-2 mb-4 hidden" id="newPostsLabel">
-            <h3 class="font-black text-gray-800 dark:text-gray-200 text-sm uppercase tracking-wider">Mới nhất</h3>
-            <div class="h-px bg-gray-200 dark:bg-gray-700 flex-1"></div>
-        </div>
+        <!-- Group Info & Actions -->
+        <div
+            class="px-6 sm:px-10 pb-6 pt-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative -mt-16 md:-mt-20 z-20">
 
-        <div id="groupPostList" class="space-y-6"></div>
-        
-        <!-- Skeleton Loader Posts -->
-        <div id="loadingGroupPosts" class="space-y-6 hidden">
-            <div class="glass-card rounded-2xl p-4 shadow-sm animate-pulse">
-                <div class="flex gap-3 items-center mb-4">
-                    <div class="w-12 h-12 rounded-full bg-gray-300 dark:bg-gray-700"></div>
-                    <div class="space-y-2 flex-1">
-                        <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/4"></div>
-                        <div class="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/6"></div>
+            <!-- Avatar (Mobile Only visually, desktop integrated into cover potentially, but standard FB puts it on the left overlapping) -->
+            <div class="flex-1 flex flex-col md:flex-row items-start md:items-end gap-6 w-full">
+                <!-- Group Avatar (Square rounded) -->
+                <div
+                    class="w-32 h-32 md:w-40 md:h-40 rounded-2xl border-4 border-white dark:border-gray-900 shadow-2xl bg-white overflow-hidden shrink-0">
+                    <img id="groupAvatarImageHero" src="/static/default-avatar.png" class="w-full h-full object-cover">
+                </div>
+
+                <div class="flex-1 pb-2">
+                    <h1 id="groupName"
+                        class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight break-words line-clamp-2 shadow-sm">
+                        Đang tải...
+                    </h1>
+                    <div class="flex items-center gap-3 text-gray-600 dark:text-gray-300 mt-2">
+                        <span
+                            class="flex items-center gap-1.5 font-semibold bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md text-sm border dark:border-gray-700">
+                            <i class="fas fa-globe-asia text-gray-500"></i> <span id="groupPrivacyText">Riêng tư</span>
+                        </span>
+                        <span class="font-bold text-gray-400">•</span>
+                        <span id="groupMemberCount"
+                            class="font-bold text-sm bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded-md border border-blue-100 dark:border-blue-800/50">
+                            <i class="fas fa-users mr-1"></i> 0 thành viên
+                        </span>
                     </div>
                 </div>
-                <div class="space-y-2 mb-4">
-                    <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-full"></div>
-                    <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-5/6"></div>
-                </div>
-                <div class="h-64 rounded-xl bg-gray-300 dark:bg-gray-700 w-full"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap gap-2 w-full md:w-auto" id="groupActionButtons">
+                <!-- Rendered dynamically -->
+                <div class="animate-pulse bg-gray-200 dark:bg-gray-700 w-32 h-10 rounded-xl"></div>
             </div>
         </div>
-      </div>
 
-      <!-- TAB: RULES -->
-      <div id="tabRules" class="group-tab-content hidden glass-card rounded-2xl p-8 shadow-sm border border-white/40 dark:border-white/5 animate-fade-in">
-        <div class="flex items-center gap-3 mb-6 pb-4 border-b dark:border-gray-700">
-            <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl shadow-sm">
-                <i class="fas fa-book"></i>
-            </div>
-            <h3 class="text-2xl font-black text-gray-900 dark:text-white">Nội quy nhóm</h3>
-        </div>
-        <div id="groupRulesContent" class="prose dark:prose-invert prose-lg max-w-none text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-medium"></div>
-      </div>
-
-      <!-- TAB: MEMBERS -->
-      <div id="tabMembers" class="group-tab-content hidden glass-card rounded-2xl p-6 shadow-sm border border-white/40 dark:border-white/5 animate-fade-in">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-            <h3 class="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                <i class="fas fa-users text-blue-500"></i> Thành viên
-            </h3>
-            <div class="relative w-full sm:w-auto min-w-[250px]">
-                <input type="text" id="searchMemberInput" placeholder="Tìm thành viên..." class="w-full bg-gray-100 dark:bg-gray-800 rounded-xl py-2 px-4 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-fb-primary border dark:border-gray-700 input-glow">
-                <i class="fas fa-search absolute left-3.5 top-2.5 text-gray-400"></i>
-            </div>
-        </div>
-        
-        <div class="mb-8">
-            <h4 class="font-black text-gray-800 dark:text-gray-200 mb-4 uppercase tracking-wider text-sm flex items-center gap-2">
-                <i class="fas fa-shield-alt text-yellow-500"></i> Quản trị viên
-            </h4>
-            <div id="groupAdminsList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </div>
-        
-        <div class="border-t dark:border-gray-700 pt-6">
-            <h4 class="font-black text-gray-800 dark:text-gray-200 mb-4 uppercase tracking-wider text-sm">Tất cả thành viên</h4>
-            <div id="groupMembersList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </div>
-      </div>
-
-      <!-- TAB: EVENTS -->
-      <div id="tabEvents" class="group-tab-content hidden glass-card rounded-2xl p-6 shadow-sm border border-white/40 dark:border-white/5 animate-fade-in">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-2xl font-black text-gray-900 dark:text-white">Sự kiện</h3>
-            <button id="btnCreateEvent" class="bg-fb-primary text-white px-5 py-2 rounded-xl font-bold shadow-md hover-scale hidden">
-                <i class="fas fa-calendar-plus mr-1"></i> Tạo sự kiện
-            </button>
-        </div>
-        <div id="groupEventsList" class="space-y-4">
-            <div class="text-center py-10 text-gray-500">
-                <i class="fas fa-calendar-times text-4xl mb-3 opacity-50"></i>
-                <p class="font-semibold">Chưa có sự kiện nào.</p>
-            </div>
-        </div>
-      </div>
-
-      <!-- TAB: VOTES -->
-      <div id="tabVotes" class="group-tab-content hidden glass-card rounded-2xl p-6 shadow-sm border border-white/40 dark:border-white/5 animate-fade-in">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-2xl font-black text-gray-900 dark:text-white">Bình chọn</h3>
-            <button id="btnCreateVoteTab" class="bg-fb-primary text-white px-5 py-2 rounded-xl font-bold shadow-md hover-scale hidden">
-                <i class="fas fa-poll mr-1"></i> Tạo bình chọn
-            </button>
-        </div>
-        <div id="groupVotesList" class="grid grid-cols-1 gap-4">
-             <div class="text-center py-10 text-gray-500">
-                <i class="fas fa-poll-h text-4xl mb-3 opacity-50"></i>
-                <p class="font-semibold">Chưa có cuộc bình chọn nào.</p>
-            </div>
-        </div>
-      </div>
-
-      <!-- TAB: ADMIN -->
-      <div id="tabAdmin" class="group-tab-content hidden animate-fade-in">
-        <div class="glass-card rounded-2xl p-2 mb-6 flex gap-2 overflow-x-auto scrollbar-hide border border-white/40 dark:border-white/5">
-            <button class="admin-tab active py-2.5 px-6 rounded-xl font-bold transition-all bg-fb-primary text-white shadow-md" data-target="adminPendingPosts">Duyệt bài</button>
-            <button class="admin-tab py-2.5 px-6 rounded-xl font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" data-target="adminJoinRequests">Yêu cầu tham gia</button>
-            <button class="admin-tab py-2.5 px-6 rounded-xl font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all company-only hidden" data-target="adminDepartments">Phòng ban & Chức vụ</button>
-            <button class="admin-tab py-2.5 px-6 rounded-xl font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all company-only hidden" data-target="adminSuggestions">Hộp thư Góp ý</button>
+        <!-- Divider -->
+        <div class="w-full h-px bg-gray-200 dark:bg-gray-700 mx-6 sm:mx-10" style="width: calc(100% - 3rem md:5rem)">
         </div>
 
-        <div id="adminPendingPosts" class="admin-tab-content">
-            <div id="pendingPostsList" class="space-y-4"></div>
-        </div>
-
-        <div id="adminJoinRequests" class="admin-tab-content hidden glass-card p-6 rounded-2xl border border-white/40 dark:border-white/5 shadow-sm">
-            <h3 class="font-black text-xl mb-6">Yêu cầu chờ duyệt</h3>
-            <div id="joinRequestsList" class="divide-y dark:divide-gray-700"></div>
-        </div>
-
-        <div id="adminDepartments" class="admin-tab-content hidden glass-card p-6 rounded-2xl border border-white/40 dark:border-white/5 shadow-sm">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b dark:border-gray-700">
-                <div>
-                    <h3 class="font-black text-xl">Quản lý Phòng ban</h3>
-                    <p class="text-sm text-gray-500 mt-1">Cấu trúc công ty và chức danh cho thành viên.</p>
-                </div>
-                <button id="btnAddDepartment" class="bg-fb-primary text-white px-5 py-2 rounded-xl font-bold shadow-md hover-scale shrink-0">
-                    <i class="fas fa-plus mr-1"></i> Thêm phòng ban
+        <!-- Navigation -->
+        <div class="px-4 sm:px-8 bg-gray-50/50 dark:bg-gray-900/30">
+            <nav class="flex gap-2 overflow-x-auto scrollbar-hide py-3" id="groupNav">
+                <button
+                    class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all bg-fb-primary/10 text-fb-primary shadow-sm"
+                    data-tab="posts">
+                    Bài viết
                 </button>
-            </div>
-            <div id="departmentList" class="space-y-4"></div>
+                <button
+                    class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    data-tab="rules">
+                    Nội quy
+                </button>
+                <button
+                    class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    data-tab="members">
+                    Thành viên
+                </button>
+                <button
+                    class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hidden company-only"
+                    data-tab="events">
+                    Sự kiện
+                </button>
+                <button
+                    class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    data-tab="photos">
+                    Ảnh
+                </button>
+                <button
+                    class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    data-tab="search">
+                    Tìm kiếm
+                </button>
+                <button
+                    class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    data-tab="votes">
+                    Bình chọn
+                </button>
+                <button
+                    class="px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hidden"
+                    id="navAdmin" data-tab="admin">
+                    Quản trị <span id="pendingBadge"
+                        class="ml-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full hidden">0</span>
+                </button>
+            </nav>
         </div>
-        
-        <div id="adminSuggestions" class="admin-tab-content hidden glass-card p-6 rounded-2xl border border-white/40 dark:border-white/5 shadow-sm">
-            <h3 class="font-black text-xl mb-2 flex items-center gap-2">
-                <i class="fas fa-inbox text-yellow-500"></i> Hộp thư Góp ý (Công ty)
-            </h3>
-            <p class="text-sm text-gray-500 mb-6">Các góp ý ẩn danh hoặc công khai từ nhân viên.</p>
-            <div id="suggestionsList" class="space-y-4"></div>
-        </div>
-      </div>
+    </div>
 
-    </main>
+    <!-- Main Content Area -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
 
-    <!-- Right Sidebar (About, Votes, Events) -->
-    <aside class="hidden lg:block lg:col-span-4 space-y-6 sticky top-20 h-fit" id="groupSidebar">
-      <!-- About -->
-      <div class="glass-card rounded-2xl shadow-sm p-5 border border-white/40 dark:border-white/5">
-        <h3 class="font-black text-gray-900 dark:text-white mb-3 text-lg">Giới thiệu về nhóm</h3>
-        <p id="groupDescriptionSidebar" class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"></p>
-        
-        <div class="mt-5 space-y-3 pt-4 border-t dark:border-gray-700">
-            <div class="flex gap-3">
-                <i class="fas fa-globe-asia text-gray-400 mt-1 text-lg w-6 text-center"></i>
-                <div>
-                    <p class="font-bold text-gray-900 dark:text-gray-100 text-sm">Riêng tư</p>
-                    <p class="text-xs text-gray-500">Chỉ thành viên mới nhìn thấy ai trong nhóm và những gì họ đăng.</p>
+        <!-- Left/Center Content (Posts etc.) -->
+        <main class="lg:col-span-8 space-y-6" id="mainContentArea">
+
+            <!-- TAB: POSTS -->
+            <div id="tabPosts" class="group-tab-content animate-fade-in">
+
+                <!-- Composer -->
+                <div id="groupComposerContainer"
+                    class="glass-card rounded-2xl shadow-sm p-4 flex gap-3 items-center cursor-pointer card-hover hidden border border-white/40 dark:border-white/5 mb-6">
+                    <div class="avatar-container shrink-0">
+                        <img id="myAvatarComposer" src="/static/default-avatar.png"
+                            class="w-12 h-12 rounded-full object-cover shadow-sm border border-gray-100 dark:border-gray-700">
+                    </div>
+                    <div
+                        class="flex-1 py-3 px-5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                        Viết bài trong nhóm...
+                    </div>
+                    <div class="flex gap-2 hidden sm:flex shrink-0">
+                        <button
+                            class="w-10 h-10 rounded-full hover:bg-green-50 text-green-500 flex items-center justify-center transition"><i
+                                class="fas fa-image text-lg"></i></button>
+                        <button
+                            class="w-10 h-10 rounded-full hover:bg-blue-50 text-blue-500 flex items-center justify-center transition"><i
+                                class="fas fa-user-tag text-lg"></i></button>
+                    </div>
+                </div>
+
+                <!-- Pinned Post -->
+                <div id="pinnedPostContainer" class="hidden mb-6 relative">
+                    <div class="absolute -left-3 top-4 bottom-4 w-1 bg-fb-primary rounded-r-md z-10"></div>
+                    <div class="flex items-center gap-2 mb-3 text-fb-primary">
+                        <i class="fas fa-thumbtack text-lg"></i>
+                        <h3 class="font-black text-sm uppercase tracking-wider">Bài viết đã ghim</h3>
+                    </div>
+                    <div id="pinnedPostContent"></div>
+                </div>
+
+                <div class="flex items-center gap-2 mb-4 hidden" id="newPostsLabel">
+                    <h3 class="font-black text-gray-800 dark:text-gray-200 text-sm uppercase tracking-wider">Mới nhất
+                    </h3>
+                    <div class="h-px bg-gray-200 dark:bg-gray-700 flex-1"></div>
+                </div>
+
+                <div id="groupPostList" class="space-y-6"></div>
+
+                <!-- Skeleton Loader Posts -->
+                <div id="loadingGroupPosts" class="space-y-6 hidden">
+                    <div class="glass-card rounded-2xl p-4 shadow-sm animate-pulse">
+                        <div class="flex gap-3 items-center mb-4">
+                            <div class="w-12 h-12 rounded-full bg-gray-300 dark:bg-gray-700"></div>
+                            <div class="space-y-2 flex-1">
+                                <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/4"></div>
+                                <div class="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/6"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-2 mb-4">
+                            <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-full"></div>
+                            <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-5/6"></div>
+                        </div>
+                        <div class="h-64 rounded-xl bg-gray-300 dark:bg-gray-700 w-full"></div>
+                    </div>
                 </div>
             </div>
-            <div class="flex gap-3 hidden" id="companyBadgeSidebar">
-                <i class="fas fa-building text-fb-primary mt-1 text-lg w-6 text-center"></i>
-                <div>
-                    <p class="font-bold text-fb-primary text-sm">Nhóm Công Ty</p>
-                    <p class="text-xs text-gray-500">Hỗ trợ các tính năng công việc doanh nghiệp.</p>
+
+            <!-- TAB: RULES -->
+            <div id="tabRules"
+                class="group-tab-content hidden glass-card rounded-2xl p-8 shadow-sm border border-white/40 dark:border-white/5 animate-fade-in">
+                <div class="flex items-center gap-3 mb-6 pb-4 border-b dark:border-gray-700">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl shadow-sm">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <h3 class="text-2xl font-black text-gray-900 dark:text-white">Nội quy nhóm</h3>
+                </div>
+                <div id="groupRulesContent"
+                    class="prose dark:prose-invert prose-lg max-w-none text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-medium">
                 </div>
             </div>
-            <div class="flex gap-3">
-                <i class="fas fa-history text-gray-400 mt-1 text-lg w-6 text-center"></i>
-                <div>
-                    <p class="font-bold text-gray-900 dark:text-gray-100 text-sm">Lịch sử</p>
-                    <p class="text-xs text-gray-500">Nhóm được tạo gần đây.</p>
+
+            <!-- TAB: MEMBERS -->
+            <div id="tabMembers"
+                class="group-tab-content hidden glass-card rounded-2xl p-6 shadow-sm border border-white/40 dark:border-white/5 animate-fade-in">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                    <h3 class="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-users text-blue-500"></i> Thành viên
+                    </h3>
+                    <div class="relative w-full sm:w-auto min-w-[250px]">
+                        <input type="text" id="searchMemberInput" placeholder="Tìm thành viên..."
+                            class="w-full bg-gray-100 dark:bg-gray-800 rounded-xl py-2 px-4 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-fb-primary border dark:border-gray-700 input-glow">
+                        <i class="fas fa-search absolute left-3.5 top-2.5 text-gray-400"></i>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <h4
+                        class="font-black text-gray-800 dark:text-gray-200 mb-4 uppercase tracking-wider text-sm flex items-center gap-2">
+                        <i class="fas fa-shield-alt text-yellow-500"></i> Quản trị viên
+                    </h4>
+                    <div id="groupAdminsList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                </div>
+
+                <div class="border-t dark:border-gray-700 pt-6">
+                    <h4 class="font-black text-gray-800 dark:text-gray-200 mb-4 uppercase tracking-wider text-sm">Tất cả
+                        thành viên</h4>
+                    <div id="groupMembersList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                 </div>
             </div>
-        </div>
-      </div>
 
-      <!-- Suggestion Box (Company Only) -->
-      <div class="glass-card rounded-2xl shadow-sm p-5 border border-yellow-200 dark:border-yellow-900/30 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/10 dark:to-orange-900/10 hidden" id="companySuggestionBox">
-        <div class="flex items-center gap-3 mb-3">
-            <div class="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 flex items-center justify-center text-lg">
-                <i class="fas fa-lightbulb"></i>
+            <!-- TAB: EVENTS -->
+            <div id="tabEvents"
+                class="group-tab-content hidden glass-card rounded-2xl p-6 shadow-sm border border-white/40 dark:border-white/5 animate-fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-black text-gray-900 dark:text-white">Sự kiện</h3>
+                    <button id="btnCreateEvent"
+                        class="bg-fb-primary text-white px-5 py-2 rounded-xl font-bold shadow-md hover-scale hidden">
+                        <i class="fas fa-calendar-plus mr-1"></i> Tạo sự kiện
+                    </button>
+                </div>
+                <div id="groupEventsList" class="space-y-4">
+                    <div class="text-center py-10 text-gray-500">
+                        <i class="fas fa-calendar-times text-4xl mb-3 opacity-50"></i>
+                        <p class="font-semibold">Chưa có sự kiện nào.</p>
+                    </div>
+                </div>
             </div>
-            <h3 class="font-black text-yellow-800 dark:text-yellow-500 text-lg">Hộp thư góp ý</h3>
-        </div>
-        <p class="text-sm text-yellow-700 dark:text-yellow-400/80 mb-4 leading-relaxed font-medium">Bạn có ý tưởng hoặc phàn nàn? Gửi góp ý ẩn danh trực tiếp đến Ban quản trị công ty.</p>
-        <button id="btnOpenSuggestionModal" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-yellow-500/30 transition-all active:scale-95">Gửi góp ý ngay</button>
-      </div>
 
-      <!-- Active Votes (Sidebar Preview) -->
-      <div class="glass-card rounded-2xl shadow-sm p-5 border border-white/40 dark:border-white/5 hidden" id="sidebarActiveVotes">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="font-black text-gray-900 dark:text-white text-lg">Bình chọn đang mở</h3>
-            <button class="text-fb-primary text-sm font-bold hover:underline" onclick="document.querySelector('[data-tab=votes]').click()">Xem tất cả</button>
-        </div>
-        <div id="sidebarVoteList" class="space-y-3"></div>
-      </div>
-    </aside>
-  </div>
+            <!-- TAB: VOTES -->
+            <div id="tabVotes"
+                class="group-tab-content hidden glass-card rounded-2xl p-6 shadow-sm border border-white/40 dark:border-white/5 animate-fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-black text-gray-900 dark:text-white">Bình chọn</h3>
+                    <button id="btnCreateVoteTab"
+                        class="bg-fb-primary text-white px-5 py-2 rounded-xl font-bold shadow-md hover-scale hidden">
+                        <i class="fas fa-poll mr-1"></i> Tạo bình chọn
+                    </button>
+                </div>
+                <div id="groupVotesList" class="grid grid-cols-1 gap-4">
+                    <div class="text-center py-10 text-gray-500">
+                        <i class="fas fa-poll-h text-4xl mb-3 opacity-50"></i>
+                        <p class="font-semibold">Chưa có cuộc bình chọn nào.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: PHOTOS -->
+            <div id="tabPhotos"
+                class="group-tab-content hidden glass-card rounded-2xl p-6 shadow-sm border border-white/40 dark:border-white/5 animate-fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-images text-blue-500"></i> Ảnh
+                    </h3>
+                </div>
+                <div id="groupPhotosList"></div>
+            </div>
+
+            <!-- TAB: SEARCH -->
+            <div id="tabSearch" class="group-tab-content hidden animate-fade-in">
+                <div id="groupSearchContent"></div>
+            </div>
+
+            <!-- TAB: ADMIN -->
+            <div id="tabAdmin" class="group-tab-content hidden animate-fade-in">
+                <div
+                    class="glass-card rounded-2xl p-2 mb-6 flex gap-2 overflow-x-auto scrollbar-hide border border-white/40 dark:border-white/5">
+                    <button
+                        class="admin-tab active py-2.5 px-6 rounded-xl font-bold transition-all bg-fb-primary text-white shadow-md"
+                        data-target="adminPendingPosts">Duyệt bài</button>
+                    <button
+                        class="admin-tab py-2.5 px-6 rounded-xl font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                        data-target="adminJoinRequests">Yêu cầu tham gia</button>
+                    <button
+                        class="admin-tab py-2.5 px-6 rounded-xl font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all company-only hidden"
+                        data-target="adminDepartments">Phòng ban & Chức vụ</button>
+                    <button
+                        class="admin-tab py-2.5 px-6 rounded-xl font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all company-only hidden"
+                        data-target="adminSuggestions">Hộp thư Góp ý</button>
+                </div>
+
+                <div id="adminPendingPosts" class="admin-tab-content">
+                    <div id="pendingPostsList" class="space-y-4"></div>
+                </div>
+
+                <div id="adminJoinRequests"
+                    class="admin-tab-content hidden glass-card p-6 rounded-2xl border border-white/40 dark:border-white/5 shadow-sm">
+                    <h3 class="font-black text-xl mb-6">Yêu cầu chờ duyệt</h3>
+                    <div id="joinRequestsList" class="divide-y dark:divide-gray-700"></div>
+                </div>
+
+                <div id="adminDepartments"
+                    class="admin-tab-content hidden glass-card p-6 rounded-2xl border border-white/40 dark:border-white/5 shadow-sm">
+                    <div
+                        class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b dark:border-gray-700">
+                        <div>
+                            <h3 class="font-black text-xl">Quản lý Phòng ban</h3>
+                            <p class="text-sm text-gray-500 mt-1">Cấu trúc công ty và chức danh cho thành viên.</p>
+                        </div>
+                        <button id="btnAddDepartment"
+                            class="bg-fb-primary text-white px-5 py-2 rounded-xl font-bold shadow-md hover-scale shrink-0">
+                            <i class="fas fa-plus mr-1"></i> Thêm phòng ban
+                        </button>
+                    </div>
+                    <div id="departmentList" class="space-y-4"></div>
+                </div>
+
+                <div id="adminSuggestions"
+                    class="admin-tab-content hidden glass-card p-6 rounded-2xl border border-white/40 dark:border-white/5 shadow-sm">
+                    <h3 class="font-black text-xl mb-2 flex items-center gap-2">
+                        <i class="fas fa-inbox text-yellow-500"></i> Hộp thư Góp ý (Công ty)
+                    </h3>
+                    <p class="text-sm text-gray-500 mb-6">Các góp ý ẩn danh hoặc công khai từ nhân viên.</p>
+                    <div id="suggestionsList" class="space-y-4"></div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Right Sidebar (About, Votes, Events) -->
+        <aside class="hidden lg:block lg:col-span-4 space-y-6 sticky top-20 h-fit" id="groupSidebar">
+            <!-- About -->
+            <div class="glass-card rounded-2xl shadow-sm p-5 border border-white/40 dark:border-white/5">
+                <h3 class="font-black text-gray-900 dark:text-white mb-3 text-lg">Giới thiệu về nhóm</h3>
+                <p id="groupDescriptionSidebar" class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"></p>
+
+                <div class="mt-5 space-y-3 pt-4 border-t dark:border-gray-700">
+                    <div class="flex gap-3">
+                        <i class="fas fa-globe-asia text-gray-400 mt-1 text-lg w-6 text-center"></i>
+                        <div>
+                            <p class="font-bold text-gray-900 dark:text-gray-100 text-sm">Riêng tư</p>
+                            <p class="text-xs text-gray-500">Chỉ thành viên mới nhìn thấy ai trong nhóm và những gì họ
+                                đăng.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 hidden" id="companyBadgeSidebar">
+                        <i class="fas fa-building text-fb-primary mt-1 text-lg w-6 text-center"></i>
+                        <div>
+                            <p class="font-bold text-fb-primary text-sm">Nhóm Công Ty</p>
+                            <p class="text-xs text-gray-500">Hỗ trợ các tính năng công việc doanh nghiệp.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <i class="fas fa-history text-gray-400 mt-1 text-lg w-6 text-center"></i>
+                        <div>
+                            <p class="font-bold text-gray-900 dark:text-gray-100 text-sm">Lịch sử</p>
+                            <p class="text-xs text-gray-500">Nhóm được tạo gần đây.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Suggestion Box (Company Only) -->
+            <div class="glass-card rounded-2xl shadow-sm p-5 border border-yellow-200 dark:border-yellow-900/30 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/10 dark:to-orange-900/10 hidden"
+                id="companySuggestionBox">
+                <div class="flex items-center gap-3 mb-3">
+                    <div
+                        class="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 flex items-center justify-center text-lg">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h3 class="font-black text-yellow-800 dark:text-yellow-500 text-lg">Hộp thư góp ý</h3>
+                </div>
+                <p class="text-sm text-yellow-700 dark:text-yellow-400/80 mb-4 leading-relaxed font-medium">Bạn có ý
+                    tưởng hoặc phàn nàn? Gửi góp ý ẩn danh trực tiếp đến Ban quản trị công ty.</p>
+                <button id="btnOpenSuggestionModal"
+                    class="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-yellow-500/30 transition-all active:scale-95">Gửi
+                    góp ý ngay</button>
+            </div>
+
+            <!-- Active Votes (Sidebar Preview) -->
+            <div class="glass-card rounded-2xl shadow-sm p-5 border border-white/40 dark:border-white/5 hidden"
+                id="sidebarActiveVotes">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-black text-gray-900 dark:text-white text-lg">Bình chọn đang mở</h3>
+                    <button class="text-fb-primary text-sm font-bold hover:underline"
+                        onclick="document.querySelector('[data-tab=votes]').click()">Xem tất cả</button>
+                </div>
+                <div id="sidebarVoteList" class="space-y-3"></div>
+            </div>
+        </aside>
+    </div>
 </div>
 
 <script>

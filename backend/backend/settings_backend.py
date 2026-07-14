@@ -63,6 +63,7 @@ CACHEOPS = {
     'api.postshare':{'ops': 'all', 'timeout': 60 * 20},
     'api.report':{'ops':'all', 'timeout': 60*10},
     'api.supportticket':{'ops':'all', 'timeout': 60*10},
+    'api.groupsuggestion':{'ops':'all', 'timeout': 60*10},
     #  Cache ngắn — realtime
     'api.conversation': {'ops': 'all', 'timeout': 60 * 5},
     'api.conversationMember': {'ops': 'all', 'timeout': 60 * 5},
