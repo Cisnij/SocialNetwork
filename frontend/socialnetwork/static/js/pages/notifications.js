@@ -57,7 +57,12 @@ function buildCard(n) {
   const msg = document.createElement("p");
   msg.className = "text-sm text-gray-800 dark:text-fb-text leading-snug";
   const actorName = n.actor || fullName(n.actor_profile) || "Ai đó";
-  msg.innerHTML = `<strong class="text-fb-primary">${actorName}</strong> ${n.message || n.type || ""}`;
+  let restMessage = (n.message || n.type || "");
+  // Remove actorName from the start of restMessage if it's there to avoid duplication
+  if (restMessage.startsWith(actorName)) {
+    restMessage = restMessage.slice(actorName.length).trim();
+  }
+  msg.innerHTML = `<strong class="text-fb-primary">${actorName}</strong> ${restMessage}`;
   const time = document.createElement("p");
   time.className = "text-xs text-gray-400 dark:text-fb-muted mt-1";
   time.textContent = formatDate(n.created_at);

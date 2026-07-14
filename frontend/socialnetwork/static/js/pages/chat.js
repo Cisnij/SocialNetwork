@@ -112,17 +112,6 @@ let cancelReplyBtn;
 
 let chatHeaderActions;
 
-// ========= SEARCH STATE =========
-let chatSearchBtn;
-let chatSearchBar;
-let chatSearchInput;
-let closeChatSearch;
-let isSearchMode = false;
-let searchResults = [];
-let searchNext = null;
-
-
-
 function $(id) { return document.getElementById(id); }
 
 
@@ -1910,7 +1899,7 @@ function appendMessage(m, scroll = true, prepend = false) {
 
   const messageCol = document.createElement("div");
 
-  messageCol.className = "flex flex-col max-w-[75%]";
+  messageCol.className = "flex flex-col max-w-[70%]";
 
   bubble.classList.remove("max-w-[75%]");
 
@@ -1931,44 +1920,62 @@ function appendMessage(m, scroll = true, prepend = false) {
   if (!content && !(m.attachments || []).length && !mine) bubble.appendChild(text);
 
 
+  let moreWrap = null;
 
   if (mine) {
 
-    const actions = document.createElement("div");
+    moreWrap = document.createElement("div");
 
-    actions.className = "flex gap-2 mt-1 justify-end";
+    moreWrap.className = "relative shrink-0 self-end opacity-0 group-hover:opacity-100 transition-opacity duration-200";
 
-    const unsend = document.createElement("button");
+    const moreBtn = document.createElement("button");
 
-    unsend.type = "button";
+    moreBtn.type = "button";
 
-    unsend.textContent = "Thu hồi";
+    moreBtn.textContent = "⋯";
 
-    unsend.className = "px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition text-[11px] font-semibold";
+    moreBtn.className = "px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition text-sm font-semibold leading-none";
 
-    unsend.onclick = async () => { await authFetch(API.unsendMessage(m.id), { method: "DELETE" }); wrap.remove(); };
+    moreBtn.onclick = (e) => { e.stopPropagation(); menu.classList.toggle("hidden"); };
 
-    const edit = document.createElement("button");
+    const menu = document.createElement("div");
 
-    edit.type = "button";
-    edit.textContent = "Sửa";
-    edit.className = "px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition text-[11px] font-semibold";
+    menu.className = "hidden absolute left-0 bottom-full mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 min-w-[120px] z-30";
 
-    edit.onclick = () => showInlineEdit(m.id, text, bubble, edit);
+    menu.addEventListener("click", (e) => e.stopPropagation());
 
-    actions.append(unsend, edit);
+    const unsendItem = document.createElement("button");
 
-    bubble.appendChild(actions);
+    unsendItem.type = "button";
+
+    unsendItem.textContent = "Thu hồi";
+
+    unsendItem.className = "w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors";
+
+    unsendItem.onclick = async () => { await authFetch(API.unsendMessage(m.id), { method: "DELETE" }); wrap.remove(); menu.classList.add("hidden"); };
+
+    const editItem = document.createElement("button");
+
+    editItem.type = "button";
+
+    editItem.textContent = "Sửa";
+
+    editItem.className = "w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors";
+
+    editItem.onclick = () => { menu.classList.add("hidden"); showInlineEdit(m.id, text, bubble, editItem); };
+
+    menu.append(unsendItem, editItem);
+
+    moreWrap.append(moreBtn, menu);
 
   }
-
 
 
   const timeHoverEl = document.createElement("span");
   timeHoverEl.className = "text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap self-center mx-1";
   timeHoverEl.textContent = m.created_at ? formatMsgTime(m.created_at) : "";
 
-  if (mine) { wrap.append(timeHoverEl, replyBtn, messageCol); } else {
+  if (mine) { wrap.append(timeHoverEl, replyBtn, moreWrap, messageCol); } else {
     // --- Avatar column for received messages ---
     const avatarWrap = document.createElement("div");
     avatarWrap.className = "msg-sender-avatar shrink-0 w-8 h-8 rounded-full overflow-hidden self-end mb-1";

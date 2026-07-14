@@ -7,6 +7,7 @@ const HEAL_SESSION_KEY = "fb_darkmode_heal_attempted";
 
 let bootstrapPromise = null;
 let saveInFlight = null;
+let currentSetting = null;
 
 export function parseDarkmode(value) {
   return value === true || value === 1 || value === "1" || value === "true";
@@ -67,6 +68,11 @@ export function bootstrapTheme() {
       const setting = await res.json();
       if (setting?.id != null) {
         localStorage.setItem(SETTING_ID_KEY, String(setting.id));
+      }
+
+      currentSetting = setting;
+      if (typeof window !== "undefined") {
+        window.setting = setting;
       }
 
       const apiDark = parseDarkmode(setting?.darkmode);
@@ -142,4 +148,15 @@ export async function saveDarkMode(on) {
 
 export function getSettingId() {
   return localStorage.getItem(SETTING_ID_KEY);
+}
+
+export function getCurrentSetting() {
+  return currentSetting;
+}
+
+export function updateCurrentSetting(newSetting) {
+  currentSetting = newSetting;
+  if (typeof window !== "undefined") {
+    window.setting = newSetting;
+  }
 }

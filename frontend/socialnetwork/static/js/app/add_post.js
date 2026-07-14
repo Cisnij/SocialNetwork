@@ -1,10 +1,24 @@
 import { authFetch } from "../authenticate/auth.js";
 import { POST_ENDPOINTS, API } from "../shared/config.js";
 import { showToast } from "../shared/toast.js";
+import { bootstrapTheme, getCurrentSetting } from "../shared/theme.js";
 
 let selectedFiles = [];
+let defaultPostPrivacy = "public";
 
 console.log("add_post.js loaded");
+
+// Helper function to get default privacy
+function getDefaultPrivacy() {
+  return window.setting?.default_post_privacy || getCurrentSetting()?.default_post_privacy || "public";
+}
+
+// Initialize default privacy
+async function initDefaultPrivacy() {
+  await bootstrapTheme();
+  defaultPostPrivacy = getDefaultPrivacy();
+}
+initDefaultPrivacy();
 
 // Xử lý modal trong base.html
 function setupBaseModal() {
@@ -42,6 +56,12 @@ function setupBaseModal() {
           imageSection.after(privacyDiv);
         }
       }
+      // Set initial value of privacy selector
+      const postPrivacy = document.getElementById("postPrivacy");
+      if (postPrivacy) {
+        const privacy = getDefaultPrivacy();
+        postPrivacy.value = privacy;
+      }
     };
 
     openBtn.addEventListener("click", () => {
@@ -67,7 +87,7 @@ function setupBaseModal() {
       console.log("Base modal submit clicked");
       const title = document.getElementById("postTitle")?.value.trim();
       const files = imageInput?.files || [];
-      const privacy = document.getElementById("postPrivacy")?.value || "public";
+      const privacy = document.getElementById("postPrivacy")?.value || getDefaultPrivacy();
 
       if (!title && selectedFiles.length === 0) {
         showToast("⚠️ Vui lòng nhập tiêu đề hoặc thêm ảnh", "red");
@@ -164,6 +184,33 @@ function setupAddPostPage() {
     return;
   }
 
+  // Inject privacy selector UI if not exists
+  const injectPrivacySelector = () => {
+    if (!document.getElementById("postPrivacy")) {
+      const contentSection = document.querySelector('#postContent')?.parentElement;
+      if (contentSection) {
+        const privacyDiv = document.createElement("div");
+        privacyDiv.className = "border dark:border-gray-600 rounded-lg p-3 mb-4";
+        privacyDiv.innerHTML = `
+          <label class="text-sm font-medium text-gray-600 dark:text-gray-400">Quyền riêng tư</label>
+          <select id="postPrivacy" class="mt-2 w-full p-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 focus:outline-none">
+            <option value="public">🌍 Công khai</option>
+            <option value="friends">👥 Bạn bè</option>
+            <option value="private">🔒 Chỉ mình tôi</option>
+          </select>
+        `;
+        contentSection.before(privacyDiv);
+      }
+    }
+    // Set initial value of privacy selector
+    const postPrivacy = document.getElementById("postPrivacy");
+    if (postPrivacy) {
+      const privacy = getDefaultPrivacy();
+      postPrivacy.value = privacy;
+    }
+  };
+  injectPrivacySelector();
+
   // Load user avatar
   async function loadUserInfo() {
     try {
@@ -229,7 +276,7 @@ function setupAddPostPage() {
     e.stopPropagation();
 
     const content = postContent?.value.trim();
-    const privacy = document.getElementById("postPrivacy")?.value || "public";
+    const privacy = document.getElementById("postPrivacy")?.value || getDefaultPrivacy();
 
     console.log("Form data:", { content, privacy, selectedFilesCount: selectedFiles.length });
 

@@ -34,6 +34,38 @@ async function refreshBadge() {
   }
 }
 
+// ======= NOTIFICATION SOUND =======
+let audioCtx = null;
+
+function ensureAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playNotifSound() {
+  try {
+    const ctx = ensureAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.25);
+  } catch (_) { }
+}
+
+// Resume audio context on first user interaction
+document.addEventListener("click", () => { if (audioCtx && audioCtx.state === "suspended") audioCtx.resume(); }, { once: true });
+
 // ======= NOTIFICATION POPUP =======
 let notifPopupTimeout = null;
 let lastNotifCount = 0;
@@ -78,6 +110,8 @@ function showNotifPopup(notif) {
   const subText = notif.message || NOTIF_TYPE_LABELS[notif.type] || "Thông báo mới";
   const subEl = document.getElementById("notifPopupSub");
   if (subEl) subEl.textContent = subText;
+
+  playNotifSound();
 
   popup.classList.remove("hidden");
 
@@ -472,6 +506,8 @@ function showChatMsgPopup(data) {
   if (linkEl && data.conversation_id) {
     linkEl.href = `/chat/?conv=${data.conversation_id}`;
   }
+
+  playNotifSound();
 
   popup.classList.remove("hidden");
 

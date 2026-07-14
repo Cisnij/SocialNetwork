@@ -2,7 +2,7 @@ import { authFetch } from "../authenticate/auth.js";
 import { API, buildListUrl, withPageSize } from "../shared/config.js";
 import { showToast } from "../shared/toast.js";
 import { confirmDialog, passwordPrompt } from "../shared/confirm.js";
-import { saveDarkMode, isDarkMode, bootstrapTheme, parseDarkmode } from "../shared/theme.js";
+import { saveDarkMode, isDarkMode, bootstrapTheme, parseDarkmode, updateCurrentSetting } from "../shared/theme.js";
 import { createUserRow, showEmpty, btn } from "../shared/ui.js";
 import {
   invalidateUserProfileCache,
@@ -50,9 +50,46 @@ async function init() {
   setupEmailAdd();
   setupDeleteAccount();
   loadActivity(true);
+  setupDefaultPostPrivacy();
 
   // Inject private profile UI
   setupPrivateProfileUI();
+}
+
+function setupDefaultPostPrivacy() {
+  const selectEl = document.getElementById("defaultPostPrivacySelect");
+  if (!selectEl || !setting) return;
+
+  // Load initial value
+  if (setting.default_post_privacy) {
+    selectEl.value = setting.default_post_privacy;
+  }
+
+  // Setup change listener
+  selectEl.addEventListener("change", async (e) => {
+    const oldValue = setting.default_post_privacy;
+    try {
+      const patchRes = await authFetch(API.setting(setting.id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ default_post_privacy: e.target.value }),
+      });
+
+      if (!patchRes.ok) throw new Error("Failed to save setting");
+      
+      // Update local setting variable and global state
+      setting = await patchRes.json();
+      updateCurrentSetting(setting);
+      showToast("Đã lưu cài đặt riêng tư mặc định", "green");
+    } catch (err) {
+      console.error("Save default post privacy error:", err);
+      // Revert to old value if failed
+      if (oldValue) {
+        selectEl.value = oldValue;
+      }
+      showToast("Không thể lưu cài đặt", "red");
+    }
+  });
 }
 
 async function loadProfileForm() {
