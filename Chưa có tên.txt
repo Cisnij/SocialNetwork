@@ -12,7 +12,7 @@ chưa xong
     Translation API — dịch tin nhắn/post cho công ty đa quốc gia
 
 -xem tất cả các api được gọi ở 1 trang xem có thừa, test đủ các api và fe đã dùng đủ chức năng chưa và đúng logic chưa
-
+dj_rest_auth_mfa
 chat nhóm:
 	reaction cho message
 	thêm vào setting cho chat

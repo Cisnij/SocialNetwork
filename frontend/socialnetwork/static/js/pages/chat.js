@@ -58,6 +58,18 @@ let typingStopTimeout = null;
 
 let typingSent = false;
 
+// ========= MESSAGE SEARCH STATE =========
+
+let isSearching = false;
+let currentSearchQuery = "";
+let originalMessagesContent = null;
+let searchDebounceTimer = null;
+
+let chatSearchBtn;
+let chatSearchBar;
+let chatSearchInput;
+let closeChatSearch;
+
 
 
 
@@ -917,6 +929,9 @@ async function openConversation(conv, titleName) {
 
   if (!messagesEl) return;
 
+  // Close message search when opening a new conversation
+  closeMessageSearch();
+
   activeConvId = conv.id;
 
   activeConvMeta = conv;
@@ -1098,6 +1113,15 @@ function updateChatHeaderActions(conv) {
 
   chatHeaderActions.replaceChildren();
 
+
+  // Search button
+  const searchBtn = document.createElement("button");
+  searchBtn.type = "button";
+  searchBtn.className = "p-2 rounded-full hover:bg-fb-secondary dark:hover:bg-white/10 transition-colors";
+  searchBtn.title = "Tìm kiếm tin nhắn";
+  searchBtn.innerHTML = `<svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>`;
+  searchBtn.onclick = () => toggleChatSearch();
+  chatHeaderActions.appendChild(searchBtn);
 
 
   // Members & Files button for all chats
@@ -3741,6 +3765,14 @@ function bindEvents() {
 
   });
 
+  // ========= MESSAGE SEARCH EVENT LISTENERS =========
+  chatSearchBtn?.addEventListener("click", toggleChatSearch);
+  closeChatSearch?.addEventListener("click", closeMessageSearch);
+  chatSearchInput?.addEventListener("input", (e) => {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => searchMessages(e.target.value), 300);
+  });
+
 
 
   $("showHiddenChats")?.addEventListener("click", async () => {
@@ -4016,6 +4048,10 @@ async function initChat() {
   cancelReplyBtn = $("cancelReplyBtn");
 
   chatHeaderActions = $("chatHeaderActions");
+  chatSearchBtn = $("chatSearchBtn");
+  chatSearchBar = $("chatSearchBar");
+  chatSearchInput = $("chatSearchInput");
+  closeChatSearch = $("closeChatSearch");
 
 
 
@@ -4079,6 +4115,90 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 else initChat();
 
 
+
+// ==================== MESSAGE SEARCH ====================
+
+function toggleChatSearch() {
+  if (!chatSearchBar) return;
+  if (!activeConvId) {
+    showToast("Chọn hội thoại trước", "red");
+    return;
+  }
+  isSearching = !isSearching;
+  if (isSearching) {
+    chatSearchBar.classList.remove("hidden");
+    chatSearchInput.focus();
+    // Save original messages content if not already saved
+    if (!originalMessagesContent && messagesEl) {
+      originalMessagesContent = Array.from(messagesEl.childNodes);
+    }
+  } else {
+    closeMessageSearch();
+  }
+}
+
+function closeMessageSearch() {
+  if (!chatSearchBar || !messagesEl) return;
+  isSearching = false;
+  currentSearchQuery = "";
+  chatSearchBar.classList.add("hidden");
+  if (chatSearchInput) chatSearchInput.value = "";
+  // Restore original messages
+  if (originalMessagesContent) {
+    messagesEl.replaceChildren(...originalMessagesContent);
+    originalMessagesContent = null;
+  }
+}
+
+function renderMessageSearchState(message, tone = "muted") {
+  if (!messagesEl) return;
+  const state = document.createElement("div");
+  const toneClass =
+    tone === "error"
+      ? "text-red-500 dark:text-red-400"
+      : "text-gray-500 dark:text-slate-400";
+  state.className = `h-full flex items-center justify-center text-sm font-medium ${toneClass}`;
+  state.textContent = message;
+  messagesEl.replaceChildren(state);
+}
+
+async function searchMessages(query) {
+  currentSearchQuery = query.trim();
+  if (!activeConvId || !messagesEl) return;
+  
+  // If query is empty, show all messages (restore if we have saved)
+  if (!currentSearchQuery) {
+    if (originalMessagesContent) {
+      messagesEl.replaceChildren(...originalMessagesContent);
+    }
+    return;
+  }
+
+  // Fetch messages with search query
+  try {
+    renderMessageSearchState(`Đang tìm "${currentSearchQuery}"...`);
+
+    // Note: the API already supports search via search_fields = ['content']
+    // So we can just add &search=query to the messages endpoint!
+    const url = `${API.messages(activeConvId)}?search=${encodeURIComponent(currentSearchQuery)}&page_size=100`;
+    const res = await authFetch(url);
+    if (!res.ok) throw new Error(`search failed ${res.status}`);
+    const data = await res.json();
+    const results = [...(data.results || [])].reverse();
+
+    // Clear messages and show only matching ones
+    messagesEl.replaceChildren();
+    if (!results.length) {
+      renderMessageSearchState(`Không tìm thấy tin nhắn chứa "${currentSearchQuery}"`);
+      return;
+    }
+    results.forEach(m => appendMessage(m, false, false));
+  } catch (err) {
+    console.error("Search messages failed:", err);
+    renderMessageSearchState("Không thể tìm kiếm tin nhắn", "error");
+    showToast("Tìm kiếm thất bại", "red");
+  }
+}
 
 function initResizer() {
 

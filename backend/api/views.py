@@ -1634,13 +1634,16 @@ class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò c
     permission_classes = [IsAuthenticated]
     pagination_class = LargePagePagination
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
-    search_fields = ['content']  # tìm kiếm trong nội dung tin nhắn
     ordering_fields = ['created_at']
     filterset_fields = ['sender']  # lọc theo người gửi
 
     def get_queryset(self):
         convo_id = self.kwargs.get("pk")
         conv = get_object_or_404(Conversation, id=convo_id)
+        search = self.request.query_params.get("search", "").strip().lower()
+        member= ConversationMember.objects.filter(conversation=conv,user=self.request.user).only('deleted_at_message_id','is_active','left_at').first() # chỉ lấy deleted
+        if not member:  # thêm check này
+            raise PermissionDenied("Bạn không trong nhóm")
         qs=(
             Message.objects
             .filter(conversation_id=convo_id)  # lọc theo cuộc trò chuyên
@@ -1648,13 +1651,17 @@ class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò c
             .prefetch_related("attachments")  # lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments n-n)
             .order_by("-created_at")
         )
-        member= ConversationMember.objects.filter(conversation=conv,user=self.request.user).only('deleted_at_message_id','is_active','left_at').first() # chỉ lấy deleted
-        if not member:  # thêm check này
-            return Response({"error": "Bạn không trong nhóm"}, status=403)
-        if not member.is_active and member.left_at: # user đã rời/bị kick → chỉ hiện tin nhắn trước lúc rời
+        if not member.is_active and member.left_at: # user đã rời/bị kick , chỉ hiện tin nhắn trước lúc rời
             qs = qs.filter(created_at__lt=member.left_at)
         if member and member.deleted_at_message_id is not None: # nếu là thành viên và đã xóa
             qs= qs.filter(id__gt=member.deleted_at_message_id) # lấy tin nhắn có thơi gian lớn hơn delete
+        if search:
+            ids = [
+                msg.id
+                for msg in qs
+                if msg.content and search in msg.content.lower()
+            ]
+            qs = qs.filter(id__in=ids)
         return qs
 
 
