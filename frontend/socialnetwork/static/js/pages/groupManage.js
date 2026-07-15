@@ -55,6 +55,80 @@ function confirmAction(msg) {
     });
 }
 
+function openFormModal({ title, bodyHtml, validate, onGetValues, okText = "Lưu" }) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById("formModal");
+        if (!modal) {
+            resolve(null);
+            return;
+        }
+        document.getElementById("formModalTitle").textContent = title;
+        document.getElementById("formModalOk").textContent = okText;
+        const body = document.getElementById("formModalBody");
+        const errorEl = document.getElementById("formModalError");
+        body.innerHTML = bodyHtml || "";
+        errorEl.classList.add("hidden");
+
+        modal.classList.remove("hidden");
+
+        const cleanup = (value) => {
+            modal.classList.add("hidden");
+            document.getElementById("formModalOk").onclick = null;
+            document.getElementById("formModalCancel").onclick = null;
+            resolve(value);
+        };
+
+        document.getElementById("formModalOk").onclick = () => {
+            const values = onGetValues ? onGetValues() : {};
+            if (validate) {
+                const err = validate(values);
+                if (err) {
+                    errorEl.textContent = err;
+                    errorEl.classList.remove("hidden");
+                    return;
+                }
+            }
+            cleanup(values);
+        };
+
+        document.getElementById("formModalCancel").onclick = () => cleanup(null);
+
+        setTimeout(() => {
+            const first = body.querySelector("input, textarea, select");
+            if (first) first.focus();
+        }, 100);
+    });
+}
+
+function showFormModal({ title, fields, validate, okText = "Lưu" }) {
+    const fieldIds = fields.map(f => f.id);
+    const bodyHtml = fields.map(field => {
+        const required = field.required ? " *" : "";
+        let inputHtml = "";
+        if (field.type === "textarea") {
+            inputHtml = `<textarea id="formField_${field.id}" rows="${field.rows || 3}" placeholder="${field.placeholder || ""}" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-fb-primary dark:text-[#e4e6eb]">${field.value || ""}</textarea>`;
+        } else {
+            inputHtml = `<input type="${field.type || "text"}" id="formField_${field.id}" value="${field.value || ""}" placeholder="${field.placeholder || ""}" class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-fb-primary dark:text-[#e4e6eb]">`;
+        }
+        return `<div class="mb-3"><label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">${field.label}${required}</label>${inputHtml}</div>`;
+    }).join("");
+
+    return openFormModal({
+        title,
+        okText,
+        validate,
+        bodyHtml,
+        onGetValues: () => {
+            const values = {};
+            fieldIds.forEach(id => {
+                const el = document.getElementById("formField_" + id);
+                values[id] = el ? el.value.trim() : "";
+            });
+            return values;
+        },
+    });
+}
+
 // ============ INIT ADMIN PANEL ============
 export function initAdminPanel(groupId, isCompany) {
     const adminTabBtn = document.getElementById("navAdmin");

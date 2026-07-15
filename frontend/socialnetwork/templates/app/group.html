@@ -405,6 +405,21 @@
     window.CURRENT_GROUP_ID = "{{ group_id }}";
 </script>
 
+    <!-- Form Modal -->
+    <div id="formModal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center z-[70] p-4">
+        <div class="glass-card rounded-xl p-5 max-w-lg w-full shadow-xl animate-scale-in">
+            <h3 id="formModalTitle" class="font-bold text-lg mb-4"></h3>
+            <div id="formModalBody"></div>
+            <div id="formModalError" class="text-sm text-red-500 mb-3 hidden"></div>
+            <div class="flex gap-2 justify-end">
+                <button id="formModalCancel" type="button"
+                    class="px-4 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb] hover-lift">Hủy</button>
+                <button id="formModalOk" type="button"
+                    class="px-4 py-2 rounded-lg bg-fb-primary dark:bg-[#1877f2] text-white hover-lift ripple">Lưu</button>
+            </div>
+        </div>
+    </div>
+
 {% endblock %}
 {% block post_scripts %}
 <script type="module" src="{% static 'js/app/add_post.js' %}"></script>

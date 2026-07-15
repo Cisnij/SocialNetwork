@@ -1063,7 +1063,6 @@ def log_create_group_department(sender,created,instance,**kwargs):
             'target_type': 'Group',
             'target_id': instance.group_id,
             'verb': verb,
-            'joined_at': instance.joined_at.isoformat(),
         }, ensure_ascii=False)
     )
 
@@ -1077,7 +1076,6 @@ def log_delete_group_department(sender, instance, **kwargs):
             'target_type': 'Group',
             'target_id': instance.group_id,
             'verb': 'delete department',
-            'joined_at': instance.joined_at.isoformat(),
         }, ensure_ascii=False)
     )
 
@@ -1091,7 +1089,6 @@ def log_create_group_role(sender,created,instance,**kwargs):
             'target_type': 'Group',
             'target_id': instance.group_id,
             'verb': verb,
-            'joined_at': instance.joined_at.isoformat(),
         }, ensure_ascii=False)
     )
 
@@ -1105,7 +1102,6 @@ def log_delete_group_role(sender, instance, **kwargs):
             'target_type': 'Group',
             'target_id': instance.group_id,
             'verb': 'delete role',
-            'joined_at': instance.joined_at.isoformat(),
         }, ensure_ascii=False)
     )
 
