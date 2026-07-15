@@ -2035,6 +2035,7 @@ function appendMessage(m, scroll = true, prepend = false) {
 
   if (scroll) scrollToBottom(false);
 
+  return wrap;
 }
 
 
@@ -4192,12 +4193,66 @@ async function searchMessages(query) {
       renderMessageSearchState(`Không tìm thấy tin nhắn chứa "${currentSearchQuery}"`);
       return;
     }
-    results.forEach(m => appendMessage(m, false, false));
+    results.forEach(m => {
+      const msgEl = appendMessage(m, false, false);
+      // Make the message clickable
+      if (msgEl) {
+        msgEl.style.cursor = "pointer";
+        msgEl.addEventListener("click", (e) => {
+          // Don't trigger if clicking on interactive elements (buttons, links, images, etc.)
+          const interactiveElements = ['BUTTON', 'A', 'INPUT', 'TEXTAREA', 'VIDEO', 'IMG'];
+          if (interactiveElements.includes(e.target.tagName) || e.target.closest('button') || e.target.closest('a')) {
+            return;
+          }
+          goToMessage(m.id);
+        });
+      }
+    });
   } catch (err) {
     console.error("Search messages failed:", err);
     renderMessageSearchState("Không thể tìm kiếm tin nhắn", "error");
     showToast("Tìm kiếm thất bại", "red");
   }
+}
+
+async function goToMessage(messageId) {
+  // Close search
+  closeMessageSearch();
+  
+  // Load the normal conversation
+  if (!activeConvId || !messagesEl) return;
+
+  // Reset and load messages normally
+  messagesNext = API.messages(activeConvId);
+  await loadMessages(true);
+
+  // Function to check and scroll
+  const checkAndScroll = async () => {
+    let targetEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+    let attempts = 0;
+    const maxAttempts = 10; // Prevent infinite loop
+
+    while (!targetEl && messagesNext && attempts < maxAttempts) {
+      await loadMessages(false); // Load older messages
+      targetEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+      attempts++;
+    }
+
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Highlight effect
+      targetEl.style.transition = "background-color 0.5s ease";
+      targetEl.style.backgroundColor = "rgba(59, 130, 246, 0.2)";
+      setTimeout(() => {
+        targetEl.style.backgroundColor = "";
+      }, 2000);
+    } else {
+      showToast("Không tìm thấy tin nhắn", "red");
+    }
+  };
+
+  // Wait a bit for initial load, then start checking
+  setTimeout(checkAndScroll, 500);
 }
 
 function initResizer() {
