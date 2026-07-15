@@ -1172,6 +1172,7 @@ def notify_event_created(sender,created,instance,**kwargs):
             actor=instance.created_by,
             type='group_event_create',
             object_id=target.id,
+            event_id=instance.id,
             message=f"{instance.created_by.profile.full_name} đã tạo sự kiện '{instance.title}' trong group '{target.name}'"
         )
         for uid in member_ids
@@ -1198,6 +1199,7 @@ def notify_vote_created(sender, instance, created, **kwargs):
             actor=instance.created_by,
             type='group_notification',
             object_id=target.id,
+            vote_id=instance.id,
             message=f"{instance.created_by.profile.full_name} đã tạo cuộc bình chọn '{instance.title}' trong group '{target.name}'"
         )
         for uid in member_ids

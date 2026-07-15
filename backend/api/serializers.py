@@ -388,7 +388,7 @@ class NotificationSerializer(serializers.ModelSerializer):
     actor_avatar=serializers.SerializerMethodField()
     class Meta:
         model = Notification
-        fields = ['id', 'type', 'object_id', 'post_id', 'message', 'is_read', 'created_at','actor_id' ,'actor', 'actor_avatar']
+        fields = ['id', 'type', 'object_id', 'post_id', 'message', 'is_read', 'created_at','actor_id' ,'actor', 'actor_avatar','vote_id','event_id']
 
     def get_actor(self, obj):
         return f"{obj.actor.profile.first_name} {obj.actor.profile.last_name}"
@@ -599,6 +599,7 @@ class GroupSerializer(serializers.ModelSerializer):
     belong_to_department = serializers.SerializerMethodField()
     department_role = serializers.SerializerMethodField()
     join_status = serializers.SerializerMethodField()
+    cover_image = serializers.ImageField(required=False, allow_null=True)
     class Meta:
         model = Group
         fields = '__all__'

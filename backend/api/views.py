@@ -4092,6 +4092,15 @@ class CancelJoinRequestGroup(APIView):
         join_request.delete()
         return Response({"detail":"Bạn đã hủy yêu cầu tham gia"},status = 200)
 
+class MyJoinRequestList(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = GroupJoinRequestSerializer
+    pagination_class = LargePagePagination
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = ['group__name']
+    def get_queryset(self):
+        return GroupJoinRequest.objects.filter(user=self.request.user).select_related('group', 'reviewed_by__profile')
+
 class AllJoinRequest(generics.ListAPIView):
     permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
     serializer_class = GroupJoinRequestSerializer

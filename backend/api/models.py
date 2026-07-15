@@ -440,6 +440,8 @@ class Notification(models.Model):
     type = models.CharField(max_length=25, choices=TYPE_CHOICES)
     object_id = models.PositiveIntegerField(null=True, blank=True)
     post_id = models.PositiveIntegerField(null=True, blank=True)
+    event_id = models.PositiveIntegerField(null=True, blank=True)
+    vote_id = models.PositiveIntegerField(null=True, blank=True)
     message = models.TextField(blank=True)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

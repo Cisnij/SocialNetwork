@@ -225,6 +225,7 @@ urlpatterns = [
     path('api/group/<int:group_id>/department/<int:department_id>/role/<int:role_id>/user-list/',ListUserRoleGroup.as_view()), #list các user trong role
     path('api/group/<int:group_id>/send-request/',SendJoinRequestGroup.as_view()), # gửi lời mời tham gia
     path('api/group/<int:group_id>/cancel-request/',CancelJoinRequestGroup.as_view()), #cancel request
+    path('api/group/my-requests/',MyJoinRequestList.as_view()), # yêu cầu tham gia của tôi
     path('api/group/<int:group_id>/all-request/',AllJoinRequest.as_view()), #tất cả request
     path('api/group/<int:group_id>/request/<int:request_id>/accept/',AcceptJoinRequest.as_view()), #accept requyest
     path('api/group/<int:group_id>/request/<int:request_id>/reject/',RejectJoinRequest.as_view()), #reject request
