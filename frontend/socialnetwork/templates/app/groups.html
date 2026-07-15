@@ -40,6 +40,14 @@
           </div>
           Khám phá
         </a>
+        <a href="#" id="tabMyRequests"
+          class="nav-tab flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold transition hover-lift">
+          <div
+            class="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 flex items-center justify-center icon-wrap">
+            <i class="fas fa-clock"></i>
+          </div>
+          Yêu cầu đã gửi
+        </a>
       </nav>
 
       <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
@@ -63,6 +71,9 @@
       <button id="tabExploreMobile"
         class="nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start">Khám
         phá</button>
+      <button id="tabMyRequestsMobile"
+        class="nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start">Yêu cầu
+        đã gửi</button>
       <button id="btnCreateGroupMobile"
         class="px-5 py-2.5 bg-fb-primary/10 text-fb-primary rounded-full font-bold whitespace-nowrap snap-start flex items-center gap-2"><i
           class="fas fa-plus"></i> Tạo nhóm mới</button>
@@ -103,6 +114,9 @@
       <div id="groupListContainer" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 hidden">
         <!-- Group cards rendered by JS -->
       </div>
+      <div id="myRequestsContainer" class="hidden space-y-4">
+        <!-- Join requests rendered by JS -->
+      </div>
     </div>
   </main>
 </div>
@@ -137,14 +151,16 @@
         </div>
 
         <div class="space-y-1">
-          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Mô tả nhóm</label>
-          <textarea name="description" rows="3" placeholder="Mô tả mục đích của nhóm..."
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Mô tả nhóm <span
+              class="text-red-500">*</span></label>
+          <textarea name="description" rows="3" placeholder="Mô tả mục đích của nhóm..." required
             class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 focus:ring-2 focus:ring-fb-primary focus:outline-none transition-all input-glow text-sm resize-none"></textarea>
         </div>
 
         <div class="space-y-1">
-          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Nội quy nhóm</label>
-          <textarea name="rules" rows="2" placeholder="Nội quy dành cho thành viên..."
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Nội quy nhóm <span
+              class="text-red-500">*</span></label>
+          <textarea name="rules" rows="2" placeholder="Nội quy dành cho thành viên..." required
             class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 focus:ring-2 focus:ring-fb-primary focus:outline-none transition-all input-glow text-sm resize-none"></textarea>
         </div>
 
@@ -165,15 +181,16 @@
         </div>
 
         <div class="space-y-2">
-          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Ảnh bìa</label>
+          <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">Ảnh bìa <span
+              class="text-red-500">*</span></label>
           <div
             class="relative w-full h-40 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition overflow-hidden"
             id="uploadCoverBox">
-            <input type="file" id="groupAvatarInput" accept="image/*"
+            <input type="file" id="groupAvatarInput" accept="image/*" required
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
             <div id="uploadCoverIcon" class="text-center">
               <i class="fas fa-image text-3xl text-gray-400 mb-2"></i>
-              <p class="text-sm text-gray-500 font-semibold">Tải ảnh lên (Tùy chọn)</p>
+              <p class="text-sm text-gray-500 font-semibold">Tải ảnh lên</p>
             </div>
             <img src="" id="groupAvatarPreview" class="absolute inset-0 w-full h-full object-cover hidden z-0">
             <div id="removeCoverBtn"

@@ -229,11 +229,18 @@ export const API = {
   groupUserGroups: () => `${API_BASE_URL}/api/group/user/group/`,
   groupExplore: () => `${API_BASE_URL}/api/group/explore/`,
 
-  groupMembers: (id) => `${API_BASE_URL}/api/group/${id}/user-list/`,
+  groupMembers: (id, excludeRole) => {
+    let url = `${API_BASE_URL}/api/group/${id}/user-list/`;
+    if (excludeRole) {
+      url += `?exclude_role=${encodeURIComponent(excludeRole)}`;
+    }
+    return url;
+  },
   groupAdmins: (id) => `${API_BASE_URL}/api/group/${id}/admin/`,
 
   groupSendRequest: (id) => `${API_BASE_URL}/api/group/${id}/send-request/`,
   groupCancelRequest: (id) => `${API_BASE_URL}/api/group/${id}/cancel-request/`,
+  groupMyRequests: () => `${API_BASE_URL}/api/group/my-requests/`,
   groupAllRequests: (id) => `${API_BASE_URL}/api/group/${id}/all-request/`,
   groupAcceptRequest: (id, rid) => `${API_BASE_URL}/api/group/${id}/request/${rid}/accept/`,
   groupRejectRequest: (id, rid) => `${API_BASE_URL}/api/group/${id}/request/${rid}/reject/`,

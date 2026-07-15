@@ -47,6 +47,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     const activeTab = document.querySelector('.nav-tab.bg-fb-primary\\/10');
                     if (activeTab && activeTab.id === 'tabExplore') {
                         loadExploreGroups();
+                    } else if (activeTab && activeTab.id === 'tabMyRequests') {
+                        loadMyJoinRequests();
                     } else {
                         loadMyGroups();
                     }
@@ -58,17 +60,22 @@ document.addEventListener("DOMContentLoaded", () => {
     // Tab Navigation
     const tabMyGroups = document.getElementById("tabMyGroups");
     const tabExplore = document.getElementById("tabExplore");
+    const tabMyRequests = document.getElementById("tabMyRequests");
     const tabMyGroupsMobile = document.getElementById("tabMyGroupsMobile");
     const tabExploreMobile = document.getElementById("tabExploreMobile");
+    const tabMyRequestsMobile = document.getElementById("tabMyRequestsMobile");
 
-    function setActiveTab(isExplore) {
+    function setActiveTab(tab) {
+        const isExplore = tab === 'explore';
+        const isMyRequests = tab === 'myRequests';
+
         // Desktop
-        if (tabMyGroups) tabMyGroups.className = isExplore
-            ? "nav-tab flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold transition hover-lift"
-            : "nav-tab flex items-center gap-3 p-3 rounded-xl bg-fb-primary/10 text-fb-primary font-bold shadow-sm transition";
-        if (tabMyGroups) tabMyGroups.querySelector('.icon-wrap').className = isExplore
-            ? "w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 flex items-center justify-center icon-wrap"
-            : "w-9 h-9 rounded-full bg-fb-primary text-white flex items-center justify-center shadow-md icon-wrap";
+        if (tabMyGroups) tabMyGroups.className = !isExplore && !isMyRequests
+            ? "nav-tab flex items-center gap-3 p-3 rounded-xl bg-fb-primary/10 text-fb-primary font-bold shadow-sm transition"
+            : "nav-tab flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold transition hover-lift";
+        if (tabMyGroups) tabMyGroups.querySelector('.icon-wrap').className = !isExplore && !isMyRequests
+            ? "w-9 h-9 rounded-full bg-fb-primary text-white flex items-center justify-center shadow-md icon-wrap"
+            : "w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 flex items-center justify-center icon-wrap";
 
         if (tabExplore) tabExplore.className = isExplore
             ? "nav-tab flex items-center gap-3 p-3 rounded-xl bg-fb-primary/10 text-fb-primary font-bold shadow-sm transition"
@@ -77,22 +84,35 @@ document.addEventListener("DOMContentLoaded", () => {
             ? "w-9 h-9 rounded-full bg-fb-primary text-white flex items-center justify-center shadow-md icon-wrap"
             : "w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 flex items-center justify-center icon-wrap";
 
+        if (tabMyRequests) tabMyRequests.className = isMyRequests
+            ? "nav-tab flex items-center gap-3 p-3 rounded-xl bg-fb-primary/10 text-fb-primary font-bold shadow-sm transition"
+            : "nav-tab flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold transition hover-lift";
+        if (tabMyRequests) tabMyRequests.querySelector('.icon-wrap').className = isMyRequests
+            ? "w-9 h-9 rounded-full bg-fb-primary text-white flex items-center justify-center shadow-md icon-wrap"
+            : "w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 flex items-center justify-center icon-wrap";
+
         // Mobile
-        if (tabMyGroupsMobile) tabMyGroupsMobile.className = isExplore
-            ? "nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start"
-            : "nav-tab-mobile px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-bold whitespace-nowrap shadow-md snap-start";
+        if (tabMyGroupsMobile) tabMyGroupsMobile.className = !isExplore && !isMyRequests
+            ? "nav-tab-mobile px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-bold whitespace-nowrap shadow-md snap-start"
+            : "nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start";
         if (tabExploreMobile) tabExploreMobile.className = isExplore
+            ? "nav-tab-mobile px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-bold whitespace-nowrap shadow-md snap-start"
+            : "nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start";
+        if (tabMyRequestsMobile) tabMyRequestsMobile.className = isMyRequests
             ? "nav-tab-mobile px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-bold whitespace-nowrap shadow-md snap-start"
             : "nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start";
 
         if (isExplore) loadExploreGroups();
+        else if (isMyRequests) loadMyJoinRequests();
         else loadMyGroups();
     }
 
-    if (tabMyGroups) tabMyGroups.addEventListener("click", (e) => { e.preventDefault(); setActiveTab(false); });
-    if (tabExplore) tabExplore.addEventListener("click", (e) => { e.preventDefault(); setActiveTab(true); });
-    if (tabMyGroupsMobile) tabMyGroupsMobile.addEventListener("click", () => setActiveTab(false));
-    if (tabExploreMobile) tabExploreMobile.addEventListener("click", () => setActiveTab(true));
+    if (tabMyGroups) tabMyGroups.addEventListener("click", (e) => { e.preventDefault(); setActiveTab('myGroups'); });
+    if (tabExplore) tabExplore.addEventListener("click", (e) => { e.preventDefault(); setActiveTab('explore'); });
+    if (tabMyRequests) tabMyRequests.addEventListener("click", (e) => { e.preventDefault(); setActiveTab('myRequests'); });
+    if (tabMyGroupsMobile) tabMyGroupsMobile.addEventListener("click", () => setActiveTab('myGroups'));
+    if (tabExploreMobile) tabExploreMobile.addEventListener("click", () => setActiveTab('explore'));
+    if (tabMyRequestsMobile) tabMyRequestsMobile.addEventListener("click", () => setActiveTab('myRequests'));
 
     // Modal refs
     const btnCreateGroup = document.getElementById("btnCreateGroup");
@@ -105,6 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const groupAvatarPreview = document.getElementById("groupAvatarPreview");
     const uploadCoverIcon = document.getElementById("uploadCoverIcon");
     const removeCoverBtn = document.getElementById("removeCoverBtn");
+    const uploadCoverBox = document.getElementById("uploadCoverBox");
 
     function openModal() {
         createGroupModal.classList.remove("hidden");
@@ -181,22 +202,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Submit create group
     submitCreateGroup.addEventListener("click", async () => {
+        // Helper function to highlight invalid field
+        const highlightInvalid = (input) => {
+            input.focus();
+            input.style.outline = '2px solid #ef4444';
+            setTimeout(() => input.style.outline = '', 2000);
+        };
+
         const nameInput = createGroupForm.querySelector('[name="name"]');
         if (!nameInput || !nameInput.value.trim()) {
-            nameInput.focus();
-            nameInput.style.outline = '2px solid #ef4444';
-            setTimeout(() => nameInput.style.outline = '', 2000);
+            highlightInvalid(nameInput);
+            return;
+        }
+
+        const descriptionInput = createGroupForm.querySelector('[name="description"]');
+        if (!descriptionInput || !descriptionInput.value.trim()) {
+            highlightInvalid(descriptionInput);
+            return;
+        }
+
+        const rulesInput = createGroupForm.querySelector('[name="rules"]');
+        if (!rulesInput || !rulesInput.value.trim()) {
+            highlightInvalid(rulesInput);
+            return;
+        }
+
+        if (!groupAvatarInput.files[0]) {
+            showToast("Vui lòng tải ảnh bìa cho nhóm!", "error");
+            uploadCoverBox.style.borderColor = '#ef4444';
+            setTimeout(() => uploadCoverBox.style.borderColor = '', 2000);
             return;
         }
 
         const formData = new FormData();
         formData.append("name", nameInput.value.trim());
-        formData.append("description", createGroupForm.querySelector('[name="description"]')?.value || "");
-        formData.append("rules", createGroupForm.querySelector('[name="rules"]')?.value || "");
+        formData.append("description", descriptionInput.value.trim());
+        formData.append("rules", rulesInput.value.trim());
         formData.append("is_company", createGroupForm.querySelector('[name="is_company"]')?.checked ? "true" : "false");
-        if (groupAvatarInput.files[0]) {
-            formData.append("avatar", groupAvatarInput.files[0]);
-        }
+        formData.append("avatar", groupAvatarInput.files[0]);
 
         submitCreateGroup.disabled = true;
         submitCreateGroup.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang tạo...';
@@ -253,6 +296,81 @@ function loadMyGroups() {
         loading.classList.add("hidden");
         container.classList.remove("hidden");
         container.innerHTML = `<div class="col-span-full text-center text-red-500 py-8"><i class="fas fa-exclamation-triangle mr-2"></i> Lỗi tải danh sách: ${error.message}</div>`;
+    });
+}
+
+// ============ MY JOIN REQUESTS ============
+function loadMyJoinRequests() {
+    const container = document.getElementById("myRequestsContainer");
+    const listContainer = document.getElementById("groupListContainer");
+    const title = document.getElementById("groupListTitle");
+    const loading = document.getElementById("loadingGroups");
+
+    if (!container) return;
+
+    listContainer.classList.add("hidden");
+    container.classList.remove("hidden");
+    title.innerHTML = `<i class="fas fa-clock text-fb-primary"></i> Yêu cầu tham gia của bạn`;
+    loading.classList.remove("hidden");
+    container.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-fb-primary text-2xl"></i></div>`;
+
+    apiGet(API.groupMyRequests(), (data) => {
+        loading.classList.add("hidden");
+        const requests = data.results || (Array.isArray(data) ? data : []);
+
+        if (requests.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-500 py-12 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
+                    <i class="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
+                    <p class="font-bold text-lg">Chưa có yêu cầu nào</p>
+                    <p class="text-sm mt-1">Bạn chưa gửi yêu cầu tham gia nhóm nào.</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = requests.map(req => {
+            const group = req.group || {};
+            const statusMap = {
+                'pending': '<span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full font-bold">Đang chờ</span>',
+                'accepted': '<span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-bold">Đã chấp nhận</span>',
+                'rejected': '<span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold">Đã từ chối</span>'
+            };
+            const statusBadge = statusMap[req.status] || statusMap['pending'];
+            return `
+            <div class="glass-card p-5 rounded-2xl shadow-sm border border-white/40 dark:border-white/5 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <img src="${group.avatar || DEFAULT_AVATAR}" class="w-12 h-12 rounded-xl object-cover border border-gray-200 dark:border-gray-700" onerror="this.src='${DEFAULT_AVATAR}'">
+                    <div>
+                        <h4 class="font-bold text-gray-900 dark:text-white">${group.name || 'Nhóm'}</h4>
+                        <p class="text-xs text-gray-500">Yêu cầu từ ${new Date(req.created_at).toLocaleDateString("vi-VN")}</p>
+                        <div class="mt-1">${statusBadge}</div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <a href="/group/${group.id}/" class="px-4 py-2 bg-fb-primary text-white text-sm font-bold rounded-xl hover:bg-blue-600 transition">Xem nhóm</a>
+                    ${req.status === 'pending' ? `<button class="btn-cancel-my-request px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition" data-id="${req.id}" data-group-id="${group.id}"><i class="fas fa-times"></i></button>` : ''}
+                </div>
+            </div>`;
+        }).join("");
+
+        // Bind cancel buttons
+        container.querySelectorAll(".btn-cancel-my-request").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+                const reqId = e.currentTarget.dataset.id;
+                const groupId = e.currentTarget.dataset.groupId;
+                try {
+                    await apiMutate(API.groupCancelRequest(groupId), "POST");
+                    showToast("Đã hủy yêu cầu!");
+                    loadMyJoinRequests();
+                } catch (err) {
+                    showToast("Lỗi: " + err.message, "error");
+                }
+            });
+        });
+    }).catch(error => {
+        console.error(error);
+        loading.classList.add("hidden");
+        container.innerHTML = `<div class="text-center text-red-500 py-8"><i class="fas fa-exclamation-triangle mr-2"></i> Lỗi tải danh sách</div>`;
     });
 }
 

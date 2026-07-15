@@ -3826,7 +3826,12 @@ class ListUserGroup(generics.ListAPIView):
         group = get_object_or_404(Group,pk=group_id)
         if not self.request.user.has_perm('group.is_member',group):
             raise PermissionDenied("Bạn không phải thành viên group")
-        return GroupMember.objects.filter(group=group,is_active=True).select_related('user__profile','job_role','job_role__department')
+        qs=  GroupMember.objects.filter(group=group,is_active=True).select_related('user__profile','job_role','job_role__department')
+
+        exclude_role = self.request.query_params.get('exclude_role')
+        if exclude_role:
+            qs = qs.exclude(job_role_id=exclude_role)
+        return qs
 
 class AddRoleGroup(generics.CreateAPIView):
     permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
@@ -3889,7 +3894,7 @@ class UpdateDepartmentGroup(generics.RetrieveUpdateDestroyAPIView):
         if not GroupMember.objects.filter(group_id=group_id,user=self.request.user,is_active=True, role__in=['owner', 'admin']).exists():
             raise PermissionDenied("Bạn phải là admin mới có thể thực hiện hành vi")
         return get_object_or_404(
-            GroupDepartment.objects.annotate( #lấy tất cả member có role = ... và tất cả member đó phải is_active, chỉ lấy 1 cột duy nhất
+            GroupDepartment.objects.prefetch_related('department_roles').annotate( #lấy tất cả member có role = ... và tất cả member đó phải is_active, chỉ lấy 1 cột duy nhất
                 member_count=Count(# ví dụ department có 10 role, mà 1 role có 10 user thì là 100 count
                     'department_roles__job_role_members', # có nghĩa lấy tất cả role trong department này join với member có role_id = role này (select * from role where department_id = x join groupmember on groupmember.role_id= role_id where is_Active=True)
                     filter=Q(department_roles__job_role_members__is_active=True)
@@ -3939,12 +3944,7 @@ class ListDepartmentGroup(generics.ListAPIView):
             raise PermissionDenied("Bạn không có trong group")
         return GroupDepartment.objects.filter(
             group_id=group_id
-        ).annotate(
-            member_count=Count(
-                'department_roles__job_role_members',
-                filter=Q(department_roles__job_role_members__is_active=True)
-            )
-        )
+        ).prefetch_related('department_roles')
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -3977,12 +3977,7 @@ class ListRoleGroup(generics.ListAPIView):
         ).exists():
             raise PermissionDenied("Bạn không có trong group")
 
-        qs = GroupRole.objects.filter(group_id=group_id).annotate(
-            member_count=Count(
-                'job_role_members',
-                filter=Q(job_role_members__is_active=True)
-            )
-        )
+        qs = GroupRole.objects.filter(group_id=group_id)
         if department_id:
             qs = qs.filter(department_id=department_id)
         return qs

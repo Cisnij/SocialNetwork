@@ -23,14 +23,12 @@ let isLoadingEvents = false;
 let nextVotesUrl = null;
 let isLoadingVotes = false;
 
-// Cache keys
-const CACHE_KEYS = {
-    group: `group:${GROUP_ID}`,
-    posts: `group:${GROUP_ID}:posts`,
-    members: `group:${GROUP_ID}:members`,
-    votes: `group:${GROUP_ID}:votes`,
-    events: `group:${GROUP_ID}:events`,
-};
+let nextPhotosUrl = null;
+let isLoadingPhotos = false;
+let allPhotos = [];
+
+let searchNextUrl = null;
+let isLoadingSearch = false;
 
 // ============ HELPERS ============
 function apiGet(url, onData) {
@@ -86,13 +84,114 @@ function confirmAction(msg) {
     });
 }
 
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function normalizeListResponse(data) {
+    return data?.results || (Array.isArray(data) ? data : []);
+}
+
+function openInlineFormModal({ title, bodyHtml, okText = "Lưu", getValues, validate }) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById("formModal");
+        const backdrop = document.getElementById("formModalBackdrop");
+        const titleEl = document.getElementById("formModalTitle");
+        const bodyEl = document.getElementById("formModalBody");
+        const errorEl = document.getElementById("formModalError");
+        const cancelBtn = document.getElementById("formModalCancel");
+        const okBtn = document.getElementById("formModalOk");
+
+        if (!modal || !titleEl || !bodyEl || !errorEl || !cancelBtn || !okBtn) {
+            resolve(null);
+            return;
+        }
+
+        titleEl.textContent = title;
+        bodyEl.innerHTML = bodyHtml;
+        okBtn.textContent = okText;
+        errorEl.textContent = "";
+        errorEl.classList.add("hidden");
+        modal.classList.remove("hidden");
+
+        const close = (value = null) => {
+            modal.classList.add("hidden");
+            if (backdrop) backdrop.onclick = null;
+            cancelBtn.onclick = null;
+            okBtn.onclick = null;
+            resolve(value);
+        };
+
+        if (backdrop) backdrop.onclick = () => close(null);
+        cancelBtn.onclick = () => close(null);
+        okBtn.onclick = () => {
+            const values = getValues ? getValues(bodyEl) : {};
+            const error = validate ? validate(values) : "";
+            if (error) {
+                errorEl.textContent = error;
+                errorEl.classList.remove("hidden");
+                return;
+            }
+            close(values);
+        };
+
+        setTimeout(() => {
+            bodyEl.querySelector("input, textarea, select")?.focus();
+        }, 0);
+    });
+}
+
+function setCompanyUIState(isCompany) {
+    const wasViewingEvents = !document.getElementById("tabEvents")?.classList.contains("hidden");
+    const wasViewingAdminDepartments = !document.getElementById("adminDepartments")?.classList.contains("hidden");
+    const wasViewingAdminSuggestions = !document.getElementById("adminSuggestions")?.classList.contains("hidden");
+
+    document.querySelectorAll(".company-only").forEach((el) => {
+        el.classList.toggle("hidden", !isCompany);
+    });
+    document.getElementById("companyBadgeSidebar")?.classList.toggle("hidden", !isCompany);
+    document.getElementById("companySuggestionBox")?.classList.toggle("hidden", !(isCompany && isMember));
+
+    if (!isCompany) {
+        document.getElementById("tabEvents")?.classList.add("hidden");
+        document.getElementById("adminDepartments")?.classList.add("hidden");
+        document.getElementById("adminSuggestions")?.classList.add("hidden");
+
+        if (wasViewingEvents) {
+            document.querySelector('#groupNav button[data-tab="posts"]')?.click();
+        }
+
+        if (wasViewingAdminDepartments || wasViewingAdminSuggestions) {
+            document.querySelector('.admin-tab[data-target="adminPendingPosts"]')?.click();
+        }
+    }
+}
+
 // ============ MAIN INIT ============
 document.addEventListener("DOMContentLoaded", async () => {
-    if (!GROUP_ID) return;
+    console.log("[GROUP] DOMContentLoaded, GROUP_ID:", GROUP_ID);
+    if (!GROUP_ID) {
+        console.error("[GROUP] No GROUP_ID found");
+        return;
+    }
 
     initCommentsPanel();
 
-    await loadGroupInfo();
+    try {
+        await loadGroupInfo();
+        console.log("[GROUP] loadGroupInfo done");
+    } catch (err) {
+        console.error("[GROUP] loadGroupInfo failed:", err);
+    }
+
+    setupGroupSettings();
+    setupGroupDelete();
+    loadAdminSidebar();
 
     // Tab navigation
     const navButtons = document.querySelectorAll("#groupNav button[data-tab]");
@@ -142,27 +241,35 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // ============ LOAD GROUP INFO ============
 async function loadGroupInfo() {
-    return new Promise((resolve) => {
-        apiGet(API.groupDetail(GROUP_ID), (data, isFromCache) => {
-            groupData = data;
-            myRole = data.role || null;
-            myUserId = data.user_id || null;
-
-            renderHero(data);
-
-            if (!isFromCache) {
-                setupPermissions(data);
-                loadPosts();
-                loadActiveVotesSidebar();
-            } else {
-                setupPermissions(data);
-                if (!document.getElementById("groupPostList").innerHTML) {
-                    loadPosts();
-                }
-            }
-            resolve(data);
+    try {
+        const data = await new Promise((resolve, reject) => {
+            apiGet(API.groupDetail(GROUP_ID), (result, isCache) => {
+                // authFetchCache calls onData(data, isCache)
+                // Resolve on both cache and network response.
+                // If cache matches network, onData may not be called again,
+                // so we must resolve on the first call.
+                resolve(result);
+            });
+            // Timeout safeguard
+            setTimeout(() => reject(new Error("Timeout")), 15000);
         });
-    });
+        groupData = data;
+        myRole = data.role || null;
+        myUserId = data.user_id || null;
+        isMember = data.join_status === "member";
+
+        renderHero(data);
+        setupPermissions(data);
+        loadPosts();
+        loadActiveVotesSidebar();
+        return data;
+    } catch (err) {
+        console.error("[GROUP] loadGroupInfo failed:", err);
+        const nameEl = document.getElementById("groupName");
+        if (nameEl) nameEl.textContent = "Lỗi tải nhóm";
+        showToast("Không thể tải thông tin nhóm: " + (err.message || "Unknown error"), "error");
+        return null;
+    }
 }
 
 // ============ RENDER HERO ============
@@ -186,58 +293,22 @@ function renderHero(group) {
         heroAvatar.onerror = () => { heroAvatar.src = DEFAULT_AVATAR; };
     }
 
-    // Cover
+    // Cover image
     if (group.cover_image) {
         const coverImg = document.getElementById("groupCoverImage");
         if (coverImg) {
             coverImg.src = group.cover_image;
             coverImg.classList.remove("hidden");
         }
-        document.getElementById("groupComposerContainer").classList.add("hidden");
-
-        const tabPosts = document.getElementById("tabPosts");
-        if (tabPosts) {
-            // Add 'My Posts' filter button if not exists
-            if (!document.getElementById("btnMyGroupPosts")) {
-                const myPostsBtn = document.createElement("div");
-                myPostsBtn.className = "flex justify-end mb-4";
-                myPostsBtn.innerHTML = `<button id="btnMyGroupPosts" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2"><i class="fas fa-user-edit"></i> Bài viết của tôi</button>`;
-                document.getElementById("groupComposerContainer").parentElement.insertBefore(myPostsBtn, document.getElementById("groupPostList"));
-
-                let showingMyPosts = false;
-                document.getElementById("btnMyGroupPosts").addEventListener("click", (e) => {
-                    showingMyPosts = !showingMyPosts;
-                    if (showingMyPosts) {
-                        e.currentTarget.classList.replace("bg-gray-100", "bg-blue-100");
-                        e.currentTarget.classList.replace("text-gray-700", "text-blue-700");
-                        e.currentTarget.innerHTML = `<i class="fas fa-list"></i> Xem tất cả bài viết`;
-                        // Override nextPostsUrl to my posts
-                        nextPostsUrl = API.groupPostUser(GROUP_ID);
-                        loadPosts(true);
-                    } else {
-                        e.currentTarget.classList.replace("bg-blue-100", "bg-gray-100");
-                        e.currentTarget.classList.replace("text-blue-700", "text-gray-700");
-                        e.currentTarget.innerHTML = `<i class="fas fa-user-edit"></i> Bài viết của tôi`;
-                        nextPostsUrl = API.groupPostList(GROUP_ID);
-                        loadPosts(true);
-                    }
-                });
-            }
-        }
         document.getElementById("groupCoverPlaceholder")?.classList.add("hidden");
+    } else {
+        const coverImg = document.getElementById("groupCoverImage");
+        if (coverImg) coverImg.classList.add("hidden");
+        document.getElementById("groupCoverPlaceholder")?.classList.remove("hidden");
     }
 
-    // Company badges
-    if (group.is_company) {
-        document.getElementById("companyBadgeSidebar")?.classList.remove("hidden");
-        document.querySelectorAll(".company-only").forEach((el) => el.classList.remove("hidden"));
-        // Show suggestion box only for members
-        apiGet(API.groupDetail(GROUP_ID), (data) => {
-            if (data.join_status === "member") {
-                document.getElementById("companySuggestionBox")?.classList.remove("hidden");
-            }
-        });
-    }
+    // Company badges and company-only UI
+    setCompanyUIState(Boolean(group.is_company));
 
     // History
     const historyEl = document.querySelector(".fa-history")?.closest(".flex");
@@ -292,8 +363,57 @@ function renderActionButtons(group) {
     document.getElementById("btnJoinGroup")?.addEventListener("click", joinGroup);
     document.getElementById("btnCancelRequest")?.addEventListener("click", cancelJoinRequest);
     document.getElementById("btnLeaveGroup")?.addEventListener("click", () => {
-        if (confirm("Bạn có chắc muốn rời khỏi nhóm?")) leaveGroup();
+        if (group.role === "owner") {
+            // Owner needs to transfer ownership first
+            showTransferOwnershipModal();
+        } else {
+            if (confirm("Bạn có chắc muốn rời khỏi nhóm?")) leaveGroup(null);
+        }
     });
+}
+
+async function showTransferOwnershipModal() {
+    const container = document.getElementById("groupActionButtons");
+    try {
+        // Load admins
+        const data = await new Promise((resolve, reject) => {
+            apiGet(API.groupAdmins(GROUP_ID), (result, isCache) => {
+                // authFetchCache calls onData(data, isCache) where isCache is a boolean
+                if (!isCache) {
+                    resolve(result);
+                }
+            });
+        });
+        const admins = data.results || (Array.isArray(data) ? data : []);
+        if (admins.length === 0) {
+            // No admins, can't leave
+            showToast("Không thể rời nhóm vì bạn là owner duy nhất. Hãy thêm admin trước!", "error");
+            return;
+        }
+
+        const adminOptions = admins
+            .filter(a => a.role === "admin")
+            .map(a => {
+                const user = a.user || {};
+                const name = user.full_name || "Admin";
+                const id = user.user || user.id || a.user_id;
+                return `<option value="${id}">${name}</option>`;
+            })
+            .join("");
+
+        const newOwnerId = prompt("Chọn ID admin để chuyển quyền sở hữu:\n" +
+            admins.filter(a => a.role === "admin").map(a => {
+                const user = a.user || {};
+                const name = user.full_name || "Admin";
+                const id = user.user || user.id || a.user_id;
+                return `ID: ${id} - ${name}`;
+            }).join("\n"));
+        if (newOwnerId) {
+            await leaveGroup(newOwnerId);
+        }
+    } catch (err) {
+        showToast("Lỗi tải danh sách admin: " + err.message, "error");
+    }
 }
 
 // ============ PERMISSIONS ============
@@ -304,9 +424,10 @@ function setupPermissions(group) {
         initAdminPanel(GROUP_ID, group.is_company);
         document.getElementById("btnEditGroupCover")?.classList.remove("hidden");
         document.getElementById("navAdmin")?.classList.remove("hidden");
+        document.getElementById("groupAdminActions")?.classList.remove("hidden");
+    } else {
+        document.getElementById("groupAdminActions")?.classList.add("hidden");
     }
-
-    isMember = group.join_status === "member";
 
     if (isMember) {
         const composer = document.getElementById("groupComposerContainer");
@@ -342,9 +463,10 @@ async function cancelJoinRequest() {
     }
 }
 
-async function leaveGroup() {
+async function leaveGroup(nextOwnerId = null) {
     try {
-        await apiMutate(API.groupLeave(GROUP_ID), "POST");
+        const body = nextOwnerId ? { next_owner_id: nextOwnerId } : {};
+        await apiMutate(API.groupLeave(GROUP_ID), "POST", body);
         showToast("Đã rời khỏi nhóm.");
         loadGroupInfo();
     } catch (err) {
@@ -451,27 +573,35 @@ function renderPost(post) {
         post.post_status === "pending"
             ? `<span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full font-bold ml-2">Chờ duyệt</span>`
             : "";
+    const rejectedBadge =
+        post.post_status === "rejected"
+            ? `<span class="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-bold ml-2">Đã từ chối</span>`
+            : "";
     const pinnedBadge = post.is_pinned
         ? `<span class="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full font-bold ml-2"><i class="fas fa-thumbtack"></i> Đã ghim</span>`
         : "";
 
     const isAdmin = myRole === "owner" || myRole === "admin";
+    const isPostOwner = user.user === myUserId || user.id === myUserId;
 
-    const adminActions = isAdmin
+    const canDelete = isAdmin || isPostOwner;
+    const canEdit = isPostOwner;
+
+    const adminActions = (isAdmin || isPostOwner)
         ? `
-    <div class="flex gap-1 mt-3 pt-3 border-t dark:border-gray-700">
-      ${post.is_pinned
+    <div class="flex gap-1 mt-3 pt-3 border-t dark:border-gray-700 flex-wrap">
+      ${isAdmin ? (post.is_pinned
             ? `<button class="btn-unpin-post px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-bold rounded-lg hover:bg-blue-100 transition" data-id="${postId}"><i class="fas fa-thumbtack"></i> Bỏ ghim</button>`
             : `<button class="btn-pin-post px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-bold rounded-lg hover:bg-blue-100 transition" data-id="${postId}"><i class="fas fa-thumbtack"></i> Ghim</button>`
-        }
-      ${post.post_status === "pending"
+        ) : ""}
+      ${isAdmin && post.post_status === "pending"
             ? `<button class="btn-approve-post px-3 py-1.5 bg-green-50 text-green-600 text-xs font-bold rounded-lg hover:bg-green-100 transition" data-id="${postId}"><i class="fas fa-check"></i> Duyệt</button>
              <button class="btn-reject-post px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition" data-id="${postId}"><i class="fas fa-times"></i> Từ chối</button>`
             : ""
         }
-      <button class="btn-edit-post px-3 py-1.5 bg-yellow-50 text-yellow-600 text-xs font-bold rounded-lg hover:bg-yellow-100 transition" data-id="${postId}" data-content="${encodeURIComponent(post.content || '')}"><i class="fas fa-edit"></i> Sửa</button>
-      <button class="btn-delete-post px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition" data-id="${postId}"><i class="fas fa-trash"></i> Xóa</button>
-      <button class="btn-notify-post px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg hover:bg-purple-100 transition" data-id="${postId}"><i class="fas fa-bell"></i> Thông báo</button>
+      ${canEdit ? `<button class="btn-edit-post px-3 py-1.5 bg-yellow-50 text-yellow-600 text-xs font-bold rounded-lg hover:bg-yellow-100 transition" data-id="${postId}" data-content="${encodeURIComponent(post.title || '')}"><i class="fas fa-edit"></i> Sửa</button>` : ""}
+      ${canDelete ? `<button class="btn-delete-post px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition" data-id="${postId}"><i class="fas fa-trash"></i> Xóa</button>` : ""}
+      ${isAdmin ? `<button class="btn-notify-post px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg hover:bg-purple-100 transition" data-id="${postId}"><i class="fas fa-bell"></i> Thông báo</button>` : ""}
     </div>`
         : "";
 
@@ -487,7 +617,7 @@ function renderPost(post) {
           <div class="min-w-0 flex-1">
             <h5 class="font-bold text-gray-900 dark:text-white flex items-center flex-wrap">
               <a href="${profileUrl(user.id || user.user)}" class="hover:underline">${name}</a>
-              ${pendingBadge}${pinnedBadge}
+              ${pendingBadge}${rejectedBadge}${pinnedBadge}
             </h5>
             <p class="text-xs text-gray-500 flex items-center gap-2">
               <span>${time}</span>
@@ -523,7 +653,7 @@ function bindPostActions() {
         btn.addEventListener("click", async (e) => {
             const postId = e.currentTarget.dataset.id;
             try {
-                await apiMutate(API.groupPinPost(GROUP_ID, postId), "POST", { is_pinned: false });
+                await apiMutate(API.groupPinPost(GROUP_ID, postId), "POST");
                 showToast("Đã bỏ ghim bài viết!");
                 loadPosts();
             } catch (err) {
@@ -584,7 +714,7 @@ function bindPostActions() {
             const newContent = prompt("Sửa nội dung bài viết:", currentContent);
             if (!newContent || newContent === currentContent) return;
             try {
-                await apiMutate(API.groupUpdatePost(GROUP_ID, postId), "PUT", { content: newContent });
+                await apiMutate(API.groupUpdatePost(GROUP_ID, postId), "PUT", { title: newContent });
                 showToast("Đã cập nhật bài viết!");
                 loadPosts();
             } catch (err) {
@@ -596,14 +726,9 @@ function bindPostActions() {
     // Detail
     document.querySelectorAll(".btn-detail-post").forEach((div) => {
         div.addEventListener("click", (e) => {
-            if (e.target.closest("button") || e.target.closest("a") || e.target.closest("img")) return; // Don't trigger if clicked on child interactive elements
+            if (e.target.closest("button") || e.target.closest("a") || e.target.closest("img")) return;
             const postId = e.currentTarget.dataset.id;
-            apiGet(API.groupPostDetail(GROUP_ID, postId), (data) => {
-                const post = data.results?.[0] || data;
-                alert("Chi tiết bài viết: " + (post.content || "Không có nội dung") + "\\nĐăng lúc: " + new Date(post.created_at).toLocaleString("vi-VN"));
-            }).catch(err => {
-                showToast("Không thể tải chi tiết bài viết.", "error");
-            });
+            window.location.href = `/post/${postId}/`;
         });
     });
 
@@ -669,9 +794,11 @@ function loadMembers(initial = true) {
 
         members.forEach((member) => {
             const user = member.user || {};
-            const name = user.full_name || "Unknown";
+            const name = (user.first_name && user.last_name)
+                ? `${user.last_name} ${user.first_name}`
+                : user.first_name || user.last_name || "Unknown";
             const avatar = user.picture || DEFAULT_AVATAR;
-            const memberId = user.id || user.user;
+            const memberId = user.user || user.id;
 
             let roleBadge = "";
             if (member.role === "owner")
@@ -790,6 +917,7 @@ function loadEvents(initial = true) {
 
     apiGet(nextEventsUrl, (data) => {
         isLoadingEvents = false;
+        nextEventsUrl = data.next || null;
 
         if (initial) container.innerHTML = "";
         const events = data.results || (Array.isArray(data) ? data : []);
@@ -839,8 +967,8 @@ function loadEvents(initial = true) {
         <div class="glass-card p-5 rounded-2xl shadow-sm border border-white/40 dark:border-white/5 hover:shadow-md transition" data-event-id="${event.id}">
           <div class="flex items-start gap-4">
             <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-fb-primary to-purple-600 flex flex-col items-center justify-center text-white shrink-0 shadow-md">
-              <span class="text-2xl font-black">${startDate.split(" ")[0]?.slice(0, 2) || "?"}</span>
-              <span class="text-xs font-bold uppercase -mt-1">${new Date(event.start_time).toLocaleString("vi-VN", { month: "short" }) || ""}</span>
+              <span class="text-2xl font-black">${new Date(event.start_time).getDate()}</span>
+              <span class="text-xs font-bold uppercase -mt-1">${new Date(event.start_time).toLocaleString("vi-VN", { month: "short" })}</span>
             </div>
             <div class="flex-1 min-w-0">
               <h4 class="font-bold text-lg text-gray-900 dark:text-white flex items-center">${event.title} ${statusBadge}</h4>
@@ -877,7 +1005,7 @@ function loadEvents(initial = true) {
                 const eid = e.currentTarget.dataset.eid;
                 const response = e.currentTarget.dataset.response;
                 try {
-                    await apiMutate(API.groupEventResponse(GROUP_ID, eid), "POST", { status: response });
+                    await apiMutate(API.groupEventResponse(GROUP_ID, eid), "PATCH", { status: response });
                     showToast("Đã cập nhật trạng thái!");
                     loadEvents(true);
                 } catch (err) {
@@ -896,8 +1024,8 @@ function loadEvents(initial = true) {
                         alert("Chưa có người tham gia.");
                         return;
                     }
-                    const names = participants.map(u => u.user?.full_name || u.user?.name || "Unknown").join("\\n");
-                    alert("Người tham gia:\\n" + names);
+                    const names = participants.map(u => u.full_name || "Unknown").join("\n");
+                    alert("Người tham gia:\n" + names);
                 });
             });
         });
@@ -966,6 +1094,7 @@ function loadVotesTab(initial = true) {
 
     apiGet(nextVotesUrl, (data) => {
         isLoadingVotes = false;
+        nextVotesUrl = data.next || null;
 
         if (initial) container.innerHTML = "";
         const votes = data.results || (Array.isArray(data) ? data : []);
@@ -1169,8 +1298,8 @@ function bindVoteActions() {
                     alert("Chưa có ai chọn mục này.");
                     return;
                 }
-                const names = users.map(u => u.full_name || u.name || "Unknown").join("\\n");
-                alert("Những người đã chọn:\\n" + names);
+                const names = users.map(u => u.created_by?.full_name || u.full_name || u.name || "Unknown").join("\n");
+                alert("Những người đã chọn:\n" + names);
             });
         });
     });
@@ -1182,7 +1311,7 @@ function bindVoteActions() {
             const vid = e.currentTarget.dataset.vid;
             apiGet(API.groupVoteDetail(GROUP_ID, vid), (data) => {
                 const v = data.results?.[0] || data;
-                alert("Chi tiết bình chọn: " + (v.title || v.question || "") + "\\nNgày tạo: " + new Date(v.created_at).toLocaleString("vi-VN") + "\\nTổng vote: " + (v.options || []).reduce((s,o)=>s+(o.count||0),0));
+                alert("Chi tiết bình chọn: " + (v.title || v.question || "") + "\nNgày tạo: " + new Date(v.created_at).toLocaleString("vi-VN") + "\nTổng vote: " + (v.options || []).reduce((s, o) => s + (o.count || 0), 0));
             });
         });
     });
@@ -1226,6 +1355,140 @@ function openSuggestionModal() {
     }
 }
 
+// ============ SETTINGS ============
+async function purgeCompanyStructure() {
+    const departmentsRes = await authFetch(API.groupDepartmentList(GROUP_ID));
+    const departmentsData = await departmentsRes.json();
+    const departments = normalizeListResponse(departmentsData);
+
+    for (const department of departments) {
+        const roles = normalizeListResponse(department.roles || []);
+        for (const role of roles) {
+            await apiMutate(API.groupUpdateRole(GROUP_ID, role.id), "DELETE");
+        }
+    }
+
+    for (const department of departments) {
+        await apiMutate(API.groupUpdateDepartment(GROUP_ID, department.id), "DELETE");
+    }
+}
+
+function setupGroupSettings() {
+    const btnSettings = document.getElementById("btnEditGroupSettings");
+    if (!btnSettings) return;
+    btnSettings.addEventListener("click", async () => {
+        const group = groupData;
+        const isAdmin = group?.role === "owner" || group?.role === "admin";
+        if (!group || !isAdmin) return;
+
+        const values = await openInlineFormModal({
+            title: "Chỉnh sửa thông tin nhóm",
+            okText: "Cập nhật",
+            bodyHtml: `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Tên nhóm</label>
+                        <input id="editGroupName" type="text" value="${escapeHtml(group.name)}"
+                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 focus:ring-2 focus:ring-fb-primary focus:outline-none transition-all dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Mô tả</label>
+                        <textarea id="editGroupDescription" rows="4"
+                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 focus:ring-2 focus:ring-fb-primary focus:outline-none transition-all resize-none dark:text-white">${escapeHtml(group.description || "")}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Nội quy</label>
+                        <textarea id="editGroupRules" rows="4"
+                            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 focus:ring-2 focus:ring-fb-primary focus:outline-none transition-all resize-none dark:text-white">${escapeHtml(group.rules || "")}</textarea>
+                    </div>
+                    <label class="flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3 cursor-pointer">
+                        <input id="editGroupIsCompany" type="checkbox" class="mt-1" ${group.is_company ? "checked" : ""}>
+                        <span>
+                            <span class="block font-bold text-gray-900 dark:text-white">Nhóm công ty</span>
+                            <span class="block text-sm text-gray-500">Nếu đổi trạng thái này, toàn bộ phòng ban và chức vụ hiện có sẽ bị xóa.</span>
+                        </span>
+                    </label>
+                </div>
+            `,
+            getValues: (bodyEl) => ({
+                name: bodyEl.querySelector("#editGroupName")?.value.trim() || "",
+                description: bodyEl.querySelector("#editGroupDescription")?.value.trim() || "",
+                rules: bodyEl.querySelector("#editGroupRules")?.value.trim() || "",
+                is_company: Boolean(bodyEl.querySelector("#editGroupIsCompany")?.checked),
+            }),
+            validate: (formValues) => {
+                if (!formValues.name) return "Tên nhóm không được để trống.";
+                return "";
+            },
+        });
+        if (!values) return;
+
+        try {
+            const isCompanyChanged = Boolean(group.is_company) !== values.is_company;
+            if (isCompanyChanged) {
+                const confirmed = await confirmAction("Đổi loại nhóm sẽ xóa toàn bộ phòng ban và chức vụ hiện có. Tiếp tục?");
+                if (!confirmed) return;
+                if (group.is_company) {
+                    await purgeCompanyStructure();
+                }
+            }
+
+            const payload = {
+                name: values.name,
+                description: values.description,
+                rules: values.rules,
+                is_company: values.is_company,
+            };
+            await apiMutate(API.groupUpdate(GROUP_ID), "PATCH", payload);
+            showToast("Đã cập nhật thông tin nhóm!");
+            await loadGroupInfo();
+        } catch (err) {
+            showToast("Lỗi: " + err.message, "error");
+        }
+    });
+}
+
+// ============ DELETE GROUP ============
+function setupGroupDelete() {
+    const btnDelete = document.getElementById("btnDeleteGroup");
+    if (!btnDelete) return;
+    btnDelete.addEventListener("click", async () => {
+        if (!(await confirmAction("Bạn có chắc muốn xóa nhóm này? Hành động này không thể hoàn tác!"))) return;
+        try {
+            await apiMutate(API.groupDelete(GROUP_ID), "DELETE");
+            showToast("Đã xóa nhóm!");
+            window.location.href = "/groups/";
+        } catch (err) {
+            showToast("Lỗi: " + err.message, "error");
+        }
+    });
+}
+
+// ============ ADMIN SIDEBAR ============
+function loadAdminSidebar() {
+    if (!isMember) return;
+    apiGet(API.groupAdmins(GROUP_ID), (data) => {
+        const admins = data.results || (Array.isArray(data) ? data : []);
+        if (admins.length === 0) return;
+        const sidebar = document.getElementById("sidebarAdminCard");
+        const list = document.getElementById("sidebarAdminList");
+        if (!sidebar || !list) return;
+        sidebar.classList.remove("hidden");
+        list.innerHTML = "";
+        admins.forEach((a) => {
+            const user = a.user || {};
+            const avatar = user.picture || DEFAULT_AVATAR;
+            list.insertAdjacentHTML(
+                "beforeend",
+                `<div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-2 py-1.5">
+                    <img src="${avatar}" class="w-7 h-7 rounded-full object-cover" onerror="this.src='${DEFAULT_AVATAR}'">
+                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">${user.full_name || "Admin"}</span>
+                </div>`
+            );
+        });
+    });
+}
+
 // ============ INFINITE SCROLL ============
 function setupInfiniteScroll() {
     let ticking = false;
@@ -1261,10 +1524,6 @@ function setupInfiniteScroll() {
 }
 
 // ============ PHOTOS TAB ============
-let nextPhotosUrl = null;
-let isLoadingPhotos = false;
-let allPhotos = [];
-
 function loadPhotos(initial = true) {
     const container = document.getElementById("groupPhotosList");
     if (!container) return;
@@ -1349,7 +1608,7 @@ function loadSearch() {
             <div class="flex gap-2 mb-4">
                 <button class="search-type-btn px-4 py-1.5 bg-fb-primary text-white text-sm font-bold rounded-full" data-type="all">Tất cả</button>
                 <button class="search-type-btn px-4 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-bold rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition" data-type="post">Bài viết</button>
-                <button class="search-type-btn px-4 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-bold rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition" data-type="photo">Ảnh</button>
+                <button class="search-type-btn px-4 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-bold rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition" data-type="members">Thành viên</button>
             </div>
             <div id="searchResults" class="space-y-4">
                 <p class="text-center text-gray-500 py-8 text-sm">Nhập từ khóa để tìm kiếm trong nhóm.</p>
@@ -1380,9 +1639,6 @@ function loadSearch() {
     });
 }
 
-let searchNextUrl = null;
-let isLoadingSearch = false;
-
 function executeGroupSearch(q, append = false) {
     const resultsContainer = document.getElementById("searchResults");
     if (!resultsContainer) return;
@@ -1406,14 +1662,18 @@ function executeGroupSearch(q, append = false) {
         if (!append) resultsContainer.innerHTML = "";
 
         const results = data.results || (Array.isArray(data) ? data : []);
+        const posts = data.posts || [];
+        const members = data.members || [];
 
-        if (results.length === 0 && !append) {
+        if (results.length === 0 && posts.length === 0 && members.length === 0 && !append) {
             resultsContainer.innerHTML = `<div class="text-center py-10 text-gray-500"><i class="fas fa-search text-4xl mb-3 opacity-50"></i><p class="font-semibold">Không tìm thấy kết quả.</p></div>`;
             return;
         }
 
-        results.forEach((item) => {
-            if (activeType === "photo" || (item.image || item.photo)) {
+        // Handle combined results
+        const items = results.length > 0 ? results : [...posts, ...members];
+        items.forEach((item) => {
+            if (item.image || item.photo) {
                 // Photo result
                 const imgUrl = item.image || item.photo || item.url || "";
                 resultsContainer.insertAdjacentHTML("beforeend", `
@@ -1424,11 +1684,12 @@ function executeGroupSearch(q, append = false) {
                 // Post/member result
                 const user = item.user || item.created_by || {};
                 const avatar = user.picture || DEFAULT_AVATAR;
-                const name = user.full_name || item.name || "Unknown";
+                const name = user.full_name || item.full_name || item.name || "Unknown";
+                const itemId = item.post_id || item.id;
 
                 resultsContainer.insertAdjacentHTML("beforeend", `
-                    <div class="glass-card p-4 rounded-2xl shadow-sm border border-white/40 dark:border-white/5">
-                        <div class="flex items-center gap-3 mb-2">
+                    <div class="glass-card p-4 rounded-2xl shadow-sm border border-white/40 dark:border-white/5 ${item.post_id ? 'cursor-pointer hover:shadow-md' : ''}">
+                        <div class="flex items-center gap-3 mb-2 ${item.post_id ? 'btn-detail-post' : ''}" ${item.post_id ? `data-id="${item.post_id}"` : ''}>
                             <img src="${avatar}" class="w-10 h-10 rounded-full object-cover" onerror="this.src='${DEFAULT_AVATAR}'">
                             <div>
                                 <h5 class="font-bold text-sm text-gray-900 dark:text-white">${name}</h5>

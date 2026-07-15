@@ -14,8 +14,29 @@ let notifWs = null;
 let notifWsReconnectTimer = null;
 
 function notificationTarget(n) {
+  const type = String(n.type || "").toLowerCase();
+  const groupId = n.object_id;
+
+  if (type.includes("group_request_accepted") || type.includes("group_admin_added") || type.includes("group_owner_transfer")) {
+    return groupId ? `/group/${groupId}/` : null;
+  }
+  if (type.includes("group_post_accepted") || type.includes("group_post_declined") || type.includes("group_notification")) {
+    if (n.post_id) return `/group/${groupId}/post/${n.post_id}/`;
+    if (groupId) return `/group/${groupId}/`;
+    return null;
+  }
+  if (type.includes("group_event_create")) {
+    if (n.event_id && groupId) return `/group/${groupId}/event/${n.event_id}/`;
+    if (groupId) return `/group/${groupId}/`;
+    return null;
+  }
+  if (type.includes("group_vote_create")) {
+    if (n.vote_id && groupId) return `/group/${groupId}/vote/${n.vote_id}/`;
+    if (groupId) return `/group/${groupId}/`;
+    return null;
+  }
   if (n.post_id) return `/post/${n.post_id}/`;
-  if (n.object_id && String(n.type || "").toLowerCase().includes("post")) {
+  if (n.object_id && type.includes("post")) {
     return `/post/${n.object_id}/`;
   }
   if (n.link) return n.link;

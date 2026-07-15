@@ -162,6 +162,10 @@
                     <h3 class="font-black text-gray-800 dark:text-gray-200 text-sm uppercase tracking-wider">Mới nhất
                     </h3>
                     <div class="h-px bg-gray-200 dark:bg-gray-700 flex-1"></div>
+                    <select id="postOrdering" class="text-sm bg-gray-100 dark:bg-gray-800 border dark:border-gray-700 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-fb-primary dark:text-white">
+                        <option value="newest">Mới nhất</option>
+                        <option value="oldest">Cũ nhất</option>
+                    </select>
                 </div>
 
                 <div id="groupPostList" class="space-y-6"></div>
@@ -368,6 +372,21 @@
                         </div>
                     </div>
                 </div>
+
+                <div id="groupAdminActions"
+                    class="mt-5 pt-4 border-t dark:border-gray-700 hidden">
+                    <p class="text-xs font-black uppercase tracking-wider text-gray-500 mb-3">Quản trị nhóm</p>
+                    <div class="grid grid-cols-1 gap-2">
+                        <button id="btnEditGroupSettings" type="button"
+                            class="w-full px-4 py-2.5 rounded-xl bg-fb-primary text-white font-bold hover:bg-blue-600 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-pen"></i> Chỉnh sửa thông tin
+                        </button>
+                        <button id="btnDeleteGroup" type="button"
+                            class="w-full px-4 py-2.5 rounded-xl bg-red-50 text-red-600 font-bold hover:bg-red-100 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-trash"></i> Xóa nhóm
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Suggestion Box (Company Only) -->
@@ -397,6 +416,13 @@
                 </div>
                 <div id="sidebarVoteList" class="space-y-3"></div>
             </div>
+
+            <!-- Admins (Sidebar) -->
+            <div class="glass-card rounded-2xl shadow-sm p-5 border border-white/40 dark:border-white/5 hidden"
+                id="sidebarAdminCard">
+                <h3 class="font-black text-gray-900 dark:text-white text-lg mb-3">Quản trị viên</h3>
+                <div id="sidebarAdminList" class="flex flex-wrap gap-2"></div>
+            </div>
         </aside>
     </div>
 </div>
@@ -405,20 +431,19 @@
     window.CURRENT_GROUP_ID = "{{ group_id }}";
 </script>
 
-    <!-- Form Modal -->
-    <div id="formModal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center z-[70] p-4">
-        <div class="glass-card rounded-xl p-5 max-w-lg w-full shadow-xl animate-scale-in">
-            <h3 id="formModalTitle" class="font-bold text-lg mb-4"></h3>
-            <div id="formModalBody"></div>
-            <div id="formModalError" class="text-sm text-red-500 mb-3 hidden"></div>
-            <div class="flex gap-2 justify-end">
-                <button id="formModalCancel" type="button"
-                    class="px-4 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb] hover-lift">Hủy</button>
-                <button id="formModalOk" type="button"
-                    class="px-4 py-2 rounded-lg bg-fb-primary dark:bg-[#1877f2] text-white hover-lift ripple">Lưu</button>
-            </div>
+<!-- Reusable Form Modal -->
+<div id="formModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="formModalBackdrop"></div>
+    <div class="glass-card rounded-2xl p-6 max-w-lg w-full shadow-2xl relative z-10 animate-scale-in max-h-[90vh] overflow-y-auto">
+        <h3 id="formModalTitle" class="font-bold text-xl mb-4 text-gray-900 dark:text-white"></h3>
+        <div id="formModalBody"></div>
+        <div id="formModalError" class="text-sm text-red-500 mb-3 hidden"></div>
+        <div class="flex gap-2 justify-end mt-4">
+            <button id="formModalCancel" type="button" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition">Hủy</button>
+            <button id="formModalOk" type="button" class="px-4 py-2 rounded-lg bg-fb-primary text-white font-semibold hover:bg-blue-600 transition">Lưu</button>
         </div>
     </div>
+</div>
 
 {% endblock %}
 {% block post_scripts %}
