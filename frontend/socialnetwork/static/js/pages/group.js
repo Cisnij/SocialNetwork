@@ -172,6 +172,48 @@ function setCompanyUIState(isCompany) {
     }
 }
 
+function updateUIVisibilityForMembership() {
+    const groupNav = document.getElementById("groupNav");
+    const groupSidebar = document.getElementById("groupSidebar");
+    const sidebarActiveVotes = document.getElementById("sidebarActiveVotes");
+    const sidebarAdminCard = document.getElementById("sidebarAdminCard");
+    const companySuggestionBox = document.getElementById("companySuggestionBox");
+
+    if (!isMember) {
+        if (groupNav) groupNav.classList.add("hidden");
+        if (groupSidebar) groupSidebar.classList.add("hidden");
+
+        document.querySelectorAll(".group-tab-content").forEach((tab) => tab.classList.add("hidden"));
+        const rulesTab = document.getElementById("tabRules");
+        if (rulesTab) rulesTab.classList.remove("hidden");
+
+        if (sidebarActiveVotes) sidebarActiveVotes.classList.add("hidden");
+        if (sidebarAdminCard) sidebarAdminCard.classList.add("hidden");
+        if (companySuggestionBox) companySuggestionBox.classList.add("hidden");
+    } else {
+        if (groupNav) groupNav.classList.remove("hidden");
+        if (groupSidebar) groupSidebar.classList.remove("hidden");
+
+        document.querySelectorAll("#groupNav button[data-tab]").forEach((btn) => {
+            btn.classList.remove("hidden");
+        });
+
+        const activeBtn = document.querySelector("#groupNav button.bg-fb-primary\\/10");
+        if (activeBtn) {
+            const tabName = activeBtn.getAttribute("data-tab");
+            const tabId = `tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`;
+            const targetTab = document.getElementById(tabId);
+            if (targetTab) targetTab.classList.remove("hidden");
+        }
+
+        if (sidebarActiveVotes) loadActiveVotesSidebar();
+        if (sidebarAdminCard) loadAdminSidebar();
+        if (companySuggestionBox) {
+            companySuggestionBox.classList.toggle("hidden", !(groupData?.is_company && isMember));
+        }
+    }
+}
+
 // ============ MAIN INIT ============
 document.addEventListener("DOMContentLoaded", async () => {
     console.log("[GROUP] DOMContentLoaded, GROUP_ID:", GROUP_ID);
@@ -258,11 +300,17 @@ async function loadGroupInfo() {
         myRole = data.role || null;
         myUserId = data.user_id || null;
         isMember = data.join_status === "member";
+        updateUIVisibilityForMembership();
 
         renderHero(data);
         setupPermissions(data);
-        loadPosts();
-        loadActiveVotesSidebar();
+
+        if (isMember) {
+            loadPosts();
+            loadActiveVotesSidebar();
+        } else {
+            renderRules();
+        }
         return data;
     } catch (err) {
         console.error("[GROUP] loadGroupInfo failed:", err);
@@ -338,6 +386,7 @@ function renderActionButtons(group) {
     if (!container) return;
 
     isMember = group.join_status === "member";
+    updateUIVisibilityForMembership();
 
     let btnHtml = "";
     if (group.join_status === "member") {
@@ -458,6 +507,7 @@ async function joinGroup() {
         }
         if (groupData) groupData.join_status = "pending";
         isMember = false;
+        updateUIVisibilityForMembership();
         showToast("Đã gửi yêu cầu tham gia nhóm!");
     } catch (err) {
         const msg = err.message || "";
@@ -482,6 +532,7 @@ async function joinGroup() {
             }
             if (groupData) groupData.join_status = "member";
             isMember = true;
+            updateUIVisibilityForMembership();
         } else if (msg.includes("đã gửi yêu cầu") || msg.includes("đã gửi")) {
             showToast("Bạn đã gửi yêu cầu tham gia rồi!");
             const container = document.getElementById("groupActionButtons");
@@ -494,6 +545,7 @@ async function joinGroup() {
             }
             if (groupData) groupData.join_status = "pending";
             isMember = false;
+            updateUIVisibilityForMembership();
         } else {
             showToast("Lỗi: " + msg, "error");
         }
@@ -514,6 +566,7 @@ async function cancelJoinRequest() {
         }
         if (groupData) groupData.join_status = "none";
         isMember = false;
+        updateUIVisibilityForMembership();
     } catch (err) {
         showToast("Lỗi: " + err.message, "error");
     }
@@ -805,10 +858,36 @@ function bindPostActions() {
 // ============ RULES ============
 function renderRules() {
     const el = document.getElementById("groupRulesContent");
-    if (el) {
-        const rules = groupData?.rules || "Ban quản trị chưa thiết lập nội quy cho nhóm.";
-        el.textContent = rules;
+    if (!el) return;
+
+    const rules = groupData?.rules || "Ban quản trị chưa thiết lập nội quy cho nhóm.";
+    const lines = rules.split('\n').filter(line => line.trim() !== '');
+
+    if (lines.length === 0) {
+        el.innerHTML = `<p class="text-gray-500 italic">Chưa có nội quy nào được thiết lập.</p>`;
+        return;
     }
+
+    const html = lines.map(line => {
+        const trimmed = line.trim();
+        if (/^[-*]\s/.test(trimmed)) {
+            const content = trimmed.replace(/^[-*]\s+/, '');
+            return `<li class="flex items-start gap-3 mb-3">
+                <span class="w-2 h-2 rounded-full bg-fb-primary mt-2 shrink-0"></span>
+                <span class="text-gray-800 dark:text-gray-200 font-semibold leading-relaxed">${escapeHtml(content)}</span>
+            </li>`;
+        } else if (/^\d+\.\s/.test(trimmed)) {
+            const content = trimmed.replace(/^\d+\.\s+/, '');
+            return `<li class="flex items-start gap-3 mb-3">
+                <span class="w-6 h-6 rounded-full bg-fb-primary/10 text-fb-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">${trimmed.match(/^\d+/)[0]}</span>
+                <span class="text-gray-800 dark:text-gray-200 font-semibold leading-relaxed">${escapeHtml(content)}</span>
+            </li>`;
+        } else {
+            return `<p class="text-gray-800 dark:text-gray-200 font-bold text-lg mb-4 leading-snug">${escapeHtml(trimmed)}</p>`;
+        }
+    }).join('');
+
+    el.innerHTML = `<ul class="space-y-1">${html}</ul>`;
 }
 
 // ============ MEMBERS ============

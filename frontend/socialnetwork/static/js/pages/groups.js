@@ -261,7 +261,9 @@ function loadMyGroups() {
     const container = document.getElementById("groupListContainer");
     const title = document.getElementById("groupListTitle");
     const loading = document.getElementById("loadingGroups");
+    const myRequestsContainer = document.getElementById("myRequestsContainer");
 
+    if (myRequestsContainer) myRequestsContainer.classList.add("hidden");
     container.innerHTML = "";
     title.innerHTML = `<i class="fas fa-layer-group text-fb-primary"></i> Tất cả nhóm bạn đã tham gia`;
     container.classList.add("hidden");
@@ -379,7 +381,9 @@ function loadExploreGroups() {
     const container = document.getElementById("groupListContainer");
     const title = document.getElementById("groupListTitle");
     const loading = document.getElementById("loadingGroups");
+    const myRequestsContainer = document.getElementById("myRequestsContainer");
 
+    if (myRequestsContainer) myRequestsContainer.classList.add("hidden");
     container.innerHTML = "";
     title.innerHTML = `<i class="fas fa-compass text-fb-primary"></i> Khám phá các nhóm dành cho bạn`;
     container.classList.add("hidden");
