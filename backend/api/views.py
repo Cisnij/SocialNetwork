@@ -4115,7 +4115,7 @@ class MyJoinRequestList(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ['group__name']
     def get_queryset(self):
-        return GroupJoinRequest.objects.filter(user=self.request.user).select_related('group', 'reviewed_by__profile')
+        return GroupJoinRequest.objects.filter(user=self.request.user,status='pending').select_related('group', 'reviewed_by__profile')
 
 class AllJoinRequest(generics.ListAPIView):
     permission_classes = [IsAuthenticated,IsAdminOrOwnerGroup]
@@ -4155,6 +4155,7 @@ class AcceptJoinRequest(APIView):
                 defaults={
                     'role': 'member',
                     'is_active': True,
+                    'job_role': None,
                 }
             )
         accept_join_request_group.send(  # hook thẳng signal vào view
