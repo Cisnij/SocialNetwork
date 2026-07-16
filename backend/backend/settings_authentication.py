@@ -105,6 +105,7 @@ REST_FRAMEWORK={ #Cấu hình token
         'cancel_join_request_group': '20/day',
         'kick_member_group': '100/h',
         'add_admin_group': '10/day',
+        'remove_admin_group': '10/day',
         'leave_group': '20/day',
         'create_post_group': '50/day',
         'review_post_group': '100/h',

@@ -97,6 +97,14 @@ function normalizeListResponse(data) {
     return data?.results || (Array.isArray(data) ? data : []);
 }
 
+function clearGroupCaches() {
+    [API.groupExplore(), API.groupUserGroups(), API.groupMyRequests()].forEach((url) => {
+        if (typeof url === 'string') {
+            sessionStorage.removeItem(`authCache_${url}`);
+        }
+    });
+}
+
 function openInlineFormModal({ title, bodyHtml, okText = "Lưu", getValues, validate }) {
     return new Promise((resolve) => {
         const modal = document.getElementById("formModal");
@@ -445,7 +453,7 @@ async function showTransferOwnershipModal() {
             .filter(a => a.role === "admin")
             .map(a => {
                 const user = a.user || {};
-                const name = user.full_name || "Admin";
+                const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Admin";
                 const id = user.user || user.id || a.user_id;
                 return `<option value="${id}">${name}</option>`;
             })
@@ -454,7 +462,7 @@ async function showTransferOwnershipModal() {
         const newOwnerId = prompt("Chọn ID admin để chuyển quyền sở hữu:\n" +
             admins.filter(a => a.role === "admin").map(a => {
                 const user = a.user || {};
-                const name = user.full_name || "Admin";
+                const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Admin";
                 const id = user.user || user.id || a.user_id;
                 return `ID: ${id} - ${name}`;
             }).join("\n"));
@@ -508,6 +516,7 @@ async function joinGroup() {
         if (groupData) groupData.join_status = "pending";
         isMember = false;
         updateUIVisibilityForMembership();
+        clearGroupCaches();
         showToast("Đã gửi yêu cầu tham gia nhóm!");
     } catch (err) {
         const msg = err.message || "";
@@ -533,6 +542,7 @@ async function joinGroup() {
             if (groupData) groupData.join_status = "member";
             isMember = true;
             updateUIVisibilityForMembership();
+            clearGroupCaches();
         } else if (msg.includes("đã gửi yêu cầu") || msg.includes("đã gửi")) {
             showToast("Bạn đã gửi yêu cầu tham gia rồi!");
             const container = document.getElementById("groupActionButtons");
@@ -546,6 +556,7 @@ async function joinGroup() {
             if (groupData) groupData.join_status = "pending";
             isMember = false;
             updateUIVisibilityForMembership();
+            clearGroupCaches();
         } else {
             showToast("Lỗi: " + msg, "error");
         }
@@ -567,6 +578,7 @@ async function cancelJoinRequest() {
         if (groupData) groupData.join_status = "none";
         isMember = false;
         updateUIVisibilityForMembership();
+        clearGroupCaches();
     } catch (err) {
         showToast("Lỗi: " + err.message, "error");
     }
@@ -577,6 +589,7 @@ async function leaveGroup(nextOwnerId = null) {
         const body = nextOwnerId ? { next_owner_id: nextOwnerId } : {};
         await apiMutate(API.groupLeave(GROUP_ID), "POST", body);
         showToast("Đã rời khỏi nhóm.");
+        clearGroupCaches();
         loadGroupInfo();
     } catch (err) {
         showToast("Lỗi: " + err.message, "error");
@@ -661,7 +674,7 @@ function loadPosts(append = false) {
 function renderPost(post) {
     const user = post.user || {};
     const avatar = user.picture || DEFAULT_AVATAR;
-    const name = user.full_name || "Unknown";
+    const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Unknown";
     const time = new Date(post.created_at).toLocaleString("vi-VN");
     const photos = post.photos || [];
     const postId = post.post_id;
@@ -960,11 +973,14 @@ function loadMembers(initial = true) {
             ${badge}
           </div>
           ${myRole === "owner" && member.role === "member"
-                    ? `<button class="btn-promote-admin text-sm bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg font-bold transition" data-id="${memberId}" title="Thêm quyền Admin"><i class="fas fa-user-shield"></i></button>
-                 <button class="btn-kick-member text-sm bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg font-bold transition" data-id="${memberId}" title="Xóa khỏi nhóm"><i class="fas fa-user-minus"></i></button>`
-                    : myRole === "admin" && (member.role === "member")
-                        ? `<button class="btn-kick-member text-sm bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg font-bold transition" data-id="${memberId}" title="Xóa khỏi nhóm"><i class="fas fa-user-minus"></i></button>`
-                        : ""
+                    ? `<button class="btn-promote-admin text-xs bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Thêm quyền Admin"><i class="fas fa-user-shield"></i> <span class="hidden sm:inline">Làm Admin</span></button>
+                         <button class="btn-kick-member text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Xóa khỏi nhóm"><i class="fas fa-user-minus"></i> <span class="hidden sm:inline">Kick</span></button>`
+                        : myRole === "owner" && member.role === "admin"
+                            ? `<button class="btn-demote-admin text-xs bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Hạ quyền Admin"><i class="fas fa-user-shield"></i> <span class="hidden sm:inline">Hạ Admin</span></button>
+                                 <button class="btn-kick-member text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Xóa khỏi nhóm"><i class="fas fa-user-minus"></i> <span class="hidden sm:inline">Kick</span></button>`
+                            : myRole === "admin" && (member.role === "member")
+                                ? `<button class="btn-kick-member text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Xóa khỏi nhóm"><i class="fas fa-user-minus"></i> <span class="hidden sm:inline">Kick</span></button>`
+                                : ""
                 }
         </div>`;
 
@@ -1009,6 +1025,7 @@ function bindMemberActions() {
             try {
                 await apiMutate(API.groupKickMember(GROUP_ID, uid), "POST");
                 showToast("Đã xóa thành viên!");
+                clearGroupCaches();
                 loadMembers(true);
             } catch (err) {
                 showToast("Lỗi: " + err.message, "error");
@@ -1023,6 +1040,22 @@ function bindMemberActions() {
             try {
                 await apiMutate(API.groupAddAdmin(GROUP_ID, uid), "POST");
                 showToast("Đã thêm quyền Admin!");
+                clearGroupCaches();
+                loadMembers(true);
+            } catch (err) {
+                showToast("Lỗi: " + err.message, "error");
+            }
+        });
+    });
+
+    document.querySelectorAll(".btn-demote-admin").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+            const uid = e.currentTarget.dataset.id;
+            if (!(await confirmAction("Hạ quyền Admin cho thành viên này? Họ sẽ trở thành thành viên thường."))) return;
+            try {
+                await apiMutate(API.groupRemoveAdmin(GROUP_ID, uid), "POST");
+                showToast("Đã hạ quyền Admin!");
+                clearGroupCaches();
                 loadMembers(true);
             } catch (err) {
                 showToast("Lỗi: " + err.message, "error");
@@ -1159,7 +1192,7 @@ function loadEvents(initial = true) {
                         alert("Chưa có người tham gia.");
                         return;
                     }
-                    const names = participants.map(u => u.full_name || "Unknown").join("\n");
+                    const names = participants.map(u => `${u.first_name || ''} ${u.last_name || ''}`.trim() || "Unknown").join("\n");
                     alert("Người tham gia:\n" + names);
                 });
             });
@@ -1433,7 +1466,11 @@ function bindVoteActions() {
                     alert("Chưa có ai chọn mục này.");
                     return;
                 }
-                const names = users.map(u => u.created_by?.full_name || u.full_name || u.name || "Unknown").join("\n");
+                const names = users.map(u => {
+                    const first = u.created_by?.first_name || u.first_name || '';
+                    const last = u.created_by?.last_name || u.last_name || '';
+                    return `${first} ${last}`.trim() || u.name || "Unknown";
+                }).join("\n");
                 alert("Những người đã chọn:\n" + names);
             });
         });
@@ -1617,7 +1654,7 @@ function loadAdminSidebar() {
                 "beforeend",
                 `<div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-2 py-1.5">
                     <img src="${avatar}" class="w-7 h-7 rounded-full object-cover" onerror="this.src='${DEFAULT_AVATAR}'">
-                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">${user.full_name || "Admin"}</span>
+                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">${`${user.first_name || ''} ${user.last_name || ''}`.trim() || "Admin"}</span>
                 </div>`
             );
         });
@@ -1819,7 +1856,7 @@ function executeGroupSearch(q, append = false) {
                 // Post/member result
                 const user = item.user || item.created_by || {};
                 const avatar = user.picture || DEFAULT_AVATAR;
-                const name = user.full_name || item.full_name || item.name || "Unknown";
+                const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || item.name || "Unknown";
                 const itemId = item.post_id || item.id;
 
                 resultsContainer.insertAdjacentHTML("beforeend", `

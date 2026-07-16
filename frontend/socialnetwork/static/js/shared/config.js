@@ -246,6 +246,7 @@ export const API = {
   groupRejectRequest: (id, rid) => `${API_BASE_URL}/api/group/${id}/request/${rid}/reject/`,
   groupKickMember: (id, uid) => `${API_BASE_URL}/api/group/${id}/user/${uid}/kick/`,
   groupAddAdmin: (id, uid) => `${API_BASE_URL}/api/group/${id}/user/${uid}/add-admin/`,
+  groupRemoveAdmin: (id, uid) => `${API_BASE_URL}/api/group/${id}/user/${uid}/remove-admin/`,
   groupLeave: (id) => `${API_BASE_URL}/api/group/${id}/leave/`,
 
   groupPostList: (id) => `${API_BASE_URL}/api/group/${id}/post/list/`,

@@ -6,6 +6,14 @@ function apiGet(url, onData) {
     return authFetchCache(url, {}, onData);
 }
 
+function clearGroupCaches() {
+    [API.groupExplore(), API.groupUserGroups(), API.groupMyRequests()].forEach((url) => {
+        if (typeof url === 'string') {
+            sessionStorage.removeItem(`authCache_${url}`);
+        }
+    });
+}
+
 async function apiMutate(url, method, body = null) {
     const options = { method };
     if (body instanceof FormData) {
@@ -275,7 +283,7 @@ function loadPendingPosts(groupId) {
             posts.forEach((post) => {
                 const user = post.user || {};
                 const avatar = user.picture || DEFAULT_AVATAR;
-                const name = user.full_name || "Unknown";
+                const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Unknown";
                 const photos = post.photos || [];
 
                 container.insertAdjacentHTML(
@@ -357,7 +365,7 @@ function loadJoinRequests(groupId, isCompany, silent = false) {
             pending.forEach((req) => {
                 const user = req.user || {};
                 const avatar = user.picture || DEFAULT_AVATAR;
-                const name = user.full_name || "Unknown";
+                const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Unknown";
 
                 const acceptBtn = isCompany
                     ? `<button class="btn-company-accept px-4 py-2 bg-fb-primary text-white font-bold rounded-xl hover:bg-blue-600 transition" data-id="${req.id}"><i class="fas fa-check mr-1"></i> Duyệt & Gán chức vụ</button>`
@@ -376,8 +384,8 @@ function loadJoinRequests(groupId, isCompany, silent = false) {
                         </div>
                         <div class="flex gap-2">
                             ${acceptBtn}
-                            <button class="btn-reject-req px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition" data-id="${req.id}">
-                                <i class="fas fa-times"></i>
+                            <button class="btn-reject-req px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-100 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800/50 transition" data-id="${req.id}">
+                                <i class="fas fa-times mr-1"></i> Từ chối
                             </button>
                         </div>
                     </div>`
@@ -391,6 +399,7 @@ function loadJoinRequests(groupId, isCompany, silent = false) {
                     try {
                         await apiMutate(API.groupAcceptRequest(groupId, reqId), "POST");
                         showToast("Đã chấp nhận yêu cầu!");
+                        clearGroupCaches();
                         loadJoinRequests(groupId, isCompany);
                     } catch (err) {
                         showToast("Lỗi: " + err.message, "error");
@@ -402,12 +411,20 @@ function loadJoinRequests(groupId, isCompany, silent = false) {
             container.querySelectorAll(".btn-company-accept").forEach((btn) => {
                 btn.addEventListener("click", async (e) => {
                     const reqId = e.currentTarget.dataset.id;
-                    // Show role assignment modal
+                    const req = pending.find((r) => r.id == reqId);
+                    if (!req) return;
+                    
                     const roleId = await showRoleAssignmentModal(groupId);
                     if (roleId === null) return; // cancelled
+                    
                     try {
-                        await apiMutate(API.groupAcceptRequest(groupId, reqId), "POST", { role_id: roleId });
+                        await apiMutate(API.groupAcceptRequest(groupId, reqId), "POST");
+                        const userId = req.user?.id;
+                        if (userId && roleId) {
+                            await apiMutate(API.groupAddMemberJobRole(groupId, userId), "POST", { role_id: roleId });
+                        }
                         showToast("Đã chấp nhận và gán chức vụ!");
+                        clearGroupCaches();
                         loadJoinRequests(groupId, isCompany);
                     } catch (err) {
                         showToast("Lỗi: " + err.message, "error");
@@ -422,6 +439,7 @@ function loadJoinRequests(groupId, isCompany, silent = false) {
                     try {
                         await apiMutate(API.groupRejectRequest(groupId, reqId), "POST");
                         showToast("Đã từ chối yêu cầu!");
+                        clearGroupCaches();
                         loadJoinRequests(groupId, isCompany);
                     } catch (err) {
                         showToast("Lỗi: " + err.message, "error");
@@ -449,29 +467,39 @@ async function showRoleAssignmentModal(groupId) {
             return null;
         }
 
-        const deptOptions = departments.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
-
         const result = await showFormModal("Gán chức vụ", `
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Chọn phòng ban và chức vụ cho thành viên mới:</p>
-            <select id="assignDept" class="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-white border dark:border-gray-700 focus:ring-2 focus:ring-fb-primary outline-none mb-3">
-                <option value="">-- Chọn phòng ban --</option>
-                ${deptOptions}
-            </select>
-            <div id="roleList" class="space-y-2">
-                <p class="text-sm text-gray-500 text-center py-2">Chọn phòng ban để xem chức vụ</p>
+            <p class="text-sm text-red-500 dark:text-red-400 mb-3 font-semibold">Bắt buộc chọn chức vụ cho thành viên mới:</p>
+            <div class="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
+                ${departments.map((dept) => {
+                    const roles = dept.roles || [];
+                    const rolesHtml = roles.length > 0
+                        ? roles.map((r) => `
+                            <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition border border-transparent hover:border-gray-200 dark:hover:border-gray-700">
+                                <input type="radio" name="roleOption" value="${r.id}" class="accent-fb-primary w-4 h-4" required>
+                                <div class="flex-1">
+                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">${r.name}</span>
+                                    <span class="text-xs text-gray-500 ml-2">${r.member_count || 0} người</span>
+                                </div>
+                            </label>
+                        `).join("")
+                        : `<p class="text-xs text-gray-500 italic px-2">Chưa có chức vụ</p>`;
+                    return `
+                        <div class="border dark:border-gray-700 rounded-xl p-3">
+                            <h4 class="font-bold text-gray-900 dark:text-white mb-2 text-xs uppercase tracking-wider">${dept.name}</h4>
+                            <div class="space-y-1">
+                                ${rolesHtml}
+                            </div>
+                        </div>
+                    `;
+                }).join("")}
             </div>
         `, async (body) => {
-            const deptId = body.querySelector("#assignDept")?.value;
-            const roleId = body.querySelector(".role-option:checked")?.value;
-            if (!deptId) throw new Error("Vui lòng chọn phòng ban");
-            if (!roleId) throw new Error("Vui lòng chọn chức vụ");
-            return { role_id: parseInt(roleId) };
+            const selected = body.querySelector('input[name="roleOption"]:checked');
+            if (!selected) throw new Error("Vui lòng chọn chức vụ trước khi duyệt");
+            return parseInt(selected.value);
         });
 
-        if (result && result.role_id) {
-            return result.role_id;
-        }
-        return null;
+        return result;
     } catch (err) {
         showToast("Lỗi: " + err.message, "error");
         return null;
@@ -787,7 +815,7 @@ function setupDepartmentDelegation(groupId) {
 
             const memberOptions = members.map((m, idx) => {
                 const user = m.user || {};
-                const name = user.full_name || (user.first_name && user.last_name ? `${user.last_name} ${user.first_name}` : user.first_name || user.last_name || "Unknown");
+                const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Unknown";
                 const avatar = user.picture || DEFAULT_AVATAR;
                 const uid = user.user || user.id || m.user_id;
                 const currentRole = m.job_role || "";

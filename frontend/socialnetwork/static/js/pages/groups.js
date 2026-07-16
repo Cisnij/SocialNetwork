@@ -350,7 +350,7 @@ function loadMyJoinRequests() {
                 </div>
                 <div class="flex gap-2">
                     <a href="/group/${group.id}/" class="px-4 py-2 bg-fb-primary text-white text-sm font-bold rounded-xl hover:bg-blue-600 transition">Xem nhóm</a>
-                    ${req.status === 'pending' ? `<button class="btn-cancel-my-request px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition" data-id="${req.id}" data-group-id="${group.id}"><i class="fas fa-times"></i></button>` : ''}
+                    ${req.status === 'pending' ? `<button class="btn-cancel-my-request px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-bold rounded-xl hover:bg-red-100 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800/50 transition" data-id="${req.id}" data-group-id="${group.id}"><i class="fas fa-times mr-1"></i> Hủy yêu cầu</button>` : ''}
                 </div>
             </div>`;
         }).join("");
@@ -363,6 +363,7 @@ function loadMyJoinRequests() {
                 try {
                     await apiMutate(API.groupCancelRequest(groupId), "POST");
                     showToast("Đã hủy yêu cầu!");
+                    clearGroupCaches();
                     loadMyJoinRequests();
                 } catch (err) {
                     showToast("Lỗi: " + err.message, "error");
@@ -495,4 +496,12 @@ function showToast(msg, type = "info") {
     toast.className = `fixed bottom-5 right-5 px-4 py-3 rounded-lg shadow-lg z-[80] max-w-sm toast toast-${type}`;
     toast.classList.remove("hidden");
     setTimeout(() => toast.classList.add("hidden"), 4000);
+}
+
+function clearGroupCaches() {
+    [API.groupExplore(), API.groupUserGroups(), API.groupMyRequests()].forEach((url) => {
+        if (typeof url === 'string') {
+            sessionStorage.removeItem(`authCache_${url}`);
+        }
+    });
 }

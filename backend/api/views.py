@@ -30,7 +30,8 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from .pagination import *
-from .signals import unfriended_log, accept_join_request_group, notify_accept_post_request, notify_add_admin, owner_transfer_group
+from .signals import unfriended_log, accept_join_request_group, notify_accept_post_request, notify_add_admin, \
+    owner_transfer_group, add_admin_group
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
 from django.db.models import Q, Prefetch, prefetch_related_objects, F, Exists, OuterRef
 from .permissions import IsConversationMember, PostViewPermission, IsAdminOrOwnerGroup, IsMemberGroup, IsOwnerOnlyGroup, \
@@ -3788,14 +3789,15 @@ class ListGroupSuggestion(generics.ListAPIView):
     search_fields = ['name']
     def get_queryset(self):
         user = self.request.user
-        return Group.objects.exclude(
-            members__user=user,
-            members__is_active=True
-        ).annotate(
+        active_membership = GroupMember.objects.filter(
+            group=OuterRef('pk'),
+            user=user,
+            is_active=True
+        )
+        # cơ bản là nó sẽ lấy ra all group xong lặp từng group, nó sẽ lấy group member có group pk là x và user=user,is_ative=True thì cột is_member là True không thì false,sau đó có đủ cột is member thì chỉ cần lấy ra các cột false
+        return Group.objects.annotate(
             member_count=Count('members', filter=Q(members__is_active=True)),
-            is_member=Exists(
-                GroupMember.objects.filter(group=OuterRef('pk'), user=user, is_active=True)
-            ),
+            is_member=Exists(active_membership),
             is_pending=Exists(
                 GroupJoinRequest.objects.filter(group=OuterRef('pk'), user=user, status='pending')
             )
@@ -3805,7 +3807,7 @@ class ListGroupSuggestion(generics.ListAPIView):
                 queryset=GroupMember.objects.filter(user=user, is_active=True).select_related('job_role__department', 'job_role'),
                 to_attr='my_membership' 
             )
-        )
+        ).filter(is_member=False)
 
 class DeleteGroup(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated,IsOwnerOnlyGroup]
@@ -4205,6 +4207,27 @@ class KickMemberGroup(APIView):
         member.save(update_fields=['is_active'])
         return Response({"detail": "success"}, status=200)
 
+class RemoveAdminGroup(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerOnlyGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'remove_admin_group'
+    def post(self, request, group_id, user_id):
+        group = get_object_or_404(Group,pk=group_id)
+        self.check_object_permissions(self.request,group)
+        member = get_object_or_404(
+            GroupMember,
+            group=group,
+            user_id=user_id,
+            is_active=True
+        )
+        if member.role != 'admin':
+            raise ValidationError("User này không phải là admin")
+        if member.role == 'owner':
+            raise PermissionDenied("Không thể hạ cấp owner")
+        member.role = 'member'
+        member.save(update_fields=['role'])
+        return Response({"detail": "success"}, status=200)
+
 class AddAdminGroup(APIView):
     permission_classes = [IsAuthenticated, IsOwnerOnlyGroup]
     throttle_classes = [ScopedRateThrottle]
@@ -4224,7 +4247,7 @@ class AddAdminGroup(APIView):
             raise ValidationError("Không thể hạ cấp owner")
         member.role = 'admin'
         member.save(update_fields=['role'])
-        notify_add_admin.send(  # ← thêm
+        add_admin_group.send(  # ← thêm
             sender=self.__class__,
             group=group,
             new_admin=member.user,
