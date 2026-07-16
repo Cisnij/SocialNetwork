@@ -599,7 +599,6 @@ class GroupSerializer(serializers.ModelSerializer):
     belong_to_department = serializers.SerializerMethodField()
     department_role = serializers.SerializerMethodField()
     join_status = serializers.SerializerMethodField()
-    cover_image = serializers.ImageField(required=False, allow_null=True)
     class Meta:
         model = Group
         fields = '__all__'
@@ -674,6 +673,7 @@ class GroupMemberSerializer(serializers.ModelSerializer):
 class GroupJoinRequestSerializer(serializers.ModelSerializer):
     user = ProfileSerializer(source='user.profile', read_only=True)
     reviewed_by = ProfileSerializer(source='reviewed_by.profile', read_only=True)
+    group = GroupSerializer(read_only=True)
     class Meta:
         model = GroupJoinRequest
         fields = '__all__'

@@ -101,7 +101,7 @@ REST_FRAMEWORK={ #Cấu hình token
         'add_member_job_role': '200/h',
         'accept_join_request_group': '200/h',
         'reject_join_request_group': '200/h',
-        'join_request_group': '20/day',
+        'join_request_group': '30/day',
         'cancel_join_request_group': '20/day',
         'kick_member_group': '100/h',
         'add_admin_group': '10/day',

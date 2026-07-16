@@ -4069,7 +4069,6 @@ class SendJoinRequestGroup(APIView):
         group = get_object_or_404(Group,pk=group_id)
         if self.request.user.has_perm('group.is_member',group):
             raise ValidationError("Bạn đã là thành viên group")
-
         existing = GroupJoinRequest.objects.filter(group=group, user=request.user, status='pending').exists()
         if existing:
             raise ValidationError("Bạn đã gửi yêu cầu tham gia rồi")
@@ -4083,19 +4082,31 @@ class SendJoinRequestGroup(APIView):
                 'reviewed_by': None
             }
         )
-
         return Response({'detail': 'Đã gửi yêu cầu tham gia'},status=201 if created else 200)
 
+
+from django.db import transaction
+from rest_framework.exceptions import ValidationError
 
 class CancelJoinRequestGroup(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'cancel_join_request_group'
-    def post(self,request,group_id):
-        group = get_object_or_404(Group,pk=group_id)
-        join_request =  get_object_or_404(GroupJoinRequest,group=group, user=request.user,status='pending')#chỉ cho hủy khi pending
-        join_request.delete()
-        return Response({"detail":"Bạn đã hủy yêu cầu tham gia"},status = 200)
+    throttle_scope = "cancel_join_request_group"
+    @transaction.atomic
+    def post(self, request, group_id):
+        deleted, _ = GroupJoinRequest.objects.filter(
+            group_id=group_id,
+            user=request.user,
+            status="pending",
+        ).delete()
+
+        if deleted == 0:
+            raise ValidationError("Không tìm thấy yêu cầu tham gia hoặc yêu cầu đã được xử lý.")
+
+        return Response(
+            {"detail": "Bạn đã hủy yêu cầu tham gia"},
+            status=status.HTTP_200_OK,
+        )
 
 class MyJoinRequestList(generics.ListAPIView):
     permission_classes = [IsAuthenticated]

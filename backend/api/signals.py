@@ -1138,7 +1138,7 @@ def log_group_join_request_created(sender,created,instance,**kwargs):
         }
     )
 @receiver(post_delete, sender= GroupJoinRequest)
-def log_group_join_request_cancelled(sender,created,instance,**kwargs):
+def log_group_join_request_cancelled(sender,instance,**kwargs):
     action.send(
         instance.user,
         verb='group join request cancel',
