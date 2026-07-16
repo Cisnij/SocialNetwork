@@ -3959,6 +3959,16 @@ class ListDepartmentGroup(generics.ListAPIView):
             item['job_role__department_id']: item['count'] # department tương ứng count ví dụ 1:10, 2:12
             for item in counts
         }
+        counts_role = (
+            GroupMember.objects
+            .filter(group_id=group_id, is_active=True, job_role__isnull=False)
+            .values('job_role_id') # count theo job_role_id( role đó có bao member)
+            .annotate(count=Count('id'))
+        )
+        context['role_member_counts'] = {
+            item['job_role_id']: item['count']
+            for item in counts_role
+        }
         return context
 
 

@@ -642,9 +642,7 @@ class GroupRoleSerializer(serializers.ModelSerializer):
     def get_member_count(self,obj):
         if hasattr(obj, 'member_count'):
             return obj.member_count # dùng cho get_object
-        counts= self.context.get('role_member_counts')
-        if not counts:  # khi không có context
-            return 0
+        counts = self.context.get("role_member_counts", {})
         return counts.get(obj.id, 0)
 
 class GroupDepartmentSerializer(serializers.ModelSerializer):
@@ -661,9 +659,7 @@ class GroupDepartmentSerializer(serializers.ModelSerializer):
     def get_member_count(self,obj):
         if hasattr(obj, 'member_count'):
             return obj.member_count # dùng cho get_object, nếu có truyền vào member_count trong annotate viết ở get_object thì lấy
-        counts= self.context.get('department_member_counts') # lấy ở context truyền từ queryset, lưu trong ram
-        if not counts:  # khi không có context
-            return 0
+        counts = self.context.get("department_member_counts", {}) # lấy ở context truyền từ queryset, lưu trong ram
         return counts.get(obj.id, 0) #dùng cho get_queryset (tức là truyền vào department 1 thì lấy tất cả member department 1, k có thì 0)
 
 class GroupMemberSerializer(serializers.ModelSerializer):
