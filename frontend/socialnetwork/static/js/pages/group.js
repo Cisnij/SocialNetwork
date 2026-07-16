@@ -197,16 +197,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const navButtons = document.querySelectorAll("#groupNav button[data-tab]");
     navButtons.forEach((btn) => {
         btn.addEventListener("click", (e) => {
+            const clickedBtn = e.currentTarget;
             navButtons.forEach((b) => {
                 b.className =
                     "px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800";
             });
-            e.target.className =
+            clickedBtn.className =
                 "px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all bg-fb-primary/10 text-fb-primary shadow-sm";
 
             document.querySelectorAll(".group-tab-content").forEach((tab) => tab.classList.add("hidden"));
 
-            const tabName = e.target.getAttribute("data-tab");
+            const tabName = clickedBtn.getAttribute("data-tab");
             const tabId = `tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`;
             const targetTab = document.getElementById(tabId);
             if (targetTab) {
@@ -349,8 +350,8 @@ function renderActionButtons(group) {
       </button>`;
     } else if (group.join_status === "pending") {
         btnHtml = `
-      <button id="btnCancelRequest" class="bg-yellow-100 text-yellow-700 border border-yellow-300 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-yellow-200 transition shadow-sm">
-        <i class="fas fa-clock"></i> Đang chờ duyệt — Hủy?
+      <button id="btnCancelRequest" class="bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-700 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-yellow-200 dark:hover:bg-yellow-900/60 transition shadow-sm">
+        <i class="fas fa-clock"></i> Hủy yêu cầu
       </button>`;
     } else {
         btnHtml = `
@@ -445,11 +446,57 @@ function setupPermissions(group) {
 // ============ JOIN / LEAVE ============
 async function joinGroup() {
     try {
-        await apiMutate(API.groupSendRequest(GROUP_ID), "POST");
+        const result = await apiMutate(API.groupSendRequest(GROUP_ID), "POST");
+        const detail = result?.detail || "";
+        const container = document.getElementById("groupActionButtons");
+        if (container) {
+            container.innerHTML = `
+                <button id="btnCancelRequest" class="bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-700 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-yellow-200 dark:hover:bg-yellow-900/60 transition shadow-sm">
+                    <i class="fas fa-clock"></i> Đang chờ duyệt — Hủy?
+                </button>`;
+            document.getElementById("btnCancelRequest")?.addEventListener("click", cancelJoinRequest);
+        }
+        if (groupData) groupData.join_status = "pending";
+        isMember = false;
         showToast("Đã gửi yêu cầu tham gia nhóm!");
-        loadGroupInfo();
     } catch (err) {
-        showToast("Lỗi: " + err.message, "error");
+        const msg = err.message || "";
+        if (msg.includes("đã là thành viên") || msg.includes("đã tham gia")) {
+            showToast("Bạn đã là thành viên nhóm!");
+            const container = document.getElementById("groupActionButtons");
+            if (container) {
+                container.innerHTML = `
+                    <button id="btnLeaveGroup" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow-sm">
+                        <i class="fas fa-check-circle text-green-500"></i> Đã tham gia
+                    </button>
+                    <button class="bg-fb-primary text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-600 transition shadow-md" onclick="navigator.clipboard.writeText(window.location.href);showToast('Đã sao chép link nhóm!')">
+                        <i class="fas fa-share-nodes"></i>
+                    </button>`;
+                document.getElementById("btnLeaveGroup")?.addEventListener("click", () => {
+                    if (groupData?.role === "owner") {
+                        showTransferOwnershipModal();
+                    } else {
+                        if (confirm("Bạn có chắc muốn rời khỏi nhóm?")) leaveGroup(null);
+                    }
+                });
+            }
+            if (groupData) groupData.join_status = "member";
+            isMember = true;
+        } else if (msg.includes("đã gửi yêu cầu") || msg.includes("đã gửi")) {
+            showToast("Bạn đã gửi yêu cầu tham gia rồi!");
+            const container = document.getElementById("groupActionButtons");
+            if (container) {
+                container.innerHTML = `
+                    <button id="btnCancelRequest" class="bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-700 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-yellow-200 dark:hover:bg-yellow-900/60 transition shadow-sm">
+                        <i class="fas fa-clock"></i> Đang chờ duyệt — Hủy?
+                    </button>`;
+                document.getElementById("btnCancelRequest")?.addEventListener("click", cancelJoinRequest);
+            }
+            if (groupData) groupData.join_status = "pending";
+            isMember = false;
+        } else {
+            showToast("Lỗi: " + msg, "error");
+        }
     }
 }
 
@@ -457,7 +504,16 @@ async function cancelJoinRequest() {
     try {
         await apiMutate(API.groupCancelRequest(GROUP_ID), "POST");
         showToast("Đã hủy yêu cầu.");
-        loadGroupInfo();
+        const container = document.getElementById("groupActionButtons");
+        if (container) {
+            container.innerHTML = `
+                <button id="btnJoinGroup" class="bg-fb-primary text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-600 transition shadow-lg shadow-blue-500/30 active:scale-95">
+                    <i class="fas fa-user-plus"></i> Tham gia nhóm
+                </button>`;
+            document.getElementById("btnJoinGroup")?.addEventListener("click", joinGroup);
+        }
+        if (groupData) groupData.join_status = "none";
+        isMember = false;
     } catch (err) {
         showToast("Lỗi: " + err.message, "error");
     }

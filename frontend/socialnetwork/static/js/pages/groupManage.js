@@ -88,11 +88,7 @@ function openFormModal({ title, bodyHtml, validate, onGetValues, okText = "Lưu"
                         return;
                     }
                 }
-                if (onSubmit) {
-                    close(bodyEl);
-                } else {
-                    close(values);
-                }
+                cleanup(values);
             };
 
         document.getElementById("formModalCancel").onclick = () => cleanup(null);
@@ -691,15 +687,14 @@ function setupDepartmentDelegation(groupId) {
         const viewDeptBtn = e.target.closest(".btn-view-dept-members");
         if (viewDeptBtn) {
             const did = viewDeptBtn.dataset.did;
-            const result = await showFormModal("Thành viên phòng ban", `
+            const modalPromise = showFormModal("Thành viên phòng ban", `
                 <div id="deptMembersList" class="space-y-2 max-h-96 overflow-y-auto">
                     <div class="text-center py-4"><i class="fas fa-spinner fa-spin text-fb-primary"></i></div>
                 </div>
             `, async (body) => true);
 
-            if (result) {
-                const listContainer = document.getElementById("deptMembersList");
-                if (!listContainer) return;
+            const listContainer = document.getElementById("deptMembersList");
+            if (listContainer) {
                 try {
                     const res = await authFetch(API.groupDeptMembers(groupId, did));
                     const data = await res.json();
@@ -723,6 +718,8 @@ function setupDepartmentDelegation(groupId) {
                     listContainer.innerHTML = `<p class="text-center text-red-500 py-4">Lỗi: ${err.message}</p>`;
                 }
             }
+
+            const result = await modalPromise;
             return;
         }
 
@@ -731,15 +728,14 @@ function setupDepartmentDelegation(groupId) {
         if (viewRoleBtn) {
             const did = viewRoleBtn.dataset.did;
             const rid = viewRoleBtn.dataset.rid;
-            const result = await showFormModal("Thành viên chức vụ", `
+            const modalPromise = showFormModal("Thành viên chức vụ", `
                 <div id="roleMembersList" class="space-y-2 max-h-96 overflow-y-auto">
                     <div class="text-center py-4"><i class="fas fa-spinner fa-spin text-fb-primary"></i></div>
                 </div>
             `, async (body) => true);
 
-            if (result) {
-                const listContainer = document.getElementById("roleMembersList");
-                if (!listContainer) return;
+            const listContainer = document.getElementById("roleMembersList");
+            if (listContainer) {
                 try {
                     const res = await authFetch(API.groupRoleMembers(groupId, did, rid));
                     const data = await res.json();
@@ -763,6 +759,8 @@ function setupDepartmentDelegation(groupId) {
                     listContainer.innerHTML = `<p class="text-center text-red-500 py-4">Lỗi: ${err.message}</p>`;
                 }
             }
+
+            const result = await modalPromise;
             return;
         }
 
