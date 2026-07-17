@@ -100,7 +100,7 @@ def send_event_reminder(self, event_id, content_type_id):
 def make_notification_group(self, group_id, post_id, admin_id):
     try:
         group = Group.objects.filter(id=group_id).first()
-        post = Post.objects.filter(id=post_id,group_id=group_id,post_status='approved').first()
+        post = Post.objects.filter(post_id=post_id, group_id=group_id, post_status='approved').first()
         if not group or not post:
             logger.error(f"make_notification_group: group={group_id} hoặc post={post_id} không tồn tại")
             return

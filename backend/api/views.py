@@ -4301,6 +4301,7 @@ class CreatePostGroup(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = PostSerializer
     throttle_classes = [ScopedRateThrottle]
+    parser_classes = [MultiPartParser, FormParser]
     throttle_scope = 'create_post_group'
     def perform_create(self, serializer):
         group_id = self.kwargs.get("group_id")
@@ -4308,7 +4309,13 @@ class CreatePostGroup(generics.CreateAPIView):
         group = get_object_or_404(Group, id=group_id)
         member = get_object_or_404(GroupMember, group=group, user_id=user.id,is_active=True)
         post_status = 'approved' if member.role in ['owner', 'admin'] else 'pending'
-        serializer.save(user=user, group=group, post_status=post_status)
+        with transaction.atomic():
+            post = serializer.save(user=user, group=group, post_status=post_status)
+            photos = self.request.FILES.getlist('photos')
+            if photos:
+                PostPhoto.objects.bulk_create([
+                    PostPhoto(post=post, photo=photo) for photo in photos
+                ])
 
 class PostReviewGroupList(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
@@ -4457,12 +4464,12 @@ class MakeNotification(APIView):
 
 class PostGroupDetail(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated,IsMemberGroup]
-    serializer_class = GroupPostSerializer
+    serializer_class = PostSerializer
     def get_object(self):
         post_id = self.kwargs.get('post_id')
         group_id = self.kwargs.get('group_id')
         group = get_object_or_404(Group, pk=group_id)
-        self.check_object_permissions(self.request, group)  # check đúng group, không phải post
+        self.check_object_permissions(self.request, group)
         return get_object_or_404(
             Post.objects.select_related('user__profile','user','group').prefetch_related('photos'),
             pk=post_id, group_id=group_id, post_status='approved'

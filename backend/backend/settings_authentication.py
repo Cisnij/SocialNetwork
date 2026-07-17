@@ -112,7 +112,7 @@ REST_FRAMEWORK={ #Cấu hình token
         'delete_post_group': '100/h',
         'update_post_group': '50/day',
         'pin_post_group': '10/day',
-        'make_notification_group': '5/day',
+        'make_notification_group': '10/day',
     },
 
     "DEFAULT_PARSER_CLASSES": [ #dùng cho phép nhận nhiều định dạng dữ liệu khác nhau 
