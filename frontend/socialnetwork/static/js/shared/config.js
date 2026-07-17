@@ -236,8 +236,6 @@ export const API = {
     }
     return url;
   },
-  groupAdmins: (id) => `${API_BASE_URL}/api/group/${id}/admin/`,
-
   groupSendRequest: (id) => `${API_BASE_URL}/api/group/${id}/send-request/`,
   groupCancelRequest: (id) => `${API_BASE_URL}/api/group/${id}/cancel-request/`,
   groupMyRequests: () => `${API_BASE_URL}/api/group/my-requests/`,

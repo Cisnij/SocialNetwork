@@ -84,14 +84,6 @@ function confirmAction(msg) {
     });
 }
 
-function getGroupAvatar() {
-    return (
-        groupData?.avatar ||
-        document.getElementById("groupAvatarImageHero")?.src ||
-        DEFAULT_AVATAR
-    );
-}
-
 function escapeHtml(value) {
     return String(value ?? "")
         .replace(/&/g, "&amp;")
@@ -106,7 +98,7 @@ function normalizeListResponse(data) {
 }
 
 function clearGroupCaches() {
-    [API.groupExplore(), API.groupUserGroups(), API.groupMyRequests(), API.groupDetail(GROUP_ID)].forEach((url) => {
+    [API.groupExplore(), API.groupUserGroups(), API.groupMyRequests()].forEach((url) => {
         if (typeof url === 'string') {
             sessionStorage.removeItem(`authCache_${url}`);
         }
@@ -249,7 +241,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     setupGroupSettings();
     setupGroupDelete();
-    loadAdminSidebar();
 
     // Tab navigation
     const navButtons = document.querySelectorAll("#groupNav button[data-tab]");
@@ -316,14 +307,12 @@ async function loadGroupInfo() {
         myRole = data.role || null;
         myUserId = data.user_id || null;
         isMember = data.join_status === "member";
-        updateUIVisibilityForMembership();
 
         renderHero(data);
         setupPermissions(data);
 
         if (isMember) {
             loadPosts();
-            loadActiveVotesSidebar();
         } else {
             renderRules();
         }
@@ -434,7 +423,7 @@ function renderActionButtons(group) {
             if (newOwnerId === null) return;
             const confirmed = await showFormModal("Xác nhận rời nhóm", `
                 <div class="text-center py-4">
-                    <img src="${getGroupAvatar()}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                    <img src="${groupData?.avatar || DEFAULT_AVATAR}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
                     <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời nhóm?</p>
                     <p class="text-sm text-gray-500">Quyền sở hữu sẽ được chuyển cho admin đã chọn. Hành động này không thể hoàn tác.</p>
                 </div>
@@ -450,7 +439,7 @@ function renderActionButtons(group) {
         } else {
             const confirmed = await showFormModal("Rời nhóm", `
                 <div class="text-center py-4">
-                    <img src="${getGroupAvatar()}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                    <img src="${groupData?.avatar || DEFAULT_AVATAR}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
                     <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời khỏi nhóm?</p>
                     <p class="text-sm text-gray-500">Sau khi rời nhóm, bạn sẽ không xem được nội dung và phải gửi yêu cầu tham gia lại nếu muốn quay lại.</p>
                 </div>
@@ -523,6 +512,7 @@ function setupPermissions(group) {
         document.getElementById("navAdmin")?.classList.remove("hidden");
         document.getElementById("groupAdminActions")?.classList.remove("hidden");
     } else {
+        document.getElementById("navAdmin")?.classList.add("hidden");
         document.getElementById("groupAdminActions")?.classList.add("hidden");
     }
 
@@ -535,6 +525,11 @@ function setupPermissions(group) {
                 const openBtn = document.getElementById("openPostModal");
                 if (openBtn) openBtn.click();
             });
+        }
+        const composerAvatar = document.getElementById("myAvatarComposer");
+        if (composerAvatar && window.currentUserProfile?.picture) {
+            composerAvatar.src = window.currentUserProfile.picture;
+            composerAvatar.onerror = () => { composerAvatar.src = DEFAULT_AVATAR; };
         }
     }
 }
@@ -576,7 +571,7 @@ async function joinGroup() {
                         if (newOwnerId === null) return;
                         const confirmed = await showFormModal("Xác nhận rời nhóm", `
                             <div class="text-center py-4">
-                                <img src="${getGroupAvatar()}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                                <img src="${groupData?.avatar || DEFAULT_AVATAR}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
                                 <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời nhóm?</p>
                                 <p class="text-sm text-gray-500">Quyền sở hữu sẽ được chuyển cho admin đã chọn. Hành động này không thể hoàn tác.</p>
                             </div>
@@ -592,7 +587,7 @@ async function joinGroup() {
                     } else {
                         const confirmed = await showFormModal("Rời nhóm", `
                             <div class="text-center py-4">
-                                <img src="${getGroupAvatar()}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                                <img src="${groupData?.avatar || DEFAULT_AVATAR}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
                                 <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời khỏi nhóm?</p>
                                 <p class="text-sm text-gray-500">Sau khi rời nhóm, bạn sẽ không xem được nội dung và phải gửi yêu cầu tham gia lại nếu muốn quay lại.</p>
                             </div>
@@ -1716,7 +1711,7 @@ function setupGroupDelete() {
 // ============ ADMIN SIDEBAR ============
 function loadAdminSidebar() {
     if (!isMember) return;
-    apiGet(API.groupAdmins(GROUP_ID), (data) => {
+    apiGet(API.groupAdminList(GROUP_ID), (data) => {
         const admins = data.results || (Array.isArray(data) ? data : []);
         if (admins.length === 0) return;
         const sidebar = document.getElementById("sidebarAdminCard");

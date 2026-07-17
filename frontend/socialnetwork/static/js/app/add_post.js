@@ -88,6 +88,7 @@ function setupBaseModal() {
       const title = document.getElementById("postTitle")?.value.trim();
       const files = imageInput?.files || [];
       const privacy = document.getElementById("postPrivacy")?.value || getDefaultPrivacy();
+      const groupId = window.GROUP_POSTING_MODE || null;
 
       if (!title && selectedFiles.length === 0) {
         showToast("⚠️ Vui lòng nhập tiêu đề hoặc thêm ảnh", "red");
@@ -96,7 +97,9 @@ function setupBaseModal() {
 
       const formData = new FormData();
       formData.append("title", title || "Bài viết mới");
-      formData.append("privacy", privacy);
+      if (!groupId) {
+        formData.append("privacy", privacy);
+      }
       selectedFiles.forEach((file) => {
         formData.append("photos", file);
       });
@@ -277,8 +280,9 @@ function setupAddPostPage() {
 
     const content = postContent?.value.trim();
     const privacy = document.getElementById("postPrivacy")?.value || getDefaultPrivacy();
+    const groupId = window.GROUP_POSTING_MODE || null;
 
-    console.log("Form data:", { content, privacy, selectedFilesCount: selectedFiles.length });
+    console.log("Form data:", { content, privacy, selectedFilesCount: selectedFiles.length, groupId });
 
     if (!content && selectedFiles.length === 0) {
       showToast("⚠️ Vui lòng nhập nội dung hoặc thêm ảnh", "red");
@@ -287,7 +291,9 @@ function setupAddPostPage() {
 
     const formData = new FormData();
     formData.append("title", content || "Bài viết mới");
-    formData.append("privacy", privacy);
+    if (!groupId) {
+      formData.append("privacy", privacy);
+    }
 
     selectedFiles.forEach((file) => {
       formData.append("photos", file);
