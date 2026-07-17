@@ -323,6 +323,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     });
 
+    // Member search (filter list by first_name / last_name)
+    const memberSearchInput = document.getElementById("searchMemberInput");
+    if (memberSearchInput && !memberSearchInput.dataset.bound) {
+        memberSearchInput.dataset.bound = "1";
+        let memberSearchTimer = null;
+        memberSearchInput.addEventListener("input", (e) => {
+            clearTimeout(memberSearchTimer);
+            const val = e.target.value.trim();
+            memberSearchTimer = setTimeout(() => {
+                memberSearchKeyword = val;
+                loadMembers(true);
+            }, 400);
+        });
+    }
+
     // Suggestion box
     document.getElementById("btnOpenSuggestionModal")?.addEventListener("click", openSuggestionModal);
 
@@ -1259,6 +1274,8 @@ function renderRules() {
 }
 
 // ============ MEMBERS ============
+let memberSearchKeyword = "";
+
 function loadMembers(initial = true) {
     const containerAll = document.getElementById("groupMembersList");
     const containerAdmins = document.getElementById("groupAdminsList");
@@ -1273,7 +1290,7 @@ function loadMembers(initial = true) {
     if (initial) {
         containerAll.innerHTML = `<div class="col-span-full py-8 flex justify-center"><i class="fas fa-spinner fa-spin text-fb-primary text-2xl"></i></div>`;
         containerAdmins.innerHTML = "";
-        nextMembersUrl = API.groupMembers(GROUP_ID);
+        nextMembersUrl = API.groupMembers(GROUP_ID, null, memberSearchKeyword);
         isLoadingMembers = false;
     }
 
@@ -2198,7 +2215,7 @@ function executeGroupSearch(q, append = false) {
         }
 
         // Handle combined results
-        const items = results.length > 0 ? results : [...posts, ...members];
+        const items = [...results, ...posts, ...members];
         items.forEach((item) => {
             if (item.image || item.photo) {
                 // Photo result
@@ -2209,9 +2226,17 @@ function executeGroupSearch(q, append = false) {
                     </div>`);
             } else {
                 // Post/member result
-                const user = item.user || item.created_by || {};
-                const avatar = user.picture || "";
-                const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || item.name || "Unknown";
+                // NOTE: ProfileSerializer returns `user` as an integer (user_id),
+                // so it must NOT be treated as a nested user object.
+                const src = item.first_name || item.last_name ? item : (item.user && typeof item.user === "object" ? item.user : item);
+                const avatar = item.picture || (typeof item.user === "object" ? item.user.picture : "") || "";
+                const firstName = item.first_name || (typeof item.user === "object" ? item.user.first_name : "") || "";
+                const lastName = item.last_name || (typeof item.user === "object" ? item.user.last_name : "") || "";
+                const name =
+                    `${firstName} ${lastName}`.trim() ||
+                    item.full_name ||
+                    item.name ||
+                    "Unknown";
                 const itemId = item.post_id || item.id;
 
                 resultsContainer.insertAdjacentHTML("beforeend", `

@@ -229,11 +229,12 @@ export const API = {
   groupUserGroups: () => `${API_BASE_URL}/api/group/user/group/`,
   groupExplore: () => `${API_BASE_URL}/api/group/explore/`,
 
-  groupMembers: (id, excludeRole) => {
+  groupMembers: (id, excludeRole, q) => {
     let url = `${API_BASE_URL}/api/group/${id}/user-list/`;
-    if (excludeRole) {
-      url += `?exclude_role=${encodeURIComponent(excludeRole)}`;
-    }
+    const params = [];
+    if (excludeRole) params.push(`exclude_role=${encodeURIComponent(excludeRole)}`);
+    if (q) params.push(`search=${encodeURIComponent(q)}`);
+    if (params.length) url += `?${params.join("&")}`;
     return url;
   },
   groupSendRequest: (id) => `${API_BASE_URL}/api/group/${id}/send-request/`,
