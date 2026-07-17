@@ -1,7 +1,10 @@
-import { API, DEFAULT_AVATAR, profileUrl } from "../shared/config.js";
+import { API, profileUrl } from "../shared/config.js";
 import { authFetch, authFetchCache } from "../authenticate/auth.js";
 import { initAdminPanel } from "./groupManage.js";
 import { initCommentsPanel } from "../shared/comments-panel.js";
+import { fetchUserProfileShared } from "../app/profile.js";
+import { renderPostCard } from "../shared/posts/render.js";
+import { openReactionsModal, openPhotoModal } from "../shared/posts/modals.js";
 
 // ============ STATE ============
 const GROUP_ID = window.CURRENT_GROUP_ID;
@@ -9,6 +12,10 @@ let groupData = null;
 let isMember = false;
 let myRole = null;
 let myUserId = null;
+
+// Sidebar loaded flags to prevent duplicate API calls
+let sidebarVotesLoaded = false;
+let sidebarAdminLoaded = false;
 
 // Pagination states
 let nextPostsUrl = null;
@@ -186,6 +193,8 @@ function updateUIVisibilityForMembership() {
     const sidebarActiveVotes = document.getElementById("sidebarActiveVotes");
     const sidebarAdminCard = document.getElementById("sidebarAdminCard");
     const companySuggestionBox = document.getElementById("companySuggestionBox");
+    const navAdmin = document.getElementById("navAdmin");
+    const isAdmin = myRole === "owner" || myRole === "admin";
 
     if (!isMember) {
         if (groupNav) groupNav.classList.add("hidden");
@@ -198,6 +207,7 @@ function updateUIVisibilityForMembership() {
         if (sidebarActiveVotes) sidebarActiveVotes.classList.add("hidden");
         if (sidebarAdminCard) sidebarAdminCard.classList.add("hidden");
         if (companySuggestionBox) companySuggestionBox.classList.add("hidden");
+        if (navAdmin) navAdmin.classList.add("hidden");
     } else {
         if (groupNav) groupNav.classList.remove("hidden");
         if (groupSidebar) groupSidebar.classList.remove("hidden");
@@ -205,6 +215,12 @@ function updateUIVisibilityForMembership() {
         document.querySelectorAll("#groupNav button[data-tab]").forEach((btn) => {
             btn.classList.remove("hidden");
         });
+
+        if (!isAdmin && navAdmin) {
+            navAdmin.classList.add("hidden");
+        } else if (isAdmin && navAdmin) {
+            navAdmin.classList.remove("hidden");
+        }
 
         const activeBtn = document.querySelector("#groupNav button.bg-fb-primary\\/10");
         if (activeBtn) {
@@ -214,8 +230,14 @@ function updateUIVisibilityForMembership() {
             if (targetTab) targetTab.classList.remove("hidden");
         }
 
-        if (sidebarActiveVotes) loadActiveVotesSidebar();
-        if (sidebarAdminCard) loadAdminSidebar();
+        if (sidebarActiveVotes && !sidebarVotesLoaded) {
+            loadActiveVotesSidebar();
+            sidebarVotesLoaded = true;
+        }
+        if (sidebarAdminCard && !sidebarAdminLoaded) {
+            loadAdminSidebar();
+            sidebarAdminLoaded = true;
+        }
         if (companySuggestionBox) {
             companySuggestionBox.classList.toggle("hidden", !(groupData?.is_company && isMember));
         }
@@ -231,6 +253,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     initCommentsPanel();
+    const { initShareModal } = await import("../shared/share-modal.js");
+    initShareModal();
+
+    try {
+        await fetchUserProfileShared();
+        console.log("[GROUP] fetchUserProfileShared done");
+    } catch (err) {
+        console.error("[GROUP] fetchUserProfileShared failed:", err);
+    }
 
     try {
         await loadGroupInfo();
@@ -266,6 +297,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 targetTab.classList.add("animate-fade-in");
             }
 
+            updateUIVisibilityForMembership();
+
             // Load data on tab switch
             if (tabName === "rules") renderRules();
             else if (tabName === "members") loadMembers(true);
@@ -273,6 +306,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             else if (tabName === "votes") loadVotesTab(true);
             else if (tabName === "photos") loadPhotos(true);
             else if (tabName === "search") loadSearch();
+            else if (tabName === "myposts") loadMyGroupPosts("approved");
+        });
+    });
+
+    // My-group-posts filter switch
+    document.querySelectorAll(".my-post-filter").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            document.querySelectorAll(".my-post-filter").forEach((b) => {
+                b.className =
+                    "my-post-filter py-2.5 px-5 rounded-t-lg font-bold transition-all text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-b-2 border-transparent";
+            });
+            btn.className =
+                "my-post-filter active py-2.5 px-5 rounded-t-lg font-bold transition-all bg-fb-primary/10 text-fb-primary border-b-2 border-fb-primary";
+            loadMyGroupPosts(btn.getAttribute("data-filter") || "approved");
         });
     });
 
@@ -291,7 +338,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // ============ LOAD GROUP INFO ============
 async function loadGroupInfo() {
+    sidebarVotesLoaded = false;
+    sidebarAdminLoaded = false;
     try {
+        // Fetch group data
         const data = await new Promise((resolve, reject) => {
             apiGet(API.groupDetail(GROUP_ID), (result, isCache) => {
                 // authFetchCache calls onData(data, isCache)
@@ -305,7 +355,17 @@ async function loadGroupInfo() {
         });
         groupData = data;
         myRole = data.role || null;
-        myUserId = data.user_id || null;
+        
+        // Get current user ID from currentUserProfile as source of truth
+        try {
+            await fetchUserProfileShared(); // Ensure profile is loaded
+            myUserId = Number(window.currentUserProfile?.id) || null;
+        } catch (profileErr) {
+            console.error("[GROUP] Failed to get user profile for ID:", profileErr);
+            // Fallback to data.user_id if profile not available
+            myUserId = data.user_id ? Number(data.user_id) : null;
+        }
+        
         isMember = data.join_status === "member";
 
         renderHero(data);
@@ -340,11 +400,11 @@ function renderHero(group) {
     if (descEl) descEl.textContent = group.description || "Nhóm chưa có mô tả.";
 
     // Avatar
-    const avatarUrl = group.avatar || DEFAULT_AVATAR;
+    const avatarUrl = group.avatar || "";
     const heroAvatar = document.getElementById("groupAvatarImageHero");
     if (heroAvatar) {
         heroAvatar.src = avatarUrl;
-        heroAvatar.onerror = () => { heroAvatar.src = DEFAULT_AVATAR; };
+        heroAvatar.onerror = null;
     }
 
     // Cover image
@@ -423,7 +483,7 @@ function renderActionButtons(group) {
             if (newOwnerId === null) return;
             const confirmed = await showFormModal("Xác nhận rời nhóm", `
                 <div class="text-center py-4">
-                    <img src="${groupData?.avatar || DEFAULT_AVATAR}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                    <img src="${groupData?.avatar || ""}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm">
                     <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời nhóm?</p>
                     <p class="text-sm text-gray-500">Quyền sở hữu sẽ được chuyển cho admin đã chọn. Hành động này không thể hoàn tác.</p>
                 </div>
@@ -439,7 +499,7 @@ function renderActionButtons(group) {
         } else {
             const confirmed = await showFormModal("Rời nhóm", `
                 <div class="text-center py-4">
-                    <img src="${groupData?.avatar || DEFAULT_AVATAR}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                    <img src="${groupData?.avatar || ""}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm">
                     <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời khỏi nhóm?</p>
                     <p class="text-sm text-gray-500">Sau khi rời nhóm, bạn sẽ không xem được nội dung và phải gửi yêu cầu tham gia lại nếu muốn quay lại.</p>
                 </div>
@@ -478,12 +538,12 @@ async function showTransferOwnershipModal() {
                 ${adminMembers.map((a) => {
             const user = a.user || {};
             const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Admin";
-            const avatar = user.picture || DEFAULT_AVATAR;
+            const avatar = user.picture || "";
             const uid = user.user || user.id || a.user_id;
             return `
                         <label class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition border border-transparent hover:border-gray-200 dark:hover:border-gray-700">
                             <input type="radio" name="ownerOption" value="${uid}" class="accent-fb-primary w-4 h-4">
-                            <img src="${avatar}" class="w-8 h-8 rounded-full object-cover" onerror="this.src='${DEFAULT_AVATAR}'">
+                            <img src="${avatar}" class="w-8 h-8 rounded-full object-cover">
                             <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">${name}</span>
                         </label>
                     `;
@@ -499,6 +559,126 @@ async function showTransferOwnershipModal() {
     } catch (err) {
         showToast("Lỗi tải danh sách admin: " + err.message, "error");
         return null;
+    }
+}
+
+// ============ GROUP COMPOSER MODAL ============
+let groupComposerFiles = [];
+
+function openGroupComposer() {
+    const modal = document.getElementById("groupComposerModal");
+    const content = document.getElementById("groupPostContent");
+    const preview = document.getElementById("groupPhotoPreview");
+    const photoInput = document.getElementById("groupPhotoInput");
+    
+    if (!modal) return;
+    
+    content.value = "";
+    groupComposerFiles = [];
+    preview.innerHTML = "";
+    photoInput.value = "";
+    
+    modal.classList.remove("hidden");
+    content.focus();
+}
+
+function closeGroupComposer() {
+    const modal = document.getElementById("groupComposerModal");
+    const preview = document.getElementById("groupPhotoPreview");
+    const photoInput = document.getElementById("groupPhotoInput");
+    
+    if (modal) modal.classList.add("hidden");
+    groupComposerFiles = [];
+    preview.innerHTML = "";
+    photoInput.value = "";
+}
+
+function updateComposerAvatar() {
+    const composerAvatar = document.getElementById("myAvatarComposer");
+    if (!composerAvatar) return;
+
+    const picture = window.currentUserProfile?.picture || "";
+    if (picture) {
+        composerAvatar.src = picture;
+    }
+}
+
+function updateGroupPhotoPreview() {
+    const preview = document.getElementById("groupPhotoPreview");
+    if (!preview) return;
+    preview.replaceChildren();
+    
+    groupComposerFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const div = document.createElement("div");
+            div.className = "relative";
+            const img = document.createElement("img");
+            img.src = e.target.result;
+            img.alt = "Preview";
+            img.className = "w-full h-32 object-cover rounded-lg";
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600";
+            removeBtn.textContent = "×";
+            removeBtn.onclick = () => {
+                groupComposerFiles = groupComposerFiles.filter((_, i) => i !== index);
+                updateGroupPhotoPreview();
+            };
+            div.appendChild(img);
+            div.appendChild(removeBtn);
+            preview.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+async function submitGroupPost() {
+    const content = document.getElementById("groupPostContent")?.value.trim();
+    const photoInput = document.getElementById("groupPhotoInput");
+    
+    if (!content && groupComposerFiles.length === 0) {
+        showToast("⚠️ Vui lòng nhập nội dung hoặc thêm ảnh", "red");
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append("title", content || "Bài viết mới");
+    groupComposerFiles.forEach((file) => {
+        formData.append("photos", file);
+    });
+    
+    const submitBtn = document.getElementById("groupComposerSubmit");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Đang đăng...";
+    
+    try {
+        const resPost = await authFetch(API.groupCreatePost(GROUP_ID), {
+            method: "POST",
+            body: formData,
+        });
+        
+        if (!resPost.ok) {
+            const errorData = await resPost.json().catch(() => ({}));
+            showToast(errorData.error || "⚠️ Không tạo được bài viết", "red");
+            return;
+        }
+        
+        const newPost = await resPost.json();
+        closeGroupComposer();
+        showToast("✅ Bài viết đã được đăng!");
+        
+        document.dispatchEvent(new CustomEvent("newPostCreated", { detail: newPost }));
+        
+        if (isMember) {
+            loadPosts();
+        }
+    } catch (err) {
+        console.error("Create group post error:", err);
+        showToast("⚠️ Không thể kết nối server", "red");
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Đăng";
     }
 }
 
@@ -521,17 +701,21 @@ function setupPermissions(group) {
         if (composer) {
             composer.classList.remove("hidden");
             composer.addEventListener("click", () => {
-                window.GROUP_POSTING_MODE = GROUP_ID;
-                const openBtn = document.getElementById("openPostModal");
-                if (openBtn) openBtn.click();
+                openGroupComposer();
             });
         }
-        const composerAvatar = document.getElementById("myAvatarComposer");
-        if (composerAvatar && window.currentUserProfile?.picture) {
-            composerAvatar.src = window.currentUserProfile.picture;
-            composerAvatar.onerror = () => { composerAvatar.src = DEFAULT_AVATAR; };
-        }
+        updateComposerAvatar();
     }
+    
+    // Group composer modal events
+    document.getElementById("groupComposerBackdrop")?.addEventListener("click", closeGroupComposer);
+    document.getElementById("groupComposerCancel")?.addEventListener("click", closeGroupComposer);
+    document.getElementById("groupComposerSubmit")?.addEventListener("click", submitGroupPost);
+    document.getElementById("groupPhotoInput")?.addEventListener("change", (event) => {
+        const files = Array.from(event.target.files);
+        groupComposerFiles = [...groupComposerFiles, ...files];
+        updateGroupPhotoPreview();
+    });
 }
 
 // ============ JOIN / LEAVE ============
@@ -571,7 +755,7 @@ async function joinGroup() {
                         if (newOwnerId === null) return;
                         const confirmed = await showFormModal("Xác nhận rời nhóm", `
                             <div class="text-center py-4">
-                                <img src="${groupData?.avatar || DEFAULT_AVATAR}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                                <img src="${groupData?.avatar || ""}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm">
                                 <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời nhóm?</p>
                                 <p class="text-sm text-gray-500">Quyền sở hữu sẽ được chuyển cho admin đã chọn. Hành động này không thể hoàn tác.</p>
                             </div>
@@ -587,7 +771,7 @@ async function joinGroup() {
                     } else {
                         const confirmed = await showFormModal("Rời nhóm", `
                             <div class="text-center py-4">
-                                <img src="${groupData?.avatar || DEFAULT_AVATAR}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                                <img src="${groupData?.avatar || ""}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm">
                                 <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời khỏi nhóm?</p>
                                 <p class="text-sm text-gray-500">Sau khi rời nhóm, bạn sẽ không xem được nội dung và phải gửi yêu cầu tham gia lại nếu muốn quay lại.</p>
                             </div>
@@ -713,19 +897,25 @@ function loadPosts(append = false) {
         if (posts.length > 0) {
             // Pinned post first
             const pinned = posts.find((p) => p.is_pinned);
+            const pinnedContainer = document.getElementById("pinnedPostContainer");
+            const pinnedContent = document.getElementById("pinnedPostContent");
             if (pinned && !append) {
-                const pinnedContainer = document.getElementById("pinnedPostContainer");
-                const pinnedContent = document.getElementById("pinnedPostContent");
                 if (pinnedContainer && pinnedContent) {
                     pinnedContainer.classList.remove("hidden");
-                    pinnedContent.innerHTML = renderPost(pinned);
+                    pinnedContent.innerHTML = "";
+                    const card = buildGroupPostCard(pinned);
+                    if (card) pinnedContent.appendChild(card);
                 }
+            } else if (pinnedContainer) {
+                pinnedContainer.classList.add("hidden");
+                if (pinnedContent) pinnedContent.innerHTML = "";
             }
 
             posts
                 .filter((p) => !p.is_pinned)
                 .forEach((post) => {
-                    container.insertAdjacentHTML("beforeend", renderPost(post));
+                    const card = buildGroupPostCard(post);
+                    if (card) container.appendChild(card);
                 });
 
             nextPostsUrl = data.next || null;
@@ -738,128 +928,141 @@ function loadPosts(append = false) {
         </div>`;
         }
 
-        // Bind post action buttons
-        bindPostActions();
+        // Post action buttons are bound inline by renderPostCard / buildGroupPostCard
     });
 }
 
-function renderPost(post) {
+// ============ MY GROUP POSTS (approved / pending / rejected) ============
+function loadMyGroupPosts(filter = "approved") {
+    const container = document.getElementById("myGroupPostsList");
+    if (!container) return;
+
+    if (!isMember) {
+        container.innerHTML = `
+      <div class="text-center py-10 text-gray-500">
+        <i class="fas fa-lock text-4xl mb-3 opacity-50"></i>
+        <p class="font-semibold">Chỉ thành viên mới xem được mục này.</p>
+      </div>`;
+        return;
+    }
+
+    container.innerHTML = `
+      <div class="text-center py-10 text-gray-400">
+        <i class="fas fa-spinner fa-spin text-fb-primary text-2xl"></i>
+      </div>`;
+
+    apiGet(API.groupPostUser(GROUP_ID, filter), (data) => {
+        const posts = data.results || (Array.isArray(data) ? data : []);
+        container.innerHTML = "";
+
+        if (posts.length === 0) {
+            const labels = {
+                approved: "Bạn chưa có bài viết nào được duyệt.",
+                pending: "Không có bài viết nào đang chờ duyệt.",
+                rejected: "Không có bài viết nào bị từ chối.",
+            };
+            container.innerHTML = `
+        <div class="text-center py-10 text-gray-500">
+          <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
+          <p class="font-semibold">${labels[filter] || "Không có bài viết nào."}</p>
+        </div>`;
+            return;
+        }
+
+        posts.forEach((post) => {
+            const card = buildGroupPostCard(post, { myPostsView: true });
+            if (card) container.appendChild(card);
+        });
+    });
+}
+
+
+function buildGroupPostCard(post, opts = {}) {
     const user = post.user || {};
-    const avatar = user.picture || DEFAULT_AVATAR;
-    const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Unknown";
-    const time = new Date(post.created_at).toLocaleString("vi-VN");
-    const photos = post.photos || [];
+    const isAdmin = myRole === "owner" || myRole === "admin";
+    const isPostOwner = Number(user.user) === myUserId || Number(user.id) === myUserId;
+    const canEdit = isPostOwner;
+    const canDelete = isAdmin || isPostOwner;
     const postId = post.post_id;
 
-    const photosHtml =
-        photos.length > 0
-            ? `<div class="mt-3 rounded-xl overflow-hidden ${photos.length === 1 ? "max-h-96" : "grid grid-cols-2 gap-1"
-            }">${photos
-                .slice(0, 4)
-                .map(
-                    (ph, i) =>
-                        `<img src="${ph.photo}" class="w-full object-cover ${photos.length > 1 ? "h-48" : "max-h-96"} cursor-pointer hover:opacity-95 transition" onclick="window.location.href='/post/${postId}/'" loading="lazy" onerror="this.src='${DEFAULT_AVATAR}'">`
-                )
-                .join("")}</div>`
-            : "";
+    const card = renderPostCard(post, {
+        currentUserId: myUserId,
+        isGroupPost: true,
+        navigateOnClick: false,
+        showShare: false,
+        showCopyLink: false,
+        showPrivacy: false,
+        disableInteractions:
+            opts.myPostsView ||
+            post.post_status === "pending" ||
+            post.post_status === "rejected",
+        onPinGroupPost: isAdmin
+            ? async (p) => {
+                  try {
+                      await apiMutate(API.groupPinPost(GROUP_ID, p.post_id), "POST");
+                      showToast(p.is_pinned ? "Đã bỏ ghim bài viết!" : "Đã ghim bài viết!");
+                      loadPosts();
+                  } catch (err) {
+                      showToast("Lỗi: " + err.message, "error");
+                  }
+              }
+            : null,
+        onEditGroupPost: canEdit
+            ? (p) => editGroupPost(p)
+            : null,
+        onNotifyGroupPost: isAdmin
+            ? async (p) => {
+                  try {
+                      await apiMutate(API.groupHighlightPost(GROUP_ID, p.post_id), "POST");
+                      showToast("Đã gửi thông báo đến thành viên!");
+                  } catch (err) {
+                      showToast("Lỗi: " + err.message, "error");
+                  }
+              }
+            : null,
+        onDeleteGroupPost: canDelete
+            ? async (pid) => {
+                  if (!(await confirmAction("Xóa bài viết này?"))) return;
+                  try {
+                      await apiMutate(API.groupDeletePost(GROUP_ID, pid), "DELETE");
+                      showToast("Đã xóa bài viết!");
+                      loadPosts();
+                  } catch (err) {
+                      showToast("Lỗi: " + err.message, "error");
+                  }
+              }
+            : null,
+        onOpenReactions: openReactionsModal,
+        onOpenPhotos: openPhotoModal,
+    });
 
-    const pendingBadge =
-        post.post_status === "pending"
-            ? `<span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full font-bold ml-2">Chờ duyệt</span>`
-            : "";
-    const rejectedBadge =
-        post.post_status === "rejected"
-            ? `<span class="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-bold ml-2">Đã từ chối</span>`
-            : "";
-    const pinnedBadge = post.is_pinned
-        ? `<span class="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full font-bold ml-2"><i class="fas fa-thumbtack"></i> Đã ghim</span>`
-        : "";
+    if (!card) return null;
 
-    const isAdmin = myRole === "owner" || myRole === "admin";
-    const isPostOwner = user.user === myUserId || user.id === myUserId;
+    card.classList.add("glass-card", "rounded-2xl", "shadow-sm",
+        "border", "border-white/40", "dark:border-white/5", "overflow-hidden", "mb-4");
 
-    const canDelete = isAdmin || isPostOwner;
-    const canEdit = isPostOwner;
-
-    const adminActions = (isAdmin || isPostOwner)
-        ? `
-    <div class="flex gap-1 mt-3 pt-3 border-t dark:border-gray-700 flex-wrap">
-      ${isAdmin ? (post.is_pinned
-            ? `<button class="btn-unpin-post px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-bold rounded-lg hover:bg-blue-100 transition" data-id="${postId}"><i class="fas fa-thumbtack"></i> Bỏ ghim</button>`
-            : `<button class="btn-pin-post px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-bold rounded-lg hover:bg-blue-100 transition" data-id="${postId}"><i class="fas fa-thumbtack"></i> Ghim</button>`
-        ) : ""}
-      ${isAdmin && post.post_status === "pending"
-            ? `<button class="btn-approve-post px-3 py-1.5 bg-green-50 text-green-600 text-xs font-bold rounded-lg hover:bg-green-100 transition" data-id="${postId}"><i class="fas fa-check"></i> Duyệt</button>
-             <button class="btn-reject-post px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition" data-id="${postId}"><i class="fas fa-times"></i> Từ chối</button>`
-            : ""
+    // Pending / rejected badges
+    if (post.post_status === "pending" || post.post_status === "rejected") {
+        const badge = document.createElement("span");
+        if (post.post_status === "pending") {
+            badge.className = "bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full font-bold ml-2";
+            badge.textContent = "Chờ duyệt";
+        } else {
+            badge.className = "bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-bold ml-2";
+            badge.textContent = "Đã từ chối";
         }
-      ${canEdit ? `<button class="btn-edit-post px-3 py-1.5 bg-yellow-50 text-yellow-600 text-xs font-bold rounded-lg hover:bg-yellow-100 transition" data-id="${postId}" data-content="${encodeURIComponent(post.title || '')}"><i class="fas fa-edit"></i> Sửa</button>` : ""}
-      ${canDelete ? `<button class="btn-delete-post px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition" data-id="${postId}"><i class="fas fa-trash"></i> Xóa</button>` : ""}
-      ${isAdmin ? `<button class="btn-notify-post px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg hover:bg-purple-100 transition" data-id="${postId}"><i class="fas fa-bell"></i> Thông báo</button>` : ""}
-    </div>`
-        : "";
+        const nameLink = card.querySelector("a.font-semibold") || card.querySelector("h5 a");
+        if (nameLink && nameLink.parentElement) nameLink.parentElement.appendChild(badge);
+    }
 
-    const commentsCount = post.comment_count || post.comments_count || 0;
-
-    return `
-    <div class="glass-card rounded-2xl shadow-sm border border-white/40 dark:border-white/5 overflow-hidden post-card" data-post-id="${postId}">
-      <div class="p-4 cursor-pointer btn-detail-post" data-id="${postId}" title="Xem chi tiết bài viết">
-        <div class="flex items-center gap-3 mb-3">
-          <a href="${profileUrl(user.id || user.user)}" class="shrink-0">
-            <img src="${avatar}" class="w-11 h-11 rounded-full object-cover shadow-sm border border-gray-100 dark:border-gray-700" onerror="this.src='${DEFAULT_AVATAR}'">
-          </a>
-          <div class="min-w-0 flex-1">
-            <h5 class="font-bold text-gray-900 dark:text-white flex items-center flex-wrap">
-              <a href="${profileUrl(user.id || user.user)}" class="hover:underline">${name}</a>
-              ${pendingBadge}${rejectedBadge}${pinnedBadge}
-            </h5>
-            <p class="text-xs text-gray-500 flex items-center gap-2">
-              <span>${time}</span>
-              <span class="cursor-pointer hover:text-fb-primary transition" onclick="window.location.href='/post/${postId}/'"><i class="fas fa-external-link-alt"></i></span>
-            </p>
-          </div>
-        </div>
-        <a href="/post/${postId}/" class="block text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed hover:text-gray-900 dark:hover:text-white transition">
-          ${post.title || ""}
-        </a>
-        ${photosHtml}
-        ${adminActions}
-      </div>
-    </div>`;
-}
-
-function bindPostActions() {
-    // Pin/Unpin
-    document.querySelectorAll(".btn-pin-post").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-            const postId = e.currentTarget.dataset.id;
-            try {
-                await apiMutate(API.groupPinPost(GROUP_ID, postId), "POST");
-                showToast("Đã ghim bài viết!");
-                loadPosts();
-            } catch (err) {
-                showToast("Lỗi: " + err.message, "error");
-            }
-        });
-    });
-
-    document.querySelectorAll(".btn-unpin-post").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-            const postId = e.currentTarget.dataset.id;
-            try {
-                await apiMutate(API.groupPinPost(GROUP_ID, postId), "POST");
-                showToast("Đã bỏ ghim bài viết!");
-                loadPosts();
-            } catch (err) {
-                showToast("Lỗi: " + err.message, "error");
-            }
-        });
-    });
-
-    // Approve/Reject
-    document.querySelectorAll(".btn-approve-post").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-            const postId = e.currentTarget.dataset.id;
+    // Admin approve/reject bar for pending posts (kept separate from 3-dot menu)
+    if (isAdmin && post.post_status === "pending") {
+        const bar = document.createElement("div");
+        bar.className = "flex gap-1 mt-3 pt-3 border-t dark:border-gray-700 flex-wrap";
+        const approveBtn = document.createElement("button");
+        approveBtn.className = "px-3 py-1.5 bg-green-50 text-green-600 text-xs font-bold rounded-lg hover:bg-green-100 transition";
+        approveBtn.innerHTML = `<i class="fas fa-check"></i> Duyệt`;
+        approveBtn.addEventListener("click", async () => {
             try {
                 await apiMutate(API.groupReviewPost(GROUP_ID, postId), "POST", { action: "approved" });
                 showToast("Đã duyệt bài viết!");
@@ -868,11 +1071,10 @@ function bindPostActions() {
                 showToast("Lỗi: " + err.message, "error");
             }
         });
-    });
-
-    document.querySelectorAll(".btn-reject-post").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-            const postId = e.currentTarget.dataset.id;
+        const rejectBtn = document.createElement("button");
+        rejectBtn.className = "px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition";
+        rejectBtn.innerHTML = `<i class="fas fa-times"></i> Từ chối`;
+        rejectBtn.addEventListener("click", async () => {
             try {
                 await apiMutate(API.groupReviewPost(GROUP_ID, postId), "POST", { action: "rejected" });
                 showToast("Đã từ chối bài viết!");
@@ -881,63 +1083,144 @@ function bindPostActions() {
                 showToast("Lỗi: " + err.message, "error");
             }
         });
-    });
+        bar.append(approveBtn, rejectBtn);
+        card.appendChild(bar);
+    }
 
-    // Delete
-    document.querySelectorAll(".btn-delete-post").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            const postId = e.currentTarget.dataset.id;
-            if (!(await confirmAction("Xóa bài viết này?"))) return;
-            try {
-                await apiMutate(API.groupDeletePost(GROUP_ID, postId), "DELETE");
-                showToast("Đã xóa bài viết!");
-                loadPosts();
-            } catch (err) {
-                showToast("Lỗi: " + err.message, "error");
+    return card;
+}
+
+function buildGroupPhotoUrl(photoObj) {
+    if (!photoObj) return null;
+    const candidate =
+        photoObj.photo ||
+        photoObj.image ||
+        photoObj.url ||
+        photoObj.photo_url ||
+        photoObj.file ||
+        "";
+    if (!candidate || candidate === "null" || candidate === "undefined") return null;
+    if (candidate.startsWith("/")) return new URL(candidate, window.location.origin).href;
+    return candidate;
+}
+
+async function editGroupPost(post) {
+    const modal = document.getElementById("editPostModal");
+    if (!modal) {
+        showToast("Không tìm thấy modal chỉnh sửa", "error");
+        return;
+    }
+    const titleInput = document.getElementById("editPostTitle");
+    const saveBtn = document.getElementById("savePostChanges");
+    const cancelBtn = document.getElementById("cancelEditPost");
+    const imageContainer = document.getElementById("editImageContainer");
+    const newImagesInput = document.getElementById("editNewImages");
+    const newImagesPreview = document.getElementById("editNewImagesPreview");
+
+    const markedForDeletion = new Set();
+    if (imageContainer) imageContainer.replaceChildren();
+    if (newImagesPreview) newImagesPreview.replaceChildren();
+    if (newImagesInput) newImagesInput.value = "";
+    titleInput.value = post.title || "";
+
+    if (imageContainer && Array.isArray(post.photos)) {
+        post.photos.forEach((photo) => {
+            const url = buildGroupPhotoUrl(photo);
+            if (!url) return;
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "relative inline-block mr-2 mb-2";
+            wrapper.style.width = "96px";
+            wrapper.style.height = "96px";
+
+            const img = document.createElement("img");
+            img.src = url;
+            img.className = "w-24 h-24 object-cover rounded-md border";
+            img.dataset.photoId = photo.id || "";
+
+            const delBtn = document.createElement("button");
+            delBtn.type = "button";
+            delBtn.textContent = "✕";
+            delBtn.className =
+                "absolute top-0 right-0 bg-red-500 text-white rounded-full px-1 text-xs";
+            delBtn.dataset.id = photo.id || "";
+
+            delBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (photo.id) markedForDeletion.add(photo.id);
+                wrapper.remove();
+            });
+
+            wrapper.append(img, delBtn);
+            imageContainer.appendChild(wrapper);
+        });
+    }
+
+    if (newImagesInput && newImagesPreview) {
+        newImagesInput.onchange = () => {
+            newImagesPreview.replaceChildren();
+            [...newImagesInput.files].forEach((file) => {
+                const url = URL.createObjectURL(file);
+                const wrapper = document.createElement("div");
+                wrapper.className = "relative inline-block mr-2 mb-2";
+                wrapper.style.width = "96px";
+                wrapper.style.height = "96px";
+
+                const img = document.createElement("img");
+                img.src = url;
+                img.className = "w-24 h-24 object-cover rounded-md border";
+
+                wrapper.appendChild(img);
+                newImagesPreview.appendChild(wrapper);
+            });
+        };
+    }
+
+    modal.classList.remove("hidden");
+
+    const onSave = async () => {
+        const newTitle = titleInput.value;
+        saveBtn.disabled = true;
+        try {
+            if (markedForDeletion.size > 0) {
+                await Promise.all(
+                    [...markedForDeletion].map((photoId) =>
+                        authFetch(API.groupDeletePhoto(photoId), { method: "DELETE" }).catch(() => {})
+                    )
+                );
             }
-        });
-    });
 
-    // Edit
-    document.querySelectorAll(".btn-edit-post").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            const postId = e.currentTarget.dataset.id;
-            const currentContent = decodeURIComponent(e.currentTarget.dataset.content || "");
-            const newContent = prompt("Sửa nội dung bài viết:", currentContent);
-            if (!newContent || newContent === currentContent) return;
-            try {
-                await apiMutate(API.groupUpdatePost(GROUP_ID, postId), "PUT", { title: newContent });
-                showToast("Đã cập nhật bài viết!");
-                loadPosts();
-            } catch (err) {
-                showToast("Lỗi: " + err.message, "error");
+            const form = new FormData();
+            form.append("title", newTitle);
+            await apiMutate(API.groupUpdatePost(GROUP_ID, post.post_id), "PUT", form);
+
+            const files = newImagesInput ? [...newImagesInput.files] : [];
+            if (files.length > 0) {
+                const photoForm = new FormData();
+                files.forEach((file) => photoForm.append("photo", file));
+                await authFetch(API.groupAddPhoto(post.post_id), {
+                    method: "POST",
+                    body: photoForm,
+                }).catch(() => {});
             }
-        });
-    });
 
-    // Detail
-    document.querySelectorAll(".btn-detail-post").forEach((div) => {
-        div.addEventListener("click", (e) => {
-            if (e.target.closest("button") || e.target.closest("a") || e.target.closest("img")) return;
-            const postId = e.currentTarget.dataset.id;
-            window.location.href = `/post/${postId}/`;
-        });
-    });
+            showToast("Đã cập nhật bài viết!");
+            modal.classList.add("hidden");
+            loadPosts();
+        } catch (err) {
+            showToast("Lỗi: " + err.message, "error");
+        } finally {
+            saveBtn.disabled = false;
+        }
+    };
 
-    // Make notification (highlight post)
-    document.querySelectorAll(".btn-notify-post").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-            const postId = e.currentTarget.dataset.id;
-            try {
-                await apiMutate(API.groupHighlightPost(GROUP_ID, postId), "POST");
-                showToast("Đã gửi thông báo đến thành viên!");
-            } catch (err) {
-                showToast("Lỗi: " + err.message, "error");
-            }
-        });
-    });
+    saveBtn.onclick = onSave;
+    cancelBtn.onclick = () => modal.classList.add("hidden");
+}
+
+function bindPostActions() {
+    // Post action buttons (reaction, comment, share, 3-dot menu) are now
+    // bound inline by renderPostCard / buildGroupPostCard.
 }
 
 // ============ RULES ============
@@ -1017,7 +1300,7 @@ function loadMembers(initial = true) {
             const name = (user.first_name && user.last_name)
                 ? `${user.last_name} ${user.first_name}`
                 : user.first_name || user.last_name || "Unknown";
-            const avatar = user.picture || DEFAULT_AVATAR;
+            const avatar = user.picture || "";
             const memberId = user.user || user.id;
 
             let roleBadge = "";
@@ -1035,7 +1318,7 @@ function loadMembers(initial = true) {
             const html = `
         <div class="flex items-center gap-4 p-4 border border-gray-100 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition">
           <a href="${profileUrl(memberId)}" class="shrink-0">
-            <img src="${avatar}" class="w-14 h-14 rounded-full object-cover shadow-sm border border-gray-200 dark:border-gray-700" onerror="this.src='${DEFAULT_AVATAR}'">
+            <img src="${avatar}" class="w-14 h-14 rounded-full object-cover shadow-sm border border-gray-200 dark:border-gray-700">
           </a>
           <div class="flex-1 min-w-0">
             <h4 class="font-bold flex items-center flex-wrap text-gray-900 dark:text-white">
@@ -1721,11 +2004,11 @@ function loadAdminSidebar() {
         list.innerHTML = "";
         admins.forEach((a) => {
             const user = a.user || {};
-            const avatar = user.picture || DEFAULT_AVATAR;
+            const avatar = user.picture || "";
             list.insertAdjacentHTML(
                 "beforeend",
                 `<div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-2 py-1.5">
-                    <img src="${avatar}" class="w-7 h-7 rounded-full object-cover" onerror="this.src='${DEFAULT_AVATAR}'">
+                    <img src="${avatar}" class="w-7 h-7 rounded-full object-cover">
                     <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">${`${user.first_name || ''} ${user.last_name || ''}`.trim() || "Admin"}</span>
                 </div>`
             );
@@ -1816,7 +2099,7 @@ function loadPhotos(initial = true) {
             if (!imgUrl) return;
             const div = document.createElement("div");
             div.className = "aspect-square rounded-2xl overflow-hidden shadow-sm cursor-pointer hover:opacity-90 transition border border-gray-100 dark:border-gray-700";
-            div.innerHTML = `<img src="${imgUrl}" class="w-full h-full object-cover" loading="lazy" onerror="this.src='${DEFAULT_AVATAR}'">`;
+            div.innerHTML = `<img src="${imgUrl}" class="w-full h-full object-cover" loading="lazy">`;
             grid.appendChild(div);
         });
 
@@ -1922,19 +2205,19 @@ function executeGroupSearch(q, append = false) {
                 const imgUrl = item.image || item.photo || item.url || "";
                 resultsContainer.insertAdjacentHTML("beforeend", `
                     <div class="rounded-xl overflow-hidden aspect-video shadow-sm">
-                        <img src="${imgUrl}" class="w-full h-full object-cover" loading="lazy" onerror="this.src='${DEFAULT_AVATAR}'">
+                        <img src="${imgUrl}" class="w-full h-full object-cover" loading="lazy">
                     </div>`);
             } else {
                 // Post/member result
                 const user = item.user || item.created_by || {};
-                const avatar = user.picture || DEFAULT_AVATAR;
+                const avatar = user.picture || "";
                 const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || item.name || "Unknown";
                 const itemId = item.post_id || item.id;
 
                 resultsContainer.insertAdjacentHTML("beforeend", `
                     <div class="glass-card p-4 rounded-2xl shadow-sm border border-white/40 dark:border-white/5 ${item.post_id ? 'cursor-pointer hover:shadow-md' : ''}">
                         <div class="flex items-center gap-3 mb-2 ${item.post_id ? 'btn-detail-post' : ''}" ${item.post_id ? `data-id="${item.post_id}"` : ''}>
-                            <img src="${avatar}" class="w-10 h-10 rounded-full object-cover" onerror="this.src='${DEFAULT_AVATAR}'">
+                            <img src="${avatar}" class="w-10 h-10 rounded-full object-cover">
                             <div>
                                 <h5 class="font-bold text-sm text-gray-900 dark:text-white">${name}</h5>
                                 <span class="text-xs text-gray-500">${item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : ""}</span>

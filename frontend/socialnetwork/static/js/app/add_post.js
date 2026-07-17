@@ -88,7 +88,6 @@ function setupBaseModal() {
       const title = document.getElementById("postTitle")?.value.trim();
       const files = imageInput?.files || [];
       const privacy = document.getElementById("postPrivacy")?.value || getDefaultPrivacy();
-      const groupId = window.GROUP_POSTING_MODE || null;
 
       if (!title && selectedFiles.length === 0) {
         showToast("⚠️ Vui lòng nhập tiêu đề hoặc thêm ảnh", "red");
@@ -97,9 +96,7 @@ function setupBaseModal() {
 
       const formData = new FormData();
       formData.append("title", title || "Bài viết mới");
-      if (!groupId) {
-        formData.append("privacy", privacy);
-      }
+      formData.append("privacy", privacy);
       selectedFiles.forEach((file) => {
         formData.append("photos", file);
       });
@@ -108,9 +105,7 @@ function setupBaseModal() {
       submitBtn.textContent = "Đang đăng...";
 
       try {
-        // Check if posting in a group
-        const groupId = window.GROUP_POSTING_MODE || null;
-        const postUrl = groupId ? API.groupCreatePost(groupId) : POST_ENDPOINTS.create();
+        const postUrl = POST_ENDPOINTS.create();
 
         const resPost = await authFetch(postUrl, {
           method: "POST",
@@ -280,9 +275,8 @@ function setupAddPostPage() {
 
     const content = postContent?.value.trim();
     const privacy = document.getElementById("postPrivacy")?.value || getDefaultPrivacy();
-    const groupId = window.GROUP_POSTING_MODE || null;
 
-    console.log("Form data:", { content, privacy, selectedFilesCount: selectedFiles.length, groupId });
+    console.log("Form data:", { content, privacy, selectedFilesCount: selectedFiles.length });
 
     if (!content && selectedFiles.length === 0) {
       showToast("⚠️ Vui lòng nhập nội dung hoặc thêm ảnh", "red");
@@ -291,9 +285,7 @@ function setupAddPostPage() {
 
     const formData = new FormData();
     formData.append("title", content || "Bài viết mới");
-    if (!groupId) {
-      formData.append("privacy", privacy);
-    }
+    formData.append("privacy", privacy);
 
     selectedFiles.forEach((file) => {
       formData.append("photos", file);

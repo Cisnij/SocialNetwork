@@ -34,36 +34,78 @@ export function renderPostCard(post, options = {}) {
     onPin,
     onOpenReactions,
     onOpenPhotos,
+    isGroupPost = !!(post.group && Number(post.group) > 0),
+    showShare = true,
+    showCopyLink = true,
+    showPrivacy = true,
+    onEditGroupPost,
+    onPinGroupPost,
+    onNotifyGroupPost,
+    onDeleteGroupPost,
+    navigateOnClick = true,
+    disableInteractions = false,
   } = options;
 
   const article = document.createElement("article");
-  article.className = `post-card p-4 ${cls.card}`;
+  article.className = `post-card p-4 mb-4 ${cls.card}`;
   article.dataset.postId = post.post_id;
-  const card = article; // alias for onPin callback
+  article.style.overflow = "visible";
+  article.style.position = "relative";
+  article.style.zIndex = "1";
+  const card = article;
+
+  const postDetailUrl =
+    post.group && Number(post.group) > 0
+      ? `/group/${post.group}/post/${post.post_id}/`
+      : `/post/${post.post_id}/`;
+
+  if (navigateOnClick) {
+    article.style.cursor = "pointer";
+    article.addEventListener("click", () => {
+      window.location.href = postDetailUrl;
+    });
+  }
 
   // --- Header ---
   const header = document.createElement("div");
   header.className = "flex items-center justify-between mb-3";
+  header.style.overflow = "visible";
 
   const left = document.createElement("div");
   left.className = "flex items-center gap-3";
+  left.style.overflow = "visible";
 
   const userId = post.user?.id;
+
   const profileLink = document.createElement("a");
   profileLink.href = profileUrl(userId);
-  profileLink.className = "flex items-center gap-3 hover:opacity-90 transition";
+  profileLink.className = "shrink-0";
+  profileLink.addEventListener("click", (e) => e.stopPropagation());
 
   const avatar = document.createElement("img");
   avatar.className = "w-10 h-10 rounded-full object-cover";
   avatar.src = post.user?.picture || DEFAULT_AVATAR;
   avatar.alt = "avatar";
+  profileLink.appendChild(avatar);
 
   const info = document.createElement("div");
-  const name = document.createElement("h2");
-  name.className = `font-semibold text-sm sm:text-base ${cls.text}`;
+  const name = document.createElement("a");
+  name.href = profileUrl(userId);
+  name.className = `font-semibold text-sm sm:text-base ${cls.text} hover:underline`;
+  name.addEventListener("click", (e) => e.stopPropagation());
   name.textContent =
     `${post?.user?.first_name || ""} ${post?.user?.last_name || ""}`.trim() ||
     "Người dùng";
+
+  const groupName = document.createElement("a");
+  groupName.href = post.group ? `/group/${post.group}/` : "#";
+  groupName.className =
+    "block text-xs text-fb-primary hover:underline mb-0.5";
+  groupName.innerHTML = `<svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>${post.group_name || ""}`;
+  groupName.addEventListener("click", (e) => e.stopPropagation());
+  if (!post.group_name) {
+    groupName.classList.add("hidden");
+  }
 
   // Pin badge — always rendered on userpage, shown/hidden based on is_pinned
   if (isUserPage) {
@@ -82,15 +124,16 @@ export function renderPostCard(post, options = {}) {
   time.textContent = formatRelativeTime(post.created_at);
   time.title = new Date(post.created_at).toLocaleString("vi-VN");
 
-  info.append(name, time);
-  profileLink.append(avatar, info);
-  left.appendChild(profileLink);
+  info.append(name, groupName, time);
+  left.append(profileLink, info);
 
   const menuWrapper = document.createElement("div");
   menuWrapper.className = "relative";
+  menuWrapper.style.overflow = "visible";
+  menuWrapper.style.zIndex = "10";
 
   const isOwner =
-    currentUserId != null && Number(post.user?.id) === Number(currentUserId);
+    currentUserId != null && (Number(post.user?.user) === Number(currentUserId) || Number(post.user?.id) === Number(currentUserId));
 
   {
     const menuBtn = document.createElement("button");
@@ -102,7 +145,10 @@ export function renderPostCard(post, options = {}) {
 
     const menuDropdown = document.createElement("div");
     menuDropdown.className =
-      `absolute right-0 mt-2 w-44 ${cls.menu} rounded-lg shadow-lg hidden z-50`;
+      `absolute right-0 mt-2 w-44 ${cls.menu} rounded-lg shadow-lg hidden`;
+    menuDropdown.style.zIndex = "99999";
+    menuDropdown.style.overflow = "visible";
+    menuDropdown.style.transform = "translateZ(0)";
 
     const appendItem = (label, className, onClick) => {
       const item = document.createElement("button");
@@ -126,7 +172,48 @@ export function renderPostCard(post, options = {}) {
     const closeMenu = () => menuDropdown.classList.add("hidden");
     document.addEventListener("click", closeMenu, { once: false });
 
-    if (isOwner) {
+    // --- Group post extra menu items (pin / edit / notify) ---
+    if (isGroupPost) {
+      if (typeof onPinGroupPost === "function") {
+        appendItem(
+          post.is_pinned
+            ? `<svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>Bỏ ghim bài`
+            : `<svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>Ghim bài`,
+          `block w-full text-left px-4 py-2 ${cls.text} ${cls.hoverRow}`,
+          () => onPinGroupPost(post)
+        );
+      }
+      if (typeof onEditGroupPost === "function") {
+        appendItem(
+          `<svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>Chỉnh sửa`,
+          `block w-full text-left px-4 py-2 ${cls.text} ${cls.hoverRow}`,
+          () => onEditGroupPost(post)
+        );
+      }
+      if (typeof onNotifyGroupPost === "function") {
+        appendItem(
+          `<svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>Thông báo nhóm`,
+          `block w-full text-left px-4 py-2 ${cls.text} ${cls.hoverRow}`,
+          () => onNotifyGroupPost(post)
+        );
+      }
+      if (typeof onDeleteGroupPost === "function") {
+        appendItem(
+          `<svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>Xóa bài viết`,
+          "block w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30",
+          () => onDeleteGroupPost(post.post_id)
+        );
+      }
+    }
+
+    const hasGroupMenu =
+      isGroupPost &&
+      (typeof onPinGroupPost === "function" ||
+        typeof onEditGroupPost === "function" ||
+        typeof onNotifyGroupPost === "function" ||
+        typeof onDeleteGroupPost === "function");
+
+    if (isOwner && !hasGroupMenu) {
       appendItem(
         `<svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>Chỉnh sửa`,
         `block w-full text-left px-4 py-2 ${cls.text} ${cls.hoverRow}`,
@@ -162,7 +249,7 @@ export function renderPostCard(post, options = {}) {
         "block w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30",
         () => onDelete?.(post.post_id)
       );
-    } else {
+    } else if (isGroupPost ? !isOwner : true) {
       // Task 8: Use beautiful report modal instead of prompt()
       appendItem(
         `<svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-8a2 2 0 012-2h14a2 2 0 012 2v8M3 21h18M5 11l7-7 7 7M5 11V9a2 2 0 012-2h14a2 2 0 012 2v2M5 11V9"/></svg>Báo cáo bài viết`,
@@ -202,9 +289,10 @@ export function renderPostCard(post, options = {}) {
   reactionCount.textContent =
     totalReactions > 0 ? `${totalReactions} lượt thích` : "";
   reactionCount.classList.toggle("hidden", totalReactions === 0);
-  reactionCount.addEventListener("click", () =>
-    onOpenReactions?.(post.post_id, "post", post.reactions)
-  );
+  reactionCount.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onOpenReactions?.(post.post_id, "post", post.reactions);
+  });
 
   // --- Share count ---
   let shareCount = null;
@@ -213,7 +301,10 @@ export function renderPostCard(post, options = {}) {
     shareCount.type = "button";
     shareCount.className = "text-gray-500 dark:text-fb-muted hover:underline font-medium !bg-transparent border-none p-0 hover:!bg-transparent dark:hover:!bg-transparent";
     shareCount.textContent = `${post.share_count} lượt chia sẻ`;
-    shareCount.addEventListener("click", () => openSharersModal(post.post_id));
+    shareCount.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openSharersModal(post.post_id);
+    });
   }
 
   leftCounts.appendChild(reactionCount);
@@ -264,18 +355,22 @@ export function renderPostCard(post, options = {}) {
   commentBtn.className =
     `flex items-center gap-2 hover:text-fb-primary ${cls.hoverRow} px-2 py-1 rounded-md transition`;
   commentBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg> Bình luận`;
-  commentBtn.addEventListener("click", () =>
-    openCommentsModal(post.post_id, post.user?.id)
-  );
+  commentBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openCommentsModal(post.post_id, post.user?.id);
+  });
 
   const shareBtn = document.createElement("button");
   shareBtn.type = "button";
   shareBtn.className =
     `flex items-center gap-2 hover:text-fb-primary ${cls.hoverRow} px-2 py-1 rounded-md transition`;
   shareBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg> Chia sẻ`;
-  shareBtn.addEventListener("click", () => openShareModal(post.post_id));
+  shareBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openShareModal(post.post_id);
+  });
 
-  if (post.share_code) {
+  if (post.share_code && showCopyLink) {
     const copyBtn = document.createElement("button");
     copyBtn.type = "button";
     copyBtn.className =
@@ -289,7 +384,7 @@ export function renderPostCard(post, options = {}) {
     actions.appendChild(copyBtn);
   }
 
-  if (isOwner) {
+  if (isOwner && showPrivacy) {
     const privacyWrap = document.createElement("select");
     privacyWrap.className =
       `text-xs border border-gray-200 dark:border-[#3e4042] rounded px-2 py-1 ml-auto bg-white dark:bg-[#3a3b3c] ${cls.textSub}`;
@@ -301,7 +396,8 @@ export function renderPostCard(post, options = {}) {
       if (post.privacy === p) opt.selected = true;
       privacyWrap.appendChild(opt);
     });
-    privacyWrap.addEventListener("change", async () => {
+    privacyWrap.addEventListener("change", async (e) => {
+      e.stopPropagation();
       try {
         const res = await authFetch(API.postPrivacy(post.post_id), {
           method: "PATCH",
@@ -317,7 +413,13 @@ export function renderPostCard(post, options = {}) {
     actions.appendChild(privacyWrap);
   }
 
-  actions.append(reactionWrapper, commentBtn, shareBtn);
+  if (!disableInteractions) {
+    if (showShare) {
+      actions.append(reactionWrapper, commentBtn, shareBtn);
+    } else {
+      actions.append(reactionWrapper, commentBtn);
+    }
+  }
 
   article.append(header, title);
   if (photoSection) article.appendChild(photoSection);
@@ -344,7 +446,7 @@ function buildPhotoSection(post, onOpenPhotos) {
     img.src = post.photos[0].photo;
     img.alt = "Ảnh bài viết";
     if (post.photos[0].id) img.dataset.photoId = post.photos[0].id;
-    img.addEventListener("click", () => openAt(0));
+    img.addEventListener("click", (e) => { e.stopPropagation(); openAt(0); });
     photoWrapper.appendChild(img);
     return photoWrapper;
   }
@@ -362,7 +464,7 @@ function buildPhotoSection(post, onOpenPhotos) {
     img.src = p.photo;
     img.alt = "Ảnh bài viết";
     if (p.id) img.dataset.photoId = p.id;
-    img.addEventListener("click", () => openAt(index));
+    img.addEventListener("click", (e) => { e.stopPropagation(); openAt(index); });
 
     imgWrapper.appendChild(img);
 
@@ -371,7 +473,7 @@ function buildPhotoSection(post, onOpenPhotos) {
       overlay.className =
         "absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg text-white text-2xl font-bold cursor-pointer";
       overlay.textContent = `+${post.photos.length - maxVisible}`;
-      overlay.addEventListener("click", () => openAt(index));
+      overlay.addEventListener("click", (e) => { e.stopPropagation(); openAt(index); });
       imgWrapper.appendChild(overlay);
     }
 

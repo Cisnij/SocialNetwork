@@ -31,7 +31,7 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from .pagination import *
 from .signals import unfriended_log, accept_join_request_group, notify_accept_post_request, notify_add_admin, \
-    owner_transfer_group, add_admin_group
+    owner_transfer_group, add_admin_group, review_post_request_group
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser #upload file ảnh và dữ liệu dạng form và json parse(khi dùng api view để nhập vào ô body không cần dạng json)
 from django.db.models import Q, Prefetch, prefetch_related_objects, F, Exists, OuterRef
 from .permissions import IsConversationMember, PostViewPermission, IsAdminOrOwnerGroup, IsMemberGroup, IsOwnerOnlyGroup, \
@@ -4348,7 +4348,7 @@ class ReviewPostGroup(APIView):
             )
             post.post_status = action
             post.save(update_fields=['post_status'])
-        notify_accept_post_request.send(
+        review_post_request_group.send(
             sender=self.__class__,
             post=post,
             action=action,
@@ -4383,7 +4383,11 @@ class UpdatePostGroup(generics.UpdateAPIView):
         self.check_object_permissions(self.request, post)
         return post
     def perform_update(self, serializer):
-        serializer.save(post_status='pending')
+        post = serializer.instance
+        user = self.request.user
+        member = get_object_or_404(GroupMember, group=post.group_id, user_id=user.id, is_active=True)
+        post_status = 'approved' if member.role in ['owner', 'admin'] else 'pending'
+        serializer.save(post_status=post_status)
 
 class PostListGroup(generics.ListAPIView):
     permission_classes = [IsAuthenticated,IsMemberGroup]

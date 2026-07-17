@@ -9,7 +9,7 @@ import {
   requestDeletePost,
 } from "../shared/posts/modals.js";
 import { initCommentsPanel } from "../shared/comments-panel.js";
-import { initShareModal } from "../shared/share-modal.js";
+import { initShareModal } from "../share-modal.js";
 
 const postId = window.POST_ID;
 const container = document.getElementById("postDetailContainer");

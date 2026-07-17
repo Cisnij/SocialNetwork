@@ -274,7 +274,6 @@ function loadPendingPosts(groupId) {
     container.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-fb-primary text-2xl"></i></div>`;
 
     apiGet(API.groupReviewList(groupId), (data, isFromCache) => {
-        if (isFromCache && container.dataset.loaded) return;
         container.dataset.loaded = "1";
 
         const posts = data.results || (Array.isArray(data) ? data : []);
@@ -302,8 +301,8 @@ function loadPendingPosts(groupId) {
                                 <button class="btn-review-post px-4 py-2 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition" data-id="${post.post_id}" data-action="approved">
                                     <i class="fas fa-check mr-1"></i> Duyệt
                                 </button>
-                                <button class="btn-review-post px-3 py-2 bg-red-100 text-red-600 font-bold rounded-xl hover:bg-red-200 transition" data-id="${post.post_id}" data-action="rejected">
-                                    <i class="fas fa-times"></i>
+                                <button class="btn-review-post px-4 py-2 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition" data-id="${post.post_id}" data-action="rejected">
+                                    <i class="fas fa-times mr-1"></i> Từ chối
                                 </button>
                             </div>
                         </div>

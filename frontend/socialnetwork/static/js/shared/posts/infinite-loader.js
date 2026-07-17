@@ -146,9 +146,15 @@ export class PostInfiniteLoader {
   }
 
   _renderOne(post) {
+    const isGroupPost = !!(post.group && Number(post.group) > 0);
     return renderPostCard(post, {
       currentUserId: this.currentUserId,
       isUserPage: this.cacheKey.startsWith("userpage:"),
+      isGroupPost,
+      showShare: !isGroupPost,
+      showCopyLink: !isGroupPost,
+      showPrivacy: !isGroupPost,
+      navigateOnClick: false,
       onDelete: (id) => requestDeletePost(id, this.cacheKey),
       onPin: (postId, isPinned, cardEl) => this._handlePin(postId, isPinned, cardEl),
       onOpenReactions: openReactionsModal,

@@ -27,6 +27,7 @@ urlpatterns = [
     path('shares/', views.getShares, name='shares'),
     path('post/share/<str:share_code>/', views.getShareView, name='share-view'),
     path('post/<int:post_id>/', views.getPostDetail, name='post-detail'),
+    path('group/<int:group_id>/post/<int:post_id>/', views.getGroupPostDetail, name='group-post-detail'),
     path('blocked/', views.getBlocked, name='blocked'),
     path('activity/', views.getActivity, name='activity'),
     path('friend-suggest/', views.getFriendSuggest, name='friend-suggest'),

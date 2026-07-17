@@ -65,6 +65,9 @@ def getShareView(request, share_code):
 def getPostDetail(request, post_id):
     return render(request, 'app/post_detail.html', {'post_id': post_id})
 
+def getGroupPostDetail(request, group_id, post_id):
+    return render(request, 'app/post_detail.html', {'post_id': post_id, 'group_id': group_id})
+
 def getBlocked(request):
     return render(request, 'app/blocked.html')
 

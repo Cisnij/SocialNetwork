@@ -168,23 +168,25 @@ async function updatePost(postId, title) {
 }
 
 async function addNewPhotos(postId, files) {
-  const result = [];
+  if (!files || files.length === 0) return [];
+  const localUrls = [...files].map((file) => URL.createObjectURL(file));
+  const formData = new FormData();
   for (const file of files) {
-    const localUrl = URL.createObjectURL(file);
-    const formData = new FormData();
     formData.append("photo", file);
-    try {
-      const res = await authFetch(POST_ENDPOINTS.addPhoto(postId), {
-        method: "POST",
-        body: formData,
-      });
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        result.push({ ...data, local_url: localUrl });
-      }
-    } catch {
-      /* skip failed upload */
-    }
   }
-  return result;
+  try {
+    const res = await authFetch(POST_ENDPOINTS.addPhoto(postId), {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => ({}));
+    const uploaded = Array.isArray(data) ? data : data.results || data.photos || [];
+    if (uploaded.length) {
+      return uploaded.map((p, i) => ({ ...p, local_url: localUrls[i] }));
+    }
+    return localUrls.map((url) => ({ local_url: url }));
+  } catch {
+    return [];
+  }
 }

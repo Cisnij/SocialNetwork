@@ -1,7 +1,6 @@
 import { authFetch } from '../authenticate/auth.js';
 
 const API_BASE_URL = "http://localhost:80";
-const DEFAULT_AVATAR = "https://res.cloudinary.com/dec8t19tm/image/upload/v1779183832/default.jpg";
 
 /**
  * HÀM CỐT LÕI: Đảm bảo chỉ có DUY NHẤT 1 request /api/user/ được gửi lên mạng.
@@ -37,7 +36,7 @@ async function init() {
     const user = await fetchUserProfileShared();
 
     const userId = user.id;
-    const picture = (user.picture && user.picture.trim() !== "") ? user.picture : DEFAULT_AVATAR;
+    const picture = (user.picture && user.picture.trim() !== "") ? user.picture : "";
     const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
 
     const els = {
@@ -87,7 +86,7 @@ export function applyProfileToNavbar(user) {
   const picture =
     user.picture && String(user.picture).trim() !== ""
       ? user.picture
-      : DEFAULT_AVATAR;
+      : "";
   const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
   const els = {
     dropdownAvatar: document.getElementById("dropdownAvatar"),

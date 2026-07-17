@@ -252,8 +252,11 @@ export const API = {
   groupUpdatePost: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/update/`,
   groupDeletePost: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/delete/`,
   groupPinPost: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/pin/`,
+  groupAddPhoto: (pid) => `${API_BASE_URL}/api/user/post-photo/${pid}/`,
+  groupDeletePhoto: (photoId) => `${API_BASE_URL}/api/user/delete-photo/${photoId}/`,
   groupPostDetail: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/detail/`,
-  groupPostUser: (id) => `${API_BASE_URL}/api/group/${id}/post-user/`,
+  groupPostUser: (id, filter = "") =>
+    `${API_BASE_URL}/api/group/${id}/post-user/${filter ? `?filter=${filter}` : ""}`,
 
   groupReviewList: (id) => `${API_BASE_URL}/api/group/${id}/review-post/list/`,
   groupReviewPost: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/review/`,

@@ -9,6 +9,10 @@
 </main>
 {% endblock %}
 {% block post_scripts %}
-<script>window.POST_ID = {{ post_id }};</script>
+<script>window.POST_ID = {{ post_id }};{% if group_id %}window.GROUP_ID = {{ group_id }};{% endif %}</script>
+{% if group_id %}
+<script type="module" src="{% static 'js/pages/group-post-detail.js' %}"></script>
+{% else %}
 <script type="module" src="{% static 'js/pages/post-detail.js' %}"></script>
+{% endif %}
 {% endblock %}
