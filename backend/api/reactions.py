@@ -75,7 +75,7 @@ class PostViewSet(viewsets.ViewSet): #ViewSet khác modelViewSet là nó không 
             # Nếu react loại khác → đổi sang loại mới, vì nó k phải cùng loại và không phải tạo mới thì gán luôn
             user_reaction.reaction = reaction
             user_reaction.react = react_emoji
-            user_reaction.save()
+            user_reaction.save(update_fields=["reaction", "react"])
 
         return Response({
             'count': get_reaction_count(),

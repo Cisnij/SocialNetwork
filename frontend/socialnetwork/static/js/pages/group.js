@@ -91,6 +91,95 @@ function confirmAction(msg) {
     });
 }
 
+// Modal nhập 1 trường (thay thế prompt) -> Promise<string|null>
+function openInputModal({ title = "Nhập", label = "", value = "", placeholder = "", required = true } = {}) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement("div");
+        overlay.className = "fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm";
+        overlay.innerHTML = `
+            <div class="glass-card rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-scale-in">
+                <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-4">${escapeHtml(title)}</h3>
+                ${label ? `<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">${escapeHtml(label)}</label>` : ""}
+                <input type="text" class="vote-input-modal w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-fb-primary text-gray-800 dark:text-white" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}">
+                <div class="flex gap-2 justify-end mt-5">
+                    <button type="button" class="vote-input-cancel px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition">Hủy</button>
+                    <button type="button" class="vote-input-ok px-6 py-2 rounded-lg bg-fb-primary text-white font-semibold hover:bg-blue-600 transition shadow-md">Lưu</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+
+        const input = overlay.querySelector(".vote-input-modal");
+        const close = (val) => { overlay.remove(); resolve(val); };
+
+        overlay.addEventListener("click", (e) => { if (e.target === overlay) close(null); });
+        overlay.querySelector(".vote-input-cancel").addEventListener("click", () => close(null));
+        overlay.querySelector(".vote-input-ok").addEventListener("click", () => {
+            const v = input.value.trim();
+            if (required && !v) { input.focus(); return; }
+            close(v || null);
+        });
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") overlay.querySelector(".vote-input-ok").click();
+            if (e.key === "Escape") close(null);
+        });
+        setTimeout(() => input.focus(), 50);
+    });
+}
+
+// Modal thông báo (thay thế alert) -> Promise<void>
+function openAlertModal(title, messageHtml) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement("div");
+        overlay.className = "fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm";
+        overlay.innerHTML = `
+            <div class="glass-card rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-scale-in">
+                <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-3">${escapeHtml(title)}</h3>
+                <div class="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap leading-relaxed mb-5">${messageHtml || ""}</div>
+                <div class="flex justify-end">
+                    <button type="button" class="vote-alert-ok px-6 py-2 rounded-lg bg-fb-primary text-white font-semibold hover:bg-blue-600 transition shadow-md">Đóng</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        const close = () => { overlay.remove(); resolve(); };
+        overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+        overlay.querySelector(".vote-alert-ok").addEventListener("click", close);
+    });
+}
+
+// Modal danh sách user (thay thế alert danh sách)
+function openUserListModal(title, users) {
+    const overlay = document.createElement("div");
+    overlay.className = "fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm";
+    const body = users.length
+        ? `<div class="space-y-2 max-h-[60vh] overflow-y-auto">${users
+            .map((u) => {
+                const first = u.first_name || "";
+                const last = u.last_name || "";
+                const name = `${first} ${last}`.trim() || u.name || "Unknown";
+                const avatar = u.picture || "";
+                const uid = u.user || u.id;
+                return `
+                <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <a href="${profileUrl(uid)}"><img src="${avatar}" class="w-10 h-10 rounded-full object-cover border" onerror="this.src=''"></a>
+                    <a href="${profileUrl(uid)}" class="font-semibold text-gray-800 dark:text-gray-200 hover:underline">${escapeHtml(name)}</a>
+                </div>`;
+            })
+            .join("")}</div>`
+        : `<p class="text-center text-gray-500 py-8">Chưa có ai.</p>`;
+    overlay.innerHTML = `
+        <div class="glass-card rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-scale-in">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-lg text-gray-900 dark:text-white">${escapeHtml(title)}</h3>
+                <button type="button" class="userlist-close text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-2xl font-bold leading-none">&times;</button>
+            </div>
+            ${body}
+        </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector(".userlist-close").addEventListener("click", close);
+}
+
 function escapeHtml(value) {
     return String(value ?? "")
         .replace(/&/g, "&amp;")
@@ -340,6 +429,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Suggestion box
     document.getElementById("btnOpenSuggestionModal")?.addEventListener("click", openSuggestionModal);
+
+    // Close any open vote kebab menu on outside click
+    document.addEventListener("click", () => {
+        document.querySelectorAll(".vote-kebab-menu:not(.hidden)").forEach((m) => m.classList.add("hidden"));
+    });
 
     // Cover image upload
     document.getElementById("btnEditGroupCover")?.addEventListener("click", () => {
@@ -1560,12 +1654,7 @@ function loadEvents(initial = true) {
                 const eid = e.currentTarget.dataset.eid;
                 apiGet(API.groupEventParticipants(GROUP_ID, eid), (data) => {
                     const participants = data.results || (Array.isArray(data) ? data : []);
-                    if (participants.length === 0) {
-                        alert("Chưa có người tham gia.");
-                        return;
-                    }
-                    const names = participants.map(u => `${u.first_name || ''} ${u.last_name || ''}`.trim() || "Unknown").join("\n");
-                    alert("Người tham gia:\n" + names);
+                    openUserListModal("Người tham gia sự kiện", participants);
                 });
             });
         });
@@ -1574,25 +1663,7 @@ function loadEvents(initial = true) {
         document.querySelectorAll(".btn-event-edit").forEach(btn => {
             btn.addEventListener("click", async (e) => {
                 const dataset = e.currentTarget.dataset;
-                const title = prompt("Sửa tiêu đề sự kiện:", dataset.title);
-                if (!title?.trim()) return;
-
-                const description = prompt("Sửa mô tả:", dataset.desc);
-                const startTime = prompt("Thời gian bắt đầu (YYYY-MM-DD HH:MM):", dataset.start ? dataset.start.substring(0, 16).replace('T', ' ') : "");
-                if (!startTime?.trim()) return;
-
-                const data = {
-                    title: title.trim(),
-                    description: description?.trim() || "",
-                    start_time: new Date(startTime.trim()).toISOString(),
-                };
-                try {
-                    await apiMutate(API.groupEventDetail(GROUP_ID, dataset.eid), "PUT", data);
-                    showToast("Đã cập nhật sự kiện!");
-                    loadEvents(true);
-                } catch (err) {
-                    showToast("Lỗi: " + err.message, "error");
-                }
+                openEventEditModal(dataset);
             });
         });
 
@@ -1645,7 +1716,11 @@ function loadVotesTab(initial = true) {
           <i class="fas fa-poll-h text-4xl mb-3 opacity-50"></i>
           <p class="font-semibold">Chưa có cuộc bình chọn nào.</p>
         </div>`;
-            document.getElementById("btnCreateVoteTab")?.classList.remove("hidden");
+            const createVoteBtn = document.getElementById("btnCreateVoteTab");
+            if (createVoteBtn) {
+                const isAdmin = myRole === "owner" || myRole === "admin";
+                createVoteBtn.classList.toggle("hidden", !isAdmin);
+            }
             return;
         }
 
@@ -1654,6 +1729,7 @@ function loadVotesTab(initial = true) {
             const totalVotes = options.reduce((sum, o) => sum + (o.count || 0), 0);
             const isClosed = vote.is_closed;
 
+            const isAdmin = myRole === "owner" || myRole === "admin";
             container.insertAdjacentHTML(
                 "beforeend",
                 `
@@ -1675,6 +1751,15 @@ function loadVotesTab(initial = true) {
                 <button class="btn-vote-detail text-blue-500 hover:underline ml-2" data-vid="${vote.id}">Chi tiết</button>
               </p>
             </div>
+            ${isAdmin ? `
+            <div class="relative">
+              <button type="button" class="vote-kebab text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl font-bold px-2 rounded-full" data-vid="${vote.id}">⋯</button>
+              <div class="vote-kebab-menu absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 rounded-lg shadow-lg hidden z-50 border border-gray-200 dark:border-gray-700">
+                ${!isClosed ? `<button class="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="edit" data-vid="${vote.id}" data-text="${vote.title || vote.question || ""}"><i class="fas fa-edit mr-2"></i> Sửa bình chọn</button>` : ""}
+                ${!isClosed ? `<button class="block w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="close" data-vid="${vote.id}"><i class="fas fa-ban mr-2"></i> Đóng bình chọn</button>` : ""}
+                <button class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="delete" data-vid="${vote.id}"><i class="fas fa-trash mr-2"></i> Xóa bình chọn</button>
+              </div>
+            </div>` : ""}
           </div>
           <div class="space-y-2">
             ${options
@@ -1686,12 +1771,7 @@ function loadVotesTab(initial = true) {
                                 ? `<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold"><i class="fas fa-lock"></i> Đã đóng</span>`
                                 : `<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-600 font-bold"><i class="fas fa-check-circle"></i> Đang mở</span>`
                             }
-                    ${!isClosed && (myRole === "owner" || myRole === "admin")
-                                ? `<button class="btn-close-vote text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-500 font-bold hover:bg-red-100 transition" data-vid="${vote.id}"><i class="fas fa-ban"></i> Đóng bình chọn</button>
-                             <button class="btn-delete-vote text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-bold hover:bg-gray-200 transition" data-vid="${vote.id}"><i class="fas fa-trash"></i> Xóa bình chọn</button>
-                             <button class="btn-add-option-vote text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-500 font-bold hover:bg-blue-100 transition" data-vid="${vote.id}"><i class="fas fa-plus"></i> Thêm lựa chọn</button>`
-                                : ""
-                            }
+                    ${!isClosed ? `<button class="btn-add-option-vote text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-500 font-bold hover:bg-blue-100 transition" data-vid="${vote.id}"><i class="fas fa-plus"></i> Thêm lựa chọn</button>` : ""}
                 </div>
                 <button class="btn-vote-option w-full text-left p-3 rounded-xl border ${opt.is_voted
                                 ? "bg-fb-primary/10 border-fb-primary/40 font-bold"
@@ -1703,7 +1783,7 @@ function loadVotesTab(initial = true) {
                     <span class="text-sm font-medium text-gray-800 dark:text-gray-200">${opt.text}</span>
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-gray-500 font-bold btn-view-voters hover:text-fb-primary transition" data-vid="${vote.id}" data-oid="${opt.id}" title="Xem người bình chọn">${totalVotes > 0 ? Math.round((opt.count / totalVotes) * 100) : 0}% (${opt.count})</span>
-                        ${!isClosed && (myRole === "owner" || myRole === "admin") ? `
+                        ${!isClosed && isAdmin ? `
                             <span class="text-gray-400 hover:text-blue-500 transition px-1 btn-edit-option" data-vid="${vote.id}" data-oid="${opt.id}" data-text="${opt.text}" title="Sửa lựa chọn"><i class="fas fa-edit"></i></span>
                             <span class="text-gray-400 hover:text-red-500 transition px-1 btn-delete-option" data-vid="${vote.id}" data-oid="${opt.id}" title="Xóa lựa chọn"><i class="fas fa-trash"></i></span>
                         ` : ''}
@@ -1722,8 +1802,12 @@ function loadVotesTab(initial = true) {
             );
         });
 
-        // Show create vote button
-        document.getElementById("btnCreateVoteTab")?.classList.remove("hidden");
+        // Show create vote button (admins/owner only)
+        const createVoteBtn = document.getElementById("btnCreateVoteTab");
+        if (createVoteBtn) {
+            const isAdmin = myRole === "owner" || myRole === "admin";
+            createVoteBtn.classList.toggle("hidden", !isAdmin);
+        }
 
         // Bind vote option clicks
         bindVoteActions();
@@ -1745,13 +1829,37 @@ function bindVoteActions() {
         });
     });
 
-    // Close vote
-    document.querySelectorAll(".btn-close-vote").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
+    // Kebab menu (admin/owner) -> close / delete vote
+    document.querySelectorAll(".vote-kebab").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const menu = btn.parentElement.querySelector(".vote-kebab-menu");
+            if (menu) menu.classList.toggle("hidden");
+        });
+    });
+
+    document.querySelectorAll(".vote-kebab-menu button").forEach((item) => {
+        item.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const action = e.currentTarget.dataset.action;
             const vid = e.currentTarget.dataset.vid;
+            const menu = e.currentTarget.closest(".vote-kebab-menu");
+            if (menu) menu.classList.add("hidden");
             try {
-                await apiMutate(API.groupUpdateVote(GROUP_ID, vid), "PATCH", { is_closed: true });
-                showToast("Đã đóng bình chọn!");
+                if (action === "edit") {
+                    const oldText = e.currentTarget.dataset.text || "";
+                    const text = await openInputModal({ title: "Sửa tiêu đề bình chọn", label: "Tiêu đề", value: oldText, placeholder: "Nhập tiêu đề" });
+                    if (!text || text === oldText) return;
+                    await apiMutate(API.groupUpdateVote(GROUP_ID, vid), "PATCH", { title: text.trim() });
+                    showToast("Đã cập nhật bình chọn!");
+                } else if (action === "close") {
+                    await apiMutate(API.groupUpdateVote(GROUP_ID, vid), "PATCH", { is_closed: true });
+                    showToast("Đã đóng bình chọn!");
+                } else if (action === "delete") {
+                    if (!(await confirmAction("Xóa bình chọn này?"))) return;
+                    await apiMutate(API.groupDeleteVote(GROUP_ID, vid), "DELETE");
+                    showToast("Đã xóa bình chọn!");
+                }
                 loadVotesTab(true);
             } catch (err) {
                 showToast("Lỗi: " + err.message, "error");
@@ -1759,27 +1867,12 @@ function bindVoteActions() {
         });
     });
 
-    // Delete vote
-    document.querySelectorAll(".btn-delete-vote").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-            const vid = e.currentTarget.dataset.vid;
-            if (!(await confirmAction("Xóa bình chọn này?"))) return;
-            try {
-                await apiMutate(API.groupDeleteVote(GROUP_ID, vid), "DELETE");
-                showToast("Đã xóa bình chọn!");
-                loadVotesTab(true);
-            } catch (err) {
-                showToast("Lỗi: " + err.message, "error");
-            }
-        });
-    });
-
-    // Add option
+    // Add option (member + admin)
     document.querySelectorAll(".btn-add-option-vote").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
             const vid = e.currentTarget.dataset.vid;
-            const text = prompt("Nhập lựa chọn mới:");
-            if (!text?.trim()) return;
+            const text = await openInputModal({ title: "Thêm lựa chọn", label: "Nội dung lựa chọn", placeholder: "Nhập lựa chọn mới" });
+            if (!text) return;
             try {
                 await apiMutate(API.groupAddVoteOption(GROUP_ID, vid), "POST", { options: [text.trim()] });
                 showToast("Đã thêm lựa chọn!");
@@ -1790,15 +1883,15 @@ function bindVoteActions() {
         });
     });
 
-    // Edit option
+    // Edit option (admin/owner only - rendered conditionally)
     document.querySelectorAll(".btn-edit-option").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
             e.stopPropagation();
             const vid = e.currentTarget.dataset.vid;
             const oid = e.currentTarget.dataset.oid;
             const oldText = e.currentTarget.dataset.text;
-            const text = prompt("Sửa lựa chọn:", oldText);
-            if (!text?.trim() || text === oldText) return;
+            const text = await openInputModal({ title: "Sửa lựa chọn", label: "Nội dung lựa chọn", value: oldText, placeholder: "Nhập nội dung" });
+            if (!text || text === oldText) return;
             try {
                 await apiMutate(API.groupUpdateVoteOption(GROUP_ID, vid, oid), "PUT", { text: text.trim() });
                 showToast("Đã cập nhật lựa chọn!");
@@ -1809,7 +1902,7 @@ function bindVoteActions() {
         });
     });
 
-    // Delete option
+    // Delete option (admin/owner only - rendered conditionally)
     document.querySelectorAll(".btn-delete-option").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
             e.stopPropagation();
@@ -1826,25 +1919,13 @@ function bindVoteActions() {
         });
     });
 
-    // View voters
+    // View voters -> modal user-list
     document.querySelectorAll(".btn-view-voters").forEach((btn) => {
         btn.addEventListener("click", (e) => {
             e.stopPropagation();
             const vid = e.currentTarget.dataset.vid;
             const oid = e.currentTarget.dataset.oid;
-            apiGet(API.groupListUserVote(GROUP_ID, vid, oid), (data) => {
-                const users = data.results || (Array.isArray(data) ? data : []);
-                if (users.length === 0) {
-                    alert("Chưa có ai chọn mục này.");
-                    return;
-                }
-                const names = users.map(u => {
-                    const first = u.created_by?.first_name || u.first_name || '';
-                    const last = u.created_by?.last_name || u.last_name || '';
-                    return `${first} ${last}`.trim() || u.name || "Unknown";
-                }).join("\n");
-                alert("Những người đã chọn:\n" + names);
-            });
+            openVoteVotersModal(vid, oid);
         });
     });
 
@@ -1855,7 +1936,14 @@ function bindVoteActions() {
             const vid = e.currentTarget.dataset.vid;
             apiGet(API.groupVoteDetail(GROUP_ID, vid), (data) => {
                 const v = data.results?.[0] || data;
-                alert("Chi tiết bình chọn: " + (v.title || v.question || "") + "\nNgày tạo: " + new Date(v.created_at).toLocaleString("vi-VN") + "\nTổng vote: " + (v.options || []).reduce((s, o) => s + (o.count || 0), 0));
+                const total = (v.options || []).reduce((s, o) => s + (o.count || 0), 0);
+                openAlertModal(
+                    "Chi tiết bình chọn",
+                    `<p><b>${escapeHtml(v.title || v.question || "Bình chọn")}</b></p>
+                     <p class="mt-2">Ngày tạo: ${new Date(v.created_at).toLocaleString("vi-VN")}</p>
+                     <p>Tổng phiếu: ${total}</p>
+                     <p>Số lựa chọn: ${(v.options || []).length}</p>`
+                );
             });
         });
     });
@@ -1887,16 +1975,117 @@ function loadActiveVotesSidebar() {
     });
 }
 
+// ============ VOTE VOTERS MODAL ============
+function openVoteVotersModal(voteId, optionId) {
+    const overlay = document.createElement("div");
+    overlay.className = "fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm";
+    overlay.innerHTML = `
+        <div class="glass-card rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-scale-in max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-lg text-gray-900 dark:text-white">Những người đã bình chọn</h3>
+                <button type="button" class="voters-close text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-2xl font-bold leading-none">&times;</button>
+            </div>
+            <div class="voters-body text-center py-8"><i class="fas fa-spinner fa-spin text-fb-primary text-2xl"></i></div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) close();
+    });
+    overlay.querySelector(".voters-close").addEventListener("click", close);
+
+    const body = overlay.querySelector(".voters-body");
+
+    apiGet(API.groupListUserVote(GROUP_ID, voteId, optionId), (data) => {
+        const users = data.results || (Array.isArray(data) ? data : []);
+        if (users.length === 0) {
+            body.innerHTML = `<p class="text-center text-gray-500 py-8">Chưa có ai chọn mục này.</p>`;
+            return;
+        }
+        body.className = "voters-body overflow-y-auto";
+        body.innerHTML = `<div class="space-y-2 max-h-[60vh]">${users
+            .map((u) => {
+                const first = u.created_by?.first_name || u.first_name || "";
+                const last = u.created_by?.last_name || u.last_name || "";
+                const name = `${first} ${last}`.trim() || u.name || "Unknown";
+                const avatar = u.created_by?.picture || u.picture || "";
+                const uid = u.created_by?.user || u.user || u.id;
+                return `
+                <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <a href="${profileUrl(uid)}"><img src="${avatar}" class="w-10 h-10 rounded-full object-cover border" onerror="this.src=''"></a>
+                    <a href="${profileUrl(uid)}" class="font-semibold text-gray-800 dark:text-gray-200 hover:underline">${name}</a>
+                </div>`;
+            })
+            .join("")}</div>`;
+    });
+}
+
 // ============ SUGGESTION MODAL ============
 function openSuggestionModal() {
-    const content = prompt("Nhập nội dung góp ý của bạn (ẩn danh):");
-    if (content?.trim()) {
-        apiMutate(API.groupCreateSuggestion(GROUP_ID), "POST", {
-            content: content.trim(),
-        })
-            .then(() => showToast("Đã gửi góp ý thành công!"))
-            .catch((err) => showToast("Lỗi: " + err.message, "error"));
-    }
+    openInputModal({ title: "Góp ý (ẩn danh)", label: "Nội dung góp ý", placeholder: "Nhập nội dung góp ý của bạn", required: true })
+        .then((content) => {
+            if (!content) return;
+            return apiMutate(API.groupCreateSuggestion(GROUP_ID), "POST", { content })
+                .then(() => showToast("Đã gửi góp ý thành công!"))
+                .catch((err) => showToast("Lỗi: " + err.message, "error"));
+        });
+}
+
+// ============ EVENT EDIT MODAL ============
+function openEventEditModal(dataset) {
+    const overlay = document.createElement("div");
+    overlay.className = "fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm";
+    const startVal = dataset.start ? dataset.start.substring(0, 16).replace('T', ' ') : "";
+    overlay.innerHTML = `
+        <div class="glass-card rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-scale-in">
+            <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-4">Sửa sự kiện</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Tiêu đề</label>
+                    <input type="text" class="ev-title w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-fb-primary text-gray-800 dark:text-white" value="${escapeHtml(dataset.title || '')}">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Mô tả</label>
+                    <textarea class="ev-desc w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-fb-primary text-gray-800 dark:text-white" rows="3">${escapeHtml(dataset.desc || '')}</textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Thời gian bắt đầu (YYYY-MM-DD HH:MM)</label>
+                    <input type="text" class="ev-start w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-fb-primary text-gray-800 dark:text-white" value="${escapeHtml(startVal)}">
+                </div>
+            </div>
+            <div class="flex gap-2 justify-end mt-5">
+                <button type="button" class="ev-cancel px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition">Hủy</button>
+                <button type="button" class="ev-ok px-6 py-2 rounded-lg bg-fb-primary text-white font-semibold hover:bg-blue-600 transition shadow-md">Lưu</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    const titleEl = overlay.querySelector(".ev-title");
+    const descEl = overlay.querySelector(".ev-desc");
+    const startEl = overlay.querySelector(".ev-start");
+    const close = () => overlay.remove();
+
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector(".ev-cancel").addEventListener("click", close);
+    overlay.querySelector(".ev-ok").addEventListener("click", async () => {
+        const title = titleEl.value.trim();
+        const startTime = startEl.value.trim();
+        if (!title || !startTime) { (title ? startEl : titleEl).focus(); return; }
+        const data = {
+            title,
+            description: descEl.value.trim() || "",
+            start_time: new Date(startTime).toISOString(),
+        };
+        try {
+            await apiMutate(API.groupEventDetail(GROUP_ID, dataset.eid), "PUT", data);
+            showToast("Đã cập nhật sự kiện!");
+            close();
+            loadEvents(true);
+        } catch (err) {
+            showToast("Lỗi: " + err.message, "error");
+        }
+    });
 }
 
 // ============ SETTINGS ============
