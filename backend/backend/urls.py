@@ -242,6 +242,7 @@ urlpatterns = [
     path('api/group/<int:group_id>/review-post/list/',PostReviewGroupList.as_view()), # list các post cần duyệt
     path('api/group/<int:group_id>/post/<int:post_id>/review/',ReviewPostGroup.as_view()), # duyệt group
     path('api/group/<int:group_id>/post/<int:post_id>/highlight/',MakeNotification.as_view()), # thông báo nổi bật của admin
+    path('api/group/<int:group_id>/admin-list/',AdminGroup.as_view()), # list admin
     path('api/group/<int:group_id>/post/<int:post_id>/detail/',PostGroupDetail.as_view()), # lấy ra post từ notification nếu user đã tham gia group
     path('api/group/<int:group_id>/search/',SearchInGroup.as_view()), # search trong group
     path('api/group/<int:group_id>/photos/',PhotoInGroup.as_view()), # ảnh trong group

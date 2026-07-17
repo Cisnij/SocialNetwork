@@ -263,6 +263,7 @@ export const API = {
   groupSearch: (id, q, type = "all") =>
     `${API_BASE_URL}/api/group/${id}/search/?q=${encodeURIComponent(q)}&type=${type}`,
   groupPhotos: (id) => `${API_BASE_URL}/api/group/${id}/photos/`,
+  groupAdminList: (id) => `${API_BASE_URL}/api/group/${id}/admin-list/`,
 
   // Vote trong group
   groupVoteList: (id) => `${API_BASE_URL}/api/group/${id}/list-vote/`,

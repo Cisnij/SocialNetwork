@@ -84,6 +84,14 @@ function confirmAction(msg) {
     });
 }
 
+function getGroupAvatar() {
+    return (
+        groupData?.avatar ||
+        document.getElementById("groupAvatarImageHero")?.src ||
+        DEFAULT_AVATAR
+    );
+}
+
 function escapeHtml(value) {
     return String(value ?? "")
         .replace(/&/g, "&amp;")
@@ -98,7 +106,7 @@ function normalizeListResponse(data) {
 }
 
 function clearGroupCaches() {
-    [API.groupExplore(), API.groupUserGroups(), API.groupMyRequests()].forEach((url) => {
+    [API.groupExplore(), API.groupUserGroups(), API.groupMyRequests(), API.groupDetail(GROUP_ID)].forEach((url) => {
         if (typeof url === 'string') {
             sessionStorage.removeItem(`authCache_${url}`);
         }
@@ -399,11 +407,11 @@ function renderActionButtons(group) {
     let btnHtml = "";
     if (group.join_status === "member") {
         btnHtml = `
-      <button id="btnLeaveGroup" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow-sm">
-        <i class="fas fa-check-circle text-green-500"></i> Đã tham gia
+      <button id="btnLeaveGroup" class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-red-100 dark:hover:bg-red-900/50 transition shadow-sm">
+        <i class="fas fa-sign-out-alt"></i> Rời nhóm
       </button>
       <button class="bg-fb-primary text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-600 transition shadow-md" onclick="navigator.clipboard.writeText(window.location.href);showToast('Đã sao chép link nhóm!')">
-        <i class="fas fa-share-nodes"></i>
+        <i class="fas fa-share-nodes"></i> Sao chép link
       </button>`;
     } else if (group.join_status === "pending") {
         btnHtml = `
@@ -420,12 +428,41 @@ function renderActionButtons(group) {
 
     document.getElementById("btnJoinGroup")?.addEventListener("click", joinGroup);
     document.getElementById("btnCancelRequest")?.addEventListener("click", cancelJoinRequest);
-    document.getElementById("btnLeaveGroup")?.addEventListener("click", () => {
+    document.getElementById("btnLeaveGroup")?.addEventListener("click", async () => {
         if (group.role === "owner") {
-            // Owner needs to transfer ownership first
-            showTransferOwnershipModal();
+            const newOwnerId = await showTransferOwnershipModal();
+            if (newOwnerId === null) return;
+            const confirmed = await showFormModal("Xác nhận rời nhóm", `
+                <div class="text-center py-4">
+                    <img src="${getGroupAvatar()}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                    <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời nhóm?</p>
+                    <p class="text-sm text-gray-500">Quyền sở hữu sẽ được chuyển cho admin đã chọn. Hành động này không thể hoàn tác.</p>
+                </div>
+            `);
+            const okBtn = document.getElementById("formModalOk");
+            if (okBtn) {
+                okBtn.textContent = "Rời nhóm";
+                okBtn.classList.remove("bg-fb-primary", "hover:bg-blue-600");
+                okBtn.classList.add("bg-red-500", "hover:bg-red-600");
+            }
+            if (!confirmed) return;
+            await leaveGroup(newOwnerId);
         } else {
-            if (confirm("Bạn có chắc muốn rời khỏi nhóm?")) leaveGroup(null);
+            const confirmed = await showFormModal("Rời nhóm", `
+                <div class="text-center py-4">
+                    <img src="${getGroupAvatar()}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                    <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời khỏi nhóm?</p>
+                    <p class="text-sm text-gray-500">Sau khi rời nhóm, bạn sẽ không xem được nội dung và phải gửi yêu cầu tham gia lại nếu muốn quay lại.</p>
+                </div>
+            `);
+            const okBtn = document.getElementById("formModalOk");
+            if (okBtn) {
+                okBtn.textContent = "Rời nhóm";
+                okBtn.classList.remove("bg-fb-primary", "hover:bg-blue-600");
+                okBtn.classList.add("bg-red-500", "hover:bg-red-600");
+            }
+            if (!confirmed) return;
+            await leaveGroup(null);
         }
     });
 }
@@ -433,44 +470,46 @@ function renderActionButtons(group) {
 async function showTransferOwnershipModal() {
     const container = document.getElementById("groupActionButtons");
     try {
-        // Load admins
         const data = await new Promise((resolve, reject) => {
-            apiGet(API.groupAdmins(GROUP_ID), (result, isCache) => {
-                // authFetchCache calls onData(data, isCache) where isCache is a boolean
-                if (!isCache) {
-                    resolve(result);
-                }
+            apiGet(API.groupAdminList(GROUP_ID), (result, isCache) => {
+                resolve(result);
             });
         });
         const admins = data.results || (Array.isArray(data) ? data : []);
-        if (admins.length === 0) {
-            // No admins, can't leave
+        const adminMembers = admins.filter(a => a.role === "admin");
+
+        if (adminMembers.length === 0) {
             showToast("Không thể rời nhóm vì bạn là owner duy nhất. Hãy thêm admin trước!", "error");
-            return;
+            return null;
         }
 
-        const adminOptions = admins
-            .filter(a => a.role === "admin")
-            .map(a => {
-                const user = a.user || {};
-                const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Admin";
-                const id = user.user || user.id || a.user_id;
-                return `<option value="${id}">${name}</option>`;
-            })
-            .join("");
+        const result = await showFormModal("Chuyển quyền Owner", `
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Chọn admin để chuyển quyền sở hữu trước khi rời nhóm:</p>
+            <div class="space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
+                ${adminMembers.map((a) => {
+            const user = a.user || {};
+            const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Admin";
+            const avatar = user.picture || DEFAULT_AVATAR;
+            const uid = user.user || user.id || a.user_id;
+            return `
+                        <label class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition border border-transparent hover:border-gray-200 dark:hover:border-gray-700">
+                            <input type="radio" name="ownerOption" value="${uid}" class="accent-fb-primary w-4 h-4">
+                            <img src="${avatar}" class="w-8 h-8 rounded-full object-cover" onerror="this.src='${DEFAULT_AVATAR}'">
+                            <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">${name}</span>
+                        </label>
+                    `;
+        }).join("")}
+            </div>
+        `, async (body) => {
+            const selected = body.querySelector('input[name="ownerOption"]:checked');
+            if (!selected) throw new Error("Vui lòng chọn admin để chuyển quyền");
+            return parseInt(selected.value);
+        });
 
-        const newOwnerId = prompt("Chọn ID admin để chuyển quyền sở hữu:\n" +
-            admins.filter(a => a.role === "admin").map(a => {
-                const user = a.user || {};
-                const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Admin";
-                const id = user.user || user.id || a.user_id;
-                return `ID: ${id} - ${name}`;
-            }).join("\n"));
-        if (newOwnerId) {
-            await leaveGroup(newOwnerId);
-        }
+        return result;
     } catch (err) {
         showToast("Lỗi tải danh sách admin: " + err.message, "error");
+        return null;
     }
 }
 
@@ -509,7 +548,7 @@ async function joinGroup() {
         if (container) {
             container.innerHTML = `
                 <button id="btnCancelRequest" class="bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-700 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-yellow-200 dark:hover:bg-yellow-900/60 transition shadow-sm">
-                    <i class="fas fa-clock"></i> Đang chờ duyệt — Hủy?
+                    <i class="fas fa-clock"></i> Đang chờ duyệt — Hủy
                 </button>`;
             document.getElementById("btnCancelRequest")?.addEventListener("click", cancelJoinRequest);
         }
@@ -525,17 +564,47 @@ async function joinGroup() {
             const container = document.getElementById("groupActionButtons");
             if (container) {
                 container.innerHTML = `
-                    <button id="btnLeaveGroup" class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow-sm">
-                        <i class="fas fa-check-circle text-green-500"></i> Đã tham gia
+                    <button id="btnLeaveGroup" class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-red-100 dark:hover:bg-red-900/50 transition shadow-sm">
+                        <i class="fas fa-sign-out-alt"></i> Rời nhóm
                     </button>
                     <button class="bg-fb-primary text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-600 transition shadow-md" onclick="navigator.clipboard.writeText(window.location.href);showToast('Đã sao chép link nhóm!')">
-                        <i class="fas fa-share-nodes"></i>
-                    </button>`;
-                document.getElementById("btnLeaveGroup")?.addEventListener("click", () => {
+        <i class="fas fa-share-nodes"></i> Sao chép link
+      </button>`;
+                document.getElementById("btnLeaveGroup")?.addEventListener("click", async () => {
                     if (groupData?.role === "owner") {
-                        showTransferOwnershipModal();
+                        const newOwnerId = await showTransferOwnershipModal();
+                        if (newOwnerId === null) return;
+                        const confirmed = await showFormModal("Xác nhận rời nhóm", `
+                            <div class="text-center py-4">
+                                <img src="${getGroupAvatar()}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                                <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời nhóm?</p>
+                                <p class="text-sm text-gray-500">Quyền sở hữu sẽ được chuyển cho admin đã chọn. Hành động này không thể hoàn tác.</p>
+                            </div>
+                        `);
+                        const okBtn = document.getElementById("formModalOk");
+                        if (okBtn) {
+                            okBtn.textContent = "Rời nhóm";
+                            okBtn.classList.remove("bg-fb-primary", "hover:bg-blue-600");
+                            okBtn.classList.add("bg-red-500", "hover:bg-red-600");
+                        }
+                        if (!confirmed) return;
+                        await leaveGroup(newOwnerId);
                     } else {
-                        if (confirm("Bạn có chắc muốn rời khỏi nhóm?")) leaveGroup(null);
+                        const confirmed = await showFormModal("Rời nhóm", `
+                            <div class="text-center py-4">
+                                <img src="${getGroupAvatar()}" class="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-red-200 dark:border-red-800 shadow-sm" onerror="this.src='${DEFAULT_AVATAR}'">
+                                <p class="text-gray-800 dark:text-white font-bold text-lg mb-2">Bạn có chắc muốn rời khỏi nhóm?</p>
+                                <p class="text-sm text-gray-500">Sau khi rời nhóm, bạn sẽ không xem được nội dung và phải gửi yêu cầu tham gia lại nếu muốn quay lại.</p>
+                            </div>
+                        `);
+                        const okBtn = document.getElementById("formModalOk");
+                        if (okBtn) {
+                            okBtn.textContent = "Rời nhóm";
+                            okBtn.classList.remove("bg-fb-primary", "hover:bg-blue-600");
+                            okBtn.classList.add("bg-red-500", "hover:bg-red-600");
+                        }
+                        if (!confirmed) return;
+                        await leaveGroup(null);
                     }
                 });
             }
@@ -590,6 +659,14 @@ async function leaveGroup(nextOwnerId = null) {
         await apiMutate(API.groupLeave(GROUP_ID), "POST", body);
         showToast("Đã rời khỏi nhóm.");
         clearGroupCaches();
+
+        if (groupData) {
+            groupData.join_status = "none";
+            groupData.role = null;
+        }
+        isMember = false;
+        updateUIVisibilityForMembership();
+        renderActionButtons(groupData || { join_status: "none", role: null });
         loadGroupInfo();
     } catch (err) {
         showToast("Lỗi: " + err.message, "error");
@@ -975,12 +1052,12 @@ function loadMembers(initial = true) {
           ${myRole === "owner" && member.role === "member"
                     ? `<button class="btn-promote-admin text-xs bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Thêm quyền Admin"><i class="fas fa-user-shield"></i> <span class="hidden sm:inline">Làm Admin</span></button>
                          <button class="btn-kick-member text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Xóa khỏi nhóm"><i class="fas fa-user-minus"></i> <span class="hidden sm:inline">Kick</span></button>`
-                        : myRole === "owner" && member.role === "admin"
-                            ? `<button class="btn-demote-admin text-xs bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Hạ quyền Admin"><i class="fas fa-user-shield"></i> <span class="hidden sm:inline">Hạ Admin</span></button>
+                    : myRole === "owner" && member.role === "admin"
+                        ? `<button class="btn-demote-admin text-xs bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Hạ quyền Admin"><i class="fas fa-user-shield"></i> <span class="hidden sm:inline">Hạ Admin</span></button>
                                  <button class="btn-kick-member text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Xóa khỏi nhóm"><i class="fas fa-user-minus"></i> <span class="hidden sm:inline">Kick</span></button>`
-                            : myRole === "admin" && (member.role === "member")
-                                ? `<button class="btn-kick-member text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Xóa khỏi nhóm"><i class="fas fa-user-minus"></i> <span class="hidden sm:inline">Kick</span></button>`
-                                : ""
+                        : myRole === "admin" && (member.role === "member")
+                            ? `<button class="btn-kick-member text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5" data-id="${memberId}" title="Xóa khỏi nhóm"><i class="fas fa-user-minus"></i> <span class="hidden sm:inline">Kick</span></button>`
+                            : ""
                 }
         </div>`;
 

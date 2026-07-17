@@ -534,9 +534,9 @@ function loadDepartments(groupId) {
                             <button class="btn-add-member-role text-xs bg-green-50 hover:bg-green-100 text-green-600 px-2 py-1 rounded-lg transition font-bold" data-did="${dept.id}" data-rid="${r.id}" title="Thêm thành viên vào chức vụ này">
                                 <i class="fas fa-user-plus"></i> Thêm User
                             </button>
-                            <button class="btn-edit-role text-xs bg-yellow-50 hover:bg-yellow-100 text-yellow-600 px-2 py-1 rounded-lg transition" data-rid="${r.id}" data-name="${r.name}" title="Sửa chức vụ">
-                                <i class="fas fa-edit"></i>
-                            </button>
+                             <button class="btn-edit-role text-xs bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1" data-rid="${r.id}" data-name="${r.name}" title="Sửa chức vụ">
+                                 <i class="fas fa-edit"></i> Sửa
+                             </button>
                             <button class="btn-delete-role text-xs bg-red-50 hover:bg-red-100 text-red-500 px-2 py-1 rounded-lg transition" data-rid="${r.id}" title="Xóa chức vụ">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -557,9 +557,9 @@ function loadDepartments(groupId) {
                                 <button class="btn-add-role text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1" data-did="${dept.id}">
                                     <i class="fas fa-plus"></i> Thêm chức vụ
                                 </button>
-                                <button class="btn-edit-dept text-sm bg-yellow-100 hover:bg-yellow-200 text-yellow-600 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1" data-did="${dept.id}" data-name="${dept.name}">
-                                    <i class="fas fa-edit"></i>
-                                </button>
+                             <button class="btn-edit-dept text-xs bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1" data-did="${dept.id}" data-name="${dept.name}">
+                                 <i class="fas fa-edit"></i> Sửa
+                             </button>
                                 <button class="btn-delete-dept text-sm bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1" data-did="${dept.id}">
                                     <i class="fas fa-trash"></i> Xóa
                                 </button>
@@ -988,3 +988,5 @@ function createVoteModal(groupId) {
         }
     }, 0);
 }
+
+window.showFormModal = showFormModal;

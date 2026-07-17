@@ -4282,6 +4282,8 @@ class LeaveGroup(APIView):
                 )
                 if next_owner.role == 'owner':
                     raise ValidationError("User này đã là owner")
+                if next_owner.role != 'admin':
+                    raise ValidationError("Chỉ có admin mới được nhận quyền owner")
                 next_owner.role = 'owner'
                 next_owner.save(update_fields=['role'])
                 owner_transfer_group.send(
@@ -4291,7 +4293,8 @@ class LeaveGroup(APIView):
                     former_owner=request.user,
                 )
             member.is_active=False
-            member.save(update_fields=['is_active'])
+            member.role = 'member'
+            member.save(update_fields=['is_active','role'])
         return Response({"detail": "success"}, status=200)
 
 class CreatePostGroup(generics.CreateAPIView):
