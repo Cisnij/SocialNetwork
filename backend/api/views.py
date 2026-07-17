@@ -4583,39 +4583,41 @@ class SearchInGroup(APIView):
                     logger.error(f"Group post search error | group={group_id} keyword={keyword} | {e}")
                     posts = []
 
-            if search_type in ('all', 'members'):
+            if search_type in ("all", "members"):
                 try:
                     member_response = responses[idx]
-                    total_members   = member_response.hits.total.value
-                    profile_ids     = [hit.meta.id for hit in member_response]
-
-                    # filter thêm phía Django: chỉ lấy profile là member active trong group
-                    member_user_ids = GroupMember.objects.filter(
-                        group_id=group_id,
-                        is_active=True
-                    ).values_list('user_id', flat=True)  # danh sách user trong group
+                    idx += 1
+                    total_members = member_response.hits.total.value
+                    profile_ids = [int(hit.meta.id) for hit in member_response]
 
                     members_qs = (
-                        Profile.objects
-                        .filter(
+                        Profile.objects.filter(
                             id__in=profile_ids,
                             deleted__isnull=True,
-                            user_id__in=member_user_ids  # chỉ lấy profile là member
+                            user__groupmember__group_id=group_id,
+                            user__groupmember__is_active=True,
                         )
-                        .select_related('user')
+                        .select_related("user")
                         .prefetch_related(
                             Prefetch(
-                                'user__group_memberships',  # lấy role trong group
-                                queryset=GroupMember.objects.filter(group_id=group_id, is_active=True),
-                                to_attr='group_member_info'
+                                "user__groupmember_set",
+                                queryset=GroupMember.objects.filter(
+                                    group_id=group_id,
+                                    is_active=True,
+                                ),
+                                to_attr="group_member_info",
                             )
                         )
+                        .distinct()
                     )
+
                     members_dict = {str(p.id): p for p in members_qs}
-                    members = [members_dict[pid] for pid in profile_ids if pid in members_dict]
-                    # giữ thứ tự relevance từ ES, bỏ profile không phải member
+                    members = [members_dict[str(pid)] for pid in profile_ids if str(pid) in members_dict]
+
                 except Exception as e:
-                    logger.error(f"Group member search error | group={group_id} keyword={keyword} | {e}")
+                    logger.error(
+                        f"Group member search error | group={group_id} keyword={keyword} | {e}"
+                    )
                     members = []
 
         except Exception as e:
