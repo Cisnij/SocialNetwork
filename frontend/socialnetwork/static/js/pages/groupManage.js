@@ -308,7 +308,12 @@ function loadPendingPosts(groupId) {
                         </div>
                         <p class="text-gray-800 dark:text-gray-200">${post.title || ""}</p>
                         ${photos.length
-                        ? `<div class="rounded-xl overflow-hidden mt-3 max-w-sm"><img src="${photos[0].photo}" class="w-full h-auto object-cover" onerror="this.src='${DEFAULT_AVATAR}'"></div>`
+                        ? `<div class="grid ${photos.length === 1 ? "grid-cols-1" : "grid-cols-2"} gap-2 mt-3">${photos
+                            .map(
+                              (ph) =>
+                                `<div class="relative aspect-square overflow-hidden rounded-xl"><img src="${ph.photo}" class="w-full h-full object-cover" onerror="this.src='${DEFAULT_AVATAR}'" loading="lazy"></div>`
+                            )
+                            .join("")}</div>`
                         : ""
                     }
                     </div>`

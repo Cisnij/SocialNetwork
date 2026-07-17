@@ -2159,6 +2159,15 @@ function loadSearch() {
             </div>
         </div>`;
 
+    // Click vào kết quả bài viết -> gọi API detail và render inline
+    container.addEventListener("click", (e) => {
+        const postEl = e.target.closest(".btn-detail-post");
+        if (postEl && postEl.dataset.id) {
+            e.preventDefault();
+            openGroupPostDetailInline(postEl.dataset.id, container);
+        }
+    });
+
     let searchTimer = null;
     document.getElementById("groupSearchInput").addEventListener("input", (e) => {
         clearTimeout(searchTimer);
@@ -2262,6 +2271,52 @@ function executeGroupSearch(q, append = false) {
             resultsContainer.appendChild(loadMoreBtn);
         }
     });
+}
+
+// Mở chi tiết bài viết trong group bằng cách gọi API detail, render inline
+async function openGroupPostDetailInline(postId, searchContainer) {
+    const resultsContainer = document.getElementById("searchResults");
+    if (!resultsContainer) return;
+
+    resultsContainer.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-fb-primary text-2xl"></i></div>`;
+
+    let post;
+    try {
+        const res = await authFetch(API.groupPostDetail(GROUP_ID, postId));
+        if (!res.ok) throw new Error("fetch failed");
+        post = await res.json();
+    } catch {
+        resultsContainer.innerHTML = `<div class="text-center py-10 text-gray-500"><p class="font-semibold">Không thể tải bài viết.</p></div>`;
+        return;
+    }
+
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "mb-3 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition";
+    back.innerHTML = `<i class="fas fa-arrow-left mr-1"></i> Quay lại kết quả`;
+    back.onclick = () => {
+        const q = document.getElementById("groupSearchInput")?.value.trim() || "";
+        if (q.length >= 2) executeGroupSearch(q);
+    };
+    resultsContainer.replaceChildren(back);
+
+    if (post && post.post_id) {
+        const card = renderPostCard(post, {
+            currentUserId: myUserId,
+            isGroupPost: true,
+            navigateOnClick: false,
+            showShare: false,
+            showCopyLink: false,
+            showPrivacy: false,
+            onOpenReactions: openReactionsModal,
+            onOpenPhotos: openPhotoModal,
+        });
+        if (card) {
+            card.classList.add("glass-card", "rounded-2xl", "shadow-sm",
+                "border", "border-white/40", "dark:border-white/5", "overflow-hidden", "mb-4");
+            resultsContainer.appendChild(card);
+        }
+    }
 }
 
 // ============ EXPOSE GLOBALLY ============
