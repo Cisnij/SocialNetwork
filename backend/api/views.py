@@ -4232,6 +4232,17 @@ class KickMemberGroup(APIView):
         member.save(update_fields=['is_active'])
         return Response({"detail": "success"}, status=200)
 
+class DeleteALlPostMemberGroup(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'kick_member_group'
+    def post(self, request, group_id, user_id):
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        Post.objects.filter(group=group, user_id=user_id).delete() # xoá tất cả post user đó trong group
+        Comment.objects.filter(post__group=group, user_id=user_id).delete() # xóa tất cả comment trên post người khác
+        return Response({"detail": "success"}, status=200)
+
 class RemoveAdminGroup(APIView):
     permission_classes = [IsAuthenticated, IsOwnerOnlyGroup]
     throttle_classes = [ScopedRateThrottle]
@@ -5137,12 +5148,3 @@ class ListSuggestionGroup(generics.ListAPIView):
         self.check_object_permissions(self.request, group)
         return GroupSuggestion.objects.filter(group=group).order_by('-created_at')
 
-class DeleteALlPostMemberGroup(APIView):
-    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
-    def post(self, request, *args, **kwargs):
-        user_id= self.kwargs.get("user_id")
-        group_id = self.kwargs.get("group_id")
-        group = get_object_or_404(Group, pk=group_id)
-        self.check_object_permissions(self.request, group)
-        Post.objects.filter(group=group,user_id=user_id).delete()
-        return Response({'detail':'success'},status=200)

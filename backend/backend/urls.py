@@ -231,6 +231,7 @@ urlpatterns = [
     path('api/group/<int:group_id>/request/<int:request_id>/accept/',AcceptJoinRequest.as_view()), #accept requyest
     path('api/group/<int:group_id>/request/<int:request_id>/reject/',RejectJoinRequest.as_view()), #reject request
     path('api/group/<int:group_id>/user/<int:user_id>/kick/',KickMemberGroup.as_view()), #kick user
+    path('api/group/<int:group_id>/user/<int:user_id>/delete-all-posts/',DeleteALlPostMemberGroup.as_view()), # delete all posts of member
     path('api/group/<int:group_id>/user/<int:user_id>/add-admin/',AddAdminGroup.as_view()), # thêm admin
     path('api/group/<int:group_id>/user/<int:user_id>/remove-admin/',RemoveAdminGroup.as_view()), # xóa admin
     path('api/group/<int:group_id>/leave/',LeaveGroup.as_view()), # leave group
