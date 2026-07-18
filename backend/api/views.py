@@ -2225,6 +2225,7 @@ class SearchAPIView(APIView):
         posts        = []
         profiles     = []
         groups       = []
+        posts_qs     = Post.objects.none()   # dùng cho get_reactions_post_context bên dưới
         profiles_qs  = Profile.objects.none()  # dùng cho get_online_set bên dưới
         total_posts  = total_profiles = total_groups = 0
 
@@ -2349,8 +2350,14 @@ class SearchAPIView(APIView):
             # MultiSearch fail hoàn toàn (ES down, network...) → trả rỗng, không crash server
             logger.error(f"MultiSearch failed | user={user.id} keyword={keyword} | {e}")
 
+        # Build reaction context một lần thay vì N lần trong serializer
+        post_reaction_ctx = get_reactions_post_context(posts_qs, user) if posts else {'reactions_map': {}, 'user_reactions_map': {}}
+
         result = {
-            'posts': PostSerializer(posts, many=True, context={'request': request}).data,
+            'posts': PostSerializer(posts, many=True, context={
+                'request': request,
+                **post_reaction_ctx,  # reactions_map + user_reactions_map
+            }).data,
             # context request để serializer lấy user hiện tại (dùng cho is_reaction...)
             'profiles': ProfileSerializer(profiles, many=True, context={
                 'request': request,
@@ -4547,6 +4554,8 @@ class SearchInGroup(APIView):
 
         posts   = []
         members = []
+        posts_qs = Post.objects.none()   # dùng cho get_reactions_post_context
+        members_qs = Profile.objects.none()  # dùng cho get_online_set
         total_posts   = 0
         total_members = 0
 
@@ -4660,8 +4669,14 @@ class SearchInGroup(APIView):
             # MultiSearch fail hoàn toàn → trả rỗng không crash
             logger.error(f"SearchInGroup MultiSearch failed | group={group_id} keyword={keyword} | {e}")
 
+        # Build reaction context một lần cho tất cả post thay vì N query
+        post_reaction_ctx = get_reactions_post_context(posts_qs, request.user) if posts else {'reactions_map': {}, 'user_reactions_map': {}}
+
         result = {
-            'posts': PostSerializer(posts, many=True, context={'request': request}).data,
+            'posts': PostSerializer(posts, many=True, context={
+                'request': request,
+                **post_reaction_ctx,  # reactions_map + user_reactions_map
+            }).data,
             'members': ProfileSerializer(members, many=True, context={
                 'request': request,
                 'online_set': get_online_set(members_qs) if members else set()

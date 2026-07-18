@@ -1487,15 +1487,38 @@ function bindMemberActions() {
     document.querySelectorAll(".btn-kick-member").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
             const uid = e.currentTarget.dataset.id;
-            if (!(await confirmAction("Xóa thành viên này khỏi nhóm?"))) return;
-            try {
-                await apiMutate(API.groupKickMember(GROUP_ID, uid), "POST");
-                showToast("Đã xóa thành viên!");
-                clearGroupCaches();
-                loadMembers(true);
-            } catch (err) {
-                showToast("Lỗi: " + err.message, "error");
-            }
+            
+            openInlineFormModal({
+                title: "Xóa thành viên",
+                bodyHtml: `
+                    <div class="space-y-4">
+                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Bạn có chắc muốn xóa thành viên này khỏi nhóm?</p>
+                        <label class="flex items-start gap-2 cursor-pointer mt-4 bg-red-50 dark:bg-red-900/10 p-3 rounded-lg border border-red-100 dark:border-red-800/30">
+                            <input type="checkbox" name="deleteAllPosts" class="w-4 h-4 text-red-600 rounded mt-0.5">
+                            <span class="text-sm font-semibold text-red-600 dark:text-red-400">Xóa tất cả bài viết và bình luận của người này trong nhóm</span>
+                        </label>
+                    </div>
+                `,
+                okText: "Xóa",
+                getValues: (body) => ({
+                    deleteAllPosts: body.querySelector("[name='deleteAllPosts']").checked
+                }),
+                validate: () => ""
+            }).then(async val => {
+                if (val) {
+                    try {
+                        if (val.deleteAllPosts) {
+                            await apiMutate(API.groupDeleteMemberPosts(GROUP_ID, uid), "POST");
+                        }
+                        await apiMutate(API.groupKickMember(GROUP_ID, uid), "POST");
+                        showToast("Đã xóa thành viên khỏi nhóm!");
+                        clearGroupCaches();
+                        loadMembers(true);
+                    } catch (err) {
+                        showToast("Lỗi: " + err.message, "error");
+                    }
+                }
+            });
         });
     });
 
@@ -1757,6 +1780,7 @@ function loadVotesTab(initial = true) {
               <div class="vote-kebab-menu absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 rounded-lg shadow-lg hidden z-50 border border-gray-200 dark:border-gray-700">
                 ${!isClosed ? `<button class="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="edit" data-vid="${vote.id}" data-text="${vote.title || vote.question || ""}"><i class="fas fa-edit mr-2"></i> Sửa bình chọn</button>` : ""}
                 ${!isClosed ? `<button class="block w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="close" data-vid="${vote.id}"><i class="fas fa-ban mr-2"></i> Đóng bình chọn</button>` : ""}
+                ${isClosed ? `<button class="block w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="reopen" data-vid="${vote.id}"><i class="fas fa-redo mr-2"></i> Mở lại bình chọn</button>` : ""}
                 <button class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="delete" data-vid="${vote.id}"><i class="fas fa-trash mr-2"></i> Xóa bình chọn</button>
               </div>
             </div>` : ""}
@@ -1766,13 +1790,6 @@ function loadVotesTab(initial = true) {
                     .map(
                         (opt) => `
               <div class="relative">
-                <div class="flex items-center gap-2 mb-3 mt-4">
-                    ${isClosed
-                                ? `<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold"><i class="fas fa-lock"></i> Đã đóng</span>`
-                                : `<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-600 font-bold"><i class="fas fa-check-circle"></i> Đang mở</span>`
-                            }
-                    ${!isClosed ? `<button class="btn-add-option-vote text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-500 font-bold hover:bg-blue-100 transition" data-vid="${vote.id}"><i class="fas fa-plus"></i> Thêm lựa chọn</button>` : ""}
-                </div>
                 <button class="btn-vote-option w-full text-left p-3 rounded-xl border ${opt.is_voted
                                 ? "bg-fb-primary/10 border-fb-primary/40 font-bold"
                                 : isClosed
@@ -1781,22 +1798,22 @@ function loadVotesTab(initial = true) {
                             }" data-vote-id="${vote.id}" data-opt-id="${opt.id}" ${isClosed ? "disabled" : ""}>
                   <div class="flex justify-between items-center mb-1">
                     <span class="text-sm font-medium text-gray-800 dark:text-gray-200">${opt.text}</span>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-500 font-bold btn-view-voters hover:text-fb-primary transition" data-vid="${vote.id}" data-oid="${opt.id}" title="Xem người bình chọn">${totalVotes > 0 ? Math.round((opt.count / totalVotes) * 100) : 0}% (${opt.count})</span>
-                        ${!isClosed && isAdmin ? `
-                            <span class="text-gray-400 hover:text-blue-500 transition px-1 btn-edit-option" data-vid="${vote.id}" data-oid="${opt.id}" data-text="${opt.text}" title="Sửa lựa chọn"><i class="fas fa-edit"></i></span>
-                            <span class="text-gray-400 hover:text-red-500 transition px-1 btn-delete-option" data-vid="${vote.id}" data-oid="${opt.id}" title="Xóa lựa chọn"><i class="fas fa-trash"></i></span>
-                        ` : ''}
-                    </div>
+                    <span class="text-xs text-gray-500 font-bold btn-view-voters hover:text-fb-primary transition" data-vid="${vote.id}" data-oid="${opt.id}" title="Xem người bình chọn">${totalVotes > 0 ? Math.round((opt.count / totalVotes) * 100) : 0}% (${opt.count})</span>
                   </div>
                   ${totalVotes > 0
                                 ? `<div class="absolute bottom-0 left-0 h-full rounded-xl bg-fb-primary/10 pointer-events-none" style="width: ${(opt.count / totalVotes) * 100}%"></div>`
                                 : ""
                             }
                 </button>
+                ${!isClosed && isAdmin ? `
+                <div class="flex justify-end gap-2 mt-1">
+                    <button type="button" class="btn-edit-option text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-500 font-bold hover:bg-blue-100 transition" data-vid="${vote.id}" data-oid="${opt.id}" data-text="${opt.text}" title="Sửa lựa chọn"><i class="fas fa-edit mr-1"></i> Sửa</button>
+                    <button type="button" class="btn-delete-option text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-500 font-bold hover:bg-red-100 transition" data-vid="${vote.id}" data-oid="${opt.id}" title="Xóa lựa chọn"><i class="fas fa-trash mr-1"></i> Xóa</button>
+                </div>` : ''}
               </div>`
                     )
                     .join("")}
+            ${!isClosed ? `<button class="btn-add-option-vote w-full mt-1 py-2 rounded-xl border border-dashed border-fb-primary/40 text-fb-primary font-semibold hover:bg-fb-primary/5 transition text-sm" data-vid="${vote.id}"><i class="fas fa-plus mr-1"></i> Thêm lựa chọn</button>` : ""}
           </div>
         </div>`
             );
@@ -1855,6 +1872,9 @@ function bindVoteActions() {
                 } else if (action === "close") {
                     await apiMutate(API.groupUpdateVote(GROUP_ID, vid), "PATCH", { is_closed: true });
                     showToast("Đã đóng bình chọn!");
+                } else if (action === "reopen") {
+                    await apiMutate(API.groupUpdateVote(GROUP_ID, vid), "PATCH", { is_closed: false });
+                    showToast("Đã mở lại bình chọn!");
                 } else if (action === "delete") {
                     if (!(await confirmAction("Xóa bình chọn này?"))) return;
                     await apiMutate(API.groupDeleteVote(GROUP_ID, vid), "DELETE");
@@ -2513,3 +2533,495 @@ window.showToast = showToast;
 window.loadPosts = loadPosts;
 window.loadEvents = loadEvents;
 window.loadVotesTab = loadVotesTab;
+
+
+// ============ GROUP VOTES ============
+let nextGroupVotesUrl = null;
+let isLoadingGroupVotes = false;
+
+window.loadVotesTab = async function(reset = false) {
+    if (!GROUP_ID) return;
+    const container = document.getElementById("groupVotesList");
+    if (!container) return;
+
+    if (reset) {
+        nextGroupVotesUrl = API.groupListVotes(GROUP_ID);
+        container.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-fb-primary text-2xl"></i></div>`;
+    }
+
+    if (!nextGroupVotesUrl || isLoadingGroupVotes) return;
+    isLoadingGroupVotes = true;
+
+    try {
+        const res = await authFetch(nextGroupVotesUrl);
+        if (!res.ok) throw new Error("Failed to fetch votes");
+        const data = await res.json();
+        
+        if (reset) container.replaceChildren();
+
+        const votes = data.results || (Array.isArray(data) ? data : []);
+        if (votes.length === 0 && reset) {
+            container.innerHTML = `
+                <div class="text-center py-10 text-gray-500">
+                    <i class="fas fa-poll-h text-4xl mb-3 opacity-50"></i>
+                    <p class="font-semibold">Chưa có cuộc bình chọn nào.</p>
+                </div>`;
+        } else {
+            for (const v of votes) {
+                container.appendChild(renderGroupVoteCard(v));
+            }
+        }
+        
+        nextGroupVotesUrl = data.next || null;
+        if (nextGroupVotesUrl) {
+            const btn = document.createElement("button");
+            btn.className = "w-full py-2 mt-2 text-sm text-fb-primary font-bold hover:underline";
+            btn.textContent = "Tải thêm bình chọn...";
+            btn.onclick = () => { btn.remove(); loadVotesTab(); };
+            container.appendChild(btn);
+        }
+    } catch (err) {
+        console.error(err);
+        if (reset) container.innerHTML = `<p class="text-red-500">Lỗi tải bình chọn.</p>`;
+    } finally {
+        isLoadingGroupVotes = false;
+    }
+};
+
+function renderGroupVoteCard(v) {
+    const card = document.createElement("div");
+    card.className = "glass-card rounded-2xl p-4 shadow-sm border border-white/40 dark:border-white/5 relative group/vote mb-4";
+
+    const totalVotes = (v.options || []).reduce((s, o) => s + o.count, 0);
+    const creatorName = v.created_by ? (v.created_by.full_name || `${v.created_by.first_name || ''} ${v.created_by.last_name || ''}`.trim()) : 'Ai đó';
+    const canManageVote = v.created_by?.user === myUserId || Number(v.created_by?.id) === Number(myUserId) || myRole === 'admin' || myRole === 'owner';
+
+    let headerHtml = `
+        <div class="flex justify-between items-start mb-3">
+            <div>
+                <h4 class="font-bold text-gray-900 dark:text-white text-lg pr-8">${escapeHtml(v.title)}</h4>
+                <p class="text-xs text-gray-500 mt-1">Tạo bởi: ${escapeHtml(creatorName)}</p>
+                ${v.is_closed ? '<span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full mt-1 inline-block font-semibold">Đã đóng</span>' : ''}
+            </div>
+            ${canManageVote ? `
+            <div class="relative vote-kebab-container">
+                <button type="button" class="vote-kebab-btn w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 transition">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div class="vote-kebab-menu hidden absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden">
+                    <button class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition" data-action="edit-vote">Sửa tiêu đề</button>
+                    <button class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition" data-action="toggle-vote">${v.is_closed ? 'Mở lại bình chọn' : 'Đóng bình chọn'}</button>
+                    <button class="w-full text-left px-4 py-2.5 text-sm hover:bg-red-50 text-red-600 transition" data-action="delete-vote">Xóa bình chọn</button>
+                </div>
+            </div>` : ''}
+        </div>
+    `;
+
+    let optsHtml = `<div class="space-y-2 mb-3">`;
+    for (const o of (v.options || [])) {
+        const pct = totalVotes ? Math.round((o.count / totalVotes) * 100) : 0;
+        const myVote = (v.user_votes || []).includes(o.id);
+        const canManageOption = canManageVote; // Only admin/owner/creator can update/delete option
+        optsHtml += `
+            <div class="vote-option-item cursor-pointer p-2 rounded-lg border border-transparent hover:border-fb-primary/30 transition-colors group/opt relative" data-option-id="${o.id}" data-vote-id="${v.id}">
+                <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2 flex-1 min-w-0 pr-16">
+                        <div class="w-4 h-4 shrink-0 rounded-full border border-gray-300 dark:border-gray-500 flex items-center justify-center ${myVote ? 'bg-fb-primary border-fb-primary' : ''}">
+                            ${myVote ? `<i class="fas fa-check text-white text-[10px]"></i>` : ''}
+                        </div>
+                        <p class="text-sm dark:text-gray-200 truncate vote-opt-text font-medium" title="${escapeHtml(o.text)}">${escapeHtml(o.text)}</p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button type="button" class="text-xs font-bold text-gray-500 hover:text-blue-500 px-1" data-action="view-voters" data-option-id="${o.id}">${o.count}</button>
+                    </div>
+                </div>
+                <div class="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-blue-400 dark:bg-blue-500 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                </div>
+                ${!v.is_closed && canManageOption ? `
+                <div class="hidden group-hover/opt:flex absolute right-1 top-1 gap-1 bg-white dark:bg-gray-800 shadow-sm rounded-md border border-gray-200 dark:border-gray-700 p-0.5 z-10">
+                    <button class="w-6 h-6 hover:bg-blue-50 text-blue-500 rounded flex items-center justify-center" data-action="edit-opt" data-option-id="${o.id}"><i class="fas fa-pen text-xs"></i></button>
+                    <button class="w-6 h-6 hover:bg-red-50 text-red-500 rounded flex items-center justify-center" data-action="delete-opt" data-option-id="${o.id}"><i class="fas fa-trash text-xs"></i></button>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    optsHtml += `</div>`;
+    
+    let footerHtml = `
+        <div class="flex items-center justify-between mt-2 pt-2 border-t dark:border-gray-700">
+            <span class="text-xs text-gray-400 font-medium">${totalVotes} lượt bình chọn</span>
+            ${!v.is_closed ? `<button class="text-sm font-semibold text-fb-primary hover:underline" data-action="add-option"><i class="fas fa-plus mr-1"></i> Thêm lựa chọn</button>` : ''}
+        </div>
+    `;
+
+    card.innerHTML = headerHtml + optsHtml + footerHtml;
+
+    // Handlers
+    card.querySelector(".vote-kebab-btn")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        document.querySelectorAll(".vote-kebab-menu").forEach(m => {
+            if (m !== card.querySelector(".vote-kebab-menu")) m.classList.add("hidden");
+        });
+        card.querySelector(".vote-kebab-menu")?.classList.toggle("hidden");
+    });
+
+    card.querySelector("[data-action='edit-vote']")?.addEventListener("click", () => {
+        card.querySelector(".vote-kebab-menu").classList.add("hidden");
+        openInputModal({ title: "Sửa tiêu đề bình chọn", value: v.title }).then(async val => {
+            if (val && val !== v.title) {
+                const res = await authFetch(API.groupUpdateVote(GROUP_ID, v.id), { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ title: val }) });
+                if (res.ok) loadVotesTab(true);
+            }
+        });
+    });
+
+    card.querySelector("[data-action='toggle-vote']")?.addEventListener("click", async () => {
+        const res = await authFetch(API.groupUpdateVote(GROUP_ID, v.id), { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ is_closed: !v.is_closed }) });
+        if (res.ok) loadVotesTab(true);
+    });
+
+    card.querySelector("[data-action='delete-vote']")?.addEventListener("click", async () => {
+        if (await confirmAction("Bạn có chắc muốn xóa cuộc bình chọn này?")) {
+            const res = await authFetch(API.groupDeleteVote(GROUP_ID, v.id), { method: "DELETE" });
+            if (res.ok) loadVotesTab(true);
+        }
+    });
+
+    card.querySelector("[data-action='add-option']")?.addEventListener("click", () => {
+        openInputModal({ title: "Thêm lựa chọn", placeholder: "Nhập lựa chọn..." }).then(async val => {
+            if (val) {
+                const res = await authFetch(API.groupAddVoteOption(GROUP_ID, v.id), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ options: [val] }) });
+                if (res.ok) loadVotesTab(true);
+            }
+        });
+    });
+
+    card.querySelectorAll("[data-action='edit-opt']").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const optId = btn.dataset.optionId;
+            const currentText = card.querySelector(`[data-option-id="${optId}"] .vote-opt-text`).textContent;
+            openInputModal({ title: "Sửa lựa chọn", value: currentText }).then(async val => {
+                if (val && val !== currentText) {
+                    const res = await authFetch(API.groupUpdateVoteOption(GROUP_ID, v.id, optId), { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ text: val }) });
+                    if (res.ok) loadVotesTab(true);
+                }
+            });
+        });
+    });
+
+    card.querySelectorAll("[data-action='delete-opt']").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const optId = btn.dataset.optionId;
+            if (await confirmAction("Xóa lựa chọn này?")) {
+                const res = await authFetch(API.groupDeleteVoteOption(GROUP_ID, v.id, optId), { method: "DELETE" });
+                if (res.ok) loadVotesTab(true);
+            }
+        });
+    });
+
+    card.querySelectorAll("[data-action='view-voters']").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const optId = btn.dataset.optionId;
+            const res = await authFetch(API.groupListUserVotes(GROUP_ID, v.id, optId));
+            if (res.ok) {
+                const data = await res.json();
+                openUserListModal("Người đã bình chọn", data.results || data);
+            }
+        });
+    });
+
+    card.querySelectorAll(".vote-option-item").forEach(item => {
+        item.addEventListener("click", async (e) => {
+            if (v.is_closed) return;
+            const optId = item.dataset.optionId;
+            const res = await authFetch(API.groupUserVote(GROUP_ID, v.id, optId), { method: "POST" });
+            if (res.ok) loadVotesTab(true);
+        });
+    });
+
+    return card;
+}
+
+// ============ GROUP EVENTS ============
+let nextGroupEventsUrl = null;
+let isLoadingGroupEvents = false;
+
+window.loadEvents = async function(reset = false) {
+    if (!GROUP_ID) return;
+    const container = document.getElementById("groupEventsList");
+    if (!container) return;
+
+    if (reset) {
+        nextGroupEventsUrl = API.groupListCreateEvent(GROUP_ID);
+        container.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-fb-primary text-2xl"></i></div>`;
+    }
+
+    if (!nextGroupEventsUrl || isLoadingGroupEvents) return;
+    isLoadingGroupEvents = true;
+
+    try {
+        const res = await authFetch(nextGroupEventsUrl);
+        if (!res.ok) throw new Error("Failed to fetch events");
+        const data = await res.json();
+        
+        if (reset) container.replaceChildren();
+
+        const evts = data.results || (Array.isArray(data) ? data : []);
+        if (evts.length === 0 && reset) {
+            container.innerHTML = `
+                <div class="text-center py-10 text-gray-500">
+                    <i class="fas fa-calendar-times text-4xl mb-3 opacity-50"></i>
+                    <p class="font-semibold">Chưa có sự kiện nào.</p>
+                </div>`;
+        } else {
+            for (const e of evts) {
+                container.appendChild(renderGroupEventCard(e));
+            }
+        }
+        
+        nextGroupEventsUrl = data.next || null;
+        if (nextGroupEventsUrl) {
+            const btn = document.createElement("button");
+            btn.className = "w-full py-2 mt-2 text-sm text-fb-primary font-bold hover:underline";
+            btn.textContent = "Tải thêm sự kiện...";
+            btn.onclick = () => { btn.remove(); loadEvents(); };
+            container.appendChild(btn);
+        }
+    } catch (err) {
+        console.error(err);
+        if (reset) container.innerHTML = `<p class="text-red-500">Lỗi tải sự kiện.</p>`;
+    } finally {
+        isLoadingGroupEvents = false;
+    }
+};
+
+function formatEventTime(isoString) {
+    if (!isoString) return "";
+    const d = new Date(isoString);
+    return d.toLocaleString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function renderGroupEventCard(e) {
+    const card = document.createElement("div");
+    card.className = "glass-card rounded-2xl p-5 shadow-sm border border-white/40 dark:border-white/5 relative flex flex-col sm:flex-row gap-5 mb-4";
+
+    const canManageEvent = myRole === 'admin' || myRole === 'owner' || e.created_by?.id == myUserId;
+
+    const startDate = new Date(e.start_time);
+    const month = startDate.toLocaleString('vi-VN', { month: 'short' });
+    const day = startDate.getDate();
+
+    card.innerHTML = `
+        <div class="w-16 h-16 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex flex-col items-center justify-center border border-blue-100 dark:border-blue-800/50 shrink-0">
+            <span class="text-xs font-bold text-red-500 uppercase">${month}</span>
+            <span class="text-2xl font-black text-blue-700 dark:text-blue-400 leading-none">${day}</span>
+        </div>
+        <div class="flex-1 min-w-0">
+            <div class="flex justify-between items-start gap-2">
+                <h4 class="font-bold text-lg text-gray-900 dark:text-white truncate">${escapeHtml(e.title)}</h4>
+                ${canManageEvent ? `
+                <div class="flex gap-1 shrink-0">
+                    <button class="w-8 h-8 rounded-full hover:bg-blue-50 text-blue-500 flex items-center justify-center transition" data-action="edit-event" title="Sửa"><i class="fas fa-pen text-sm"></i></button>
+                    <button class="w-8 h-8 rounded-full hover:bg-red-50 text-red-500 flex items-center justify-center transition" data-action="delete-event" title="Xóa"><i class="fas fa-trash text-sm"></i></button>
+                </div>` : ''}
+            </div>
+            <p class="text-sm text-gray-500 mb-2 flex items-center gap-1.5 font-medium"><i class="far fa-clock"></i> ${formatEventTime(e.start_time)} ${e.end_time ? ' - ' + formatEventTime(e.end_time) : ''}</p>
+            ${e.description ? `<p class="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mb-3">${escapeHtml(e.description)}</p>` : ''}
+            
+            <div class="flex items-center gap-3 mt-4 border-t dark:border-gray-700 pt-3">
+                <button class="flex-1 py-1.5 rounded-lg text-sm font-bold transition-all ${e.user_status === 'accept' ? 'bg-fb-primary text-white shadow-md' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}" data-action="join-event">
+                    ${e.user_status === 'accept' ? '<i class="fas fa-check-circle mr-1"></i> Đã tham gia' : 'Tham gia'}
+                </button>
+                <button class="flex-1 py-1.5 rounded-lg text-sm font-bold transition-all bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700" data-action="view-participants">
+                    <i class="fas fa-users mr-1"></i> ${e.participant_count || 0} người tham gia
+                </button>
+            </div>
+        </div>
+    `;
+
+    card.querySelector("[data-action='delete-event']")?.addEventListener("click", async () => {
+        if (await confirmAction("Bạn có chắc muốn xóa sự kiện này?")) {
+            const res = await authFetch(API.groupEventDetail(GROUP_ID, e.id), { method: "DELETE" });
+            if (res.ok) loadEvents(true);
+        }
+    });
+
+    card.querySelector("[data-action='edit-event']")?.addEventListener("click", () => {
+        openInlineFormModal({
+            title: "Sửa Sự Kiện",
+            bodyHtml: `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Tên sự kiện</label>
+                        <input type="text" name="title" value="${escapeHtml(e.title)}" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-fb-primary outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Mô tả</label>
+                        <textarea name="description" rows="3" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-fb-primary outline-none">${escapeHtml(e.description || "")}</textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Bắt đầu</label>
+                            <input type="datetime-local" name="start_time" value="${e.start_time ? e.start_time.slice(0,16) : ''}" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Kết thúc (Tùy chọn)</label>
+                            <input type="datetime-local" name="end_time" value="${e.end_time ? e.end_time.slice(0,16) : ''}" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                        </div>
+                    </div>
+                </div>
+            `,
+            getValues: (body) => ({
+                title: body.querySelector("[name='title']").value.trim(),
+                description: body.querySelector("[name='description']").value.trim(),
+                start_time: body.querySelector("[name='start_time']").value || null,
+                end_time: body.querySelector("[name='end_time']").value || null,
+            }),
+            validate: (v) => {
+                if (!v.title) return "Vui lòng nhập tên sự kiện.";
+                if (!v.start_time) return "Vui lòng chọn thời gian bắt đầu.";
+                return "";
+            }
+        }).then(async val => {
+            if (val) {
+                const res = await authFetch(API.groupEventDetail(GROUP_ID, e.id), { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify(val) });
+                if (res.ok) loadEvents(true);
+            }
+        });
+    });
+
+    card.querySelector("[data-action='join-event']")?.addEventListener("click", async () => {
+        const newStatus = e.user_status === 'accept' ? 'decline' : 'accept'; // Hủy thì coi như decline/hoặc pending
+        const res = await authFetch(API.groupEventResponse(GROUP_ID, e.id), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ status: newStatus }) });
+        if (res.ok) loadEvents(true);
+    });
+
+    card.querySelector("[data-action='view-participants']")?.addEventListener("click", async () => {
+        const res = await authFetch(API.groupEventParticipant(GROUP_ID, e.id));
+        if (res.ok) {
+            const data = await res.json();
+            const users = data.results || data;
+            const formattedUsers = users.map(u => u.user_details || u);
+            openUserListModal("Người tham gia", formattedUsers);
+        }
+    });
+
+    return card;
+}
+
+// BIND CREATE EVENT & VOTE BUTTONS
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("btnCreateVoteTab")?.addEventListener("click", () => {
+        openInlineFormModal({
+            title: "Tạo Bình Chọn Mới",
+            bodyHtml: `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Tiêu đề bình chọn</label>
+                        <input type="text" name="title" placeholder="VD: Cuối tuần này đi đâu?" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-fb-primary outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Các lựa chọn ban đầu (Cách nhau bởi dấu phẩy)</label>
+                        <input type="text" name="options" placeholder="Đà Lạt, Vũng Tàu, Ở nhà" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-fb-primary outline-none">
+                    </div>
+                </div>
+            `,
+            getValues: (body) => ({
+                title: body.querySelector("[name='title']").value.trim(),
+                options: body.querySelector("[name='options']").value.split(",").map(s => s.trim()).filter(Boolean)
+            }),
+            validate: (v) => {
+                if (!v.title) return "Vui lòng nhập tiêu đề bình chọn.";
+                if (v.options.length === 0) return "Vui lòng nhập ít nhất 1 lựa chọn.";
+                return "";
+            }
+        }).then(async val => {
+            if (val) {
+                const res = await authFetch(API.groupCreateVote(GROUP_ID), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(val) });
+                if (res.ok) loadVotesTab(true);
+            }
+        });
+    });
+
+    document.getElementById("btnCreateEvent")?.addEventListener("click", () => {
+        openInlineFormModal({
+            title: "Tạo Sự Kiện Mới",
+            bodyHtml: `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Tên sự kiện</label>
+                        <input type="text" name="title" placeholder="VD: Họp tổng kết tháng" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-fb-primary outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Mô tả</label>
+                        <textarea name="description" rows="3" placeholder="Nội dung sự kiện..." class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-fb-primary outline-none"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Bắt đầu</label>
+                            <input type="datetime-local" name="start_time" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Kết thúc (Tùy chọn)</label>
+                            <input type="datetime-local" name="end_time" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                        </div>
+                    </div>
+                </div>
+            `,
+            getValues: (body) => ({
+                title: body.querySelector("[name='title']").value.trim(),
+                description: body.querySelector("[name='description']").value.trim(),
+                start_time: body.querySelector("[name='start_time']").value || null,
+                end_time: body.querySelector("[name='end_time']").value || null,
+            }),
+            validate: (v) => {
+                if (!v.title) return "Vui lòng nhập tên sự kiện.";
+                if (!v.start_time) return "Vui lòng chọn thời gian bắt đầu.";
+                return "";
+            }
+        }).then(async val => {
+            if (val) {
+                const res = await authFetch(API.groupListCreateEvent(GROUP_ID), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(val) });
+                if (res.ok) loadEvents(true);
+            }
+        });
+    });
+});
+
+window.openSuggestionModal = function() {
+    openInlineFormModal({
+        title: "Gửi Góp Ý",
+        bodyHtml: `
+            <div class="space-y-4">
+                <p class="text-sm text-gray-500">Góp ý của bạn sẽ được gửi tới Ban Quản Trị của công ty. Bạn có thể nêu ra các vấn đề, khiếu nại hoặc đóng góp ý tưởng cải thiện.</p>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Nội dung góp ý</label>
+                    <textarea name="content" rows="5" placeholder="Nhập nội dung góp ý..." class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-fb-primary outline-none"></textarea>
+                </div>
+            </div>
+        `,
+        okText: "Gửi Góp Ý",
+        getValues: (body) => ({
+            content: body.querySelector("[name='content']").value.trim()
+        }),
+        validate: (v) => {
+            if (!v.content) return "Vui lòng nhập nội dung góp ý.";
+            return "";
+        }
+    }).then(async val => {
+        if (val) {
+            const res = await authFetch(API.groupCreateSuggestion(GROUP_ID), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(val) });
+            if (res.ok) {
+                showToast("Gửi góp ý thành công!", "green");
+            } else {
+                showToast("Không thể gửi góp ý.", "red");
+            }
+        }
+    });
+};
+

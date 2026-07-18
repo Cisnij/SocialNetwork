@@ -257,7 +257,7 @@ urlpatterns = [
     path('api/group/<int:group_id>/vote/<int:vote_id>/option/<int:option_id>/update/',UpdateOptionVoteGroup.as_view()), #update option
     path('api/group/<int:group_id>/vote/<int:vote_id>/option/<int:option_id>/delete/',DeleteOptionVoteGroup.as_view()), #xóa option
     path('api/group/<int:group_id>/list-vote/', ListVoteGroup.as_view()),  # lấy all vote
-    path('api/group/<int:group_id>/vote/<int:vote_id>/option/<int:vote_option_id>/user-list/',ListUserVoteGroup.as_view()), #tất cả user đã list của option
+    path('api/group/<int:group_id>/vote/<int:vote_id>/option/<int:option_id>/user-list/',ListUserVoteGroup.as_view()), #tất cả user đã list của option
     path('api/group/<int:group_id>/vote/<int:vote_id>/detail/', DetailVoteGroup.as_view()),  # detail vote
 
     path('api/group/<int:group_id>/event/', ListCreateEventGroup.as_view()), #list, tạo event

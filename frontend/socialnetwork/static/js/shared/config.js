@@ -249,6 +249,37 @@ export const API = {
   groupRemoveAdmin: (id, uid) => `${API_BASE_URL}/api/group/${id}/user/${uid}/remove-admin/`,
   groupLeave: (id) => `${API_BASE_URL}/api/group/${id}/leave/`,
 
+  // Group Vote
+  groupCreateVote: (groupId) => `${API_BASE_URL}/api/group/${groupId}/create-vote/`,
+  groupDeleteVote: (groupId, voteId) => `${API_BASE_URL}/api/group/${groupId}/vote/${voteId}/delete/`,
+  groupUserVote: (groupId, voteId, optionId) => `${API_BASE_URL}/api/group/${groupId}/vote/${voteId}/option/${optionId}/vote/`,
+  groupUpdateVote: (groupId, voteId) => `${API_BASE_URL}/api/group/${groupId}/vote/${voteId}/update/`,
+  groupAddVoteOption: (groupId, voteId) => `${API_BASE_URL}/api/group/${groupId}/vote/${voteId}/add-options/`,
+  groupUpdateVoteOption: (groupId, voteId, optionId) => `${API_BASE_URL}/api/group/${groupId}/vote/${voteId}/option/${optionId}/update/`,
+  groupDeleteVoteOption: (groupId, voteId, optionId) => `${API_BASE_URL}/api/group/${groupId}/vote/${voteId}/option/${optionId}/delete/`,
+  groupListVotes: (groupId, search = "") => {
+    const base = `${API_BASE_URL}/api/group/${groupId}/list-vote/`;
+    return search ? `${base}?search=${encodeURIComponent(search)}` : base;
+  },
+  groupListUserVotes: (groupId, voteId, optionId) => `${API_BASE_URL}/api/group/${groupId}/vote/${voteId}/option/${optionId}/user-list/`,
+  groupVoteDetail: (groupId, voteId) => `${API_BASE_URL}/api/group/${groupId}/vote/${voteId}/detail/`,
+
+  // Group Event
+  groupListCreateEvent: (groupId, search = "") => {
+    const base = `${API_BASE_URL}/api/group/${groupId}/event/`;
+    return search ? `${base}?search=${encodeURIComponent(search)}` : base;
+  },
+  groupEventDetail: (groupId, eventId) => `${API_BASE_URL}/api/group/${groupId}/event/${eventId}/`,
+  groupEventResponse: (groupId, eventId) => `${API_BASE_URL}/api/group/${groupId}/event/${eventId}/update-status/`,
+  groupEventParticipant: (groupId, eventId) => `${API_BASE_URL}/api/group/${groupId}/event/${eventId}/participants/`,
+
+  // Group Suggestion
+  groupCreateSuggestion: (groupId) => `${API_BASE_URL}/api/group/${groupId}/create-suggestion/`,
+  groupListSuggestion: (groupId) => `${API_BASE_URL}/api/group/${groupId}/list-suggestion/`,
+
+  // Group Admin Delete All User Posts
+  groupDeleteMemberPosts: (groupId, userId) => `${API_BASE_URL}/api/group/${groupId}/user/${userId}/delete-all-posts/`,
+
   groupPostList: (id) => `${API_BASE_URL}/api/group/${id}/post/list/`,
   groupCreatePost: (id) => `${API_BASE_URL}/api/group/${id}/create-post/`,
   groupUpdatePost: (gid, pid) => `${API_BASE_URL}/api/group/${gid}/post/${pid}/update/`,

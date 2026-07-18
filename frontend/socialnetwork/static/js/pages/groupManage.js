@@ -2,6 +2,45 @@ import { API, DEFAULT_AVATAR } from "../shared/config.js";
 import { authFetch, authFetchCache } from "../authenticate/auth.js";
 
 // ============ HELPERS ============
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function loadAdminSuggestions(groupId) {
+    const list = document.getElementById("suggestionsList");
+    if (!list) return;
+
+    list.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-fb-primary text-xl"></i></div>`;
+
+    apiGet(API.groupListSuggestion(groupId), (data) => {
+        const items = data.results || (Array.isArray(data) ? data : []);
+
+        if (items.length === 0) {
+            list.innerHTML = `<div class="text-center py-6 text-gray-500 font-semibold">Chưa có góp ý nào.</div>`;
+            return;
+        }
+
+        list.innerHTML = "";
+        items.forEach(item => {
+            const date = new Date(item.created_at).toLocaleString('vi-VN', {hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'});
+            const sender = item.user ? (item.user.full_name || `${item.user.first_name || ''} ${item.user.last_name || ''}`.trim()) : 'Ẩn danh';
+            
+            const html = `
+                <div class="glass-card p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-3">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-sm font-bold text-fb-primary flex items-center gap-1"><i class="fas fa-user-secret"></i> ${escapeHtml(sender)}</span>
+                        <span class="text-xs text-gray-500"><i class="far fa-clock"></i> ${date}</span>
+                    </div>
+                    <p class="text-gray-800 dark:text-gray-200 text-sm whitespace-pre-wrap">${escapeHtml(item.content)}</p>
+                </div>
+            `;
+            list.insertAdjacentHTML("beforeend", html);
+        });
+    });
+}
+
 function apiGet(url, onData) {
     return authFetchCache(url, {}, onData);
 }
@@ -220,12 +259,13 @@ export function initAdminPanel(groupId, isCompany) {
             }
 
             if (targetId === "adminPendingPosts") loadPendingPosts(groupId);
-            if (targetId === "adminJoinRequests") loadJoinRequests(groupId, isCompany);
+            else if (targetId === "adminJoinRequests") loadJoinRequests(groupId, isCompany);
+            else if (targetId === "adminDepartments") loadDepartments(groupId);
+            else if (targetId === "adminSuggestions") loadAdminSuggestions(groupId);
+            
             if (targetId === "adminDepartments" && isCompany) {
-                loadDepartments(groupId);
                 setupDepartmentDelegation(groupId);
             }
-            if (targetId === "adminSuggestions" && isCompany) loadSuggestions(groupId);
         });
     });
 
@@ -262,9 +302,6 @@ export function initAdminPanel(groupId, isCompany) {
         createVoteModal(groupId);
     });
 
-    // Default: load pending posts + badge
-    loadPendingPosts(groupId);
-    loadJoinRequests(groupId, isCompany, true); // silent for badge only
 }
 
 // ============ PENDING POSTS ============
@@ -541,9 +578,9 @@ function loadDepartments(groupId) {
                              <button class="btn-edit-role text-xs bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1" data-rid="${r.id}" data-name="${r.name}" title="Sửa chức vụ">
                                  <i class="fas fa-edit"></i> Sửa
                              </button>
-                            <button class="btn-delete-role text-xs bg-red-50 hover:bg-red-100 text-red-500 px-2 py-1 rounded-lg transition" data-rid="${r.id}" title="Xóa chức vụ">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                             <button class="btn-delete-role text-xs bg-red-50 hover:bg-red-100 text-red-500 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1" data-rid="${r.id}" title="Xóa chức vụ">
+                                 <i class="fas fa-trash"></i> Xóa
+                             </button>
                         </div>
                     </div>`
                     )
@@ -905,20 +942,36 @@ function loadSuggestions(groupId) {
 
 // ============ CREATE EVENT MODAL ============
 function createEventModal(groupId) {
+    const now = new Date();
+    const minLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     showFormModal("Tạo sự kiện", `
-        <div class="space-y-3">
-            <input type="text" id="eventTitle" placeholder="Tiêu đề sự kiện" class="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-white border dark:border-gray-700 focus:ring-2 focus:ring-fb-primary outline-none">
-            <textarea id="eventDesc" placeholder="Mô tả (không bắt buộc)" class="w-full h-24 p-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-white border dark:border-gray-700 focus:ring-2 focus:ring-fb-primary outline-none resize-none"></textarea>
-            <input type="text" id="eventStart" placeholder="YYYY-MM-DD HH:MM" class="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-white border dark:border-gray-700 focus:ring-2 focus:ring-fb-primary outline-none">
-            <input type="text" id="eventEnd" placeholder="YYYY-MM-DD HH:MM (không bắt buộc)" class="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-white border dark:border-gray-700 focus:ring-2 focus:ring-fb-primary outline-none">
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Tiêu đề sự kiện *</label>
+                <input type="text" id="eventTitle" placeholder="Ví dụ: Họp team cuối tuần" class="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-white border dark:border-gray-700 focus:ring-2 focus:ring-fb-primary outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Mô tả</label>
+                <textarea id="eventDesc" placeholder="Thêm chi tiết về sự kiện (không bắt buộc)" class="w-full h-24 p-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-white border dark:border-gray-700 focus:ring-2 focus:ring-fb-primary outline-none resize-none"></textarea>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Thời gian bắt đầu *</label>
+                    <input type="datetime-local" id="eventStart" min="${minLocal}" class="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-white border dark:border-gray-700 focus:ring-2 focus:ring-fb-primary outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Thời gian kết thúc</label>
+                    <input type="datetime-local" id="eventEnd" min="${minLocal}" class="w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-white border dark:border-gray-700 focus:ring-2 focus:ring-fb-primary outline-none">
+                </div>
+            </div>
         </div>
     `, async (body) => {
         const title = body.querySelector("#eventTitle")?.value.trim();
         if (!title) throw new Error("Vui lòng nhập tiêu đề sự kiện");
         const description = body.querySelector("#eventDesc")?.value.trim() || "";
-        const startTime = body.querySelector("#eventStart")?.value.trim();
-        if (!startTime) throw new Error("Vui lòng nhập thời gian bắt đầu");
-        const endTime = body.querySelector("#eventEnd")?.value.trim();
+        const startTime = body.querySelector("#eventStart")?.value;
+        if (!startTime) throw new Error("Vui lòng chọn thời gian bắt đầu");
+        const endTime = body.querySelector("#eventEnd")?.value;
 
         const data = {
             title,
