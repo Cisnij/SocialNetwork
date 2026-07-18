@@ -68,12 +68,18 @@ def send_event_reminder(self, event_id, content_type_id):
         if not participant_ids:
             return
 
+        # Xác định event thuộc Group hay Chat để truyền group_id đúng
+        group_ct = ContentType.objects.get_for_model(Group)
+        is_group_event = (event.content_type_id == group_ct.id)
+        notif_group_id = event.object_id if is_group_event else None
+
         Notification.objects.bulk_create([
             Notification(
                 reciever_id=uid,
                 actor_id=event.created_by_id,
                 type='event_reminder',
-                object_id=event.id,
+                event_id=event.id,
+                group_id=notif_group_id,  # None nếu là chat event
                 message=f"Sự kiện {event.title} sắp diễn ra trong ít phút nữa",
             )
             for uid in participant_ids
@@ -88,7 +94,9 @@ def send_event_reminder(self, event_id, content_type_id):
                     'event_id':   event.id,
                     'title':      event.title,
                     'start_time': event.start_time.isoformat(),
-                    'conv_id':    event.object_id,
+                    # group_id nếu là group event, conv_id nếu là chat event
+                    'group_id':   notif_group_id,
+                    'conv_id':    None if is_group_event else event.object_id,
                     'message':    f'Sắp bắt đầu: {event.title}',
                 }
             )
@@ -117,7 +125,7 @@ def make_notification_group(self, group_id, post_id, admin_id):
                 reciever_id=uid,
                 actor_id=admin_id,
                 type="group_notification",
-                object_id=group_id,
+                group_id=group_id,
                 post_id=post_id,
                 message=f"Admin đã gửi thông báo thông qua post '{post.title}' trong group '{group.name}'",
             )
@@ -131,7 +139,7 @@ def make_notification_group(self, group_id, post_id, admin_id):
                 f"notification_{uid}",
                 {
                     "type": "group_notification",
-                    "object_id": group_id,
+                    "group_id": group_id,
                     "post_id": post_id,
                     "message": f"Admin đã gửi thông báo thông qua post '{post.title}' trong group '{group.name}'",
                 },

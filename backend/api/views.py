@@ -771,6 +771,11 @@ class CommentListCreate(generics.ListCreateAPIView):  # thêm list comment
             user = self.request.user
             if not post_id:
                 raise NotFound("Cần truyền ID post để truy cập.")
+            post = Post.objects.filter(post_id=post_id).select_related('group').first()
+            if not post:
+                raise NotFound("Post không tồn tại.")
+            if post.group_id and not user.has_perm('group.is_member', post.group):
+                raise PermissionDenied("Bạn không phải thành viên của group này.")
             blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
             blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
             # if user.is_superuser or user.is_staff:
@@ -809,6 +814,26 @@ class CommentListCreate(generics.ListCreateAPIView):  # thêm list comment
                     raise ValidationError("Comment cha không khả dụng.")
         serializer.save(user=self.request.user, post_id=post_id, parent=parent)
 
+class CommentDetail(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CommentSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'comment'
+
+    def get_object(self):
+        user = self.request.user
+        comment_id = self.kwargs.get('pk')
+        if not comment_id:
+            raise NotFound("Cần truyền ID comment để truy cập.")
+
+        comment = get_object_or_404(
+            Comment.objects.prefetch_related('tagged_users').select_related('post','post__group'), id=comment_id
+        )
+
+        if comment.post.group_id:
+            if not user.has_perm('group.is_member', comment.post.group):
+                raise PermissionDenied("Bạn không phải thành viên của group này.")
+        return comment
 
 class CommentModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa comment
     permission_classes = [IsAuthenticated]
@@ -4326,7 +4351,7 @@ class PostReviewGroupList(generics.ListAPIView):
         group_id = self.kwargs.get('group_id')
         group = get_object_or_404(Group,pk=group_id)
         self.check_object_permissions(self.request,group)
-        return Post.objects.filter(group=group,post_status='pending').select_related('user','user__profile','group').prefetch_related('photos').order_by('created_at')
+        return Post.objects.filter(group=group,post_status='pending').select_related('user','user__profile','group').prefetch_related('photos').order_by('-created_at')
 
 class ReviewPostGroup(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
@@ -5111,3 +5136,13 @@ class ListSuggestionGroup(generics.ListAPIView):
         group = get_object_or_404(Group, pk=self.kwargs.get('group_id'))
         self.check_object_permissions(self.request, group)
         return GroupSuggestion.objects.filter(group=group).order_by('-created_at')
+
+class DeleteALlPostMemberGroup(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
+    def post(self, request, *args, **kwargs):
+        user_id= self.kwargs.get("user_id")
+        group_id = self.kwargs.get("group_id")
+        group = get_object_or_404(Group, pk=group_id)
+        self.check_object_permissions(self.request, group)
+        Post.objects.filter(group=group,user_id=user_id).delete()
+        return Response({'detail':'success'},status=200)

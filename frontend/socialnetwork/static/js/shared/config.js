@@ -75,6 +75,7 @@ export const API = {
 
   comments: (postId) => `${API_BASE_URL}/api/user/comments/post/${postId}/`,
   comment: (id) => `${API_BASE_URL}/api/user/comments/${id}/`,
+  commentDetail: (id) => `${API_BASE_URL}/api/user/comment/${id}/detail/`,
   nestedComments: (id) => `${API_BASE_URL}/api/user/nested-comments/${id}/`,
   pinComment: (id) => `${API_BASE_URL}/api/user/comment/pin/${id}/`,
   commentReact: (id) => `${API_BASE_URL}/api/comments/${id}/react/`,

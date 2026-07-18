@@ -41,7 +41,7 @@ export function initCommentsPanel() {
   }
 }
 
-export async function openCommentsModal(id, ownerProfileId = null) {
+export async function openCommentsModal(id, ownerProfileId = null, targetCommentData = null) {
   postId = id;
   postOwnerId = ownerProfileId;
   myId = await getCurrentUserId().catch(() => null);
@@ -52,6 +52,23 @@ export async function openCommentsModal(id, ownerProfileId = null) {
   resetCommentComposer();
   nextUrl = buildListUrl(API.comments(postId), 15);
   await loadMore(true);
+
+  if (targetCommentData) {
+    let existing = list.querySelector(`[data-comment-id="${targetCommentData.id}"]`);
+    if (!existing) {
+      // Inject if not in first page
+      const depth = targetCommentData.parent ? 1 : 0;
+      const el = renderComment(targetCommentData, depth, postOwnerId, targetCommentData.parent || targetCommentData.id);
+      list.prepend(el);
+      existing = el;
+    }
+    // Highlight and scroll
+    setTimeout(() => {
+      existing.scrollIntoView({ behavior: "smooth", block: "center" });
+      existing.classList.add("bg-blue-50", "dark:bg-blue-900/30", "transition-colors", "duration-1000", "rounded-lg");
+      setTimeout(() => existing.classList.remove("bg-blue-50", "dark:bg-blue-900/30"), 3000);
+    }, 300);
+  }
 }
 
 async function loadMore(reset) {

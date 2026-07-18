@@ -333,6 +333,16 @@ export function renderPostCard(post, options = {}) {
     wrapper: reactionWrapper,
     reactionCount,
     entity: post,
+    onApplied: async () => {
+      try {
+        const url = isGroupPost
+          ? API.groupPostDetail(post.group, post.post_id)
+          : API.post(post.post_id);
+        await authFetch(url);
+      } catch (err) {
+        console.error("[post] fetch updated post error", err);
+      }
+    },
   };
 
   const reactionBar = createReactionBar(reactionCtx);

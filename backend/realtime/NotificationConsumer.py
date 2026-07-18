@@ -37,13 +37,34 @@ class NotificationConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chịu tr
             pass
 
     async def send_notification(self, event):  # event là cái group send gửi lên, event[''] là dữ liệu th group send
-        await self.send(text_data=json.dumps(event['data']))  # chuyển data của event thành json
+        try:
+            await self.send(text_data=json.dumps(event['data']))  # chuyển data của event thành json
+        except RuntimeError:
+            pass  # client đã đóng kết nối, bỏ qua
 
-    async def incoming_call(self,event):
-        await self.send(text_data=json.dumps(event))
+    async def event_reminder(self, event):
+        try:
+            await self.send(text_data=json.dumps(event))
+        except RuntimeError:
+            pass
+
+    async def group_notification(self, event):
+        try:
+            await self.send(text_data=json.dumps(event))
+        except RuntimeError:
+            pass
+
+    async def incoming_call(self, event):
+        try:
+            await self.send(text_data=json.dumps(event))
+        except RuntimeError:
+            pass
 
     async def call_cancelled(self, event):
-        await self.send(text_data=json.dumps(event))
+        try:
+            await self.send(text_data=json.dumps(event))
+        except RuntimeError:
+            pass
 
     @database_sync_to_async
     def get_unread_count(self):  # count ban đầu khi vào app

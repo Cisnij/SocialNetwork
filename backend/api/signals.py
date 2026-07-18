@@ -538,6 +538,7 @@ def notify_comment(sender, instance, created, **kwargs):
             type='comment_on_post',
             object_id=instance.id, #comment id
             post_id=instance.post.post_id, #post id
+            group_id=instance.post.group_id,
             message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} commented on your post {instance.post.title}'
         )
     if instance.parent: # nếu mới tạo và có parent
@@ -548,6 +549,7 @@ def notify_comment(sender, instance, created, **kwargs):
                 type='reply_on_comment',
                 object_id=instance.id,
                 post_id=instance.parent.post_id,
+                group_id=instance.post.group_id,
                 message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} replied to your comment on post "{instance.post.title}"'
             )
 
@@ -563,6 +565,7 @@ def notify_tagged_users(sender,instance,action, pk_set,**kwargs):#pk_set lấy r
                 type='tagged_in_reply',
                 object_id=instance.id,
                 post_id=instance.post_id,
+                group_id=instance.post.group_id,
                 message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} tagged you on post "{instance.post.title}"'
             )
 
@@ -598,6 +601,7 @@ def notify_reaction(sender, instance, created, **kwargs):
             type=notif_type,
             object_id=reaction.object_id,
             post_id=post_id,
+            group_id=target.group_id if hasattr(target, 'group_id') else target.post.group_id,
             message=msg,
         )
     except Exception as e:
@@ -639,6 +643,7 @@ def notify_post_share(sender,instance,created,**kwargs):
             type='share_post',
             object_id=instance.pk,
             post_id=instance.post.post_id,
+            group_id=None,
             message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} share bài viết của bạn "{instance.post.title}"'
         )
 
@@ -666,6 +671,9 @@ def _push_ws(instance):
                     'message': instance.message,
                     'object_id': instance.object_id,
                     'post_id': instance.post_id,
+                    'group_id': instance.group_id,
+                    'event_id': instance.event_id,
+                    'vote_id': instance.vote_id,
                     'actor_id': instance.actor_id,
                     'actor_name': f'{instance.actor.profile.first_name} {instance.actor.profile.last_name}',
                     'actor_avatar': instance.actor.profile.picture.url if instance.actor.profile.picture else None,
@@ -987,7 +995,7 @@ def notify_accept_join_request(sender, user, admin_user, group, **kwargs):
         reciever=user,
         actor=admin_user,
         type='group_request_accepted',
-        object_id=group.id,
+        group_id=group.id,
         message=f'Bạn đã được duyệt vào group {group.name}'
     )
 @receiver(review_post_request_group)
@@ -995,7 +1003,7 @@ def notify_accept_post_request(sender,group,post,action,admin_user,**kwargs):
     Notification.objects.create(
         reciever=post.user,
         actor=admin_user,
-        object_id=group.id,
+        group_id=group.id,
         post_id=post.pk,
         type='group_post_accepted' if action == 'approved' else 'group_post_declined',
         message=f"Bài viết '{post.title}' {'đã được duyệt' if action == 'approved' else 'đã bị từ chối'} trong group '{group.name}'"
@@ -1006,7 +1014,7 @@ def notify_add_admin(sender,group,new_admin,owner,**kwargs): #lấy từ view ra
     Notification.objects.create(
         reciever=new_admin,
         actor=owner,
-        object_id=group.id,
+        group_id=group.id,
         type='group_admin_added',
         message=f'Bạn đã được thêm làm admin trong group {group.name}'
     )
@@ -1016,7 +1024,7 @@ def notify_owner_transfer(sender,group,next_owner,former_owner,**kwargs): #lấy
     Notification.objects.create(
         reciever=next_owner,
         actor=former_owner,
-        object_id=group.id,
+        group_id=group.id,
         type='group_owner_transfer',
         message=f'Bạn đã được chọn làm chủ group {group.name}'
     )
@@ -1171,7 +1179,7 @@ def notify_event_created(sender,created,instance,**kwargs):
             reciever_id=uid,
             actor=instance.created_by,
             type='group_event_create',
-            object_id=target.id,
+            group_id=target.id,
             event_id=instance.id,
             message=f"{instance.created_by.profile.full_name} đã tạo sự kiện '{instance.title}' trong group '{target.name}'"
         )
@@ -1198,7 +1206,7 @@ def notify_vote_created(sender, instance, created, **kwargs):
             reciever_id=uid,
             actor=instance.created_by,
             type='group_notification',
-            object_id=target.id,
+            group_id=target.id,
             vote_id=instance.id,
             message=f"{instance.created_by.profile.full_name} đã tạo cuộc bình chọn '{instance.title}' trong group '{target.name}'"
         )
