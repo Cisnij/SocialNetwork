@@ -155,9 +155,9 @@ function openUserListModal(title, users) {
             .map((u) => {
                 const first = u.first_name || "";
                 const last = u.last_name || "";
-                const name = `${first} ${last}`.trim() || u.name || "Unknown";
-                const avatar = u.picture || "";
-                const uid = u.user || u.id;
+                const name = `${first} ${last}`.trim() || u.name || u.full_name || "Unknown";
+                const avatar = u.picture || u.avatar || "";
+                const uid = u.user_id || u.user || u.id;
                 return `
                 <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
                     <a href="${profileUrl(uid)}"><img src="${avatar}" class="w-10 h-10 rounded-full object-cover border" onerror="this.src=''"></a>
@@ -1636,19 +1636,25 @@ function loadEvents(initial = true) {
                 }
               ${isExpired
                     ? `<span class="inline-block mt-2 text-xs text-gray-400"><i class="fas fa-hourglass-end"></i> Đã kết thúc</span>`
-                    : userStatus !== "accept"
+                    : userStatus === "accept"
                         ? `<div class="flex gap-2 mt-3">
+                        <button class="btn-event-response px-4 py-1.5 bg-red-100 text-red-600 text-sm font-bold rounded-xl hover:bg-red-200 transition" data-eid="${event.id}" data-response="decline"><i class="fas fa-times mr-1"></i> Hủy tham gia</button>
+                      </div>`
+                        : userStatus === "decline"
+                        ? `<div class="flex gap-2 mt-3">
+                        <button class="btn-event-response px-4 py-1.5 bg-fb-primary text-white text-sm font-bold rounded-xl hover:bg-blue-600 transition" data-eid="${event.id}" data-response="accept"><i class="fas fa-check mr-1"></i> Tham gia lại</button>
+                      </div>`
+                        : `<div class="flex gap-2 mt-3">
                         <button class="btn-event-response px-4 py-1.5 bg-fb-primary text-white text-sm font-bold rounded-xl hover:bg-blue-600 transition" data-eid="${event.id}" data-response="accept"><i class="fas fa-check mr-1"></i> Tham gia</button>
                         <button class="btn-event-response px-4 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition" data-eid="${event.id}" data-response="decline"><i class="fas fa-times mr-1"></i> Từ chối</button>
                       </div>`
-                        : ""
                 }
             </div>
             <div class="flex flex-col items-end gap-2 shrink-0">
                 <button class="btn-event-participants px-3 py-1 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-lg text-xs font-bold transition" data-eid="${event.id}"><i class="fas fa-users"></i> Xem người tham gia</button>
                 ${(myRole === "owner" || myRole === "admin") ? `
-                    <button class="btn-event-edit px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-bold transition" data-eid="${event.id}" data-title="${event.title || ''}" data-desc="${event.description || ''}" data-start="${event.start_time || ''}" data-end="${event.end_time || ''}"><i class="fas fa-edit"></i> Sửa</button>
-                    <button class="btn-event-delete px-3 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold transition" data-eid="${event.id}"><i class="fas fa-trash"></i> Xóa</button>
+                    <button class="btn-event-edit flex items-center gap-1 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg text-xs font-bold transition" data-eid="${event.id}" data-title="${event.title || ''}" data-desc="${event.description || ''}" data-start="${event.start_time || ''}" data-end="${event.end_time || ''}"><i class="fas fa-edit"></i> Sửa sự kiện</button>
+                    <button class="btn-event-delete flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg text-xs font-bold transition" data-eid="${event.id}"><i class="fas fa-trash"></i> Xóa sự kiện</button>
                 ` : ''}
             </div>
           </div>

@@ -5090,6 +5090,7 @@ class EventDetailGroup(generics.RetrieveUpdateDestroyAPIView):
         if instance.celery_task_id:
             from backend.celery import app
             app.control.revoke(instance.celery_task_id, terminate=True)
+        instance.delete()
 
 class EventResponseGroup(APIView):
     permission_classes = [IsAuthenticated,IsMemberGroup]
