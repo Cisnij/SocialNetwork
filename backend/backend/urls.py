@@ -201,7 +201,10 @@ urlpatterns = [
     # call video
     path('api/chat/conversation/<int:conv_id>/call-video/create/', CreateVideoRoomView.as_view()),
     path('api/chat/conversation/<int:conv_id>/call-video/join/', JoinVideoRoomView.as_view()),
+    path('api/chat/conversation/<int:conv_id>/call-video/leave/', LeaveCallView.as_view()),
+    path('api/chat/conversation/<int:conv_id>/call-video/cancel/', CancelCallView.as_view()),
     path('api/chat/conversation/<int:conv_id>/call-video/decline/', DeclineCallView.as_view()),
+    path('api/chat/conversation/<int:conv_id>/call-video/status/', CheckActiveCallView.as_view()),
     #SCHEDULE TASK
     path('api/chat/conversation/<int:conv_id>/create-event/', ListCreateEventChat.as_view()),
     path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/', EventDetailChat.as_view()),# sửa, xóa, detail

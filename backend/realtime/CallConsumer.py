@@ -71,7 +71,11 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
         await self.stop_heartbeat()
         if getattr(self, 'room_name', None):
             # Tự động leave/end call nếu user đóng tab đột ngột
-            await self.handle_leave_call({'type': 'leave_call'})
+            try:
+                await self.handle_leave_call({'type': 'leave_call'})
+            except Exception as e:
+                import traceback
+                print(f"Error in disconnect handle_leave_call: {e}")
             await self.channel_layer.group_discard(self.room_name, self.channel_name)
 
     async def receive(self, text_data):
@@ -92,28 +96,73 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
             await handler(data)
 
     async def handle_leave_call(self, data):
-        room = await self._get_active_room()
-        if not room:
-            return
+        try:
+            room = await self._get_active_room()
+            if not room:
+                return
 
-        await CallParticipant.objects.filter(
-            room=room, user=self.user
-        ).aupdate(left_at=timezone.now())
+            await CallParticipant.objects.filter(
+                room=room, user_id=self.user.id
+            ).aupdate(left_at=timezone.now(), status='left')
 
-        if room.conversation.is_group:
-            # Nhóm: báo mọi người trong phòng có người rời
-            await self.channel_layer.group_send(
-                self.room_name,
-                {
-                    'type':      'call_user_left',
-                    'user_id':   self.user.id,
-                    'user_name': self.user_name,
-                    'conv_id':   self.conv_id,
-                }
-            )
-        else:
-            # 1-1: 1 người rời = kết thúc cuộc gọi
-            await self.handle_end_call(data)
+            active_count = await CallParticipant.objects.filter(
+                room=room, status='accepted'
+            ).acount()
+
+            should_close_room = False
+            if not room.conversation.is_group:
+                should_close_room = True
+            elif active_count == 0:
+                should_close_room = True
+
+            if should_close_room:
+                end_reason = 'completed' if room.started_at else 'cancelled'
+                await self._close_room(room, end_reason)
+                msg_type = 'system_call_completed' if end_reason == 'completed' else 'system_call_missed'
+                await self._create_system_message(room, msg_type)
+                
+                duration = await self._get_duration(room)
+                await self.channel_layer.group_send(
+                    self.room_name,
+                    {
+                        'type':             'call_ended',
+                        'end_reason':       end_reason,
+                        'duration_seconds': duration,
+                        'conv_id':          self.conv_id,
+                    }
+                )
+                
+                if end_reason == 'cancelled':
+                    member_ids = await self._get_member_ids(room)
+                    channel_layer = get_channel_layer()
+                    tasks = [
+                        channel_layer.group_send(
+                            f'notification_{uid}',
+                            {
+                                'type':      'call_cancelled',
+                                'conv_id':   self.conv_id,
+                                'room_name': room.room_name,
+                            }
+                        )
+                        for uid in member_ids
+                        if uid != self.user.id
+                    ]
+                    await asyncio.gather(*tasks)
+            else:
+                if room.conversation.is_group:
+                    await self.channel_layer.group_send(
+                        self.room_name,
+                        {
+                            'type':      'call_user_left',
+                            'user_id':   self.user.id,
+                            'user_name': self.user_name,
+                            'conv_id':   self.conv_id,
+                        }
+                    )
+        except Exception as e:
+            import traceback
+            print("ERROR IN handle_leave_call:", e)
+            traceback.print_exc()
 
     async def handle_end_call(self, data):
         try:
@@ -129,9 +178,9 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
             # nếu 1-1 hoặc là chủ phòng thì end luôn
             has_others_joined = await CallParticipant.objects.filter(
                 room=room, status='accepted'
-            ).exclude(user=self.user).aexists()
+            ).exclude(user_id=self.user.id).aexists()
 
-            end_reason = 'completed' if has_others_joined else 'cancelled' # nếu có ng đã từng tham gia tồn tại thì completed không thì
+            end_reason = 'completed' if has_others_joined else 'cancelled'
             await self._close_room(room, end_reason)
 
             msg_type = (
@@ -189,14 +238,14 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
     @database_sync_to_async
     def is_member(self):
         return ConversationMember.objects.filter(
-            conversation_id=self.conv_id,   # sửa: conv_id → conversation_id
-            user=self.user,
+            conversation_id=self.conv_id,
+            user_id=self.user.id,
             is_active=True
         ).exists()
 
     @database_sync_to_async
     def get_profile_fullname(self):
-        profile = Profile.objects.filter(user=self.user).first()
+        profile = Profile.objects.filter(user_id=self.user.id).first()
         return profile.full_name if profile else self.user.username
 
     @database_sync_to_async
@@ -209,14 +258,19 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _close_room(self, room, end_reason):
+        now = timezone.now()
         VideoRoom.objects.filter(id=room.id).update(
             is_active=False,
-            ended_at=timezone.now(),
+            ended_at=now,
             end_reason=end_reason,
         )
+        # pending → missed, accepted → left  (so busy-check never fires again)
         CallParticipant.objects.filter(
             room=room, status='pending'
         ).update(status='missed')
+        CallParticipant.objects.filter(
+            room=room, status='accepted'
+        ).update(status='left', left_at=now)
 
     @database_sync_to_async
     def _get_duration(self, room):

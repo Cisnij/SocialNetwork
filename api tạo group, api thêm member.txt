@@ -22,3 +22,4 @@ token = RefreshToken.for_user(user)
 print(f"Access: {str(token.access_token)}")
 print(f"Refresh: {str(token)}")
 
+docker exec percona mysqldump -u root -pChinghi1607 --single-transaction --routines --triggers --events SocialNetwork > backup.sql

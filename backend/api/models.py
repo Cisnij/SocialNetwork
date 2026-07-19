@@ -635,6 +635,7 @@ class CallParticipant(models.Model):
         ('accepted', 'Đã bắt máy'),
         ('declined', 'Từ chối'),
         ('missed',   'Nhỡ'),
+        ('left',     'Đã rời'),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     room = models.ForeignKey(VideoRoom, on_delete=models.CASCADE, related_name='participants')

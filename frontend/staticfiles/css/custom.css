@@ -1,0 +1,373 @@
+/* ==================== GLOBAL MOBILE IMPROVEMENTS ==================== */
+
+/* Thin scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* ==================== CHAT MOBILE ==================== */
+@media (max-width: 767px) {
+    #chatPageRoot {
+        height: 100vh !important;
+        margin-top: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+    }
+
+    #chatSidebar {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    #chatPanel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 40;
+        background: #fff;
+    }
+
+    .dark #chatPanel {
+        background: #18191a;
+    }
+
+    #chatMessages {
+        padding: 12px !important;
+    }
+
+    #chatForm {
+        padding: 10px !important;
+        gap: 8px !important;
+    }
+
+    #chatForm input {
+        padding: 10px 14px !important;
+        font-size: 15px !important;
+    }
+
+    #chatTitle {
+        max-width: 140px !important;
+    }
+
+    #chatConvList {
+        padding: 0 8px !important;
+    }
+
+    #chatFriendsStrip {
+        gap: 12px !important;
+        padding: 0 12px 8px !important;
+    }
+
+    #chatFriendsStrip button {
+        width: 56px !important;
+    }
+
+    #chatFriendsStrip img {
+        width: 44px !important;
+        height: 44px !important;
+    }
+
+    .glass-card {
+        max-width: 95vw !important;
+    }
+
+    /* Fullscreen modals on mobile */
+    #taskModal .glass-card,
+    #voteModal .glass-card {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+    }
+}
+
+/* ==================== SETTINGS MOBILE ==================== */
+@media (max-width: 640px) {
+    body:not(.chat-page) [data-settings-panel] {
+        max-width: 100% !important;
+        padding: 16px !important;
+        margin: 0 8px !important;
+    }
+
+    nav a[data-settings-tab] {
+        font-size: 12px !important;
+        padding: 6px 10px !important;
+    }
+
+    #panel-email .flex.gap-2 {
+        flex-direction: column !important;
+    }
+
+    #panel-email button {
+        width: 100% !important;
+    }
+
+    [data-activity-filter] {
+        font-size: 11px !important;
+        padding: 6px 10px !important;
+        white-space: nowrap;
+    }
+
+    #panel-profile button,
+    #savePrivateBtn,
+    #deleteAccountBtn {
+        width: 100% !important;
+        text-align: center !important;
+    }
+}
+
+/* ==================== USERPAGE MOBILE ==================== */
+@media (max-width: 640px) {
+    .profile-cover {
+        height: 160px !important;
+    }
+
+    .profile-avatar-row {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        margin-top: -40px !important;
+    }
+
+    .profile-avatar-row img {
+        width: 80px !important;
+        height: 80px !important;
+        border-width: 3px !important;
+    }
+
+    .profile-name {
+        font-size: 20px !important;
+    }
+
+    .userpage-photos-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 4px !important;
+    }
+
+    .userpage-friend-card {
+        flex-direction: row !important;
+        align-items: center !important;
+        padding: 8px !important;
+    }
+
+    .userpage-friend-card img {
+        width: 40px !important;
+        height: 40px !important;
+        margin-bottom: 0 !important;
+    }
+}
+
+/* ==================== ANIMATIONS & AESTHETICS ==================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes shrinkBar {
+    from { transform: scaleX(1); }
+    to   { transform: scaleX(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+}
+
+.animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+/* Glass morphism improvement */
+.glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .glass-card {
+    background: rgba(36, 37, 38, 0.85);
+}
+
+/* Hover lift */
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.hover-lift:active {
+    transform: translateY(0);
+}
+
+/* Hover scale */
+.hover-scale {
+    transition: transform 0.15s ease;
+}
+
+.hover-scale:hover {
+    transform: scale(1.05);
+}
+
+.hover-scale:active {
+    transform: scale(0.95);
+}
+
+/* Input glow */
+.input-glow:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* Chat message */
+.chat-msg-wrap {
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* Seen container */
+.msg-seen-container img {
+    transition: transform 0.2s ease;
+}
+
+.msg-seen-container img:hover {
+    transform: scale(1.5);
+    z-index: 20 !important;
+}
+
+/* Vote options */
+.vote-option-item {
+    transition: all 0.2s ease;
+}
+
+.vote-option-item:hover {
+    transform: translateY(-1px);
+}
+
+/* ==================== CHAT TIMESTAMP & DATE DIVIDER ==================== */
+
+/* Date divider between message groups of different days */
+.chat-date-divider {
+    user-select: none;
+    pointer-events: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.chat-date-divider span {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    letter-spacing: 0.02em;
+}
+
+/* Hover-reveal timestamp - absolute so it NEVER shifts bubble positions */
+.msg-timestamp {
+    position: absolute;
+    bottom: 0;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+    white-space: nowrap;
+    color: #94a3b8;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 1px 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.06);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-2px) scale(0.92);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 10;
+}
+
+/* For mine messages: timestamp floats to the LEFT of the bubble */
+.chat-msg-wrap[data-mine="1"] .msg-timestamp {
+    right: calc(100% + 8px);
+}
+
+/* For received messages: timestamp floats to the RIGHT of the bubble */
+.chat-msg-wrap:not([data-mine="1"]) .msg-timestamp {
+    left: calc(100% + 8px);
+}
+
+.dark .msg-timestamp {
+    background: rgba(15,23,42,0.85);
+    color: #94a3b8;
+    border-color: rgba(255,255,255,0.08);
+}
+
+.msg-timestamp.visible {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+}
+
