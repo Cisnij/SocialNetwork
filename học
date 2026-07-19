@@ -843,6 +843,7 @@ Authfetch sẽ truyền vào đó 1 là url, 2 là method là post put hay delet
     rate limit và chặn tại cổng và cache trả về respone tiết kiệm tài nguyên
 
 - cloudfare -> nginx -> granian server -> app -> redis/container khác
+- khi login cloudflared tunnel create chọn domain, nó sẽ tạo đường hầm từ cloudfare tunnel sang project của bạn và đường hầm đó có cloudflare edge và tunnel
 - Cloudflare: Hứng toàn bộ traffic từ người dùng. Lọc bot, chặn DDoS, và mã hóa.
     LUỒNG ĐI:
         Cloudflare Edge (Vòng ngoài cùng): Lọc bot, chặn DDoS, kiểm tra mã độc
@@ -867,14 +868,19 @@ Authfetch sẽ truyền vào đó 1 là url, 2 là method là post put hay delet
     b4. login cloudflared tunnel login
     b5. cloudflared tunnel create socialnetwork-tunnel
     b6. tạo config.yml trong cùng file b5
-        tunnel: 49312a88-586b-4148-8758-602400dd3792 # id lấy ở bước 5
-        credentials-file: C:\Users\Tran Chi Nghi\.cloudflared\49312a88-586b-4148-8758-602400dd3792.json
+        tunnel: 7ced93e6-29e7-4f5e-8075-141319caa924
+
+        credentials-file: C:\Users\Tran Chi Nghi\.cloudflared\7ced93e6-29e7-4f5e-8075-141319caa924.json
 
         ingress:
-          - hostname: api.socialnetworkvietnam.eu.org
+        - hostname: socialnetwork.dpdns.org
             service: http://localhost:80
 
-          - service: http_status:404
+        - hostname: api.socialnetwork.dpdns.org
+            service: http://localhost:80
+
+        - service: http_status:404
+    b6.5 cloudflared tunnel route dns social-network socialnetwork.dpdns.org (dùng để đăng kí domain/domain phụ cho cloudflare dashboard)
     b7. bật tunnel  cloudflared tunnel run socialnetwork-tunnel
 
 Async: nếu gọi nhiều hàm async thì nó sẽ không tuần tự mà chạy nhiều function cùng lúc và lấy kết quả lần lượt, nếu gọi 1 api có async function thì nó sẽ không chiếm thread mà chạy và xử lý api khác sau đó về lấy kết quả lại
