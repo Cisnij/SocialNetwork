@@ -144,17 +144,8 @@ services:
     command: >
       sh -c "
       python manage.py collectstatic --noinput &&
-      exec granian
-        --interface asgi
-        --host 0.0.0.0
-        --port 8000
-        --workers 2
-        --runtime-threads 4
-        --backlog 1024
-        --http 1
-        frontend.asgi:application
+      exec granian --interface asgi --host 0.0.0.0 --port 8000 --workers 2 --runtime-threads 4 --backlog 1024 --http 1 frontend.asgi:application
       "
-
     volumes:
       - frontend-static:/app/staticfiles
       - logs-data:/app/logs
@@ -191,15 +182,7 @@ services:
       sh -c "
       python manage.py migrate --noinput &&
       python manage.py collectstatic --noinput &&
-      exec granian
-        --interface asgi
-        --host 0.0.0.0
-        --port 8000
-        --workers 3
-        --runtime-threads 6
-        --backlog 2048
-        --http 1
-        backend.asgi:application
+      exec granian --interface asgi --host 0.0.0.0 --port 8000 --workers 3 --runtime-threads 6 --backlog 2048 --http 1 backend.asgi:application
       "
     volumes:
       - static-files:/app/staticfiles # Nơi Django đẩy file tĩnh ra ngoài sau lệnh collectstatic
