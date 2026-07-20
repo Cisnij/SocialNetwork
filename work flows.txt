@@ -78,7 +78,7 @@ work flows
     *không có file thì k thực thi lệnh if của file
 44. dùng structlog để ghi lại request
 45. dùng magic-bin để validate file khi nhận vào tránh file virus.exe mà đổi thành virus.png(vẫn bị bypass)
-46. Thêm preview card. Flow là khi người dùng nhấn share và paste vô messenger thì bot của Fb sẽ get html từ link(api ở be) về để load ra preview. Khi user ấn vào link(api ở be) nó sẽ check k phải bot thì redirect frontend và frontend gọi api load ra json bài viết, sau này đặt share là 1 domain riêng và đổi share.socialnetwork.com
+46. Thêm preview card. Flow là khi người dùng nhấn share và paste vô messenger thì bot của Fb sẽ chạy tới file html từ link và fe phát hiện bot trả về api render ra html preview card(api ở be) về để load ra preview. Khi user ấn vào link(api ở be) nó sẽ check k phải bot thì check quyền redirect frontend và frontend gọi api load ra json bài viết
 47. thêm xóa all và xóa từng search history, thêm pin post và thêm report post
 48.  thêm typing realtim, ng dùng nhập thì gọi ws type= typing
 49. Tách phone và birth ra khỏi response trả về vì bảo mật. Thêm vào profile 2 field là có đc public birth và phone, nếu được thì response serializer sẽ check và return không thì None. Thêm API để enable 2 field đó và sửa phone/birth

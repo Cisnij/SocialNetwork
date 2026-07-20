@@ -62,10 +62,30 @@ import cloudinary.uploader
 from meta.views import MetadataMixin
 import magic
 logger = logging.getLogger(__name__)
-def get_online_set(queryset):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
-    ids = queryset.values_list('user_id',flat=True)  # lấy các user id trong queryset của serializer đưa vào list với 1 fields
+def get_online_set(objs):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
+    if hasattr(objs, 'values_list'):
+        ids = objs.values_list('user_id', flat=True) # nếu truyền vào objs phân trang thì chỉ càn lấy ra user_id
+    else:
+        # Nếu là queryset truyền vào thì với mỗi obj lấy ra id
+        ids = [getattr(obj, 'user_id', None) for obj in objs]
     hits = cache.get_many([f"online_user:{uid}" for uid in ids])  # lấy 1 lúc hết các id onl trong query set trong redis thay vì gọi get 20 lần trong redis
     return {uid for uid in ids if f"online_user:{uid}" in hits}  # nếu các user online đang lưu trong redís nằm trong queryset thì trả ra các user đó
+
+class PagedContextMixin:
+    """Mixin lưu page hiện tại vào _current_page_objs để get_serializer_context dùng, thứ tự get_queryset -> PagedContextMixin lấy phân trang và truyền phân trang vào -> get_serializer_context"""
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            self._current_page_objs = page
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        self._current_page_objs = queryset
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 #===========================================================================================================================================================================================
 class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa profile
@@ -165,7 +185,7 @@ class PrivateProfileModify(generics.RetrieveUpdateAPIView):
         user =self.request.user
         return get_object_or_404(Profile, user=user)
 
-class ProfileList(generics.ListAPIView):#List tất cả profile
+class ProfileList(PagedContextMixin, generics.ListAPIView):#List tất cả profile
     permission_classes=[IsAuthenticated]
     serializer_class=ProfileSerializer
     filter_backends =[DjangoFilterBackend,OrderingFilter,SearchFilter]
@@ -183,7 +203,7 @@ class ProfileList(generics.ListAPIView):#List tất cả profile
     def get_serializer_context(self): #gọi hàm custome ở trên
         context = super().get_serializer_context()
         #  Lấy dữ liệu queryset đã lọc  (đã filter, đã phân trang)
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs=self.get_queryset() # gọi query set lại
         context['online_set'] = get_online_set(objs) # truyền tất cả profile vào và lấy ra tất cả status onl
@@ -282,7 +302,7 @@ class PostPhotoDelete(generics.DestroyAPIView):  # xóa ảnh (chức năng củ
         return photo
 
 
-class PostFriend(generics.ListAPIView):  # List tất cả post của bạn bè
+class PostFriend(PagedContextMixin, generics.ListAPIView):  # List tất cả post của bạn bè
     permission_classes = [IsAuthenticated]
     serializer_class = PostSerializer
     pagination_class = LargePagePagination
@@ -321,7 +341,7 @@ class PostFriend(generics.ListAPIView):  # List tất cả post của bạn bè
     def get_serializer_context(self):  # gọi xử lý liệt kê reaction từng post và user reaction chỉ 1 lần thay vì nhiều trong serializer
         context = super().get_serializer_context() #kế thừa
         #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs=self.get_queryset() # lấy query set là những thằng lọc để list ra của hàm trên
         context.update(get_reactions_post_context(objs, self.request.user))  # update context theo cái return utils
@@ -340,7 +360,7 @@ class PostModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa post
         self.check_object_permissions(self.request, post)  #  rules chạy ở đây, nó sẽ check post public hay friends và có đc xem,edit
         return post
 
-class PostUser(generics.ListAPIView):  # List tất cả post của user
+class PostUser(PagedContextMixin, generics.ListAPIView):  # List tất cả post của user
     permission_classes = [IsAuthenticated]
     serializer_class = PostSerializer
     pagination_class = SmallPagePagination
@@ -372,7 +392,7 @@ class PostUser(generics.ListAPIView):  # List tất cả post của user
     def get_serializer_context(self):
         context = super().get_serializer_context()
         #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs=self.get_queryset()
         context.update(get_reactions_post_context(objs, self.request.user))
@@ -389,7 +409,7 @@ class PostCreate(generics.CreateAPIView):
         serializer.save(user=self.request.user)
 
 
-class PostListAll(generics.ListAPIView):
+class PostListAll(PagedContextMixin, generics.ListAPIView):
     permission_classes = [IsAdminUser]
     # permissions_classes =[IsAuthenticated]
     serializer_class = PostSerializer
@@ -408,7 +428,7 @@ class PostListAll(generics.ListAPIView):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs=self.get_queryset()
         context.update(get_reactions_post_context(objs, self.request.user))
@@ -448,28 +468,33 @@ class PostShareView(MetadataMixin, DetailView): #  có preview card cho các thi
     def get_object(self):
         share_code=self.kwargs.get('share_code')
         post = get_object_or_404(Post.objects.select_related('user','user__profile').prefetch_related('photos'), share_code=share_code, group__isnull=True)
-        # Bot của FB để get ra html và render preview khi paste trên FB, chỉ tăng khi user thật, không phải bot
+        # Bot của FB/Messenger/Twitter để get ra html render preview
         user_agent = self.request.META.get('HTTP_USER_AGENT', '').lower()
-        is_bot = any(bot in user_agent for bot in [
-            'facebookexternalhit', 'twitterbot', 'telegrambot',
-            'whatsapp', 'linkedinbot', 'zalo'
-        ])
-        
+        is_bot = (
+            self.request.META.get('HTTP_X_INTERNAL_BOT') == '1'  # frontend proxy đã xác thực bot
+            or any(bot in user_agent for bot in [
+                'facebookexternalhit', 'facebot', 'twitterbot', 'telegrambot',
+                'whatsapp', 'linkedinbot', 'zalo', 'pinterest',
+                'bingbot', 'googlebot', 'crawler', 'spider', 'slurp',
+            ])
+        )
         if not is_bot: # nếu người thật
-            #check thủ công xem post đc share thì user có đc xem
-            if not PostViewPermission().has_object_permission(self.request,self,post):
-                raise PermissionDenied() # 403 fe sẽ tự load không thể xem, 404 là lỗi thật
-            
+            if not PostViewPermission().has_object_permission(self.request, self, post):
+                raise PermissionDenied()
             post.share_count += 1
-            post.save(update_fields=['share_count']) # update_fields để patch update 1 phần thay vì toàn bộ
+            post.save(update_fields=['share_count'])
         return post
 
     def render_to_response(self, context, **response_kwargs):
         user_agent = self.request.META.get('HTTP_USER_AGENT', '').lower()
-        is_bot = any(bot in user_agent for bot in [
-            'facebookexternalhit', 'twitterbot', 'telegrambot',
-            'whatsapp', 'linkedinbot', 'zalo'
-        ])
+        is_bot = (
+            self.request.META.get('HTTP_X_INTERNAL_BOT') == '1'  # frontend proxy đã xác thực bot
+            or any(bot in user_agent for bot in [
+                'facebookexternalhit', 'facebot', 'twitterbot', 'telegrambot',
+                'whatsapp', 'linkedinbot', 'zalo', 'pinterest',
+                'bingbot', 'googlebot', 'crawler', 'spider', 'slurp',
+            ])
+        )
         if is_bot:
             return super().render_to_response(context, **response_kwargs)
         from django.shortcuts import redirect
@@ -537,7 +562,7 @@ class ChangePostPrivacy(APIView):
         post.save(update_fields=['privacy'])
         return Response({'post_id': post.post_id, 'privacy': post.privacy})
 
-class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 bài viết
+class AllPostShareView(PagedContextMixin, generics.ListCreateAPIView): # tất cả share của 1 bài viết
     permission_classes = [IsAuthenticated]
     serializer_class = PostShareSerializer
     pagination_class = LargePagePagination
@@ -586,7 +611,7 @@ class AllPostShareView(generics.ListCreateAPIView): # tất cả share của 1 b
     def get_serializer_context(self):
         context = super().get_serializer_context()
         # Lấy danh sách PostShare đã được phân trang ("nấu chín")
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs = self.get_queryset()
 
@@ -602,7 +627,7 @@ class PostUserShareDelete(generics.DestroyAPIView):
     def get_object(self): # dùng get_objecct cho destroy để k cần phải xử lý dài như .delete() và response
         return get_object_or_404(PostShare, id=self.kwargs.get('pk'), user=self.request.user)
 
-class PostUserShare(generics.ListAPIView): #tất cả share của 1 user
+class PostUserShare(PagedContextMixin, generics.ListAPIView): #tất cả share của 1 user
     permission_classes = [IsAuthenticated]
     serializer_class = PostShareSerializer
     pagination_class = LargePagePagination
@@ -647,14 +672,14 @@ class PostUserShare(generics.ListAPIView): #tất cả share của 1 user
     def get_serializer_context(self):
         context = super().get_serializer_context()
         # Lấy danh sách PostShare đã được phân trang ("nấu chín")
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs = self.get_queryset()
 
         # Nạp map reaction của các bài viết gốc vào context chung
         context.update(get_reactions_share_context(objs, self.request.user))
         return context
-class PostFriendShare(generics.ListAPIView): # tất cả share của bạn bè
+class PostFriendShare(PagedContextMixin, generics.ListAPIView): # tất cả share của bạn bè
     permission_classes = [IsAuthenticated]
     serializer_class = PostShareSerializer
     pagination_class = LargePagePagination
@@ -694,7 +719,7 @@ class PostFriendShare(generics.ListAPIView): # tất cả share của bạn bè
     def get_serializer_context(self):
         context = super().get_serializer_context()
         # Lấy danh sách PostShare đã được phân trang ("nấu chín")
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs = self.get_queryset()
 
@@ -779,7 +804,7 @@ class PostArticleModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xó
         return get_object_or_404(PostArticle, user=user, postA_id=postA_id)
 
 #==================COMMENT===============================================
-class CommentListCreate(generics.ListCreateAPIView):  # thêm list comment
+class CommentListCreate(PagedContextMixin, generics.ListCreateAPIView):  # thêm list comment
     permission_classes = [IsAuthenticated]
     serializer_class = CommentSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
@@ -811,7 +836,7 @@ class CommentListCreate(generics.ListCreateAPIView):  # thêm list comment
     def get_serializer_context(self):
         context=super().get_serializer_context()
         #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs=self.get_queryset()
         context.update(get_reactions_comment_context(objs, self.request.user))
@@ -887,7 +912,7 @@ class CommentModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa co
             return Response({'Success'}, status=200)
         return Response({'Cannot delete'}, status=404)
 
-class NestedCommentList(generics.ListAPIView):
+class NestedCommentList(PagedContextMixin, generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CommentSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
@@ -913,7 +938,7 @@ class NestedCommentList(generics.ListAPIView):
     def get_serializer_context(self):
         context=super().get_serializer_context()
         #  Lấy dữ liệu đã "nấu chín" (đã filter, đã phân trang)
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs=self.get_queryset()
         context.update(get_reactions_comment_context(objs, self.request.user))
@@ -4213,7 +4238,7 @@ class AddMemberIntoJobRole(APIView):
         member.update(job_role_id= role_id)
         return Response({"detail":"success"},status=200)
 
-class ListDepartmentGroup(generics.ListAPIView):
+class ListDepartmentGroup(PagedContextMixin, generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = GroupDepartmentSerializer
     pagination_class = SmallPagePagination
@@ -4255,7 +4280,7 @@ class ListDepartmentGroup(generics.ListAPIView):
         return context
 
 
-class ListRoleGroup(generics.ListAPIView):
+class ListRoleGroup(PagedContextMixin, generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = GroupRoleSerializer
     pagination_class = SmallPagePagination
@@ -4290,7 +4315,7 @@ class ListRoleGroup(generics.ListAPIView):
         }
         return context
 
-class ListUserDepartmentGroup(generics.ListAPIView):
+class ListUserDepartmentGroup(PagedContextMixin, generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ProfileSerializer
     pagination_class = LargePagePagination
@@ -4310,13 +4335,13 @@ class ListUserDepartmentGroup(generics.ListAPIView):
     def get_serializer_context(self): #gọi hàm custome ở trên
         context = super().get_serializer_context()
         #  Lấy dữ liệu queryset đã lọc  (đã filter, đã phân trang)
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs=self.get_queryset() # gọi query set lại
         context['online_set'] = get_online_set(objs) # truyền tất cả profile vào và lấy ra tất cả status onl
         return context
 
-class ListUserRoleGroup(generics.ListAPIView):
+class ListUserRoleGroup(PagedContextMixin, generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ProfileSerializer
     pagination_class = LargePagePagination
@@ -4338,7 +4363,7 @@ class ListUserRoleGroup(generics.ListAPIView):
     def get_serializer_context(self): #gọi hàm custome ở trên
         context = super().get_serializer_context()
         #  Lấy dữ liệu queryset đã lọc  (đã filter, đã phân trang)
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs=self.get_queryset() # gọi query set lại
         context['online_set'] = get_online_set(objs) # truyền tất cả profile vào và lấy ra tất cả status onl
@@ -4681,7 +4706,7 @@ class UpdatePostGroup(generics.UpdateAPIView):
         post_status = 'approved' if member.role in ['owner', 'admin'] else 'pending'
         serializer.save(post_status=post_status)
 
-class PostListGroup(generics.ListAPIView):
+class PostListGroup(PagedContextMixin, generics.ListAPIView):
     permission_classes = [IsAuthenticated,IsMemberGroup]
     serializer_class = PostSerializer
     pagination_class = LargePagePagination
@@ -4699,7 +4724,7 @@ class PostListGroup(generics.ListAPIView):
         return self._qs
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        objs = getattr(self, 'object_list', None)
+        objs = getattr(self, '_current_page_objs', None)
         if objs is None:
             objs=self.get_queryset()
         context.update(get_reactions_post_context(objs, self.request.user))
