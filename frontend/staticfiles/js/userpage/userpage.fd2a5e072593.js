@@ -600,3 +600,4 @@ if (document.getElementById("profile")) {
   setupTabs();
   setupTabInfiniteScroll();
 }
+

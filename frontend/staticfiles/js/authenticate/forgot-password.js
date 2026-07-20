@@ -10,7 +10,7 @@ document.getElementById('forgot-form').addEventListener('submit', function (e) {
         return;
     }
 
-    fetch('http://localhost:80/api/auth/password/reset/', {
+    fetch('https://api.socialnetwork.dpdns.org/api/auth/password/reset/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -31,3 +31,4 @@ document.getElementById('forgot-form').addEventListener('submit', function (e) {
         message.classList.add('text-red-500');
       });
     });
+

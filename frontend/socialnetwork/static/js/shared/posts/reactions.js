@@ -134,3 +134,4 @@ export function applyReactionResponse(
   reactBtn.dataset.reaction = activeType;
   onApplied?.(res);
 }
+

@@ -265,3 +265,4 @@ export function requestDeletePost(postId, cacheKey = null) {
   deleteCallbacks.cacheKey = cacheKey;
   document.getElementById("deleteModal")?.classList.remove("hidden");
 }
+

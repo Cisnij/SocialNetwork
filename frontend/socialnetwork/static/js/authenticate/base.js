@@ -22,7 +22,7 @@ document.getElementById("logoutLink")?.addEventListener("click", async (e) => {
   e.preventDefault();
 
   try {
-    await authFetch("http://localhost:80/api/auth/web/logout/", {
+    await authFetch("https://api.socialnetwork.dpdns.org/api/auth/web/logout/", {
       method: "POST",
     });
     localStorage.removeItem("accessToken");
@@ -33,3 +33,5 @@ document.getElementById("logoutLink")?.addEventListener("click", async (e) => {
     logout();
   }
 });
+
+

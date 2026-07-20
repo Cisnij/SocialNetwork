@@ -82,3 +82,4 @@ function renderSuggestCard(profile) {
   card.appendChild(addBtn);
   return card;
 }
+

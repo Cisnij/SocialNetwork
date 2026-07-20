@@ -28,13 +28,13 @@
       headers['X-CSRFToken'] = csrfToken;
     }
 
-    fetch('http://localhost:80/api/auth/web/google/login/', {
+    fetch('https://api.socialnetwork.dpdns.org/api/auth/web/google/login/', {
       method: 'POST',
       credentials: 'include',
       headers: headers,
       body: JSON.stringify({
         code: code,
-        redirect_uri: "http://localhost:3000/google/callback/" // phải khớp với URI đã cấu hình trong Google
+        redirect_uri: "https://socialnetwork.dpdns.org/google/callback/" // phải khớp với URI đã cấu hình trong Google
       })
     })
     .then(res => {
@@ -44,7 +44,7 @@
     .then(data => {
       if (data.access) {
         localStorage.setItem('accessToken', data.access);
-        window.location.href = 'http://localhost:3000/';
+        window.location.href = 'https://socialnetwork.dpdns.org/';
       } else {
         throw new Error('No token returned');
       }
@@ -55,3 +55,5 @@
       window.location.href = '/login';
     });
   });
+
+

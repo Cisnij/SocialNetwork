@@ -189,3 +189,4 @@ export function btnSecondary(text, extra = "") {
     `px-4 py-2 text-sm rounded-lg font-semibold bg-gray-200 dark:bg-[#4e4f50] text-gray-900 dark:text-[#e4e6eb] hover:opacity-90 ${extra}`.trim()
   );
 }
+

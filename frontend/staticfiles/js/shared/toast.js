@@ -12,3 +12,4 @@ export function showToast(message, color = "green") {
     setTimeout(() => toast.classList.add("hidden"), 300);
   }, 3000);
 }
+

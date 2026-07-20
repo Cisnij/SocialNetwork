@@ -1,6 +1,6 @@
 const search = new URLSearchParams(window.location.search)
 const email = search.get('email')
-const url= 'http://localhost:80/api/auth/registration/resend-email/'
+const url= 'https://api.socialnetwork.dpdns.org/api/auth/registration/resend-email/'
 
 document.getElementById('resend-email-btn').addEventListener('click',()=>{
     const msg = document.getElementById('resend-message');
@@ -57,4 +57,6 @@ document.getElementById('resend-email-btn').addEventListener('click',()=>{
         btn.textContent = 'Gửi lại email xác minh';
     });
 })
+
+
 

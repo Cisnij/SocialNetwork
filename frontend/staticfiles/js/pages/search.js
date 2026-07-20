@@ -147,3 +147,4 @@ loadHistory();
 if (input?.value.trim()) {
   form?.requestSubmit();
 }
+

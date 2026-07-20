@@ -561,3 +561,4 @@ document.getElementById("closeChatMsgPopup")?.addEventListener("click", (e) => {
 refreshBadge();
 connectNotifWs();
 connectConvWs();
+

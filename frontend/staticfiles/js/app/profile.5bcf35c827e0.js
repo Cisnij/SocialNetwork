@@ -1,6 +1,6 @@
 import { authFetch } from '../authenticate/auth.js';
 
-const API_BASE_URL = "http://localhost:80";
+const API_BASE_URL = "https://api.socialnetwork.dpdns.org";
 
 /**
  * HÀM CỐT LÕI: Đảm bảo chỉ có DUY NHẤT 1 request /api/user/ được gửi lên mạng.
@@ -105,3 +105,4 @@ export function applyProfileToNavbar(user) {
 }
 
 export { getCurrentUserId, fetchUserProfileShared };
+

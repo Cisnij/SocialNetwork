@@ -26,3 +26,4 @@ export function clear(node) {
 export function img(src, className, alt = "") {
   return el("img", className, { src: src || "", alt });
 }
+

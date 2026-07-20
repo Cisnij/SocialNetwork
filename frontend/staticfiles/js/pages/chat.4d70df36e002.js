@@ -4773,8 +4773,7 @@ function closeVideoCall() {
 function connectCallWs(convId) {
   if (callWs) { callWs.onclose = null; callWs.close(); callWs = null; }
 
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  callWs = new WebSocket(`${proto}://${location.host}/ws/call/${convId}/`);
+  callWs = new WebSocket(API.wsCall(convId));
 
   callWs.onmessage = (e) => {
     try {
@@ -5143,3 +5142,4 @@ function _addParticipantTile(grid, participant) {
 
 // Expose để notification consumer gọi khi callee bấm Accept
 window.startVideoCall = startVideoCall;
+

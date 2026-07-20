@@ -36,3 +36,4 @@ async function submitShare() {
     showToast("Chia sẻ thất bại", "red");
   }
 }
+

@@ -28,7 +28,7 @@ async function refreshAccessToken() {
   }
 
   const res = await fetch(
-    "http://localhost:80/api/auth/web/token/refresh/",
+    "https://api.socialnetwork.dpdns.org/api/auth/web/token/refresh/",
     {
       method: "POST",
       credentials: "include",
@@ -107,20 +107,20 @@ function checkLogin() {
 
 function RedirectIfAuth() {
   if (checkLogin()) {
-    window.location.href = "http://localhost:3000/";
+    window.location.href = "https://socialnetwork.dpdns.org/";
   }
 }
 
 function RedirectIfNotAuth() {
   if (!checkLogin()) {
-    window.location.href = "http://localhost:3000/login/";
+    window.location.href = "https://socialnetwork.dpdns.org/login/";
   }
 }
 
 function logout() {
   localStorage.removeItem("accessToken");
 
-  window.location.href = "http://localhost:3000/login/";
+  window.location.href = "https://socialnetwork.dpdns.org/login/";
 }
 'Với GET: trả dữ liệu cache ngay để UI hiện nhanh, sau đó âm thầm gọi API lấy dữ liệu mới và cập nhật nếu có thay đổi.\n' +
 'Với POST/PUT/DELETE...: không cache, gọi API bình thường.'
@@ -171,3 +171,4 @@ export {
   RedirectIfNotAuth,
   logout,
 };
+

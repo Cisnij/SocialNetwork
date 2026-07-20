@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
       headers['X-CSRFToken'] = csrfToken;
     }
 
-    fetch('http://localhost:80/api/auth/password/reset/confirm/', {
+    fetch('https://api.socialnetwork.dpdns.org/api/auth/password/reset/confirm/', {
       method: 'POST',
       headers: headers,
       credentials:'include',
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         msg.classList.add('text-green-500');
         form.reset();
         setTimeout(() => {
-          window.location.href = 'http://localhost:3000/reset-password-done/';
+          window.location.href = 'https://socialnetwork.dpdns.org/reset-password-done/';
         }, 1000);
       } else {
         let message = '';
@@ -78,3 +78,5 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   });
 });
+
+

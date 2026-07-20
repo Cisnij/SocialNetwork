@@ -133,3 +133,4 @@ export function renderShareCard(share, currentProfileId) {
   if (isOwner) article.appendChild(actions);
   return article;
 }
+

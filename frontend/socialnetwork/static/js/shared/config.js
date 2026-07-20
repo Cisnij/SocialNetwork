@@ -211,6 +211,11 @@ export const API = {
     const qs = token ? `?token=${token}` : "";
     return `${WS_BASE_URL}/ws/chat/${convId}/${qs}`;
   },
+  wsCall: (convId) => {
+    const token = localStorage.getItem("accessToken") || "";
+    const qs = token ? `?token=${token}` : "";
+    return `${WS_BASE_URL}/ws/call/${convId}/${qs}`;
+  },
   wsNotifications: () => {
     const token = localStorage.getItem("accessToken") || "";
     const qs = token ? `?token=${token}` : "";
@@ -332,3 +337,4 @@ export const API = {
   groupCreateSuggestion: (id) => `${API_BASE_URL}/api/group/${id}/create-suggestion/`,
   groupListSuggestion: (id) => `${API_BASE_URL}/api/group/${id}/list-suggestion/`,
 };
+

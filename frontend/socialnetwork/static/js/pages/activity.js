@@ -180,3 +180,4 @@ if (!document.querySelector(".activity-filter")) {
 }
 
 load(true);
+

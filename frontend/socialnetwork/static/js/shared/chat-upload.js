@@ -54,3 +54,4 @@ export function sendChatWsMessage(ws, { text = "", attachmentIds = [] } = {}) {
     })
   );
 }
+

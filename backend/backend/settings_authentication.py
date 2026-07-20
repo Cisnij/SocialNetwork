@@ -435,7 +435,7 @@ CONTENT_SECURITY_POLICY = {
 
         "img-src": [SELF, "data:","res.cloudinary.com"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
 
-        "connect-src": [SELF,f"wss://{env('DOMAIN', default='socialnetwork.dpdns.org')}","accounts.google.com", "oauth2.googleapis.com",'https://api.socialnetwork.dpdns.org', "apis.google.com",],  #  Cho phép fetch/xhr từ chính server
+        "connect-src": [SELF,f"wss://{env('DOMAIN', default='socialnetwork.dpdns.org')}",f"wss://api.{env('DOMAIN', default='socialnetwork.dpdns.org')}","accounts.google.com", "oauth2.googleapis.com",'https://api.socialnetwork.dpdns.org', "apis.google.com",],  #  Cho phép fetch/xhr từ chính server
 
         "form-action": [SELF],  # ✅ Không cho gửi form ra ngoài
 

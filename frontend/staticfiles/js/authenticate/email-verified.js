@@ -37,7 +37,7 @@ async function confirmEmail() {
               headers['X-CSRFToken'] = csrfToken;
             }
 
-            const res = await fetch("http://localhost:80/api/auth/registration/verify-email/", {
+            const res = await fetch("https://api.socialnetwork.dpdns.org/api/auth/registration/verify-email/", {
                 method: "POST",
                 headers: headers,
                 credentials: 'include',
@@ -64,3 +64,4 @@ async function confirmEmail() {
             confirmButton.disabled = false;
         }
     }
+

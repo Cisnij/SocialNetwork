@@ -794,3 +794,4 @@ window.addEventListener("scroll", () => {
 
 connectNotifPageWs();
 load(true);
+

@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => { // Kiểm tra nếu đã �
       headers['X-CSRFToken'] = csrfToken;
     }
 
-    fetch('http://localhost:80/api/auth/web/login/', {
+    fetch('https://api.socialnetwork.dpdns.org/api/auth/web/login/', {
       method: 'POST',
       credentials: 'include', 
       headers: headers,
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => { // Kiểm tra nếu đã �
       localStorage.setItem('accessToken', data.access);
       localStorage.removeItem('loginFailCount');
       localStorage.removeItem('loginFailTimestamp');
-      window.location.href = 'http://localhost:3000/';
+      window.location.href = 'https://socialnetwork.dpdns.org/';
     })
     .catch(error => {
       document.getElementById('password').value = '';
@@ -84,10 +84,12 @@ document.addEventListener('DOMContentLoaded', () => { // Kiểm tra nếu đã �
 
   // Google login redirect
   const google_id = '337443264476-9kc3budl5faen2679fandvc6u305iu9q.apps.googleusercontent.com';
-  const redirectUri = 'http://localhost:3000/google/callback/';
+  const redirectUri = 'https://socialnetwork.dpdns.org/google/callback/';
   const google_redirect = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${google_id}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20email%20profile&access_type=offline&prompt=consent`;
 
   window.loginWithGoogle = function () {
     window.location.href = google_redirect;
   };
 });
+
+

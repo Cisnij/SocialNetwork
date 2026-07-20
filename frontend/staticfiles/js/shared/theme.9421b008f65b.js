@@ -160,3 +160,4 @@ export function updateCurrentSetting(newSetting) {
     window.setting = newSetting;
   }
 }
+

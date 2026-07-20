@@ -30,3 +30,4 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await feedLoader.init();
 });
+

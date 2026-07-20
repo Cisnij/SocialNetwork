@@ -260,3 +260,4 @@ export function showReportModal(id, type = "post") {
     }
   });
 }
+

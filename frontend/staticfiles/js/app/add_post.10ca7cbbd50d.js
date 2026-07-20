@@ -364,3 +364,4 @@ document.addEventListener("DOMContentLoaded", () => {
   setupBaseModal();
   setupAddPostPage();
 });
+

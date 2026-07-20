@@ -9,3 +9,4 @@ if (document.readyState === "loading") {
 } else {
   startTheme();
 }
+

@@ -190,3 +190,4 @@ async function addNewPhotos(postId, files) {
     return [];
   }
 }
+

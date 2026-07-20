@@ -108,7 +108,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
   if (btn) { btn.disabled = true; btn.textContent = 'Đang xử lý...'; }
 
   try {
-    const res = await fetch('http://localhost:80/api/auth/registration/', {
+    const res = await fetch('https://api.socialnetwork.dpdns.org/api/auth/registration/', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -123,7 +123,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
 
     if (res.status === 201) {
       window.location.href =
-        `http://localhost:3000/email-verified-send/?email=${encodeURIComponent(email)}`;
+        `https://socialnetwork.dpdns.org/email-verified-send/?email=${encodeURIComponent(email)}`;
       return;
     }
 
@@ -144,3 +144,4 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
     if (btn) { btn.disabled = false; btn.textContent = 'Đăng ký'; }
   }
 });
+

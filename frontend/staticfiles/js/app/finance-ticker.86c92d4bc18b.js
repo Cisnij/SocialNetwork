@@ -96,3 +96,4 @@ document.addEventListener('DOMContentLoaded', () => {
     FinanceTicker.fetchAll();
     setInterval(() => FinanceTicker.fetchAll(), 60000);
 });
+

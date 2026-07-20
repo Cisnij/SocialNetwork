@@ -35,3 +35,4 @@ export async function fetchReactionsPage(url, signal) {
 export async function deletePostById(postId) {
   return authFetch(POST_ENDPOINTS.post(postId), { method: "DELETE" });
 }
+
