@@ -6,7 +6,7 @@ import {
   openReactionsModal,
 } from "../shared/posts/modals.js";
 import { initCommentsPanel } from "../shared/comments-panel.js";
-import { initShareModal } from "../share-modal.js";
+import { initShareModal } from "../shared/share-modal.js";
 
 const postId = window.POST_ID;
 const groupId = window.GROUP_ID;

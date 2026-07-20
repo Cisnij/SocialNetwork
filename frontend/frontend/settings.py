@@ -136,3 +136,5 @@ STATICFILES_DIRS = [
 ]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/login/'
+
+BACKEND_URL = os.environ.get('BACKEND_URL', 'http://django:8000')

@@ -1,7 +1,8 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-# Create your views here.
-from django.shortcuts import render
+from django.conf import settings
+from django.http import HttpResponse
+import urllib.request
 
 # Create your views here.
 
@@ -12,8 +13,7 @@ def getLogin(request):
     context={}
     return render(request,'authenticate/login.html',context)
 def getRegister(request):
-    context={}
-    return render(request, 'authenticate/register.html', context)
+    return render(request, 'authenticate/register.html')
 def getAbout(request):
     return render(request, 'app/about.html')
 def getSuccessRegis(request):
@@ -59,7 +59,49 @@ def getSearch(request):
 def getShares(request):
     return render(request, 'app/shares.html')
 
+BOT_KEYWORDS = [
+    'facebookexternalhit', 'twitterbot', 'telegrambot',
+    'whatsapp', 'linkedinbot', 'zalo', 'pinterest', 'bingbot',
+    'googlebot', 'crawler', 'spider', 'bot', 'slurp', 'duckduckbot',
+]
+
+import logging
+import urllib.request
+import urllib.error
+import json
+logger = logging.getLogger(__name__)
+
 def getShareView(request, share_code):
+    user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+    is_bot = any(bot in user_agent for bot in BOT_KEYWORDS)
+
+    if is_bot:
+        # Gọi internal API backend lấy JSON post data (không cần auth vì đây là share link public-facing)
+        # Dùng endpoint không cần auth — PostShareView trả HTML, ta cần JSON từ PostShareDetailView
+        # Nhưng PostShareDetailView yêu cầu auth → dùng PostShareView ở backend nhưng request JSON
+        backend_url = f"{getattr(settings, 'BACKEND_URL', 'http://django:8000')}/api/share/{share_code}/"
+        try:
+            req = urllib.request.Request(
+                backend_url,
+                headers={
+                    'User-Agent': request.META.get('HTTP_USER_AGENT', ''),
+                    'Accept': 'text/html,application/xhtml+xml',
+                    # Cho backend biết đây là internal HTTPS request để bypass SECURE_SSL_REDIRECT
+                    'X-Forwarded-Proto': 'https',
+                    'X-Forwarded-Host': request.get_host(),
+                    'Host': request.get_host(),  # truyền host thật để backend không bị lỗi ALLOWED_HOSTS
+                }
+            )
+            # disable auto redirect để nhận HTML thật sự
+            opener = urllib.request.build_opener(urllib.request.HTTPRedirectHandler())
+            with opener.open(req, timeout=10) as resp:
+                content = resp.read().decode('utf-8')
+                return HttpResponse(content, content_type='text/html; charset=utf-8')
+        except urllib.error.HTTPError as e:
+            logger.warning(f"Bot proxy failed HTTP {e.code} for share_code={share_code}: {e}")
+        except Exception as e:
+            logger.exception(f"Failed to fetch share preview from backend for share_code={share_code}: {e}")
+
     return render(request, 'app/share-view.html', {'share_code': share_code})
 
 def getPostDetail(request, post_id):

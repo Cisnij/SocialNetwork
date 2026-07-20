@@ -60,6 +60,7 @@ from cacheops import invalidate_model
 import cloudinary.uploader
 # magic-bin
 from meta.views import MetadataMixin
+import magic
 logger = logging.getLogger(__name__)
 def get_online_set(queryset):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
     ids = queryset.values_list('user_id',flat=True)  # lấy các user id trong queryset của serializer đưa vào list với 1 fields
@@ -447,28 +448,46 @@ class PostShareView(MetadataMixin, DetailView): #  có preview card cho các thi
     def get_object(self):
         share_code=self.kwargs.get('share_code')
         post = get_object_or_404(Post.objects.select_related('user','user__profile').prefetch_related('photos'), share_code=share_code, group__isnull=True)
-         #check thủ công xem post đc share thì user có đc xem
-        if not PostViewPermission().has_object_permission(self.request,self,post):
-            raise PermissionDenied() # 403 fe sẽ tự load không thể xem, 404 là lỗi thật
         # Bot của FB để get ra html và render preview khi paste trên FB, chỉ tăng khi user thật, không phải bot
         user_agent = self.request.META.get('HTTP_USER_AGENT', '').lower()
         is_bot = any(bot in user_agent for bot in [
             'facebookexternalhit', 'twitterbot', 'telegrambot',
             'whatsapp', 'linkedinbot', 'zalo'
         ])
+        
         if not is_bot: # nếu người thật
+            #check thủ công xem post đc share thì user có đc xem
+            if not PostViewPermission().has_object_permission(self.request,self,post):
+                raise PermissionDenied() # 403 fe sẽ tự load không thể xem, 404 là lỗi thật
+            
             post.share_count += 1
             post.save(update_fields=['share_count']) # update_fields để patch update 1 phần thay vì toàn bộ
         return post
+
+    def render_to_response(self, context, **response_kwargs):
+        user_agent = self.request.META.get('HTTP_USER_AGENT', '').lower()
+        is_bot = any(bot in user_agent for bot in [
+            'facebookexternalhit', 'twitterbot', 'telegrambot',
+            'whatsapp', 'linkedinbot', 'zalo'
+        ])
+        if is_bot:
+            return super().render_to_response(context, **response_kwargs)
+        from django.shortcuts import redirect
+        from django.conf import settings as settings_backend
+        return redirect(f"{settings_backend.FRONTEND_URL}/post/share/{self.object.share_code}/")
 
     def get_context_data(self, **kwargs): # truyền context qua file html fe, context lưu vô ram và chỉ sống 1 request, tức là render ra html xong là hết và nếu f5 render lại
         context = super().get_context_data(**kwargs)
         context['frontend_url'] = f'{settings_backend.FRONTEND_URL}/post/share/{self.object.share_code}/'
         photo = self.object.photos.first()
-        context['og_image'] = (
-            self.request.build_absolute_uri(photo.image.url)
-            if photo else None
-        )
+        if photo:
+            image_url = photo.photo.url  # field tên là 'photo', không phải 'image'
+            if image_url.startswith('http'):
+                context['og_image'] = image_url
+            else:
+                context['og_image'] = f"{settings_backend.FRONTEND_URL}{image_url}"
+        else:
+            context['og_image'] = None
         context['og_description'] = (getattr(self.object, 'title', '') or '')[:150]
         return context
 
@@ -481,7 +500,10 @@ class PostShareView(MetadataMixin, DetailView): #  có preview card cho các thi
     def get_meta_image(self, context=None): # hiện ảnh preview
         first_photo = self.object.photos.first()
         if first_photo:
-            return self.request.build_absolute_uri(first_photo.image.url)
+            image_url = first_photo.photo.url  # field tên là 'photo', không phải 'image'
+            if image_url.startswith('http'):
+                return image_url
+            return f"{settings_backend.FRONTEND_URL}{image_url}"
         return None
     def get_meta_url(self, context=None):
         return f'{settings_backend.FRONTEND_URL}/post/share/{self.object.share_code}/'

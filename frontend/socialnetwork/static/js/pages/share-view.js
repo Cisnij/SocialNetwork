@@ -28,10 +28,6 @@ async function load() {
       return;
     }
     const post = await res.json();
-    if (post.post_id) {
-      window.location.replace(`/post/${post.post_id}/`);
-      return;
-    }
     const currentUserId = await getCurrentUserId().catch(() => null);
     container.replaceChildren(
       renderPostCard(post, {
