@@ -224,7 +224,7 @@ function renderComment(c, depth = 0, ownerId = postOwnerId, threadParentId = nul
   const row = document.createElement("div");
   row.className = "flex gap-2";
   const av = document.createElement("img");
-  av.src = c.user?.picture || "/static/default-avatar.png";
+  av.src = c.user?.picture || "https://res.cloudinary.com/dec8t19tm/image/upload/v1781533632/default-avatar_qprrlr.jpg";
   av.className = "w-8 h-8 rounded-full object-cover shrink-0";
 
   const body = document.createElement("div");
@@ -509,7 +509,7 @@ function showMentionMenu(input, profiles, token) {
     btn.className =
       "w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-fb-secondary dark:hover:bg-[#3a3b3c]";
     const av = document.createElement("img");
-    av.src = profile.picture || "/static/default-avatar.png";
+    av.src = profile.picture || "https://res.cloudinary.com/dec8t19tm/image/upload/v1781533632/default-avatar_qprrlr.jpg";
     av.className = "w-8 h-8 rounded-full object-cover";
     const name = document.createElement("span");
     name.className = "text-sm dark:text-[#e4e6eb]";

@@ -6,6 +6,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}SocialNetwork{% endblock title %}</title>
+  <link rel="icon" href="{% static 'images/favicon.svg' %}" type="image/svg+xml">
+  <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
   <script src="{% static 'js/shared/theme-boot.js' %}"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{% static 'css/custom.css' %}">
@@ -1039,13 +1041,13 @@
       <!-- Desktop Avatar and Dropdown (Hidden on mobile) -->
       <div class="relative hidden sm:block">
         <div class="avatar-container">
-          <img id="avatarBtn" src="/static/default-avatar.png" alt=""
+          <img id="avatarBtn" src="" alt=""
             class="w-9 h-9 sm:w-10 sm:h-10 rounded-full cursor-pointer border-2 border-transparent hover:border-fb-primary object-cover avatar-online">
         </div>
         <div id="dropdownMenu"
           class="hidden absolute right-0 mt-2 w-60 glass-card rounded-xl shadow-xl overflow-hidden z-50 border dark:border-gray-700 animate-slide-up">
           <div class="flex items-center gap-3 px-4 py-3 border-b dark:border-gray-700">
-            <img id="dropdownAvatar" src="/static/default-avatar.png" class="w-10 h-10 rounded-full object-cover">
+            <img id="dropdownAvatar" src="" class="w-10 h-10 rounded-full object-cover">
             <div class="min-w-0">
               <p id="dropdownName" class="font-semibold truncate"></p>
               <a id="profileLink" href="#" class="text-sm text-fb-primary hover:underline">Xem trang cá nhân</a>

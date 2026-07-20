@@ -86,10 +86,10 @@ def getShareView(request, share_code):
                 headers={
                     'User-Agent': request.META.get('HTTP_USER_AGENT', ''),
                     'Accept': 'text/html,application/xhtml+xml',
-                    # Cho backend biết đây là internal HTTPS request để bypass SECURE_SSL_REDIRECT
                     'X-Forwarded-Proto': 'https',
                     'X-Forwarded-Host': request.get_host(),
-                    'Host': request.get_host(),  # truyền host thật để backend không bị lỗi ALLOWED_HOSTS
+                    'Host': request.get_host(),
+                    'X-Internal-Bot': '1',  # ← báo hiệu với backend: đây là proxy từ bot, luôn serve OG HTML
                 }
             )
             # disable auto redirect để nhận HTML thật sự

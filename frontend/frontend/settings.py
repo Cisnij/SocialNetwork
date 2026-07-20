@@ -42,7 +42,12 @@ INSTALLED_APPS = [
 
 ]
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = ["http://127.0.0.1:80"]
+CORS_ALLOWED_ORIGINS = [
+    "https://socialnetwork.dpdns.org",
+    "http://socialnetwork.dpdns.org",
+    "https://api.socialnetwork.dpdns.org",
+    "http://api.socialnetwork.dpdns.org",
+]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', #cors

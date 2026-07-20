@@ -166,7 +166,7 @@ function filterAndRenderReactions() {
     item.className = "flex items-center gap-3 py-2 px-1 hover:bg-gray-50 dark:hover:bg-[#3a3b3c] rounded";
 
     const img = document.createElement("img");
-    img.src = r.user?.picture || "/static/default-avatar.png";
+    img.src = r.user?.picture || "https://res.cloudinary.com/dec8t19tm/image/upload/v1781533632/default-avatar_qprrlr.jpg";
     img.className = "w-8 h-8 rounded-full object-cover";
 
     const name = document.createElement("span");
