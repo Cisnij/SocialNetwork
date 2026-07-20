@@ -1,7 +1,7 @@
 From TCN:
 Please verify your email by clicking here:
 
-http://localhost:3000/email-verified?key={{ key }}
+https://socialnetwork.dpdns.org/email-verified?key={{ key }}
 
 Sincerely, 
 TCN
