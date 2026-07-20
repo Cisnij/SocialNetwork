@@ -1,57 +1,99 @@
+volumes:
+  percona_data_dev:      # DB riêng cho dev, KHÔNG đụng percona_data thật (external)
+  redis-data-dev:         # Redis riêng cho dev
+  esdata_dev:              # Elasticsearch riêng cho dev
+
 services:
+
+  # ─── Database/Cache/Search — dùng volume RIÊNG khi chạy dev ──
+  percona:
+    container_name: percona-dev
+    volumes:
+      - percona_data_dev:/var/lib/mysql
+
+  redis:
+    container_name: redis-dev
+    volumes:
+      - redis-data-dev:/data
+
+  elasticsearch:
+    container_name: elasticsearch-dev
+    volumes:
+      - esdata_dev:/usr/share/elasticsearch/data
+
+  # ─── Django ──────────────────────────────────────────
   django:
+    container_name: django-dev
+    env_file:
+      - ./backend/.env.dev
     volumes:
       - ./backend:/app
       - static-files:/app/staticfiles
       - logs-data:/app/logs
     ports:
       - "127.0.0.1:8000:8000"
-    entrypoint:
-      - sh
-      - -c
-      - >-
-        python manage.py migrate --noinput &&
-        python manage.py collectstatic --noinput &&
-        granian --interface asgi --host 0.0.0.0 --port 8000
-        --workers 1 --runtime-threads 2 --reload
-        backend.asgi:application
+    command: >
+      sh -c "
+      python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput &&
+      exec granian --interface asgi --host 0.0.0.0 --port 8000 --workers 1 --runtime-threads 2 --reload backend.asgi:application
+      "
     healthcheck:
-      test: ["CMD-SHELL", "curl -s --max-time 3 http://localhost:8000 > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -s --max-time 3 http://0.0.0.0:8000 > /dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
 
+  # ─── Celery Worker ───────────────────────────────────
   celery-worker:
+    container_name: celery-worker-dev
+    env_file:
+      - ./backend/.env.dev
     volumes:
       - ./backend:/app
+      - logs-data:/app/logs
+      - backups-data:/app/backups
     command: celery -A backend worker -Q celery --loglevel=info --concurrency=2
 
   celery-worker-notifications:
+    container_name: celery-worker-notifications-dev
+    env_file:
+      - ./backend/.env.dev
     volumes:
       - ./backend:/app
+      - logs-data:/app/logs
+      - backups-data:/app/backups
     command: celery -A backend worker -Q notifications --loglevel=info --concurrency=1
 
   celery-worker-emails:
+    container_name: celery-worker-emails-dev
+    env_file:
+      - ./backend/.env.dev
     volumes:
       - ./backend:/app
+      - logs-data:/app/logs
+      - backups-data:/app/backups
     command: celery -A backend worker -Q emails --loglevel=info --concurrency=1
 
   celery-beat:
+    container_name: celery-beat-dev
+    env_file:
+      - ./backend/.env.dev
     volumes:
       - ./backend:/app
+      - logs-data:/app/logs
 
+  # ─── Frontend ────────────────────────────────────────
   frontend:
+    container_name: frontend-dev
     volumes:
       - ./frontend:/app
-      - frontend-static-files:/app/staticfiles
+      - frontend-static:/app/staticfiles      # đúng tên khớp với top-level volume trong docker-compose.yml
     ports:
       - "127.0.0.1:8080:8000"
-    entrypoint:
-      - sh
-      - -c
-      - >-
-        python manage.py collectstatic --noinput &&
-        granian --interface asgi --host 0.0.0.0 --port 8000
-        --workers 1 --runtime-threads 2 --reload
-        frontend.asgi:application
+    command: >
+      sh -c "
+      python manage.py collectstatic --noinput &&
+      exec granian --interface asgi --host 0.0.0.0 --port 8000 --workers 1 --runtime-threads 2 --reload frontend.asgi:application
+      "

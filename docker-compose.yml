@@ -37,7 +37,7 @@ services:
     ports:
       - "127.0.0.1:3306:3306" #cổng nội bộ chỉ máy gốc mới vào đc
     healthcheck: # kiểm tra sức khỏe 10s 1 lần và không phản hồi sau 5s là lỗi, lỗi 5 lần là unhealthy
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+      test: ["CMD", "mysqladmin", "ping",
              "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
@@ -67,7 +67,7 @@ services:
       - "127.0.0.1:9200:9200" #cổng nội bộ chỉ máy gốc mới vào đc
     healthcheck:
       test: ["CMD-SHELL",
-             "curl -sf -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health || exit 1"]
+             "curl -sf -u elastic:${ELASTIC_PASSWORD} http://127.0.0.1:9200/_cluster/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -157,7 +157,7 @@ services:
       - prod-network
 
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/" ]
+      test: [ "CMD", "curl", "-f", "http://0.0.0.0:8000/" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -197,7 +197,7 @@ services:
       redis:
         condition: service_healthy # Django chỉ khởi động khi redis ĐÃ THỰC SỰ KHỎE MẠNH
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-f", "http://0.0.0.0:8000/"]
       interval: 30s
       timeout: 10s
       retries: 3
