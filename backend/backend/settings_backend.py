@@ -140,7 +140,7 @@ CLOUDINARY_STORAGE = {
     'API_KEY': env('CLOUDINARY_API_KEY'),
     'API_SECRET': env('CLOUDINARY_API_SECRET'),
 }
-# DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
 STORAGES = {
     "default": {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
@@ -153,7 +153,7 @@ STORAGES = {
 #Elastic search
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': env('ELASTICSEARCH_URL', default='http://localhost:9200')
+        'hosts': env('ELASTICSEARCH_URL', default='http://elasticsearch:9200')
     }
 }
 #=============sửa cấu hình spectacular lấy thằng api lỗi luôn=========================
@@ -275,14 +275,13 @@ LOGGING = {
     },
 }
 #=================================META tạo preview card ===================================
-FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
-if DEBUG:
-    META_SITE_PROTOCOL = 'https'
+FRONTEND_URL = env('FRONTEND_URL', default='https://socialnetwork.dpdns.org')
+META_SITE_PROTOCOL = 'http' if DEBUG else 'https'
 META_USE_OG_PROPERTIES = True      # Facebook Open Graph
 META_USE_TWITTER_PROPERTIES = True  # Twitter Card
 META_USE_TITLE_TAG = True
 #======================CELERY============================================
-CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/3') # Redis làm nơi chứa task chờ xử lý
+CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/3') # Redis làm nơi chứa task chờ xử lý
 CELERY_RESULT_BACKEND = 'django-db' #lưu kết quả task vào Django DB
 
 # định dạng data khi truyền task

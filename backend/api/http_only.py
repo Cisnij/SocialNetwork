@@ -1,4 +1,5 @@
 from dj_rest_auth.views import LoginView,LogoutView
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
@@ -24,7 +25,7 @@ class CookieLoginView(LoginView): #ghi đè hàm login để trả về token tr
                 key='refreshToken',
                 value=refreshToken,
                 httponly=True,
-                secure=False,  # Chỉ dùng False nếu đang phát triển trên localhost, vì prod sẽ tự chuyển sang https
+                secure=not settings.DEBUG,  # Chỉ dùng False nếu đang phát triển, vì prod sẽ tự chuyển sang https
                 samesite='Lax',
                 path='/api/auth/web/',  # Chỉ gửi cookie cho endpoint này
                 max_age=7*24*60*60
@@ -50,7 +51,7 @@ class CookieTokenRefreshView(TokenRefreshView): #ghi đè lấy refresh token t�
                 key='refreshToken',
                 value=new_refresh,
                 httponly=True,
-                secure=False,
+                secure=not settings.DEBUG,
                 samesite='Lax',
                 path='/api/auth/web/',
                 max_age=7*24*60*60
@@ -74,7 +75,7 @@ class CookieGoogleLoginView(SocialLoginView):#ghi đè hàm login google để t
     throttle_scope='google_login'
 
     adapter_class = GoogleOAuth2Adapter
-    callback_url = 'http://localhost:3000/google/callback/'
+    callback_url = 'https://socialnetwork.dpdns.org/google/callback/'
     client_class = FixedOAuth2Client
 
     def post(self, request, *args, **kwargs):
@@ -113,7 +114,7 @@ class CookieGoogleLoginView(SocialLoginView):#ghi đè hàm login google để t
                 key='refreshToken',
                 value=refreshToken,
                 httponly=True,
-                secure=False, #Sau này sửa lại True
+                secure=not settings.DEBUG, #Sau này sửa lại True
                 samesite='Lax',
                 path='/api/auth/web/',
                 max_age=7*24*60*60

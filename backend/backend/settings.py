@@ -78,7 +78,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware', # các header bảo mật
     'django_structlog.middlewares.RequestMiddleware', #structlog
     'whitenoise.middleware.WhiteNoiseMiddleware',  # whitenoise
-    "silk.middleware.SilkyMiddleware",#silk, nên tắt khi lên production
+    # "silk.middleware.SilkyMiddleware",#silk, nên tắt khi lên production
     'django.middleware.gzip.GZipMiddleware', # nén file truyền qua internet để nhẹ
     "csp.middleware.CSPMiddleware",#csp
     'corsheaders.middleware.CorsMiddleware',# corsheader
@@ -121,7 +121,7 @@ DATABASES = {
         "NAME": env("DB_NAME"),
         "USER": env("DB_USER"),
         "PASSWORD": env('DB_PASSWORD'),
-        "HOST": env('DB_HOST', default='localhost'),
+        "HOST": env('DB_HOST', default='percona'),
         "PORT": env('DB_PORT', default='3306'),
 
         # # Performance, pool options lo nên tắt hết

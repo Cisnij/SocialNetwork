@@ -13,7 +13,7 @@ class FixedOAuth2Client(OAuth2Client):
 #Liên kết với google
 class GoogleLogin(SocialLoginView): 
     adapter_class = GoogleOAuth2Adapter
-    callback_url = 'http://localhost:3000/google/callback/'
+    callback_url = 'https://socialnetwork.dpdns.org/google/callback/'
     client_class = FixedOAuth2Client
 
 #Liên kết tài khoản thường với gg
@@ -23,4 +23,5 @@ class GoogleConnect(SocialConnectView):
 #Ngắt liên kết
 class GoogleDisconnect(SocialConnectView):
     adapter_class = GoogleOAuth2Adapter
+
 

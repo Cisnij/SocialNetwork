@@ -7,7 +7,7 @@ import websocket
 from locust import HttpUser, task, between, events, LoadTestShape
 
 NUM_TEST_USERS = 10
-WS_URL = "ws://localhost:8000"
+WS_URL = "wss://api.socialnetwork.dpdns.org"
 
 class SocialNetworkUser(HttpUser):
     # Rút ngắn thời gian chờ để đẩy RPS lên cao nhất có thể (chế độ spam)
@@ -304,3 +304,4 @@ def on_test_stop(environment, **kwargs):
     print(f"RPS Trung bình (Requests per second): {environment.runner.stats.total.total_rps:.2f} req/s")
     print(f"Tỷ lệ lỗi (Error Rate) khi chịu tải: {environment.runner.stats.total.fail_ratio:.2%}")
     print("="*50 + "\n")
+

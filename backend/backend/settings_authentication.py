@@ -235,9 +235,9 @@ ACCOUNT_EMAIL_VERIFICATION='mandatory' #để confirm email, và bắt buộc ph
 
 ACCOUNT_UNIQUE_EMAIL=True #mỗi email chỉ 1 tài khoản duy nhất
 
-ACCOUNT_CONFIRM_EMAIL_ON_GET=False 
+ACCOUNT_CONFIRM_EMAIL_ON_GET=False  # nếu True là cần nhân nút truyền token về, False thì chỉ cần nhấn link
 
-ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1 #Thời hạn hết hạn verify
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1 #Thời hạn hết hạn verify email
 
 ACCOUNT_RATE_LIMITS={'confirm_email':'5/m'} # Thời gian cool down sau mỗi lần resend link
 
@@ -245,7 +245,7 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION=True #đăng nhập luôn sau khi confirm em
 
 ACCOUNT_PASSWORD_MIN_LENGTH = 8 #độ dài tối thiểu mk là 8
 
-SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_AUTO_SIGNUP = True # true là login gg mà chưa có tk thì tạo luôn tk, false thì cần 1 bước điền email,username...
 
 SOCIALACCOUNT_ADAPTER = "api.adapter.MySocialAccountAdapter"
 
@@ -309,7 +309,7 @@ SOCIALACCOUNT_PROVIDERS={
 
 #Axes, ipware 
 
-AXES_ENABLED=True
+AXES_ENABLED=True #dùng chống bruteforce login
 
 AXES_FAILURE_LIMIT=7 #giới hạn lần sai
 
@@ -435,7 +435,7 @@ CONTENT_SECURITY_POLICY = {
 
         "img-src": [SELF, "data:","res.cloudinary.com"],  # ✅ Cho phép ảnh nội bộ và ảnh base64
 
-        "connect-src": [SELF,f"wss://{env('DOMAIN', default='localhost')}","accounts.google.com", "oauth2.googleapis.com",'http://localhost:8000', "apis.google.com",],  #  Cho phép fetch/xhr từ chính server
+        "connect-src": [SELF,f"wss://{env('DOMAIN', default='socialnetwork.dpdns.org')}","accounts.google.com", "oauth2.googleapis.com",'https://api.socialnetwork.dpdns.org', "apis.google.com",],  #  Cho phép fetch/xhr từ chính server
 
         "form-action": [SELF],  # ✅ Không cho gửi form ra ngoài
 
@@ -454,6 +454,7 @@ CONTENT_SECURITY_POLICY = {
     }
 
 }   
+
 
 
 

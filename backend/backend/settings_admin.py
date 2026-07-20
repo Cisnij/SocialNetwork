@@ -6,7 +6,7 @@ JAZZMIN_SETTINGS = {
     "login_logo": "images/logo.png",
     "login_logo_dark": "images/logo.png",
     "site_logo_classes": "img-circle",
-    "site_icon": "images/favicon.png",
+    "site_icon": "images/logo.png",
     "welcome_sign": "Welcome back 👋",
     "copyright": "© 2025 SocialNetwork",
 
