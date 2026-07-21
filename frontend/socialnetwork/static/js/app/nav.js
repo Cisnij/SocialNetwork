@@ -167,9 +167,13 @@ function showIncomingCall(data) {
   modal.classList.remove("hidden");
   playRingtone();
   if (window._callDismissTimer) clearTimeout(window._callDismissTimer);
-  window._callDismissTimer = setTimeout(() => {
+  window._callDismissTimer = setTimeout(async () => {
     modal.classList.add("hidden");
     stopRingtone();
+    if (pendingCallConvId) {
+      try { await authFetch(API.declineCall(pendingCallConvId), { method: "POST" }); } catch (_) { }
+      pendingCallConvId = null;
+    }
   }, 60000);
 }
 

@@ -184,6 +184,9 @@ export const API = {
   createVideoRoom: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/call-video/create/`,
   joinVideoRoom: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/call-video/join/`,
   declineCall: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/call-video/decline/`,
+  cancelCall: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/call-video/cancel/`,
+  leaveCall: (convId) => `${API_BASE_URL}/api/video/${convId}/leave/`,
+  videoRoomStatus: (convId) => `${API_BASE_URL}/api/video/${convId}/status/`,
 
   // Events
   createEvent: (convId) => `${API_BASE_URL}/api/chat/conversation/${convId}/create-event/`,

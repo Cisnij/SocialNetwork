@@ -4667,10 +4667,17 @@ function stopDialingTone() {
 
 // ── Đảm bảo leave call khi đóng tab ──────────────────────────
 window.addEventListener('beforeunload', () => {
+  const convId = activeCallConvId;
   if (callWs?.readyState === WebSocket.OPEN) {
     callWs.send(JSON.stringify({ type: 'leave_call' }));
   }
   currentVideoRoom?.disconnect();
+  if (convId) {
+    navigator.sendBeacon(
+      API.leaveCall(convId),
+      new Blob([JSON.stringify({})], { type: 'application/json' })
+    );
+  }
 });
 
 // ── UI helpers: chuyển giữa Ringing / In-Call screen ─────────
@@ -4728,7 +4735,7 @@ function closeVideoCall() {
   if (activeCallConvId) {
     const _convId = activeCallConvId;
     activeCallConvId = null;
-    authFetch(`/api/chat/conversation/${_convId}/call-video/leave/`, { method: 'POST' })
+    authFetch(API.leaveCall(_convId), { method: 'POST' })
       .catch(() => {}); // fire-and-forget, không block UI
   }
 
@@ -4770,8 +4777,13 @@ function closeVideoCall() {
 }
 
 // ── Call WebSocket (nhận sự kiện call_ended / call_user_left) ─
+let callWsReconnectAttempts = 0;
+const CALL_WS_MAX_RECONNECT = 10;
+const CALL_WS_BASE_DELAY = 1000;
+
 function connectCallWs(convId) {
   if (callWs) { callWs.onclose = null; callWs.close(); callWs = null; }
+  callWsReconnectAttempts = 0;
 
   callWs = new WebSocket(API.wsCall(convId));
 
@@ -4800,9 +4812,15 @@ function connectCallWs(convId) {
 
   callWs.onclose = () => {
     callWs = null;
-    if (!isEndingCall && currentVideoRoom) {
-      setTimeout(() => connectCallWs(convId), 3000);
+    if (!isEndingCall && currentVideoRoom && callWsReconnectAttempts < CALL_WS_MAX_RECONNECT) {
+      const delay = CALL_WS_BASE_DELAY * Math.pow(2, callWsReconnectAttempts);
+      callWsReconnectAttempts++;
+      setTimeout(() => connectCallWs(convId), Math.min(delay, 30000));
     }
+  };
+
+  callWs.onerror = () => {
+    if (callWs) { callWs.onclose = null; callWs.close(); callWs = null; }
   };
 }
 
@@ -4829,8 +4847,7 @@ async function initVideoCall(convId) {
 
   isInitingCall = true;
   try {
-    // Kiểm tra xem có cuộc gọi đang diễn ra không
-    const statusRes = await authFetch(`/api/chat/conversation/${convId}/call-video/status/`);
+    const statusRes = await authFetch(API.videoRoomStatus(convId));
     if (statusRes.ok) {
       const statusData = await statusRes.json();
       if (statusData.has_active_call) {
@@ -4853,7 +4870,8 @@ async function initVideoCall(convId) {
     const res = await authFetch(API.createVideoRoom(convId), { method: 'POST' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      showToast(err[0] || err.detail || 'Lỗi tạo video call', 'red');
+      const msg = err.detail || (err.non_field_errors && err.non_field_errors[0]) || Object.values(err)[0] || 'Lỗi tạo video call';
+      showToast(Array.isArray(msg) ? msg[0] : msg, 'red');
       isInitingCall = false;
       return;
     }
@@ -4914,11 +4932,11 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
     freshCancel.onclick = async () => {
       freshCancel.disabled = true;
       try {
-        await authFetch(`/api/chat/conversation/${convId}/call-video/cancel/`, { method: 'POST' });
+        await authFetch(API.cancelCall(convId), { method: 'POST' });
       } catch (e) {
-        console.error('Lỗi khi huỷ cuộc gọi API', e);
+        console.error('Lỗi khi hủy cuộc gọi API', e);
       }
-      
+
       if (callWs?.readyState === WebSocket.OPEN) {
         callWs.send(JSON.stringify({ type: 'end_call' }));
         setTimeout(() => { if (!isEndingCall) closeVideoCall(); }, 2000);
