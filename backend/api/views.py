@@ -3323,7 +3323,7 @@ class CreateVideoRoomView(AsyncAPIView):
         is_member = await ConversationMember.objects.filter(
             conversation_id=conv_id, user=request.user, is_active=True
         ).aexists()
-        if not is_member:
+        if not is_member: # check quyền
             raise PermissionDenied("Bạn không có trong cuộc trò chuyện")
 
         # Chính người gọi cũng không được bấm gọi nếu đang thực sự ở
@@ -3343,13 +3343,14 @@ class CreateVideoRoomView(AsyncAPIView):
             conversation_id=conv_id, is_active=True
         ).afirst()
         if existing:
-            really_active = await CallParticipant.objects.filter(
+            really_active = await CallParticipant.objects.filter( # nếu phòng is_active =True mà đang có người accepted và chưa left
                 room=existing, status='accepted', left_at__isnull=True
             ).aexists()
             if really_active:
                 raise ValidationError("Đang có cuộc gọi trong cuộc trò chuyện này")
+
             # Phòng ma: không còn ai thực sự trong phòng -> tự đóng lại
-            await VideoRoom.objects.filter(id=existing.id).aupdate(
+            await VideoRoom.objects.filter(id=existing.id).aupdate( # nếu không có ai đang accepted và left không null(đã out)
                 is_active=False, ended_at=timezone.now(),
                 end_reason=existing.end_reason or 'missed',
             )
@@ -3361,11 +3362,11 @@ class CreateVideoRoomView(AsyncAPIView):
         ).values_list('user_id', flat=True):
             member_ids.append(uid)
 
-        callee_ids = [uid for uid in member_ids if uid != request.user.id]
+        callee_ids = [uid for uid in member_ids if uid != request.user.id] # lấy id user trong room trừ mình
 
         # Kiểm tra trạng thái bận: CHỈ tính là bận nếu người đó đang thực sự ở trong 1 cuộc gọi khác (status='accepted', chưa left_at).
         busy_users = set()
-        async for uid in CallParticipant.objects.filter(
+        async for uid in CallParticipant.objects.filter( # lấy tất cả user trong phòng đang có phòng khác is_active và chưa out phòng đó(left null)
             user_id__in=callee_ids,
             room__is_active=True,
             status='accepted',
@@ -3373,7 +3374,7 @@ class CreateVideoRoomView(AsyncAPIView):
         ).values_list('user_id', flat=True):
             busy_users.add(uid)
 
-        if not is_group and callee_ids and callee_ids[0] in busy_users:
+        if not is_group and callee_ids and callee_ids[0] in busy_users: #nếu phòng đó mà không phải group thì báo luôn, còn 1-1 thì k báo và kiểm tra user đang gọi có nằm trong list bận
             raise ValidationError("Người dùng đang bận")
 
         room = await VideoRoom.objects.acreate( #tạo phòng khi không active, mỗi lần gọi sẽ tạo mới phòng
@@ -3451,7 +3452,7 @@ class CancelCallView(AsyncAPIView):
     throttle_scope = 'create_call'
 
     async def post(self, request, conv_id):
-        room = await VideoRoom.objects.select_related('conversation').filter(
+        room = await VideoRoom.objects.select_related('conversation').filter( #check có room không
             conversation_id=conv_id, is_active=True
         ).afirst()
         if not room:
@@ -3465,16 +3466,18 @@ class CancelCallView(AsyncAPIView):
 
     async def _end_room(self, room, end_reason, user):
         now = timezone.now()
-        await VideoRoom.objects.filter(id=room.id).aupdate(
+        await VideoRoom.objects.filter(id=room.id).aupdate( #update phòng bị cancel
             is_active=False, ended_at=now, end_reason=end_reason,
         )
-        await CallParticipant.objects.filter(
+        await CallParticipant.objects.filter( #update tất cả thành viên trong cuộc gọi này đang chờ thành hủy
             room=room, status='pending'
         ).aupdate(status='missed')
-        await CallParticipant.objects.filter(
+
+        await CallParticipant.objects.filter( #update tất cả thành viên trong cuộc gọi này nếu đã accepted thì thành left
             room=room, status='accepted', left_at__isnull=True
         ).exclude(user=user).aupdate(status='left', left_at=now)
-        await CallParticipant.objects.filter(
+
+        await CallParticipant.objects.filter( #update chính user trong cuộc gọi này là hoàn thành
             room=room, user=user
         ).aupdate(status='left', left_at=now)
 
@@ -3486,7 +3489,7 @@ class CancelCallView(AsyncAPIView):
         }[end_reason])
 
         channel_layer = get_channel_layer()
-        await channel_layer.group_send(
+        await channel_layer.group_send( #broadcast
             f'call_{room.conversation_id}',
             {
                 'type': 'call_ended',
@@ -3501,7 +3504,7 @@ class CancelCallView(AsyncAPIView):
                 CallParticipant.objects.filter(room=room).values_list('user_id', flat=True)
             ))()
             tasks = [
-                channel_layer.group_send(
+                channel_layer.group_send( # gửi notification nếu caller hủy thì các user khác tắt popup gọi
                     f'notification_{uid}',
                     {
                         'type': 'call_cancelled',
@@ -3551,7 +3554,7 @@ class JoinVideoRoomView(AsyncAPIView):
         if not participant:
             raise PermissionDenied("Bạn không được mời vào cuộc gọi này")
 
-        self_busy = await CallParticipant.objects.filter(
+        self_busy = await CallParticipant.objects.filter( # nếu user đang tham gia cuộc gọi khác rồi
             user=request.user, room__is_active=True,
             status='accepted', left_at__isnull=True,
         ).exclude(room_id=room.id).aexists()
@@ -3713,8 +3716,7 @@ class LiveKitWebhookView(View):
 class VideoRoomStatusView(AsyncAPIView):
     """FE gọi trước khi bấm nút Call để biết cuộc trò chuyện đang có cuộc gọi
     active hay chưa, từ đó quyết định gọi Create (bắt đầu mới) hay Join (vào
-    cuộc đang diễn ra). Sửa item 3: member group lỡ Decline popup vẫn bấm
-    lại nút gọi ở header để join lại cuộc đang diễn ra được."""
+    cuộc đang diễn ra)."""
     permission_classes = [IsAuthenticated]
 
     async def get(self, request, conv_id):
@@ -3759,7 +3761,7 @@ class LeaveCallView(AsyncAPIView):
 
         channel_layer = get_channel_layer()
 
-        if room.conversation.is_group:
+        if room.conversation.is_group: # nếu là group thì chỉ đánh left và broad cast left qua call consumer chứ k tắt
             await CallParticipant.objects.filter(
                 id=participant.id
             ).aupdate(left_at=timezone.now())
@@ -3767,7 +3769,8 @@ class LeaveCallView(AsyncAPIView):
             still_in = await CallParticipant.objects.filter(
                 room=room, status='accepted', left_at__isnull=True
             ).exclude(user=request.user).aexists()
-            if not still_in:
+
+            if not still_in: #backdoor nếu 1 user out thì check kĩ xem còn user nào trừ user hiện tại còn trong room, không còn thì update room nếu k còn ai còn trong phòng
                 await VideoRoom.objects.filter(id=room.id).aupdate(
                     is_active=False, ended_at=timezone.now(), end_reason='completed'
                 )
@@ -3776,7 +3779,8 @@ class LeaveCallView(AsyncAPIView):
                     f'call_{conv_id}',
                     {'type': 'call_ended', 'end_reason': 'completed', 'conv_id': conv_id}
                 )
-            else:
+
+            else: #nếu còn user thì chỉ gửi broadcast
                 profile = await database_sync_to_async(lambda: getattr(request.user, "profile", None))()
                 await channel_layer.group_send(
                     f'call_{conv_id}',
@@ -3787,7 +3791,7 @@ class LeaveCallView(AsyncAPIView):
                         'conv_id': conv_id,
                     }
                 )
-        else:
+        else:# nếu là chat 1-1 thì tắt hẳn và update roomt hay vì chỉ broadcast out
             has_others = await CallParticipant.objects.filter(
                 room=room, status='accepted', left_at__isnull=True
             ).exclude(user=request.user).aexists()
@@ -3839,18 +3843,18 @@ class DeclineCallView(AsyncAPIView):
         if not room:
             raise NotFound("Cuộc gọi không còn tồn tại")
 
-        participant = await CallParticipant.objects.filter(
+        participant = await CallParticipant.objects.filter( #check quyền
             room=room, user=request.user
         ).afirst()
         if not participant:
             raise PermissionDenied("Bạn không có trong cuộc gọi này")
 
-        await CallParticipant.objects.filter(id=participant.id).aupdate(status='declined')
+        await CallParticipant.objects.filter(id=participant.id).aupdate(status='declined') #update decline
 
         is_group = room.conversation.is_group
         channel_layer = get_channel_layer()
 
-        if not is_group:
+        if not is_group: #nếu là 1-1 thì từ chối sẽ tắt phòng luôn và các user trong room có status là decline
             await VideoRoom.objects.filter(id=room.id).aupdate(
                 is_active=False,
                 ended_at=timezone.now(),

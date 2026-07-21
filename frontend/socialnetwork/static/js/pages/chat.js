@@ -519,7 +519,17 @@ function renderConvItem(c) {
 
 
 
-  wrap.append(img(c.is_group ? (c.avatar || DEFAULT_AVATAR) : (other?.picture || DEFAULT_AVATAR), "w-12 h-12 rounded-full object-cover shrink-0 shadow-sm border border-transparent dark:border-white/10", ""));
+  const avatarUrl = c.is_group ? (c.avatar || DEFAULT_AVATAR) : (other?.picture || DEFAULT_AVATAR);
+  const avatarClasses = "w-12 h-12 rounded-full object-cover shrink-0 shadow-sm border border-transparent dark:border-white/10";
+  if (!c.is_group && other?.is_online) {
+    const container = el("div", "avatar-container", {});
+    container.appendChild(img(avatarUrl, avatarClasses, ""));
+    const dot = el("span", "online-dot", {});
+    container.appendChild(dot);
+    wrap.append(container);
+  } else {
+    wrap.append(img(avatarUrl, avatarClasses, ""));
+  }
 
 
 

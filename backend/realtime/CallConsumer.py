@@ -45,6 +45,9 @@ from channels.generic.websocket import AsyncWebsocketConsumer
      # user leave: call consumer
      # call end: call consumer
 
+# có 3 trạng thái
+    # nếu user call mà nhấn gọi api decline thì cập nhật status là decline
+    # nếu trước khi close room accepted -> left và pending -> missed
 class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
 
     async def connect(self):
@@ -69,7 +72,7 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         await self.stop_heartbeat()
-        if getattr(self, 'room_name', None):
+        if getattr(self, 'room_name', None): # nếu có room name và user disconnect thì thử leave call
             # Tự động leave/end call nếu user đóng tab đột ngột
             try:
                 await self.handle_leave_call({'type': 'leave_call'})
@@ -95,33 +98,33 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
         if handler:
             await handler(data)
 
-    async def handle_leave_call(self, data):
+    async def handle_leave_call(self, data): # flow là mỗi khi user out room thì check xem có bao user đang active, nếu không thì đóng room
         try:
             room = await self._get_active_room()
             if not room:
                 return
 
-            await CallParticipant.objects.filter(
+            await CallParticipant.objects.filter( # khi đc gọi khi nhán end call thì update user left
                 room=room, user_id=self.user.id
             ).aupdate(left_at=timezone.now(), status='left')
 
-            active_count = await CallParticipant.objects.filter(
+            active_count = await CallParticipant.objects.filter( # nếu có user đang tham gia trong room thì count>0, nếu chủ phòng vẫn trong đó thì không tính là out và vãn còn room, vì là group thì còn chủ phòng vẫn là còn
                 room=room, status='accepted'
             ).acount()
 
             should_close_room = False
-            if not room.conversation.is_group:
+            if not room.conversation.is_group: # check đầu là 1-1 thì should close=True
                 should_close_room = True
-            elif active_count == 0:
+            elif active_count == 0: # check nếu không còn user nào trong phòng thì should close=True
                 should_close_room = True
 
-            if should_close_room:
-                end_reason = 'completed' if room.started_at else 'cancelled'
-                await self._close_room(room, end_reason)
+            if should_close_room: #nếu true
+                end_reason = 'completed' if room.started_at else 'cancelled' #nếu room có thời gian bắt đầu tức là có người join thì completed
+                await self._close_room(room, end_reason) # đóng room và user pending sẽ là miss, user accepted sẽ là left(tức đã tham gia)
                 msg_type = 'system_call_completed' if end_reason == 'completed' else 'system_call_missed'
                 await self._create_system_message(room, msg_type)
                 
-                duration = await self._get_duration(room)
+                duration = await self._get_duration(room) #lấy thời gian room bdau và kết thúc trừ nhau
                 await self.channel_layer.group_send(
                     self.room_name,
                     {
@@ -132,7 +135,7 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
                     }
                 )
                 
-                if end_reason == 'cancelled':
+                if end_reason == 'cancelled': # nếu là cancel thì phải broadcast qua notification để tắt popup của các user chưa join nên chưa vào ws call
                     member_ids = await self._get_member_ids(room)
                     channel_layer = get_channel_layer()
                     tasks = [
@@ -148,9 +151,9 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
                         if uid != self.user.id
                     ]
                     await asyncio.gather(*tasks)
-            else:
+            else: # nếu room không nên đóng should_close=False ( tức là còn user và đây là group call)
                 if room.conversation.is_group:
-                    await self.channel_layer.group_send(
+                    await self.channel_layer.group_send( # gửi broadcast user left
                         self.room_name,
                         {
                             'type':      'call_user_left',
@@ -176,7 +179,7 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
                 return
 
             # nếu 1-1 hoặc là chủ phòng thì end luôn
-            has_others_joined = await CallParticipant.objects.filter(
+            has_others_joined = await CallParticipant.objects.filter( # check xem đã có ai join trước khi close room chưa, close room thì sẽ k count đc accept nào vì chuyển sang left
                 room=room, status='accepted'
             ).exclude(user_id=self.user.id).aexists()
 
@@ -264,7 +267,7 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
             ended_at=now,
             end_reason=end_reason,
         )
-        # pending → missed, accepted → left  (so busy-check never fires again)
+        # pending → missed, accepted → left
         CallParticipant.objects.filter(
             room=room, status='pending'
         ).update(status='missed')

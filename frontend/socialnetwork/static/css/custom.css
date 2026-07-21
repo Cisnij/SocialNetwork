@@ -19,6 +19,33 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
+/* ==================== ONLINE INDICATOR DOT ==================== */
+.avatar-container {
+  position: relative;
+  display: inline-block;
+}
+
+.online-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #22c55e;
+  border: 2px solid white;
+  border-radius: 50%;
+  animation: online-pulse 2s infinite;
+}
+
+.dark .online-dot {
+  border-color: #242526;
+}
+
+@keyframes online-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
 /* ==================== CHAT MOBILE ==================== */
 @media (max-width: 767px) {
     #chatPageRoot {
