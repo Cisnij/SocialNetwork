@@ -139,22 +139,42 @@ document.getElementById("closeNotifPopup")?.addEventListener("click", () => {
 
 // ======= INCOMING CALL =======
 let pendingCallConvId = null;
+const DEFAULT_CALL_AVATAR = 'https://res.cloudinary.com/dec8t19tm/image/upload/v1781533632/default-avatar_qprrlr.jpg';
+
+// Khởi tạo audio ringtone
+window._incomingAudio = new Audio('https://res.cloudinary.com/dec8t19tm/video/upload/v1739506691/ringtone_t4z05q.mp3');
+window._incomingAudio.loop = true;
 
 function showIncomingCall(data) {
   const modal = document.getElementById("incomingCallModal");
   if (!modal) return;
   const avatarEl = document.getElementById("incomingCallerAvatar");
   const nameEl = document.getElementById("incomingCallerName");
-  if (avatarEl) avatarEl.src = data.caller_avatar || "";
+  if (avatarEl) {
+    avatarEl.src = data.caller_avatar || DEFAULT_CALL_AVATAR;
+    avatarEl.onerror = () => { avatarEl.src = DEFAULT_CALL_AVATAR; };
+  }
   if (nameEl) nameEl.textContent = data.caller_name || "Cuộc gọi đến";
   pendingCallConvId = data.conv_id;
   modal.classList.remove("hidden");
+
+  // Phát chuông
+  if (window._incomingAudio) {
+    window._incomingAudio.currentTime = 0;
+    window._incomingAudio.play().catch(e => console.log('Autoplay prevented:', e));
+  }
+
   if (window._callDismissTimer) clearTimeout(window._callDismissTimer);
-  window._callDismissTimer = setTimeout(() => modal.classList.add("hidden"), 60000);
+  window._callDismissTimer = setTimeout(() => {
+    modal.classList.add("hidden");
+    if (window._incomingAudio) window._incomingAudio.pause();
+  }, 60000);
 }
 
 document.getElementById("declineCallBtn")?.addEventListener("click", async () => {
   document.getElementById("incomingCallModal")?.classList.add("hidden");
+  if (window._incomingAudio) { window._incomingAudio.pause(); window._incomingAudio.currentTime = 0; }
+
   if (pendingCallConvId) {
     try { await authFetch(API.declineCall(pendingCallConvId), { method: "POST" }); } catch (_) { }
     pendingCallConvId = null;
@@ -163,12 +183,14 @@ document.getElementById("declineCallBtn")?.addEventListener("click", async () =>
 
 document.getElementById("acceptCallBtn")?.addEventListener("click", async () => {
   document.getElementById("incomingCallModal")?.classList.add("hidden");
+  if (window._incomingAudio) { window._incomingAudio.pause(); window._incomingAudio.currentTime = 0; }
+
   if (!pendingCallConvId) return;
   try {
     const res = await authFetch(API.joinVideoRoom(pendingCallConvId), { method: "POST" });
     if (!res.ok) { alert("Cuộc gọi đã kết thúc"); return; }
     const callData = await res.json();
-    if (window.startVideoCall) await window.startVideoCall(callData.token, callData.livekit_url, callData.room_name, pendingCallConvId);
+    if (window.startVideoCall) await window.startVideoCall(callData.token, callData.livekit_url, callData.room_name, pendingCallConvId, false, '', '', callData.is_group);
   } catch (e) { console.error("[nav] join call error", e); }
   pendingCallConvId = null;
 });
@@ -214,6 +236,8 @@ function connectNotifWs() {
         if (data.type === "call_cancelled") {
           const modal = document.getElementById("incomingCallModal");
           if (modal) modal.classList.add("hidden");
+          if (window._incomingAudio) { window._incomingAudio.pause(); window._incomingAudio.currentTime = 0; }
+
           if (pendingCallConvId === data.conv_id) {
             pendingCallConvId = null;
           }

@@ -9,7 +9,7 @@ from api.firebase import push_to_user
 from django.utils import timezone
 from datetime import timedelta
 from api.models import Post, Message, ConversationMember, Profile, Event, EventParticipant, Conversation, Notification, \
-    GroupMember, Group
+    GroupMember, Group, VideoRoom, CallParticipant
 import subprocess
 import os
 from datetime import datetime
@@ -195,3 +195,15 @@ def backup_database():
             os.remove(path)
 
 
+@shared_task
+def cleanup_stale_video_rooms():
+    cutoff = timezone.now() - timedelta(minutes=2)
+    for room in VideoRoom.objects.filter(is_active=True, created_at__lt=cutoff):
+        still_active = CallParticipant.objects.filter(
+            room=room, status='accepted', left_at__isnull=True
+        ).exists()
+        if not still_active:
+            room.is_active = False
+            room.ended_at = timezone.now()
+            room.end_reason = room.end_reason or 'missed'
+            room.save(update_fields=['is_active', 'ended_at', 'end_reason'])

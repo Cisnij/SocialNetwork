@@ -4621,6 +4621,7 @@ async function loadEventList(convId, modal) {
 }
 
 // ==================== VIDEO CALL (LiveKit) ====================
+const DEFAULT_CALL_AVATAR = 'https://res.cloudinary.com/dec8t19tm/image/upload/v1781533632/default-avatar_qprrlr.jpg';
 let currentVideoRoom = null;
 let callWs = null;
 let isEndingCall = false;
@@ -4630,11 +4631,40 @@ let callDurationTimer = null;    // Timer đồng hồ thời gian gọi
 let callStartTs = null;     // Timestamp khi bắt đầu cuộc gọi thực sự
 
 // ── Đảm bảo leave call khi đóng tab ──────────────────────────
+// Lưu ý: gửi qua WebSocket trong 'beforeunload' KHÔNG đảm bảo tới được
+// server (trình duyệt có thể huỷ kết nối ngang khi đang đóng trang), và
+// WS heartbeat cần một khoảng thời gian mới phát hiện mất kết nối thật sự.
+// Dùng thêm fetch({keepalive:true}) gọi thẳng REST LeaveCallView để đảm
+// bảo phòng luôn được dọn ngay lập tức (fix: 1 người out mà người kia vẫn
+// ở lại phòng / không gọi lại được vì báo "đang có cuộc gọi").
+function _sendLeaveBeacon(convId) {
+  if (!convId) return;
+  try {
+    const url = API.leaveCall ? API.leaveCall(convId) : `/api/video/${convId}/leave/`;
+    fetch(url, {
+      method: 'POST',
+      keepalive: true,
+      headers: window.getAuthHeaders ? window.getAuthHeaders() : {},
+    }).catch(() => {});
+  } catch (_) {}
+}
+
+let _activeCallConvId = null;
+
 window.addEventListener('beforeunload', () => {
-  if (callWs?.readyState === WebSocket.OPEN) {
+  if (callWs && callWs.readyState === WebSocket.OPEN) {
     callWs.send(JSON.stringify({ type: 'leave_call' }));
   }
-  currentVideoRoom?.disconnect();
+  _sendLeaveBeacon(_activeCallConvId);
+  if (currentVideoRoom) {
+    try {
+      currentVideoRoom.disconnect();
+    } catch (_) {}
+  }
+});
+// pagehide bắt được cả trường hợp mobile Safari không luôn gọi beforeunload
+window.addEventListener('pagehide', () => {
+  _sendLeaveBeacon(_activeCallConvId);
 });
 
 // ── UI helpers: chuyển giữa Ringing / In-Call screen ─────────
@@ -4645,7 +4675,7 @@ function showRingingScreen(name, avatar, statusText = 'Đang đổ chuông...') 
   const avatarEl = document.getElementById('callRemoteAvatar');
   const statusEl = document.getElementById('callStatusText');
   if (nameEl) nameEl.textContent = name || 'Đang kết nối...';
-  if (avatarEl) { avatarEl.src = avatar || ''; avatarEl.onerror = () => { avatarEl.style.display = 'none'; }; }
+  if (avatarEl) { avatarEl.src = avatar || DEFAULT_CALL_AVATAR; avatarEl.onerror = () => { avatarEl.src = DEFAULT_CALL_AVATAR; }; }
   if (statusEl) statusEl.textContent = statusText;
 }
 
@@ -4719,8 +4749,15 @@ function closeVideoCall() {
     callWs = null;
   }
 
+  // Tắt nhạc chuông nếu đang phát
+  if (window._incomingAudio) {
+    window._incomingAudio.pause();
+    window._incomingAudio.currentTime = 0;
+  }
+
   callStartTs = null;
   isInitingCall = false;
+  _activeCallConvId = null;
   setTimeout(() => { isEndingCall = false; }, 500);
 }
 
@@ -4774,7 +4811,26 @@ async function initVideoCall(convId) {
 
   isInitingCall = true;
   try {
-    const res = await authFetch(API.createVideoRoom(convId), { method: 'POST' });
+    // Kiểm tra xem cuộc trò chuyện đã có cuộc gọi đang diễn ra chưa.
+    // Nếu có (VD: member group lỡ từ chối popup lúc nãy, giờ bấm nút gọi
+    // ở header) -> JOIN vào cuộc đang diễn ra thay vì tạo cuộc mới.
+    let statusData = { active: false };
+    try {
+      const statusRes = await authFetch(
+        API.videoRoomStatus ? API.videoRoomStatus(convId) : `/api/video/${convId}/status/`
+      );
+      if (statusRes.ok) statusData = await statusRes.json();
+    } catch (_) { /* nếu lỗi thì coi như chưa active, để Create tự xử lý */ }
+
+    let res, isCaller;
+    if (statusData.active) {
+      res = await authFetch(API.joinVideoRoom(convId), { method: 'POST' });
+      isCaller = false;
+    } else {
+      res = await authFetch(API.createVideoRoom(convId), { method: 'POST' });
+      isCaller = true;
+    }
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       showToast(err.detail || 'Lỗi tạo video call', 'red');
@@ -4782,7 +4838,8 @@ async function initVideoCall(convId) {
       return;
     }
     const data = await res.json();
-    await startVideoCall(data.token, data.livekit_url, data.room_name, convId, true, data.remote_name, data.remote_avatar);
+    _activeCallConvId = convId;
+    await startVideoCall(data.token, data.livekit_url, data.room_name, convId, isCaller, data.remote_name, data.remote_avatar, data.is_group);
   } catch (e) {
     console.error(e);
     showToast('Lỗi kết nối cuộc gọi', 'red');
@@ -4793,9 +4850,11 @@ async function initVideoCall(convId) {
 // ── Main call function ─────────────────────────────────────────
 // isCaller=true: mình là người gọi (caller), hiện ringing screen
 // isCaller=false: mình là người nhận (callee vừa accept), kết nối thẳng vào phòng
-async function startVideoCall(token, url, roomName, convId, isCaller = false, remoteName = '', remoteAvatar = '') {
+async function startVideoCall(token, url, roomName, convId, isCaller = false, remoteName = '', remoteAvatar = '', isGroup = false) {
   const modal = document.getElementById('videoCallModal');
   if (!modal) return;
+
+  _activeCallConvId = convId;
 
   // Hiện modal
   modal.classList.remove('hidden');
@@ -4927,6 +4986,24 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
         // Bây giờ mới bật mic (không yêu cầu trước)
         try {
           await room.localParticipant.setMicrophoneEnabled(true);
+          // Lắng nghe sự thay đổi track để ẩn/hiện video
+          participant.on(window.LivekitClient.ParticipantEvent.TrackSubscribed, (track) => {
+            if (track.kind === 'video') {
+              track.attach(video);
+              video.style.opacity = '1';
+            } else if (track.kind === 'audio') {
+              const audio = document.createElement('audio');
+              audio.autoplay = true;
+              tile.appendChild(audio);
+              track.attach(audio);
+            }
+          });
+
+          participant.on(window.LivekitClient.ParticipantEvent.TrackUnsubscribed, (track) => {
+            if (track.kind === 'video') {
+              video.style.opacity = '0';
+            }
+          });
           const mic = document.getElementById('toggleMicBtn');
           if (mic) { mic.innerHTML = '🎙️'; mic.classList.remove('bg-red-500/50'); }
         } catch (_) { }
@@ -4948,21 +5025,30 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
       } catch (_) { }
 
       // Tạo tile cho những người đã có trong phòng
-      room.remoteParticipants.forEach(p => { _addParticipantTile(grid, p); });
-      updateGridLayout();
-
-      // Caller vào (hoặc đã có sẵn)
-      room.on(RoomEvent.ParticipantConnected, (participant) => {
-        _addParticipantTile(grid, participant);
-        updateGridLayout();
+      room.participants.forEach(p => {
+        _addParticipantTile(grid, p);
       });
+      updateGridLayout();
     }
 
-    // ── Các event chung ────────────────────────────────────────
+    // ── Participant rời phòng (gộp chung 1 listener, tránh double-fire) ──
     room.on(RoomEvent.ParticipantDisconnected, (participant) => {
       document.getElementById(`participant-${participant.identity}`)?.remove();
-      showToast(`${participant.name || 'Người dùng'} đã rời cuộc gọi`, 'gray');
       updateGridLayout();
+
+      // 1-1: đối phương ngắt kết nối LiveKit (đóng tab, mất mạng, ...) là
+      // tín hiệu tin cậy & tức thời nhất -> tự đóng luôn phòng bên mình,
+      // không cần chờ event call_ended từ WS (fix: 1 người out mà người
+      // kia vẫn còn ở lại phòng).
+      if (!isGroup && room.participants.size === 0) {
+        showToast('Cuộc gọi đã kết thúc', 'gray');
+        if (callWs && callWs.readyState === WebSocket.OPEN) {
+          callWs.send(JSON.stringify({ type: 'end_call' }));
+        }
+        closeVideoCall();
+      } else {
+        showToast(`${participant.name || 'Người dùng'} đã rời cuộc gọi`, 'gray');
+      }
     });
 
     room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
@@ -4988,11 +5074,12 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
       if (track.kind === 'video') {
         const wrapper = document.getElementById(`participant-${participant.identity}`);
         if (wrapper) {
-          // Về lại placeholder avatar
+          // Về lại placeholder avatar thật (hoặc default nếu user chưa có avatar)
+          const avatarUrl = _getParticipantAvatar(participant);
           wrapper.innerHTML = `
             <div class="flex flex-col items-center gap-2">
-              <div class="w-16 h-16 rounded-full bg-gray-600 flex items-center justify-center text-3xl">👤</div>
-              <p class="text-white/80 text-sm font-medium">${participant.name || participant.identity}</p>
+              <img src="${avatarUrl}" onerror="this.src='${DEFAULT_CALL_AVATAR}'" class="w-16 h-16 rounded-full object-cover border border-gray-600 shadow-md">
+              <p class="text-white/80 text-sm font-medium">${participant.name || participant.identity || 'Thành viên'}</p>
             </div>`;
         }
         updateGridLayout();
@@ -5010,16 +5097,30 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
   }
 }
 
+// Lấy avatar thật của participant từ metadata gắn trong LiveKit token
+// (backend set qua .with_metadata(json.stringify({avatar: ...}))). Nếu
+// không có / parse lỗi thì fallback về default avatar.
+function _getParticipantAvatar(participant) {
+  try {
+    if (participant.metadata) {
+      const meta = JSON.parse(participant.metadata);
+      if (meta?.avatar) return meta.avatar;
+    }
+  } catch (_) {}
+  return DEFAULT_CALL_AVATAR;
+}
+
 // ── Helper: tạo placeholder tile cho một participant ─────────
 function _addParticipantTile(grid, participant) {
   if (document.getElementById(`participant-${participant.identity}`)) return;
   const wrapper = document.createElement('div');
   wrapper.id = `participant-${participant.identity}`;
   wrapper.className = 'relative rounded-xl overflow-hidden aspect-video bg-gray-800 flex items-center justify-center';
+  const avatarUrl = _getParticipantAvatar(participant);
   wrapper.innerHTML = `
     <div class="flex flex-col items-center gap-2">
-      <div class="w-16 h-16 rounded-full bg-gray-600 flex items-center justify-center text-3xl">👤</div>
-      <p class="text-white/80 text-sm font-medium">${participant.name || participant.identity}</p>
+      <img src="${avatarUrl}" onerror="this.src='${DEFAULT_CALL_AVATAR}'" class="w-16 h-16 rounded-full object-cover border border-gray-600 shadow-md">
+      <p class="text-white/80 text-sm font-medium">${participant.name || participant.identity || 'Thành viên'}</p>
     </div>`;
   grid.appendChild(wrapper);
   return wrapper;

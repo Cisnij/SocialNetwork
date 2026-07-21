@@ -1,10 +1,18 @@
+# container main
+docker compose build
+docker compose up -d
 
-định nghĩa trước:
+cloudflared tunnel login
+cloudflared tunnel create my-tunnel
+cloudflared tunnel route dns social-network api.socialnetwork.dpdns.org
+cloudflared tunnel run my-tunnel
 
-logic: khi kết bạn nhất chat sẽ tạo conversation, gọi api startconversation, không gán tên, không gán avatar, is_group=false
-	khi nhấn tạo chat, gọi api creategroup, gán tên(bắt buộc) và avatar(thêm default là ảnh), is_group=true, thêm thành viên
-	frontend khi thấy conversation là is_group=false thì sẽ gán tên của đối phương cho nhau, gán href id vào và khi nhán vào mở đoạn chat
-	khi ấn ok ở request sẽ tạo conversation
+export: docker exec percona mysqldump -u root -pChinghi1607 --single-transaction --routines --triggers --events SocialNetwork > backup.sql
+import docker cp .\dump_prod.sql percona-dev:/tmp/dump_prod.sql
+
+#container dev
+powershelldocker compose -f docker-compose.yml -f docker-compose.dev.yml build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 
 

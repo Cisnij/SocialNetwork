@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => { // Kiểm tra nếu đã �
       headers['X-CSRFToken'] = csrfToken;
     }
 
-    fetch('http://localhost:80/api/auth/web/login/', {
+    fetch('http://localhost:8000/api/auth/web/login/', {
       method: 'POST',
       credentials: 'include', 
       headers: headers,
