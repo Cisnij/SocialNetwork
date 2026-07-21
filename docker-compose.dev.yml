@@ -1,37 +1,106 @@
+networks:
+  dev-network:
+    driver: bridge
+
 volumes:
-  percona_data_dev:      # DB riêng cho dev, KHÔNG đụng percona_data thật (external)
-  redis-data-dev:         # Redis riêng cho dev
-  esdata_dev:              # Elasticsearch riêng cho dev
+  percona_data_dev:      # DB riêng cho dev
+  redis-data-dev:        # Redis riêng cho dev
+  esdata_dev:            # Elasticsearch riêng cho dev
+  static-files-dev:
+  logs-data-dev:
+  backups-data-dev:
+  frontend-static-dev:
 
 services:
 
-  # ─── Database/Cache/Search — dùng volume RIÊNG khi chạy dev ──
+  # ─── Database ────────────────────────────────────────
   percona:
+    image: percona/percona-server:8.4
     container_name: percona-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     volumes:
       - percona_data_dev:/var/lib/mysql
+    networks:
+      - dev-network
+    ports:
+      - "127.0.0.1:3307:3306"   # port 3307 tránh conflict với prod (3306)
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  redis:
-    container_name: redis-dev
-    volumes:
-      - redis-data-dev:/data
-
+  # ─── Elasticsearch ───────────────────────────────────
   elasticsearch:
+    image: elasticsearch:8.11.0
     container_name: elasticsearch-dev
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - ES_JAVA_OPTS=-Xms256m -Xmx512m   # nhẹ hơn prod
     volumes:
       - esdata_dev:/usr/share/elasticsearch/data
+    networks:
+      - dev-network
+    ports:
+      - "127.0.0.1:9201:9200"   # port 9201 tránh conflict với prod (9200)
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -u elastic:${ELASTIC_PASSWORD} http://127.0.0.1:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ─── Redis ───────────────────────────────────────────
+  redis:
+    image: redis:latest
+    container_name: redis-dev
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    volumes:
+      - redis-data-dev:/data
+    networks:
+      - dev-network
+    ports:
+      - "127.0.0.1:6380:6379"   # port 6380 tránh conflict với prod (6379)
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ─── Django ──────────────────────────────────────────
   django:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: django-dev
+    restart: unless-stopped
     env_file:
       - ./backend/.env.dev
     volumes:
-      - ./backend:/app
-      - static-files:/app/staticfiles
-      - logs-data:/app/logs
+      - ./backend:/app                      # mount code trực tiếp để hot-reload
+      - static-files-dev:/app/staticfiles
+      - logs-data-dev:/app/logs
     ports:
       - "127.0.0.1:8000:8000"
+    networks:
+      - dev-network
+    depends_on:
+      percona:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: >
       sh -c "
       python manage.py migrate --noinput &&
@@ -39,7 +108,7 @@ services:
       exec granian --interface asgi --host 0.0.0.0 --port 8000 --workers 1 --runtime-threads 2 --reload backend.asgi:application
       "
     healthcheck:
-      test: ["CMD-SHELL", "curl -s --max-time 3 http://0.0.0.0:8000 > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://0.0.0.0:8000/ > /dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -47,53 +116,103 @@ services:
 
   # ─── Celery Worker ───────────────────────────────────
   celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: celery-worker-dev
+    restart: unless-stopped
     env_file:
       - ./backend/.env.dev
     volumes:
       - ./backend:/app
-      - logs-data:/app/logs
-      - backups-data:/app/backups
+      - logs-data-dev:/app/logs
+      - backups-data-dev:/app/backups
+    networks:
+      - dev-network
+    depends_on:
+      django:
+        condition: service_healthy
     command: celery -A backend worker -Q celery --loglevel=info --concurrency=2
 
   celery-worker-notifications:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: celery-worker-notifications-dev
+    restart: unless-stopped
     env_file:
       - ./backend/.env.dev
     volumes:
       - ./backend:/app
-      - logs-data:/app/logs
-      - backups-data:/app/backups
+      - logs-data-dev:/app/logs
+      - backups-data-dev:/app/backups
+    networks:
+      - dev-network
+    depends_on:
+      django:
+        condition: service_healthy
     command: celery -A backend worker -Q notifications --loglevel=info --concurrency=1
 
   celery-worker-emails:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: celery-worker-emails-dev
+    restart: unless-stopped
     env_file:
       - ./backend/.env.dev
     volumes:
       - ./backend:/app
-      - logs-data:/app/logs
-      - backups-data:/app/backups
+      - logs-data-dev:/app/logs
+      - backups-data-dev:/app/backups
+    networks:
+      - dev-network
+    depends_on:
+      django:
+        condition: service_healthy
     command: celery -A backend worker -Q emails --loglevel=info --concurrency=1
 
   celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: celery-beat-dev
+    restart: unless-stopped
     env_file:
       - ./backend/.env.dev
     volumes:
       - ./backend:/app
-      - logs-data:/app/logs
+      - logs-data-dev:/app/logs
+    networks:
+      - dev-network
+    depends_on:
+      django:
+        condition: service_healthy
+    command: celery -A backend beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 
   # ─── Frontend ────────────────────────────────────────
   frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: frontend-dev
+    restart: unless-stopped
     volumes:
-      - ./frontend:/app
-      - frontend-static:/app/staticfiles      # đúng tên khớp với top-level volume trong docker-compose.yml
+      - ./frontend:/app                         # mount code để hot-reload
+      - frontend-static-dev:/app/staticfiles
+      - logs-data-dev:/app/logs
     ports:
       - "127.0.0.1:8080:8000"
+    networks:
+      - dev-network
     command: >
       sh -c "
       python manage.py collectstatic --noinput &&
       exec granian --interface asgi --host 0.0.0.0 --port 8000 --workers 1 --runtime-threads 2 --reload frontend.asgi:application
       "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://0.0.0.0:8000/ > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
