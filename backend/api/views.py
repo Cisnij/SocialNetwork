@@ -697,7 +697,7 @@ class PostFriendShare(PagedContextMixin, generics.ListAPIView): # tất cả sha
         following_ids = Follow.objects.filter(follower=user).values_list("followee_id", flat=True)
         blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
         blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
-        return (PostShare.objects.filter( # thỏa 1 trong những điều kiện ở filter 1 AND 1 trong điều kiện filter 2
+        return (PostShare.objects.filter( # thỏa 1 trong những điều kiện ở filter 1 AND trong điều kiện filter 2
             # share của mình
             Q(user=user) |
             #post share của bạn bè cả public và friends
