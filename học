@@ -666,7 +666,8 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
             fields =['user']
 
 # Experience when build a api model project
-   - credentials include để gửi cookie 
+   - credentials include để gửi cookie, ví dụ để gọi api refresh access token bạn cần phải truyền credential để để api.domain có thể lấy ra cookie. Nếu không truyền không thể lấy cookie, nhằm bảo vệ trước các trang web độc không truyền credential nó sẽ k ăn cắp đc cookie. Credential chỉ nên truyền ở các api cần set cookie thôi, truyền hết api là sẽ bị đánh cắp cookie và mất quyền
+   Access token dùng để xác thực, còn refresh chỉ có 1 mục đích là lmà mới access
    - args và kwargs(arguments) để khai báo function nhận nhiều tham số k biết trước, args nhận vào và sắp xếp theo thứ tự, kwargs nhận giá trị key value hoặc chuỗi
    - await là 1 promise tức là thực thi xong hết mới đc tới bước tiếp theo để đồng bộ code, thay cho .then res và data
         ví dụ

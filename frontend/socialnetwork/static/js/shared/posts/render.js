@@ -394,33 +394,49 @@ export function renderPostCard(post, options = {}) {
     actions.appendChild(copyBtn);
   }
 
-  if (isOwner && showPrivacy) {
-    const privacyWrap = document.createElement("select");
-    privacyWrap.className =
-      `text-xs border border-gray-200 dark:border-[#3e4042] rounded px-2 py-1 ml-auto bg-white dark:bg-[#3a3b3c] ${cls.textSub}`;
-    ["public", "friends", "private"].forEach((p) => {
-      const opt = document.createElement("option");
-      opt.value = p;
-      opt.textContent =
-        p === "public" ? "Công khai" : p === "friends" ? "Bạn bè" : "Riêng tư";
-      if (post.privacy === p) opt.selected = true;
-      privacyWrap.appendChild(opt);
-    });
-    privacyWrap.addEventListener("change", async (e) => {
-      e.stopPropagation();
-      try {
-        const res = await authFetch(API.postPrivacy(post.post_id), {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ privacy_type: privacyWrap.value }),
-        });
-        if (res.ok) showToast("Đã cập nhật quyền xem");
-        else showToast("Cập nhật thất bại", "red");
-      } catch {
-        showToast("Lỗi kết nối", "red");
-      }
-    });
-    actions.appendChild(privacyWrap);
+  if (showPrivacy) {
+    if (isOwner) {
+      const privacyWrap = document.createElement("select");
+      privacyWrap.className =
+        `text-xs border border-gray-200 dark:border-[#3e4042] rounded px-2 py-1 ml-auto bg-white dark:bg-[#3a3b3c] ${cls.textSub}`;
+      ["public", "friends", "private"].forEach((p) => {
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent =
+          p === "public" ? "Công khai" : p === "friends" ? "Bạn bè" : "Riêng tư";
+        if (post.privacy === p) opt.selected = true;
+        privacyWrap.appendChild(opt);
+      });
+      privacyWrap.addEventListener("change", async (e) => {
+        e.stopPropagation();
+        try {
+          const res = await authFetch(API.postPrivacy(post.post_id), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ privacy_type: privacyWrap.value }),
+          });
+          if (res.ok) showToast("Đã cập nhật quyền xem");
+          else showToast("Cập nhật thất bại", "red");
+        } catch {
+          showToast("Lỗi kết nối", "red");
+        }
+      });
+      actions.appendChild(privacyWrap);
+    } else {
+      const privacyLabel = document.createElement("span");
+      privacyLabel.className =
+        `text-xs border border-gray-200 dark:border-[#3e4042] rounded px-2 py-1 ml-auto bg-gray-50 dark:bg-[#3a3b3c] ${cls.textSub}`;
+      const privacyText =
+        post.privacy === "public"
+          ? "Công khai"
+          : post.privacy === "friends"
+          ? "Bạn bè"
+          : post.privacy === "private"
+          ? "Riêng tư"
+          : post.privacy;
+      privacyLabel.textContent = privacyText;
+      actions.appendChild(privacyLabel);
+    }
   }
 
   if (!disableInteractions) {

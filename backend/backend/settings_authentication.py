@@ -439,7 +439,7 @@ CONTENT_SECURITY_POLICY = {
 
         "form-action": [SELF],  # ✅ Không cho gửi form ra ngoài
 
-        "frame-ancestors": [SELF],  # ✅ Ngăn clickjacking
+        "frame-ancestors": [SELF],  # ✅ Ngăn clickjacking web khác nhứng web mình vào, ví dụ khi web khác nhúng web mình vào, nó gọi api tới web mình và phát hiện header 'self', k cho nhúng
 
         "base-uri": [SELF],  # ✅ Giới hạn `<base>` tag
 
@@ -449,7 +449,7 @@ CONTENT_SECURITY_POLICY = {
 
         "media-src": [SELF, "res.cloudinary.com"],  # Cho phép nhúng audio/video bạn host, nếu video/ảnh hosted trên server
 
-        "frame-src": ["https://www.youtube.com", "https://player.vimeo.com", "accounts.google.com"]
+        "frame-src": ["https://www.youtube.com", "https://player.vimeo.com", "accounts.google.com"] # kiểm soát web mình đc nhúng gì
 
     }
 

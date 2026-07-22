@@ -332,7 +332,7 @@ class PostFriend(PagedContextMixin, generics.ListAPIView):  # List tất cả po
             self._qs = (
                 Post.objects
                 .filter( # câu lệnh Q..| là OR
-                    Q(user_id=user.id, group__isnull=True) |  #lấy post của user
+                    Q(user_id=user.id, group__isnull=True) |  #lấy post cá nhân của user, thêm group__ís null để tránh lấy các bài viết chưa đc duyệt của user
                     Q(user_id__in=friend_ids,privacy__in=['public','friends'], group__isnull=True) | #lấy post của bạn bè và chỉ lấy privacy là public hoặc bạn bè, bỏ qua private
                     Q(user_id__in=following_ids, privacy='public', group__isnull=True) |#lấy post của follow
                     Q(group_id__in=group_ids, post_status='approved') # lấy ra tất cả post có group_id trong group của user,status =approve
@@ -652,7 +652,7 @@ class PostUserShare(PagedContextMixin, generics.ListAPIView): #tất cả share 
         blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
         blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
 
-        if target_user == user: # nếu target là chính user thì k có giới hạn
+        if target_user == user: # nếu target là chính user thì k có giới hạn privacy
             privacy_filter = {}
         elif Friend.objects.are_friends(user, target_user): # nếu target user là bạn mình thì láy public và friends
             privacy_filter = {'privacy__in': ['public', 'friends']}
@@ -667,11 +667,11 @@ class PostUserShare(PagedContextMixin, generics.ListAPIView): #tất cả share 
             PostShare.objects
             .filter(
                 Q(post__privacy='public') | # lọc ra post share mà post gốc là public
-                Q(post__user_id__in=friend_ids, post__privacy='friends') |#lọc ra post share mà user post gốc là bạn và privacy là bạn
+                Q(post__user_id__in=friend_ids, post__privacy='friends') |#lọc ra post share mà user post gốc là bạn của user hiện tại và privacy là bạn
                 Q(post__user=user)   # lọc ra post share mà post có user là user hiện tại
             )
             .exclude(Q(post__user_id__in=blocked_ids) | Q(post__user_id__in=blocking_ids)) #check block post gốc, xóa nếu nó share bài của ng mình block
-            .filter(user=target_user, **privacy_filter)
+            .filter(user=target_user, **privacy_filter) # lọc ra post share của target user theo privacy
             .select_related('user','user__profile','post__user','post', 'post__user__profile')
             .prefetch_related('post__photos')
             .order_by('-created_at')
@@ -3579,7 +3579,7 @@ class JoinVideoRoomView(AsyncAPIView):
             'is_group':    room.conversation.is_group,
         })
 
-    async def _create_token(self, room_name, user):
+    async def _create_token(self, room_name, user): # tạo token để truy cập room live kit bằng secret key
         profile = await database_sync_to_async(lambda: getattr(user, "profile", None))()
         display_name = profile.full_name if profile else user.username
         avatar = _get_avatar_url(profile)

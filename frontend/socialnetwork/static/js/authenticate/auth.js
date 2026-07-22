@@ -123,7 +123,7 @@ function logout() {
   window.location.href = "https://socialnetwork.dpdns.org/login/";
 }
 'Với GET: trả dữ liệu cache ngay để UI hiện nhanh, sau đó âm thầm gọi API lấy dữ liệu mới và cập nhật nếu có thay đổi.\n' +
-'Với POST/PUT/DELETE...: không cache, gọi API bình thường.'
+  'Với POST/PUT/DELETE...: không cache, gọi API bình thường.'
 async function authFetchCache(url, options = {}, onData) {
   if (options.method && options.method.toUpperCase() !== "GET") {
     const res = await authFetch(url, options);

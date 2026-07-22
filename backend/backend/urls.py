@@ -58,10 +58,6 @@ urlpatterns = [
     path('api/auth/delete-account/',DeleteAccount.as_view(),name='delete-account'),
     path('api/email/cofirm-delete-account/', ConfirmDeleteAccount.as_view(), name='delete-account'),
     path('api/auth/google/login/', GoogleLogin.as_view(), name='google_login'),
-    #url spectacular
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     #url cho cookie http-only, dùng cho mobile thì dùng mặc định api/auth/login,logout,refresh 
     path('api/auth/web/login/', CookieLoginView.as_view(), name='cookie_login'), #login cho cookie
     path('api/auth/web/logout/', CookieLogoutView.as_view(), name='cookie_logout'), #logout cho cookie
@@ -78,7 +74,7 @@ urlpatterns = [
     path('api/user/pending-profile/',PendingProfileList.as_view(), name='pending-profile-list'), #lấy ra tất cả pending profile
     #url liên qua post
     path('api/user/post-photo/<int:post_id>/',PostPhotoListCreate.as_view(),name='post-photo'), #thêm lấy ra ảnh của post cụ thể \
-    path('api/user/post-photo/',PostPhotoUser.as_view(),name='photo-user'), #lấy ra ảnh tất cả user
+    path('api/user/post-photo/',PostPhotoUser.as_view(),name='photo-user'), #lấy ra tất cả ảnh user
     path('api/user/delete-photo/<int:pk>/',PostPhotoDelete.as_view(),name='post-photo-delete'), #xóa ảnh cụ thể phục vụ chức năng chỉnh sửa post 
     path('api/user/post/<int:pk>/',PostModify.as_view(), name='post-modify'), #sửa xóa post cụ thể
     path('api/user/post/show/', PostFriend.as_view(), name='post-friend'), #Láy ra post của bạn bè
@@ -95,7 +91,8 @@ urlpatterns = [
     path('api/post/share/<int:share_id>/privacy-change/',ChangePostSharePrivacy.as_view(),name='change-share-privacy'),#đổi chế độ xem share post
     path('api/post/<int:pin_id>/pin/',PinPostView.as_view(),name='pin-post'),
     path('api/post/<int:post_id>/report/',PostReportView.as_view(),name='post-report'),
-    path('api/comment/<int:comment_id>/report/',CommentReportView.as_view(),name='comment-report'),
+    # v2-test full chức năng tạo post va ảnh trong 1 api
+    path('api/user/post/create/v2/', CreateFullPostView.as_view(), name='post-create-v2'),# v2 của tạo post
     #url post-article
     path('api/user/post-article/', PostArticleListCreate.as_view(), name='post-article-list'), #thêm láy tất cả post article
     path('api/user/post-article/<int:pk>/', PostArticleModify.as_view(), name='post-article-modify'), # lấy ra post article cụ thể
@@ -105,6 +102,7 @@ urlpatterns = [
     path('api/user/comment/<int:pk>/detail/',CommentDetail.as_view()),#lấy comment từ id
     path('api/user/comment/pin/<int:pin_id>/',PinCommentView.as_view(),name='pin-comment'), #pin comment
     path('api/user/nested-comments/<int:pk>/',NestedCommentList.as_view(),name='nested-comment'), # list các nested từ comment cha
+    path('api/comment/<int:comment_id>/report/', CommentReportView.as_view(), name='comment-report'),
     #url setting
     path('api/user/setting/<int:pk>/',SettingModify.as_view(), name='setting-modify'),# setting của user
     path('api/user/setting/',UserSetting.as_view(),name='user-setting'),#setting user hiện tại
@@ -177,8 +175,6 @@ urlpatterns = [
     path('api/search-history/<int:pk>/delete/', SearchHistoryDeleteView.as_view(),name='search-history-delete'), #xóa search bất kì
     #friendsuggest
     path('api/user/friend-suggest/',FriendSuggestion.as_view(),name='friend-suggest'), # gợi ý bạn bè
-    #v2-test full chức năng tạo post va ảnh trong 1 api
-    path('api/user/post/create/v2/',CreateFullPostView.as_view(),name='post-create-v2'), #v2 của tạo post
     #support
     path('api/support/', SupportTicketView.as_view()), #user gửi lên ticket và nhân viên check reply qua mail sau đó
     #url cho task group chat
@@ -281,3 +277,17 @@ if settings.DEBUG:
     urlpatterns += [path('silk/', include('silk.urls', namespace='silk'))] #silk , Nhớ migrate
     from django.contrib.staticfiles.urls import staticfiles_urlpatterns
     urlpatterns += staticfiles_urlpatterns() #static file để gom các js, css của các thư viện vào 1 chỗ, dùng cho nginx và daphne để production 
+    #url spectacular
+    urlpatterns += [
+        path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+        path(
+            "api/docs/",
+            SpectacularSwaggerView.as_view(url_name="schema"),
+            name="swagger-ui",
+        ),
+        path(
+            "api/redoc/",
+            SpectacularRedocView.as_view(url_name="schema"),
+            name="redoc",
+        ),
+    ]
