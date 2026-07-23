@@ -386,6 +386,7 @@ class MessageSerializer(serializers.ModelSerializer):
 class NotificationSerializer(serializers.ModelSerializer):
     actor = serializers.SerializerMethodField()
     actor_avatar=serializers.SerializerMethodField()
+    actor_id = serializers.IntegerField(source='actor.profile.id')
     class Meta:
         model = Notification
         fields = ['id', 'type', 'object_id', 'post_id', 'message', 'is_read', 'created_at','actor_id' ,'actor', 'actor_avatar','vote_id','event_id', 'group_id']

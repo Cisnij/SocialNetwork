@@ -918,7 +918,7 @@ class CommentModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa co
         if post_owner == user or comment.user == user: # user và chủ post có thể xóa
             comment.delete()
             return Response({'Success'}, status=200)
-        return Response({'Cannot delete'}, status=404)
+        return Response({'Cannot delete'}, status=403)
 
 class NestedCommentList(PagedContextMixin, generics.ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -1166,7 +1166,7 @@ class AcceptFriendRequestView(generics.UpdateAPIView):  # đồng ý lời mời
 
         friend_request = get_object_or_404(FriendshipRequest.objects.select_related("to_user"), pk=fr_id)
 
-        # Chỉ người nhận mới có quyền accept ( người nhận là to_user và nguòi gửi là request user, phải khác nhau mới accept đc)
+        # Chỉ người nhận lời mời mới có quyền accept, người khác thì k được accept vì k có quyền kể cả ng gửi
         if friend_request.to_user != request.user:
             return Response({"error": "Not allowed"}, status=403)
 
@@ -1200,7 +1200,7 @@ class RejectFriendRequestView(generics.UpdateAPIView):  # từ chối lời mờ
 
         friend_request = get_object_or_404(FriendshipRequest.objects.select_related("to_user"), pk=fr_id)
 
-        # Chỉ người nhận mới có quyền reject
+        # Chỉ người nhận mới có quyền reject(nếu người nhận không phải là mình thì mình k đc accept)
         if friend_request.to_user != request.user:
             return Response({"error": "Not allowed"}, status=403)
 
@@ -1399,11 +1399,10 @@ class UnblockView(generics.DestroyAPIView):  # bỏ chặn người dùng
         id = self.kwargs.get('pk')
         profile = get_object_or_404(Profile.objects.select_related("user"), id=id)
         user = profile.user
-
-        if not Block.objects.is_blocked(request.user, user):
-            return Response({"detail": "You have not blocked this user."}, status=400)
         if request.user == user:
             return Response({"detail": "You cannot unblock yourself"}, status=400)
+        if not Block.objects.is_blocked(request.user, user):
+            return Response({"detail": "You have not blocked this user."}, status=400)
 
         Block.objects.filter(
             blocker=request.user,

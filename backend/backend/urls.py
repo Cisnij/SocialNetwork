@@ -69,7 +69,7 @@ urlpatterns = [
     path('api/user/profile/<int:pk>/',ProfileModify.as_view(),name='profile-modify'), #lấy ra infor ng dùng thêm sửa xóa
     path('api/user/private-profile/<int:pk>/', PrivateProfileModify.as_view(),name='private-profile-modify'), #sửa thông tin mật ng dùng
     path('api/user/profile/',ProfileList.as_view(), name='profile-list'), #lấy tất cả user
-    path('api/auth/profile/userpage/<int:user>', ProfileUser.as_view(), name='user-info'), #lấy ra thông tin userpage
+    path('api/auth/profile/userpage/<int:user>/', ProfileUser.as_view(), name='user-info'), #lấy ra thông tin userpage
     path('api/user/',ProfileView.as_view(),name='profile-view'), #lẩy ra thông tin user hiện tại
     path('api/user/pending-profile/',PendingProfileList.as_view(), name='pending-profile-list'), #lấy ra tất cả pending profile
     #url liên qua post
