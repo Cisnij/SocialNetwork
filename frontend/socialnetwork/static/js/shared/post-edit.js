@@ -19,6 +19,16 @@ function buildPhotoUrl(photoObj) {
   return candidate;
 }
 
+function buildVideoUrl(videoObj) {
+  if (!videoObj) return null;
+  const candidate = videoObj.video || videoObj.url || videoObj.file || "";
+  if (!candidate || candidate === "null" || candidate === "undefined")
+    return null;
+  if (candidate.startsWith("/"))
+    return new URL(candidate, window.location.origin).href;
+  return candidate;
+}
+
 export function openEditModal(post) {
   const modal = document.getElementById("editPostModal");
   if (!modal) return;
@@ -36,6 +46,7 @@ export function openEditModal(post) {
   const cancelBtn = document.getElementById("cancelEditPost");
 
   const markedForDeletion = new Set();
+  const markedForDeletionVideos = new Set();
   titleInput.value = post.title || "";
   imageContainer.replaceChildren();
 
@@ -72,6 +83,39 @@ export function openEditModal(post) {
     });
   }
 
+  if (Array.isArray(post.videos)) {
+    post.videos.forEach((video) => {
+      const url = buildVideoUrl(video);
+      if (!url) return;
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "relative inline-block mr-2 mb-2";
+      wrapper.style.width = "96px";
+      wrapper.style.height = "96px";
+
+      const vid = document.createElement("video");
+      vid.src = url;
+      vid.className = "w-24 h-24 object-cover rounded-md border bg-black";
+      vid.dataset.videoId = video.id || "";
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.textContent = "✕";
+      delBtn.className =
+        "absolute top-0 right-0 bg-red-500 text-white rounded-full px-1 text-xs";
+      delBtn.dataset.id = video.id || "";
+
+      delBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        markedForDeletionVideos.add(delBtn.dataset.id);
+        wrapper.remove();
+      });
+
+      wrapper.append(vid, delBtn);
+      imageContainer.appendChild(wrapper);
+    });
+  }
+
   modal.classList.remove("hidden");
 
   saveBtn.onclick = async () => {
@@ -95,6 +139,22 @@ export function openEditModal(post) {
         }
       }
 
+      if (markedForDeletionVideos.size > 0) {
+        await Promise.all(
+          [...markedForDeletionVideos].map((videoId) =>
+            authFetch(POST_ENDPOINTS.deleteVideo(videoId), {
+              method: "DELETE",
+            }).catch(() => {})
+          )
+        );
+        if (postEl) {
+          [...markedForDeletionVideos].forEach((id) => {
+            const vid = postEl.querySelector(`[data-video-id="${id}"]`);
+            if (vid?.parentNode) vid.parentNode.remove();
+          });
+        }
+      }
+
       const updated = await updatePost(post.post_id, titleInput.value);
       const newTitle =
         (updated?.title && updated.title.trim()) ||
@@ -107,7 +167,19 @@ export function openEditModal(post) {
         if (titleEl) titleEl.textContent = newTitle || "";
       }
 
-      const newPhotos = await addNewPhotos(post.post_id, newImagesInput.files);
+      const photoFiles = [];
+      const videoFiles = [];
+      if (newImagesInput.files) {
+        for (const file of newImagesInput.files) {
+          if (file.type.startsWith("video/")) {
+            videoFiles.push(file);
+          } else {
+            photoFiles.push(file);
+          }
+        }
+      }
+
+      const newPhotos = await addNewPhotos(post.post_id, photoFiles);
       if (newPhotos?.length && postEl) {
         let container = postEl.querySelector(".post-photos");
         if (!container) {
@@ -132,6 +204,32 @@ export function openEditModal(post) {
           if (p.id) img.dataset.photoId = p.id;
           wrap.appendChild(img);
           container.appendChild(wrap);
+        });
+      }
+
+      const newVideos = await addNewVideos(post.post_id, videoFiles);
+      if (newVideos?.length && postEl) {
+        let container = postEl.querySelector(".post-videos");
+        if (!container) {
+          container = document.createElement("div");
+          container.className = "post-videos mb-3 flex flex-col gap-2";
+          let insertAfterNode = postEl.querySelector(".post-photos") || postEl.querySelector(".post-title");
+          if (insertAfterNode?.parentNode === postEl) {
+            insertAfterNode.after(container);
+          } else {
+            postEl.insertBefore(container, postEl.lastElementChild);
+          }
+        }
+        newVideos.forEach((v) => {
+          const src = v.local_url || buildVideoUrl(v);
+          if (!src) return;
+          const vid = document.createElement("video");
+          vid.src = src;
+          vid.className = "w-full max-h-[480px] rounded-lg bg-black";
+          vid.controls = true;
+          if (v.id) vid.dataset.videoId = v.id;
+          vid.addEventListener("click", (e) => e.stopPropagation());
+          container.appendChild(vid);
         });
       }
 
@@ -184,6 +282,30 @@ async function addNewPhotos(postId, files) {
     const uploaded = Array.isArray(data) ? data : data.results || data.photos || [];
     if (uploaded.length) {
       return uploaded.map((p, i) => ({ ...p, local_url: localUrls[i] }));
+    }
+    return localUrls.map((url) => ({ local_url: url }));
+  } catch {
+    return [];
+  }
+}
+
+async function addNewVideos(postId, files) {
+  if (!files || files.length === 0) return [];
+  const localUrls = [...files].map((file) => URL.createObjectURL(file));
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append("video", file);
+  }
+  try {
+    const res = await authFetch(POST_ENDPOINTS.addVideo(postId), {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => ({}));
+    const uploaded = Array.isArray(data) ? data : data.results || data.videos || [];
+    if (uploaded.length) {
+      return uploaded.map((v, i) => ({ ...v, local_url: localUrls[i] }));
     }
     return localUrls.map((url) => ({ local_url: url }));
   } catch {

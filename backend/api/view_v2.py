@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
-from .models import Post, PostPhoto
+from .models import Post, PostPhoto, PostVideo
 from .serializers import *
 class CreateFullPostView(APIView):
     permission_classes = [IsAuthenticated]
@@ -12,6 +12,7 @@ class CreateFullPostView(APIView):
     def post(self, request):
         title = request.data.get('title')
         photos = request.FILES.getlist('photos')
+        videos = request.FILES.getlist('videos')
         privacy = request.data.get('privacy', 'public')
         if not title:
             return Response({"error": "Thiếu title"}, status=status.HTTP_400_BAD_REQUEST)
@@ -27,6 +28,8 @@ class CreateFullPostView(APIView):
                 )
                 for photo in photos:
                     PostPhoto.objects.create(post=new_post, photo=photo)
+                for video in videos:
+                    PostVideo.objects.create(post=new_post, video=video)
 
             serializer = PostSerializer(new_post, context={'request': request}) #new post vừa tạo xong thì đem vào serializer để đọc nó ra, request vào để lấy ra url gán vô  link ảnh
             return Response(serializer.data, status=status.HTTP_201_CREATED) # trả ra data của serializer trên 

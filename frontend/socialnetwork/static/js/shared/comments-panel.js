@@ -130,6 +130,7 @@ function buildCommentReactionUI(comment, meta) {
     reactionCount: reactionCountBtn,
     entity: comment,
     onApplied: () => syncReactionCountBtn(reactionCountBtn, comment),
+    isComment: true,
   };
 
   const reactionBar = createReactionBar(reactionCtx);

@@ -718,27 +718,52 @@ function updateGroupPhotoPreview() {
     preview.replaceChildren();
     
     groupComposerFiles.forEach((file, index) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
+        const isVideo = file.type.startsWith("video/");
+        if (isVideo) {
             const div = document.createElement("div");
             div.className = "relative";
-            const img = document.createElement("img");
-            img.src = e.target.result;
-            img.alt = "Preview";
-            img.className = "w-full h-32 object-cover rounded-lg";
+            const vid = document.createElement("video");
+            vid.src = URL.createObjectURL(file);
+            vid.className = "w-full h-32 object-cover rounded-lg bg-black";
+            vid.controls = true;
+            
             const removeBtn = document.createElement("button");
             removeBtn.type = "button";
-            removeBtn.className = "absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600";
+            removeBtn.className = "absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 z-10";
             removeBtn.textContent = "×";
             removeBtn.onclick = () => {
                 groupComposerFiles = groupComposerFiles.filter((_, i) => i !== index);
                 updateGroupPhotoPreview();
             };
-            div.appendChild(img);
+            
+            div.appendChild(vid);
             div.appendChild(removeBtn);
             preview.appendChild(div);
-        };
-        reader.readAsDataURL(file);
+        } else {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const div = document.createElement("div");
+                div.className = "relative";
+                const img = document.createElement("img");
+                img.src = e.target.result;
+                img.alt = "Preview";
+                img.className = "w-full h-32 object-cover rounded-lg";
+                
+                const removeBtn = document.createElement("button");
+                removeBtn.type = "button";
+                removeBtn.className = "absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600";
+                removeBtn.textContent = "×";
+                removeBtn.onclick = () => {
+                    groupComposerFiles = groupComposerFiles.filter((_, i) => i !== index);
+                    updateGroupPhotoPreview();
+                };
+                
+                div.appendChild(img);
+                div.appendChild(removeBtn);
+                preview.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        }
     });
 }
 
@@ -754,7 +779,11 @@ async function submitGroupPost() {
     const formData = new FormData();
     formData.append("title", content || "Bài viết mới");
     groupComposerFiles.forEach((file) => {
-        formData.append("photos", file);
+        if (file.type.startsWith("video/")) {
+            formData.append("videos", file);
+        } else {
+            formData.append("photos", file);
+        }
     });
     
     const submitBtn = document.getElementById("groupComposerSubmit");

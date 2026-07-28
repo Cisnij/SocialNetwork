@@ -12,6 +12,7 @@ from django.core.validators import FileExtensionValidator, RegexValidator  # val
 import json
 # Create your models here.
 import uuid
+from cloudinary_storage.storage import VideoMediaCloudinaryStorage
 from phonenumber_field.modelfields import PhoneNumberField
 from unidecode import unidecode
 # reactions
@@ -37,6 +38,11 @@ def profile_upload_path(instance, filename):  # Ảnh profile → media/avatars/
 def post_photo_upload_path(instance, filename):  # Ảnh post → media/posts/user_1/post_1/picture.png
     ext = filename.split('.')[-1].lower()
     return f'posts/user_{instance.post.user.id}_{instance.post.user}/post_{instance.post.post_id}/{uuid.uuid4()}.{ext}'
+
+
+def post_video_upload_path(instance, filename):  # Video post
+    ext = filename.split('.')[-1].lower()
+    return f'posts/user_{instance.post.user.id}_{instance.post.user}/post_{instance.post.post_id}/videos/{uuid.uuid4()}.{ext}'
 
 
 def chat_upload_path(instance, filename):  # Ảnh chat → media/chat/conv_1/picture.png
@@ -165,11 +171,29 @@ class PostPhoto(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
     post = models.ForeignKey(Post, on_delete=models.CASCADE,
                              related_name="photos")  # related name là mối quan hệ ngược do foreign key, dùng post.photos.all để querry thay vì post.postphoto_setall
-    photo = models.ImageField(upload_to=post_photo_upload_path, null=True, blank=True, validators=[
+    photo = models.ImageField(upload_to=post_photo_upload_path, null=True, blank=True, max_length=500, validators=[
         FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])])  # sẽ dùng media_root để lưu
 
     def __str__(self):
         return f"Photo {self.id}"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['post']),
+        ]
+
+
+class PostVideo(SafeDeleteModel):
+    _safedelete_policy = SOFT_DELETE_CASCADE
+    post = models.ForeignKey(Post, on_delete=models.CASCADE,
+                             related_name="videos")
+    video = models.FileField(upload_to=post_video_upload_path, null=True, blank=True, 
+                             storage=VideoMediaCloudinaryStorage(),
+                             max_length=500,
+                             validators=[FileExtensionValidator(['mp4', 'mov', 'avi', 'mkv', 'webm'])])
+
+    def __str__(self):
+        return f"Video {self.id}"
 
     class Meta:
         indexes = [

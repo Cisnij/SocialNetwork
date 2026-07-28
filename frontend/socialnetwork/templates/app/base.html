@@ -1363,8 +1363,8 @@
         <textarea id="postTitle" rows="3" placeholder="Bạn đang nghĩ gì?"
           class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 focus:outline-none resize-none input-glow"></textarea>
         <div class="border dark:border-gray-600 rounded-lg p-3">
-          <label class="text-sm font-medium text-gray-600 dark:text-gray-400">Thêm ảnh</label>
-          <input type="file" id="imageInput" accept="image/*" multiple class="mt-2 w-full text-sm">
+          <label class="text-sm font-medium text-gray-600 dark:text-gray-400">Thêm ảnh/video</label>
+          <input type="file" id="imageInput" accept="image/*,video/*" multiple class="mt-2 w-full text-sm">
           <div id="imagePreview" class="grid grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto"></div>
         </div>
       </div>
@@ -1472,7 +1472,8 @@
       <textarea id="editPostTitle"
         class="w-full p-3 rounded-lg bg-fb-secondary dark:bg-gray-700 mb-3 input-glow"></textarea>
       <div id="editImageContainer" class="flex flex-wrap gap-2 mb-3"></div>
-      <input id="editNewImages" type="file" multiple accept="image/*" class="mb-2 w-full text-sm">
+      <label class="text-sm font-medium text-gray-600 dark:text-gray-400">Thêm ảnh/video mới</label>
+      <input id="editNewImages" type="file" multiple accept="image/*,video/*" class="mb-2 mt-1 w-full text-sm">
       <div id="editNewImagesPreview" class="flex flex-wrap gap-2 mb-3"></div>
       <div class="flex gap-2 justify-end"><button id="cancelEditPost" type="button"
           class="px-4 py-2 rounded-lg bg-fb-secondary dark:bg-[#4e4f50] dark:text-[#e4e6eb] hover-lift">Hủy</button><button

@@ -75,10 +75,18 @@ class PostPhotoSerializer(serializers.ModelSerializer):
         fields=['id','post','photo']
         extra_kwargs = {"post": {"read_only": True}} #để k bị lỗi khi post ảnh lên vì post là foreign key bắt buộc phải có giá trị nhưng khi post ảnh thì chưa có post_id nên để read only, read only là chỉ để đọc mà k cần nạp data từ fe gửi
 
+class PostVideoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=PostVideo
+        fields=['id','post','video']
+        extra_kwargs = {"post": {"read_only": True}}
+
+
 class PostSerializer(serializers.ModelSerializer):
     # vì là one to one field với user nên phải để thế mới lấy ra profile đc, nếu k có source thì nó bị lấy ra user 2 lần vì profileserializer cũng có user, hiểu là 2 trường user 1 là của post 2 là profile thì lấy ra của profile
     user = ProfileSerializer(source="user.profile", read_only=True) 
     photos = PostPhotoSerializer(many=True, read_only=True) #tự động lấy ra tất cả ảnh liên quan đến post nhờ related name ở model PostPhoto
+    videos = PostVideoSerializer(many=True, read_only=True)
     # reactions
     reactions= serializers.SerializerMethodField()
     user_is_reaction=serializers.SerializerMethodField()
@@ -683,9 +691,10 @@ class GroupJoinRequestSerializer(serializers.ModelSerializer):
 class GroupPostSerializer(serializers.ModelSerializer):
     user =ProfileSerializer(source='user.profile', read_only=True)
     photos = PostPhotoSerializer(many=True, read_only=True)
+    videos = PostVideoSerializer(many=True, read_only=True)
     class Meta:
         model = Post
-        fields = ['post_id', 'title', 'user', 'photos', 'created_at', 'post_status', 'group','is_pinned']
+        fields = ['post_id', 'title', 'user', 'photos', 'videos', 'created_at', 'post_status', 'group','is_pinned']
         read_only_fields = ['post_id','user','created_at','group','post_status']
 
 class GroupSuggestionSerializer(serializers.ModelSerializer):

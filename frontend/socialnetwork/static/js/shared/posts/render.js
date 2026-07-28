@@ -430,10 +430,10 @@ export function renderPostCard(post, options = {}) {
         post.privacy === "public"
           ? "Công khai"
           : post.privacy === "friends"
-          ? "Bạn bè"
-          : post.privacy === "private"
-          ? "Riêng tư"
-          : post.privacy;
+            ? "Bạn bè"
+            : post.privacy === "private"
+              ? "Riêng tư"
+              : post.privacy;
       privacyLabel.textContent = privacyText;
       actions.appendChild(privacyLabel);
     }
@@ -449,6 +449,10 @@ export function renderPostCard(post, options = {}) {
 
   article.append(header, title);
   if (photoSection) article.appendChild(photoSection);
+
+  const videoSection = buildVideoSection(post);
+  if (videoSection) article.appendChild(videoSection);
+
   article.append(countsContainer, actions);
 
   return article;
@@ -507,6 +511,26 @@ function buildPhotoSection(post, onOpenPhotos) {
   });
 
   return photoWrapper;
+}
+
+function buildVideoSection(post) {
+  if (!post.videos?.length) return null;
+
+  const videoWrapper = document.createElement("div");
+  videoWrapper.className = "post-videos mb-3 flex flex-col gap-2";
+
+  post.videos.forEach((v) => {
+    const video = document.createElement("video");
+    video.className = "w-full max-h-[480px] rounded-lg bg-black";
+    video.src = v.video;
+    video.controls = true;
+    if (v.id) video.dataset.videoId = v.id;
+    // Prevent event bubbling when clicking on the video (e.g. play/pause controls)
+    video.addEventListener("click", (e) => e.stopPropagation());
+    videoWrapper.appendChild(video);
+  });
+
+  return videoWrapper;
 }
 
 export { REACTIONS };

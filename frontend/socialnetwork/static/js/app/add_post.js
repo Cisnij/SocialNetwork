@@ -98,7 +98,11 @@ function setupBaseModal() {
       formData.append("title", title || "Bài viết mới");
       formData.append("privacy", privacy);
       selectedFiles.forEach((file) => {
-        formData.append("photos", file);
+        if (file.type.startsWith("video/")) {
+          formData.append("videos", file);
+        } else {
+          formData.append("photos", file);
+        }
       });
 
       submitBtn.disabled = true;
@@ -151,11 +155,19 @@ function updateBasePhotoPreview() {
   selectedFiles.forEach((file) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const img = document.createElement("img");
-      img.src = e.target.result;
-      img.alt = "Preview";
-      img.className = "h-24 w-24 object-cover rounded-lg border";
-      preview.appendChild(img);
+      if (file.type.startsWith("video/")) {
+        const video = document.createElement("video");
+        video.src = e.target.result;
+        video.controls = true;
+        video.className = "h-24 w-24 object-cover rounded-lg border";
+        preview.appendChild(video);
+      } else {
+        const img = document.createElement("img");
+        img.src = e.target.result;
+        img.alt = "Preview";
+        img.className = "h-24 w-24 object-cover rounded-lg border";
+        preview.appendChild(img);
+      }
     };
     reader.readAsDataURL(file);
   });
@@ -244,10 +256,17 @@ function setupAddPostPage() {
         const div = document.createElement("div");
         div.className = "relative";
 
-        const img = document.createElement("img");
-        img.src = e.target.result;
-        img.alt = "Preview";
-        img.className = "w-full h-32 object-cover rounded-lg";
+        let mediaElement;
+        if (file.type.startsWith("video/")) {
+          mediaElement = document.createElement("video");
+          mediaElement.src = e.target.result;
+          mediaElement.controls = true;
+        } else {
+          mediaElement = document.createElement("img");
+          mediaElement.src = e.target.result;
+          mediaElement.alt = "Preview";
+        }
+        mediaElement.className = "w-full h-32 object-cover rounded-lg";
 
         const removeBtn = document.createElement("button");
         removeBtn.type = "button";
@@ -259,7 +278,7 @@ function setupAddPostPage() {
           updateSubmitButton();
         };
 
-        div.appendChild(img);
+        div.appendChild(mediaElement);
         div.appendChild(removeBtn);
         photoPreview.appendChild(div);
       };
@@ -288,7 +307,11 @@ function setupAddPostPage() {
     formData.append("privacy", privacy);
 
     selectedFiles.forEach((file) => {
-      formData.append("photos", file);
+      if (file.type.startsWith("video/")) {
+        formData.append("videos", file);
+      } else {
+        formData.append("photos", file);
+      }
     });
 
     console.log("Submitting to API:", POST_ENDPOINTS.create());

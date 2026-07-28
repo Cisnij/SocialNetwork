@@ -310,6 +310,45 @@ class PostPhotoDelete(generics.DestroyAPIView):  # xóa ảnh (chức năng củ
         return photo
 
 
+class PostVideoDelete(generics.DestroyAPIView):  # xóa video (chức năng của sửa post)
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostVideoSerializer
+
+    def get_object(self):
+        user = self.request.user
+        video_id = self.kwargs.get('pk')
+        if not video_id:
+            raise NotFound("Cần truyền ID video để xóa.")
+        video = get_object_or_404(PostVideo.objects.select_related('post__user'), id=video_id)
+        if video.post.user != user and not (user.is_superuser or user.is_staff):
+            raise PermissionDenied("Bạn không có quyền xóa video này.")
+        return video
+
+
+class PostVideoListCreate(generics.ListCreateAPIView):  # thêm / lấy video của post
+    serializer_class = PostVideoSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        post_id = self.kwargs.get("post_id")
+        return PostVideo.objects.filter(post_id=post_id).select_related('post')
+
+    def post(self, request, *args, **kwargs):
+        post_id = self.kwargs.get('post_id')
+        post = get_object_or_404(Post.objects.select_related("user"), pk=post_id)
+        if post.user != request.user and not request.user.is_staff:
+            raise PermissionDenied()
+        videos = request.FILES.getlist('video')
+        try:
+            with transaction.atomic():
+                for video in videos:
+                    PostVideo.objects.create(post=post, video=video)
+                return Response({'message': 'success'})
+        except Exception:
+            return Response({'error': 'upload failed'}, status=500)
+
+
 class PostFriend(PagedContextMixin, generics.ListAPIView):  # List tất cả post của bạn bè
     permission_classes = [IsAuthenticated]
     serializer_class = PostSerializer
@@ -340,7 +379,7 @@ class PostFriend(PagedContextMixin, generics.ListAPIView):  # List tất cả po
                 .exclude(user_id__in=blocked_ids) #loại block
                 .exclude(user_id__in=blocking_ids)
                 .select_related("user", "user__profile",'group')
-                .prefetch_related("photos")
+                .prefetch_related("photos", "videos")
                 .order_by("-created_at")
                 .distinct()
             )
@@ -364,7 +403,7 @@ class PostModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa post
 
     def get_object(self):
         post_id = self.kwargs.get('pk')
-        post = get_object_or_404(Post.objects.select_related('user','user__profile','group').prefetch_related('photos'),post_id=post_id,group__isnull=True)
+        post = get_object_or_404(Post.objects.select_related('user','user__profile','group').prefetch_related('photos', 'videos'),post_id=post_id,group__isnull=True)
         self.check_object_permissions(self.request, post)  #  rules chạy ở đây, nó sẽ check post public hay friends và có đc xem,edit
         return post
 
@@ -388,13 +427,13 @@ class PostUser(PagedContextMixin, generics.ListAPIView):  # List tất cả post
                 raise PermissionDenied("Cannot see posts of this user")
             #là chính mình thì lấy tất cả
             if user==target_user:
-                self._qs= Post.objects.filter(user=target_user,group__isnull=True,).select_related('user','user__profile','group').prefetch_related('photos').order_by('-is_pinned','-created_at')
+                self._qs= Post.objects.filter(user=target_user,group__isnull=True,).select_related('user','user__profile','group').prefetch_related('photos', 'videos').order_by('-is_pinned','-created_at')
             # là bạn thì lấy post public và friend
             elif Friend.objects.are_friends(user,target_user):
-                self._qs= Post.objects.filter(user=target_user,privacy__in=['public','friends'],group__isnull=True).select_related('user','user__profile','group').prefetch_related('photos').order_by('-is_pinned','-created_at')
+                self._qs= Post.objects.filter(user=target_user,privacy__in=['public','friends'],group__isnull=True).select_related('user','user__profile','group').prefetch_related('photos', 'videos').order_by('-is_pinned','-created_at')
             # là người lạ thì chỉ lấy public
             else:
-                self._qs = Post.objects.filter(user=target_user,privacy='public',group__isnull=True,).select_related('user','user__profile','group').prefetch_related('photos').order_by('-is_pinned','-created_at')
+                self._qs = Post.objects.filter(user=target_user,privacy='public',group__isnull=True,).select_related('user','user__profile','group').prefetch_related('photos', 'videos').order_by('-is_pinned','-created_at')
         return self._qs
 
     def get_serializer_context(self):
@@ -429,7 +468,7 @@ class PostListAll(PagedContextMixin, generics.ListAPIView):
 
     def get_queryset(self):
         if not hasattr(self, '_qs'):
-            self._qs = Post.objects.all().select_related('user','user__profile','group').prefetch_related('photos').order_by(
+            self._qs = Post.objects.all().select_related('user','user__profile','group').prefetch_related('photos', 'videos').order_by(
                 '-created_at')
         return self._qs
 
@@ -475,7 +514,7 @@ class PostShareView(MetadataMixin, DetailView): #  có preview card cho các thi
 
     def get_object(self):
         share_code=self.kwargs.get('share_code')
-        post = get_object_or_404(Post.objects.select_related('user','user__profile').prefetch_related('photos'), share_code=share_code, group__isnull=True)
+        post = get_object_or_404(Post.objects.select_related('user','user__profile').prefetch_related('photos', 'videos'), share_code=share_code, group__isnull=True)
         # Bot của FB/Messenger/Twitter để get ra html render preview
         user_agent = self.request.META.get('HTTP_USER_AGENT', '').lower()
         is_bot = (
@@ -549,7 +588,7 @@ class PostShareDetailView(generics.RetrieveAPIView): # khi fe redirect thì load
 
     def get_object(self):
         share_code=self.kwargs.get('share_code')
-        post = get_object_or_404(Post.objects.select_related('user','user__profile','group').prefetch_related('photos'), share_code=share_code, group__isnull=True)
+        post = get_object_or_404(Post.objects.select_related('user','user__profile','group').prefetch_related('photos', 'videos'), share_code=share_code, group__isnull=True)
         self.check_object_permissions(self.request, post) #check xem post đc share thì user có đc xem
         return post
 
@@ -599,7 +638,7 @@ class AllPostShareView(PagedContextMixin, generics.ListCreateAPIView): # tất c
             )
             .exclude(Q(user_id__in=blocked_ids) | Q(user_id__in=blocking_ids))
             .select_related('user','user__profile','post','post__user', 'post__user__profile')
-            .prefetch_related('post__photos')
+            .prefetch_related('post__photos','post__videos')
             .order_by('-created_at')
         )
     def create(self, request, *args, **kwargs):
@@ -673,7 +712,7 @@ class PostUserShare(PagedContextMixin, generics.ListAPIView): #tất cả share 
             .exclude(Q(post__user_id__in=blocked_ids) | Q(post__user_id__in=blocking_ids)) #check block post gốc, xóa nếu nó share bài của ng mình block
             .filter(user=target_user, **privacy_filter) # lọc ra post share của target user theo privacy
             .select_related('user','user__profile','post__user','post', 'post__user__profile')
-            .prefetch_related('post__photos')
+            .prefetch_related('post__photos','post__videos')
             .order_by('-created_at')
         )
 
@@ -721,7 +760,7 @@ class PostFriendShare(PagedContextMixin, generics.ListAPIView): # tất cả sha
             Q(user_id__in=blocking_ids)
         )
         .select_related('user','user__profile','post__user','post', 'post__user__profile')
-        .prefetch_related('post__photos')
+        .prefetch_related('post__photos','post__videos')
         .order_by('-created_at'))
 
     def get_serializer_context(self):
@@ -2317,7 +2356,7 @@ class SearchAPIView(APIView):
                             Q(privacy='private', user=user)                    # bài mình privacy private
                         )
                         .select_related('user', 'user__profile')  # tránh N+1 khi serialize
-                        .prefetch_related('photos')               # tránh N+1 cho photos
+                        .prefetch_related('photos', 'videos')               # tránh N+1 cho photos
                     )
                     posts_dict = {str(p.post_id): p for p in posts_qs}       # dict để lookup O(1)
                     posts = [posts_dict[pid] for pid in post_ids if pid in posts_dict]
@@ -4805,9 +4844,14 @@ class CreatePostGroup(generics.CreateAPIView):
         with transaction.atomic():
             post = serializer.save(user=user, group=group, post_status=post_status)
             photos = self.request.FILES.getlist('photos')
+            videos = self.request.FILES.getlist('videos')
             if photos:
                 PostPhoto.objects.bulk_create([
                     PostPhoto(post=post, photo=photo) for photo in photos
+                ])
+            if videos:
+                PostVideo.objects.bulk_create([
+                    PostVideo(post=post, video=video) for video in videos
                 ])
 
 class PostReviewGroupList(generics.ListAPIView):
@@ -4819,7 +4863,7 @@ class PostReviewGroupList(generics.ListAPIView):
         group_id = self.kwargs.get('group_id')
         group = get_object_or_404(Group,pk=group_id)
         self.check_object_permissions(self.request,group)
-        return Post.objects.filter(group=group,post_status='pending').select_related('user','user__profile','group').prefetch_related('photos').order_by('-created_at')
+        return Post.objects.filter(group=group,post_status='pending').select_related('user','user__profile','group').prefetch_related('photos', 'videos').order_by('-created_at')
 
 class ReviewPostGroup(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrOwnerGroup]
@@ -4872,7 +4916,7 @@ class UpdatePostGroup(generics.UpdateAPIView):
     def get_object(self):
         post_id = self.kwargs.get('post_id')
         group_id = self.kwargs.get('group_id')
-        post= get_object_or_404(Post.objects.select_related('user__profile','user','group').prefetch_related('photos'), pk=post_id,group_id=group_id)
+        post= get_object_or_404(Post.objects.select_related('user__profile','user','group').prefetch_related('photos', 'videos'), pk=post_id,group_id=group_id)
         self.check_object_permissions(self.request, post)
         return post
     def perform_update(self, serializer):
@@ -4894,7 +4938,7 @@ class PostListGroup(PagedContextMixin, generics.ListAPIView):
             ordering = self.request.query_params.get('ordering', 'newest') # mặc đinh là mới newest
             sort = '-created_at' if ordering == 'newest' else 'created_at'
             self._qs = (
-                Post.objects.filter(group=group,post_status='approved').select_related('user','user__profile').prefetch_related('photos')
+                Post.objects.filter(group=group,post_status='approved').select_related('user','user__profile').prefetch_related('photos', 'videos')
                 .order_by('-is_pinned', sort)
             )
         return self._qs
@@ -4968,7 +5012,7 @@ class PostGroupDetail(generics.RetrieveAPIView):
         group = get_object_or_404(Group, pk=group_id)
         self.check_object_permissions(self.request, group)
         return get_object_or_404(
-            Post.objects.select_related('user__profile','user','group').prefetch_related('photos'),
+            Post.objects.select_related('user__profile','user','group').prefetch_related('photos', 'videos'),
             pk=post_id, group_id=group_id, post_status='approved'
         )
 
@@ -5069,7 +5113,7 @@ class SearchInGroup(APIView):
                             deleted__isnull=True
                         )
                         .select_related('user', 'user__profile')
-                        .prefetch_related('photos')
+                        .prefetch_related('photos', 'videos')
                     )
                     posts_dict = {str(p.post_id): p for p in posts_qs}
                     posts = [posts_dict[pid] for pid in post_ids if pid in posts_dict]

@@ -64,8 +64,9 @@ export function updateReactionButton(reactBtn, type, isComment = false) {
 export function createReactionBar(ctx) {
   const { targetId, reactFn, reactBtn, wrapper } = ctx;
   const bar = document.createElement("div");
+  const positionClass = ctx.isComment ? "left-0" : "left-1/2 -translate-x-1/2";
   bar.className =
-    "absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#242526] shadow-lg rounded-full px-2 py-1 flex gap-2 z-50 hidden border border-gray-200 dark:border-[#3e4042]";
+    `absolute bottom-full mb-2 ${positionClass} bg-white dark:bg-[#242526] shadow-lg rounded-full px-2 py-1 flex gap-2 z-50 hidden border border-gray-200 dark:border-[#3e4042]`;
 
   let hideTimeout;
 

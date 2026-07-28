@@ -12,10 +12,15 @@ class PostPhotoInline(admin.TabularInline):  # hoặc StackedInline để hiển
     min_num = 1  # optional: yêu cầu ít nhất 1 ảnh
     max_num = 10  # optional: giới hạn số ảnh tối đa
 
+class PostVideoInline(admin.TabularInline):
+    model = PostVideo
+    extra = 1
+    max_num = 5
+
 #========================POST=============================================
 @admin.register(Post) #sửa lại trường có thể show trong trang admin
 class PostAdmin(SafeDeleteAdmin):
-    inlines = [PostPhotoInline] #thêm trường hiển thị trong Post do khác bảng mà muốn gộp lại  
+    inlines = [PostPhotoInline, PostVideoInline] #thêm trường hiển thị trong Post do khác bảng mà muốn gộp lại  
     list_display = ('post_id', 'user', 'title', 'created_at','deleted','share_code','share_count') #trường lấy ra sẵn
     list_filter = (SafeDeleteAdminFilter,'user') #lọc theo trạng thái xóa mềm và user
     list_select_related = ['user']# Join giảm thgian load trang thqua query, tự select related với chính model instance này là post
@@ -139,16 +144,39 @@ class PostPhotoAdmin(SafeDeleteAdmin):
 
     @admin.action(description="♻️ Khôi phục (undelete) ảnh đã xóa mềm")
     def undelete_selected(self, request, queryset):
-        restored = queryset.undelete()
-        self.message_user(request, f"✅ Đã khôi phục {restored} ảnh.")
+        for obj in queryset:
+            obj.undelete()
+        self.message_user(request, f"Đã khôi phục {queryset.count()} ảnh.")
 
-    @admin.action(description="💀 Xóa cứng (hard delete) khỏi DB")
+    @admin.action(description="❌ Xóa vĩnh viễn (hard delete)")
     def hard_delete_selected(self, request, queryset):
         count = queryset.count()
         for obj in queryset:
             obj.delete(force_policy=HARD_DELETE)
-        self.message_user(request, f"⚠️ Đã xóa cứng {count} ảnh.")
-    
+        self.message_user(request, f"Đã xóa vĩnh viễn {count} ảnh.")
+
+#===========================POST VIDEO============================================
+@admin.register(PostVideo)
+class PostVideoAdmin(SafeDeleteAdmin):
+    list_display = ('id', 'post', 'video', 'deleted')
+    search_fields = ('post__title',)
+    list_filter = (SafeDeleteAdminFilter,)
+    list_select_related = ['post']
+    actions = ['undelete_selected', 'hard_delete_selected']
+
+    @admin.action(description="♻️ Khôi phục (undelete) video đã xóa mềm")
+    def undelete_selected(self, request, queryset):
+        for obj in queryset:
+            obj.undelete()
+        self.message_user(request, f"Đã khôi phục {queryset.count()} video.")
+
+    @admin.action(description="❌ Xóa vĩnh viễn (hard delete)")
+    def hard_delete_selected(self, request, queryset):
+        count = queryset.count()
+        for obj in queryset:
+            obj.delete(force_policy=HARD_DELETE)
+        self.message_user(request, f"Đã xóa vĩnh viễn {count} video.")
+
 admin.site.register([ConversationMember,Message,MessageAttachment,FCMToken,Notification,SearchHistory,PostShare, Report, SupportTicket,Task,Vote,VoteOption,UserVote,VideoRoom,CallParticipant,Event,EventParticipant,Group,GroupJoinRequest,GroupMember,GroupRole,GroupDepartment,GroupSuggestion])
 
 @admin.register(Conversation)

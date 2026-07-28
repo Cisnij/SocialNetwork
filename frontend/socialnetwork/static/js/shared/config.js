@@ -31,6 +31,9 @@ export const POST_ENDPOINTS = {
   deletePhoto: (photoId) =>
     `${API_BASE_URL}/api/user/delete-photo/${photoId}/`,
   addPhoto: (postId) => `${API_BASE_URL}/api/user/post-photo/${postId}/`,
+  deleteVideo: (videoId) =>
+    `${API_BASE_URL}/api/user/delete-video/${videoId}/`,
+  addVideo: (postId) => `${API_BASE_URL}/api/user/post-video/${postId}/`,
   create: () => `${API_BASE_URL}/api/user/post/create/v2/`,
 };
 
