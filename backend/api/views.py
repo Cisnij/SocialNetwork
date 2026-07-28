@@ -3820,6 +3820,7 @@ class ToggleRecordVideoRoomView(AsyncAPIView):
     throttle_scope = 'create_call'
 
     async def post(self, request, conv_id):
+        #check quyền
         conv = await Conversation.objects.filter(id=conv_id).afirst()
         if not conv or not conv.is_group:
             return Response({"detail": "Chỉ có thể ghi hình trong cuộc gọi nhóm."}, status=400)
@@ -3836,11 +3837,12 @@ class ToggleRecordVideoRoomView(AsyncAPIView):
         if not room:
             return Response({"detail": "Không có cuộc gọi nào đang diễn ra."}, status=400)
 
+        #lấy action,mặc dịnh là start
         action = request.data.get('action', 'start')  # 'start' hoặc 'stop'
         channel_layer = get_channel_layer()
 
-        if action == 'start':
-            room.egress_id = f"client-recording-{request.user.id}"
+        if action == 'start': # nếu là start thì broadcast qua để user biết đang quay
+            room.egress_id = f"client-recording-{request.user.id}" # đánh dấu cờ là room đã được quay bởi ai
             await room.asave(update_fields=['egress_id'])
             await channel_layer.group_send(
                 f'call_{conv_id}',
@@ -3901,7 +3903,7 @@ class UploadGroupCallRecordingView(AsyncAPIView):
         msg = await Message.objects.acreate(
             conversation_id=conv_id,
             sender=request.user,
-            content="📹 Bản ghi cuộc gọi nhóm",
+            content="Bản ghi cuộc gọi nhóm",
             message_type='video'
         )
         attachment = await MessageAttachment.objects.acreate(
