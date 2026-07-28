@@ -1,0 +1,1303 @@
+================================================================================
+			USE CASE DOCUMENTATION: GROUP MODULE
+			SocialNetwork Project
+================================================================================
+
+Danh sách tất cả API của GROUP được định nghĩa trong backend/backend/urls.py
+(dòng 216-274) dựa trên class views trong backend/api/views.py
+
+================================================================================
+I. TỔNG QUAN USE CASE - GROUP
+================================================================================
+
+GROUP là module quản lý nhóm trong mạng xã hội. Hỗ trợ:
+	- Quản lý Group (CRUD)
+	- Quản lý thành viên (mời, kick, rời nhóm, phân quyền)
+	- Hệ thống Department/Role (chỉ group công ty)
+	- Quản lý bài viết (đăng, duyệt, ghim, tìm kiếm, ảnh)
+	- Bình chọn (Vote)
+	- Sự kiện (Event)
+	- Góp ý (Suggestion)
+	- Thông báo nổi bật (MakeNotification)
+
+Phân quyền Group (3 cấp):
+	- owner: chủ sở hữu (quyền cao nhất)
+	- admin: quản trị viên (được owner bổ nhiệm)
+	- member: thành viên thường
+
+================================================================================
+II. DANH SÁCH ĐẦY ĐỦ API GROUP (theo thứ tự urls.py)
+================================================================================
+
+A. GROUP CRUD (Quản lý Group)
+--------------------------------------------------------------------
+
+1. POST   /api/group/create/							→ CreateGroup
+2. GET    /api/group/<group_id>/detail/					→ GroupDetailView
+3. PATCH  /api/group/<group_id>/update/					→ UpdateGroup
+4. DELETE /api/group/<group_id>/delete/					→ DeleteGroup
+5. GET    /api/group/user/group/						→ ListGroupUser
+6. GET    /api/group/explore/							→ ListGroupSuggestion
+
+B. QUẢN LÝ THÀNH VIÊN
+--------------------------------------------------------------------
+
+7. GET    /api/group/<group_id>/user-list/				→ ListUserGroup
+8. POST   /api/group/<group_id>/send-request/			→ SendJoinRequestGroup
+9. POST   /api/group/<group_id>/cancel-request/			→ CancelJoinRequestGroup
+10. GET   /api/group/my-requests/						→ MyJoinRequestList
+11. GET   /api/group/<group_id>/all-request/			→ AllJoinRequest
+12. POST  /api/group/<group_id>/request/<request_id>/accept/	→ AcceptJoinRequest
+13. POST  /api/group/<group_id>/request/<request_id>/reject/	→ RejectJoinRequest
+14. POST  /api/group/<group_id>/user/<user_id>/kick/	→ KickMemberGroup
+15. POST  /api/group/<group_id>/user/<user_id>/delete-all-posts/	→ DeleteALlPostMemberGroup
+16. POST  /api/group/<group_id>/user/<user_id>/add-admin/	→ AddAdminGroup
+17. POST  /api/group/<group_id>/user/<user_id>/remove-admin/	→ RemoveAdminGroup
+18. POST  /api/group/<group_id>/leave/					→ LeaveGroup
+
+C. DEPARTMENT & ROLE (Chỉ group có is_company=True)
+--------------------------------------------------------------------
+
+19. POST  /api/group/<group_id>/department-add/			→ AddDepartmentGroup
+20. PATCH /api/group/<group_id>/department/<department_id>/	→ UpdateDepartmentGroup
+21. GET   /api/group/<group_id>/department-list/		→ ListDepartmentGroup
+22. POST  /api/group/<group_id>/department/<department_id>/add-role/	→ AddRoleGroup
+23. PATCH /api/group/<group_id>/role/<role_id>/			→ UpdateRoleGroup
+24. GET   /api/group/<group_id>/department/<department_id>/role/	→ ListRoleGroup
+25. POST  /api/group/<group_id>/user/<user_id>/add-role/	→ AddMemberIntoJobRole
+26. GET   /api/group/<group_id>/department/<department_id>/user-list/	→ ListUserDepartmentGroup
+27. GET   /api/group/<group_id>/department/<department_id>/role/<role_id>/user-list/	→ ListUserRoleGroup
+
+D. QUẢN LÝ BÀI VIẾT GROUP
+--------------------------------------------------------------------
+
+28. POST  /api/group/<group_id>/create-post/			→ CreatePostGroup
+29. DELETE /api/group/<group_id>/post/<post_id>/delete/	→ DeletePostGroup
+30. PATCH /api/group/<group_id>/post/<post_id>/update/	→ UpdatePostGroup
+31. GET   /api/group/<group_id>/post/list/				→ PostListGroup
+32. POST  /api/group/<group_id>/post/<post_id>/pin/		→ PinPostGroup
+33. GET   /api/group/<group_id>/post-user/				→ PostUserGroup
+34. GET   /api/group/<group_id>/post/<post_id>/detail/	→ PostGroupDetail
+35. GET   /api/group/<group_id>/review-post/list/		→ PostReviewGroupList
+36. POST  /api/group/<group_id>/post/<post_id>/review/	→ ReviewPostGroup
+37. POST  /api/group/<group_id>/post/<post_id>/highlight/	→ MakeNotification
+38. GET   /api/group/<group_id>/search/					→ SearchInGroup
+39. GET   /api/group/<group_id>/photos/					→ PhotoInGroup
+40. GET   /api/group/<group_id>/admin-list/				→ AdminGroup
+
+E. BÌNH CHỌN (VOTE)
+--------------------------------------------------------------------
+
+41. POST  /api/group/<group_id>/create-vote/			→ CreateVoteGroup
+42. DELETE /api/group/<group_id>/vote/<vote_id>/delete/	→ DeleteVoteGroup
+43. POST  /api/group/<group_id>/vote/<vote_id>/option/<vote_option_id>/vote/	→ UserVoteGroup
+44. PATCH /api/group/<group_id>/vote/<vote_id>/update/	→ UpdateVoteGroup
+45. POST  /api/group/<group_id>/vote/<vote_id>/add-options/	→ AddOptionVoteGroup
+46. PATCH /api/group/<group_id>/vote/<vote_id>/option/<option_id>/update/	→ UpdateOptionVoteGroup
+47. DELETE /api/group/<group_id>/vote/<vote_id>/option/<option_id>/delete/	→ DeleteOptionVoteGroup
+48. GET   /api/group/<group_id>/list-vote/				→ ListVoteGroup
+49. GET   /api/group/<group_id>/vote/<vote_id>/option/<option_id>/user-list/	→ ListUserVoteGroup
+50. GET   /api/group/<group_id>/vote/<vote_id>/detail/	→ DetailVoteGroup
+
+F. SỰ KIỆN (EVENT)
+--------------------------------------------------------------------
+
+51. GET/POST /api/group/<group_id>/event/				→ ListCreateEventGroup
+52. GET/DEL/PATCH /api/group/<group_id>/event/<event_id>/	→ EventDetailGroup
+53. PATCH /api/group/<group_id>/event/<event_id>/update-status/	→ EventResponseGroup
+54. GET   /api/group/<group_id>/event/<event_id>/participants/	→ EventParticipantGroup
+
+G. GÓP Ý (SUGGESTION)
+--------------------------------------------------------------------
+
+55. POST  /api/group/<group_id>/create-suggestion/		→ CreateSuggestionGroup
+56. GET   /api/group/<group_id>/list-suggestion/		→ ListSuggestionGroup
+
+================================================================================
+III. USE CASE & SEQUENCE / ACTIVITY DIAGRAM (DẠNG TEXT)
+================================================================================
+
+-----[USE CASE A] QUẢN LÝ GROUP (CRUD)------------------------------------------
+
+Chức năng:
+	- Tạo group mới
+	- Xem chi tiết group (kèm member_count, is_member, is_pending, my_membership)
+	- Cập nhật thông tin group
+	- Xóa group (chỉ owner)
+	- Liệt kê group của tôi
+	- Khám phá group (gợi ý group chưa tham gia)
+
+--- A.1 TẠO GROUP (CreateGroup) ---
+
+Use case: Người dùng tạo một nhóm mới.
+Actor: User (đã xác thực)
+Điều kiện: User đã đăng nhập, chưa vượt quá throttle.
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Tạo Group" -> Form hiện ra
+	User -> Frontend: Điền tên, mô tả, ảnh bìa, loại (công ty/cá nhân), privacy
+	Frontend -> Backend: POST /api/group/create/ (gửi JSON/form-data kèm token)
+	Backend -> Permission: Kiểm tra IsAuthenticated -> Pass
+	Backend -> Throttle: Kiểm tra ScopedRateThrottle('create_group') -> Pass
+	Backend -> Database (transaction.atomic):
+		1. serializer.save(created_by=request.user) -> Tạo Group
+		2. GroupMember.objects.create(group=instance, user=request.user, role='owner')
+		   -> Gán user làm owner
+	Backend -> Frontend: Trả về serialized data (201 Created)
+	Frontend -> User: Hiển thị group mới, chuyển hướng về trang group
+
+--- A.2 XEM CHI TIẾT GROUP (GroupDetailView) ---
+
+Use case: Xem thông tin chi tiết của một group.
+Actor: User (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm vào group
+	Frontend -> Backend: GET /api/group/<group_id>/detail/ (kèm token)
+	Backend -> Database:
+		- Lấy Group theo group_id
+		- Annotate: member_count (số thành viên active)
+		- Annotate: is_member (user có là thành viên active không)
+		- Annotate: is_pending (user có request đang pending không)
+		- Prefetch my_membership: GroupMember của user kèm job_role, department
+		- select_related created_by__profile
+	Backend -> Frontend: Trả về GroupSerializer data
+	Frontend -> User: Hiển thị thông tin group
+
+--- A.3 CẬP NHẬT GROUP (UpdateGroup) ---
+
+Use case: Chỉnh sửa thông tin group (chỉ admin/owner).
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Chỉnh sửa" -> Form hiện ra với dữ liệu cũ
+	User -> Frontend: Sửa tên, mô tả, privacy, is_company,...
+	Frontend -> Backend: PATCH /api/group/<group_id>/update/ (kèm token)
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Permission: IsAdminOrOwnerGroup -> Kiểm tra user có role owner/admin -> Pass
+	Backend -> Database (transaction.atomic):
+		1. Lấy group cũ, lưu old_is_company
+		2. serializer.save() -> Cập nhật group
+		3. Nếu old_is_company=True và new_is_company=False (bỏ chế độ công ty):
+		   - Xóa tất cả GroupRole của group
+		   - Xóa tất cả GroupDepartment của group
+	Backend -> Frontend: Trả về serialized data (200 OK)
+	Frontend -> User: Hiển thị thông tin đã cập nhật
+
+--- A.4 XÓA GROUP (DeleteGroup) ---
+
+Use case: Xóa group vĩnh viễn (chỉ owner).
+Actor: Owner (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Xóa Group" -> Xác nhận
+	Frontend -> Backend: DELETE /api/group/<group_id>/delete/ (kèm token)
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Permission: IsOwnerOnlyGroup -> Kiểm tra user có role='owner' -> Pass
+	Backend -> Database: group.delete() (xóa cascade toàn bộ dữ liệu liên quan)
+	Backend -> Frontend: 204 No Content
+	Frontend -> User: Chuyển về trang danh sách group, thông báo xóa thành công
+
+--- A.5 DANH SÁCH GROUP CỦA TÔI (ListGroupUser) ---
+
+Use case: Xem tất cả group mà user đang là thành viên.
+Actor: User (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào trang "Group của tôi"
+	Frontend -> Backend: GET /api/group/user/group/ (kèm token, có thể ?search=...)
+	Backend -> Database:
+		- Lọc Group có members__user=user, members__is_active=True
+		- Annotate: member_count, is_member, is_pending
+		- select_related created_by__profile
+		- Prefetch my_membership (của user hiện tại)
+	Backend -> Frontend: Trả về list GroupSerializer (200 OK)
+	Frontend -> User: Hiển thị danh sách group
+
+--- A.6 KHÁM PHÁ GROUP (ListGroupSuggestion) ---
+
+Use case: Xem danh sách group gợi ý mà user chưa tham gia.
+Actor: User (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào trang "Khám phá Group"
+	Frontend -> Backend: GET /api/group/explore/ (kèm token, có thể ?search=...)
+	Backend -> Database:
+		- Lấy tất cả Group, annotate: member_count, is_member, is_pending
+		- Chỉ lấy .filter(is_member=False) -> group chưa tham gia
+	Backend -> Frontend: Trả về list GroupSerializer (200 OK)
+	Frontend -> User: Hiển thị danh sách group gợi ý
+
+-----[USE CASE B] QUẢN LÝ THÀNH VIÊN GROUP---------------------------------------
+
+Chức năng:
+	- Xem danh sách thành viên
+	- Gửi yêu cầu tham gia
+	- Hủy yêu cầu tham gia
+	- Xem yêu cầu của tôi
+	- Xem tất cả yêu cầu (admin/owner)
+	- Chấp nhận/Từ chối yêu cầu (admin/owner)
+	- Kick thành viên (admin/owner)
+	- Xóa toàn bộ bài viết của thành viên (admin/owner)
+	- Thêm/Xóa admin (chỉ owner)
+	- Rời group
+
+--- B.1 XEM DANH SÁCH THÀNH VIÊN (ListUserGroup) ---
+
+Use case: Xem tất cả thành viên active trong group.
+Actor: Thành viên của group (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào tab "Thành viên"
+	Frontend -> Backend: GET /api/group/<group_id>/user-list/ (kèm token, ?search=..., ?exclude_role=...)
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Kiểm tra: user có is_member permission không? Nếu không -> 403
+	Backend -> Database:
+		- Lấy GroupMember.filter(group=group, is_active=True)
+		- select_related: user__profile, job_role, job_role__department
+		- Nếu có exclude_role: loại bỏ member có role_id=exclude_role
+	Backend -> Frontend: Trả về list GroupMemberSerializer (200 OK, phân trang)
+	Frontend -> User: Hiển thị danh sách thành viên
+
+--- B.2 GỬI YÊU CẦU THAM GIA (SendJoinRequestGroup) ---
+
+Use case: User gửi yêu cầu tham gia group.
+Actor: User (đã xác thực, chưa là thành viên)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Tham gia Group"
+	Frontend -> Backend: POST /api/group/<group_id>/send-request/ (kèm token)
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Database:
+		1. Kiểm tra user đã là member chưa? Nếu rồi -> 400 "Bạn đã là thành viên"
+		2. Kiểm tra đã có request pending chưa? Nếu có -> 400 "Đã gửi yêu cầu rồi"
+		3. update_or_create: tạo mới hoặc cập nhật request về pending
+	Backend -> Frontend: 201 Created / 200 OK (thông báo)
+	Frontend -> User: Hiển thị "Đã gửi yêu cầu tham gia"
+
+Activity diagram (text):
+	[Bắt đầu] -> Bấm "Tham gia Group" -> Gửi request -> Backend kiểm tra:
+		- Đã là member? -> TRUE -> Báo lỗi
+		- Đã có request pending? -> TRUE -> Báo lỗi
+		- FALSE -> Tạo/Update GroupJoinRequest(pending) -> Thành công
+	-> Frontend hiển thị thông báo -> [Kết thúc]
+
+--- B.3 HỦY YÊU CẦU THAM GIA (CancelJoinRequestGroup) ---
+
+Use case: User hủy yêu cầu tham gia đang pending.
+Actor: User (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Hủy yêu cầu"
+	Frontend -> Backend: POST /api/group/<group_id>/cancel-request/ (kèm token)
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Database: DELETE GroupJoinRequest (group_id, user, status='pending')
+		Nếu không tìm thấy -> 400 "Không tìm thấy yêu cầu"
+	Backend -> Frontend: 200 OK (thông báo)
+	Frontend -> User: Cập nhật UI, hiển thị nút "Tham gia"
+
+--- B.4 DANH SÁCH YÊU CẦU CỦA TÔI (MyJoinRequestList) ---
+
+Use case: User xem các yêu cầu tham gia group đang pending của mình.
+Actor: User (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào "Yêu cầu của tôi"
+	Frontend -> Backend: GET /api/group/my-requests/ (kèm token, ?search=...)
+	Backend -> Database: Lọc GroupJoinRequest(user=user, status='pending'), select_related group, reviewed_by__profile
+	Backend -> Frontend: Trả về list (200 OK, phân trang)
+	Frontend -> User: Hiển thị danh sách yêu cầu
+
+--- B.5 XEM TẤT CẢ YÊU CẦU (AllJoinRequest) ---
+
+Use case: Admin/owner xem tất cả yêu cầu tham gia group.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào tab "Yêu cầu tham gia"
+	Frontend -> Backend: GET /api/group/<group_id>/all-request/ (kèm token, ?search=...)
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Permission: IsAdminOrOwnerGroup -> Kiểm tra quyền -> Pass
+	Backend -> Database: Lọc GroupJoinRequest(group=group), select_related user__profile, reviewed_by__profile
+	Backend -> Frontend: Trả về list (200 OK, phân trang)
+	Frontend -> User: Hiển thị danh sách yêu cầu kèm nút Accept/Reject
+
+--- B.6 CHẤP NHẬN YÊU CẦU (AcceptJoinRequest) ---
+
+Use case: Admin/Owner chấp nhận yêu cầu tham gia của user.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Chấp nhận"
+	Frontend -> Backend: POST /api/group/<group_id>/request/<request_id>/accept/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Database (transaction.atomic):
+		1. Lock row: select_for_update() request (tránh race condition)
+		2. Cập nhật request: status='accepted', reviewed_by=admin, reviewed_at=now
+		3. update_or_create GroupMember: group=group, user=user, role='member', is_active=True
+	Backend -> Signal: accept_join_request_group.send() -> Thông báo cho user được chấp nhận
+	Backend -> Frontend: 200 OK
+	Frontend -> User: Cập nhật UI, thông báo thành công
+
+Activity diagram (text):
+	[Bắt đầu] -> Admin/Owner bấm "Chấp nhận" -> Backend kiểm tra quyền:
+		- Không phải admin/owner? -> 403 Forbidden
+		- OK -> Transaction bắt đầu:
+			SELECT ... FOR UPDATE (lock request)
+			UPDATE request SET status='accepted'
+			UPDATE OR INSERT GroupMember (user, role='member', is_active=True)
+			-> Commit
+		-> Gửi signal thông báo cho user
+		-> Frontend cập nhật UI -> [Kết thúc]
+
+--- B.7 TỪ CHỐI YÊU CẦU (RejectJoinRequest) ---
+
+Use case: Admin/Owner từ chối yêu cầu tham gia.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Từ chối"
+	Frontend -> Backend: POST /api/group/<group_id>/request/<request_id>/reject/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Database:
+		- Lấy request, set status='rejected', reviewed_by=admin, reviewed_at=now
+		- save()
+	Backend -> Frontend: 200 OK
+	Frontend -> User: Cập nhật UI
+
+--- B.8 KICK THÀNH VIÊN (KickMemberGroup) ---
+
+Use case: Admin/Owner đuổi thành viên khỏi group.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Kick" (xác nhận)
+	Frontend -> Backend: POST /api/group/<group_id>/user/<user_id>/kick/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Database:
+		- Lấy GroupMember(group=group, user_id=user_id, is_active=True)
+		- Nếu role='owner' -> 403 "Không thể kick owner"
+		- Set is_active=False, save()
+	Backend -> Frontend: 200 OK
+	Frontend -> User: Cập nhật danh sách thành viên
+
+--- B.9 XÓA TOÀN BỘ BÀI VIẾT CỦA THÀNH VIÊN (DeleteALlPostMemberGroup) ---
+
+Use case: Admin/Owner xóa tất cả bài viết và comment của thành viên trong group.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Xóa tất cả bài viết"
+	Frontend -> Backend: POST /api/group/<group_id>/user/<user_id>/delete-all-posts/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Database:
+		- Post.objects.filter(group=group, user_id=user_id).delete()
+		- Comment.objects.filter(post__group=group, user_id=user_id).delete()
+	Backend -> Frontend: 200 OK
+	Frontend -> User: Thông báo thành công
+
+--- B.10 THÊM ADMIN (AddAdminGroup) ---
+
+Use case: Owner thêm một member lên làm admin.
+Actor: Chỉ Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Owner) -> Frontend: Chọn thành viên -> Bấm "Thêm admin"
+	Frontend -> Backend: POST /api/group/<group_id>/user/<user_id>/add-admin/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsOwnerOnlyGroup -> Pass
+	Backend -> Database:
+		- Lấy GroupMember, nếu đã là admin -> 400 "Đã là admin"
+		- Nếu là owner -> 400 "Không thể hạ cấp owner"
+		- Set role='admin', save()
+	Backend -> Signal: add_admin_group.send() -> Thông báo cho người được thêm admin
+	Backend -> Frontend: 200 OK
+	Frontend -> User: Cập nhật danh sách
+
+--- B.11 XÓA ADMIN (RemoveAdminGroup) ---
+
+Use case: Owner hạ admin xuống member.
+Actor: Chỉ Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Owner) -> Frontend: Chọn admin -> Bấm "Hủy admin"
+	Frontend -> Backend: POST /api/group/<group_id>/user/<user_id>/remove-admin/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsOwnerOnlyGroup -> Pass
+	Backend -> Database:
+		- Lấy GroupMember, nếu không phải admin -> 400
+		- Nếu là owner -> 403 "Không thể hạ cấp owner"
+		- Set role='member', save()
+	Backend -> Frontend: 200 OK
+	Frontend -> User: Cập nhật UI
+
+--- B.12 RỜI GROUP (LeaveGroup) ---
+
+Use case: Thành viên rời khỏi group.
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Rời Group" -> Xác nhận
+	Frontend -> Backend: POST /api/group/<group_id>/leave/ (kèm token)
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Database (transaction.atomic):
+		- Lấy GroupMember của user
+		- Nếu role='owner':
+			a. Yêu cầu next_owner_id trong request body
+			b. Tìm GroupMember của người kế nhiệm
+			c. Kiểm tra role của người kế nhiệm phải là 'admin'
+			d. Chuyển role='owner' cho người kế nhiệm
+			e. Signal: owner_transfer_group.send()
+		- Set is_active=False, role='member' -> save()
+	Backend -> Frontend: 200 OK
+	Frontend -> User: Chuyển hướng ra khỏi group
+
+Activity diagram (text - Luồng Owner rời group):
+	[Bắt đầu] -> Owner bấm "Rời Group" -> Form nhập next_owner_id (admin kế nhiệm)
+	-> Frontend gửi next_owner_id -> Backend kiểm tra:
+		- next_owner_id có tồn tại? -> FALSE -> Báo lỗi "Cần chuyển nhượng owner"
+		- next_owner có role='admin'? -> FALSE -> "Chỉ admin mới được nhận quyền owner"
+		- Đã là owner? -> TRUE -> "User này đã là owner"
+		-> OK: Chuyển role cho next_owner -> Gửi signal thông báo
+		-> Set is_active=False cho owner cũ -> [Kết thúc]
+
+-----[USE CASE C] DEPARTMENT & ROLE (CHỈ GROUP CÔNG TY)-------------------------
+
+Chức năng:
+	- Thêm phòng ban (Department)
+	- Sửa/Xóa phòng ban
+	- Danh sách phòng ban
+	- Thêm chức vụ (Role) vào phòng ban
+	- Sửa/Xóa chức vụ
+	- Danh sách chức vụ trong phòng ban
+	- Thêm thành viên vào chức vụ
+	- Danh sách user trong phòng ban
+	- Danh sách user trong chức vụ
+
+--- C.1 THÊM PHÒNG BAN (AddDepartmentGroup) ---
+
+Use case: Admin/Owner thêm phòng ban mới cho group công ty.
+Actor: Admin/Owner (đã xác thực)
+Điều kiện: group.is_company=True
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Vào tab "Phòng ban" -> Bấm "Thêm phòng ban" -> Form
+	User -> Frontend: Điền tên phòng ban
+	Frontend -> Backend: POST /api/group/<group_id>/department-add/ (kèm token, data: {name, description, ...})
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Kiểm tra: Nếu !group.is_company -> 400 "Chỉ group công ty mới có phòng ban"
+	Backend -> Database: serializer.save(group=group)
+	Backend -> Frontend: 201 Created
+	Frontend -> User: Hiển thị phòng ban mới
+
+--- C.2 SỬA/XÓA PHÒNG BAN (UpdateDepartmentGroup) ---
+
+Use case: Admin/Owner sửa thông tin hoặc xóa phòng ban.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Sửa" hoặc "Xóa" phòng ban
+	Frontend -> Backend: PATCH/DELETE /api/group/<group_id>/department/<department_id>/
+	Backend -> Permission: IsAuthenticated
+	Backend -> Kiểm tra: Có phải admin/owner không? (tự kiểm trong get_object)
+		Nếu không -> 403
+	Backend -> Database: Lấy Department, update/delete
+	Backend -> Frontend: 200 OK / 204 No Content
+	Frontend -> User: Cập nhật UI
+
+--- C.3 DANH SÁCH PHÒNG BAN (ListDepartmentGroup) ---
+
+Use case: Thành viên xem danh sách phòng ban của group.
+Actor: Thành viên group (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào tab "Phòng ban"
+	Frontend -> Backend: GET /api/group/<group_id>/department-list/ (kèm token, ?search=...)
+	Backend -> Kiểm tra: User có trong group không? Nếu không -> 403
+	Backend -> Database:
+		- Lấy tất cả GroupDepartment của group
+		- Prefetch department_roles
+		- Tính department_member_counts (đếm số member theo department_id)
+		- Tính role_member_counts (đếm số member theo role_id)
+	Backend -> Frontend: Trả về list GroupDepartmentSerializer kèm counts (200 OK)
+	Frontend -> User: Hiển thị cây thư mục: Department -> Role -> Member
+
+--- C.4 THÊM CHỨC VỤ VÀO PHÒNG BAN (AddRoleGroup) ---
+
+Use case: Admin/Owner thêm chức vụ vào phòng ban.
+Actor: Admin/Owner (đã xác thực)
+Điều kiện: group.is_company=True
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Thêm chức vụ" -> Form
+	User -> Frontend: Điền tên chức vụ, chọn department_id
+	Frontend -> Backend: POST /api/group/<group_id>/department/<department_id>/add-role/ (kèm token, data: {name, department_id, ...})
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Kiểm tra:
+		- Nếu !group.is_company -> 400 "Chỉ group công ty mới có thể thêm chức vụ"
+		- Nếu department không thuộc group -> 400 "Phòng ban không thuộc group này"
+	Backend -> Database: serializer.save(group=group, department_id=department_id)
+	Backend -> Frontend: 201 Created
+	Frontend -> User: Hiển thị chức vụ mới trong department
+
+--- C.5 SỬA/XÓA CHỨC VỤ (UpdateRoleGroup) ---
+
+Use case: Admin/Owner sửa thông tin hoặc xóa chức vụ.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Sửa/Xóa" chức vụ
+	Frontend -> Backend: PATCH/DELETE /api/group/<group_id>/role/<role_id>/
+	Backend -> Permission: IsAuthenticated
+	Backend -> get_object:
+		- Kiểm tra admin/owner (nếu không -> 403)
+		- Annotate member_count (số member có role này)
+		- Lấy GroupRole(id=role_id, group_id=group_id)
+	Backend -> Database: Update/Delete role
+	Backend -> Frontend: 200 OK / 204 No Content
+
+--- C.6 DANH SÁCH CHỨC VỤ TRONG PHÒNG BAN (ListRoleGroup) ---
+
+Use case: Thành viên xem danh sách chức vụ trong phòng ban.
+Actor: Thành viên group (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm vào phòng ban -> Xem chức vụ
+	Frontend -> Backend: GET /api/group/<group_id>/department/<department_id>/role/ (kèm token)
+	Backend -> Kiểm tra: User có trong group không? Nếu không -> 403
+	Backend -> Database:
+		- Lấy GroupRole.filter(group_id=group_id)
+		- Nếu có department_id: lọc thêm department_id
+		- Tính role_member_counts
+	Backend -> Frontend: Trả về list GroupRoleSerializer (200 OK, phân trang)
+	Frontend -> User: Hiển thị danh sách chức vụ
+
+--- C.7 THÊM THÀNH VIÊN VÀO CHỨC VỤ (AddMemberIntoJobRole) ---
+
+Use case: Admin/Owner gán thành viên vào một chức vụ trong phòng ban.
+Actor: Admin/Owner (đã xác thực)
+Điều kiện: group.is_company=True
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Chọn thành viên -> Chọn chức vụ
+	Frontend -> Backend: POST /api/group/<group_id>/user/<user_id>/add-role/ (kèm token, data: {role_id})
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Kiểm tra:
+		- !group.is_company -> 403 "Group phải là công ty"
+		- Role không thuộc group -> 400 "Chức vụ không thuộc group"
+		- Không phải admin/owner -> 403 "Chỉ admin/owner mới được thực hiện"
+		- User không trong group -> 403 "User không có trong group"
+	Backend -> Database: member.update(job_role_id=role_id)
+	Backend -> Frontend: 200 OK
+	Frontend -> User: Cập nhật UI
+
+--- C.8 DANH SÁCH USER TRONG PHÒNG BAN (ListUserDepartmentGroup) ---
+
+Use case: Thành viên xem danh sách user trong phòng ban.
+Actor: Thành viên group (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm vào phòng ban -> Xem thành viên
+	Frontend -> Backend: GET /api/group/<group_id>/department/<department_id>/user-list/ (kèm token)
+	Backend -> Kiểm tra: User có trong group không? Nếu không -> 403
+	Backend -> Database:
+		- Lấy member_ids: GroupMember.filter(group=group, job_role__department_id=department_id, is_active=True)
+		- Lấy Profile.filter(user_id__in=member_ids)
+	Backend -> Frontend: Trả về list ProfileSerializer (200 OK, phân trang, kèm online_set)
+	Frontend -> User: Hiển thị danh sách user
+
+--- C.9 DANH SÁCH USER TRONG CHỨC VỤ (ListUserRoleGroup) ---
+
+Use case: Thành viên xem danh sách user trong một chức vụ cụ thể.
+Actor: Thành viên group (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm vào chức vụ -> Xem thành viên
+	Frontend -> Backend: GET /api/group/<group_id>/department/<department_id>/role/<role_id>/user-list/
+	Backend -> Kiểm tra: User có trong group không? Nếu không -> 403
+	Backend -> Database:
+		- Lấy member_ids: filter(group, job_role__department_id, job_role_id=role_id, is_active=True)
+		- Lấy Profile.filter(user_id__in=member_ids)
+	Backend -> Frontend: Trả về list ProfileSerializer (200 OK, phân trang, online_set)
+	Frontend -> User: Hiển thị danh sách user
+
+-----[USE CASE D] QUẢN LÝ BÀI VIẾT GROUP-----------------------------------------
+
+Chức năng:
+	- Đăng bài viết (có kèm ảnh)
+	- Sửa bài viết
+	- Xóa bài viết
+	- Xem danh sách bài viết (có ghim, sắp xếp)
+	- Ghim/Bỏ ghim bài viết
+	- Xem bài viết của tôi trong group
+	- Xem chi tiết bài viết
+	- Duyệt bài viết (chế độ review cho member)
+	- Tìm kiếm trong group (bài viết và thành viên)
+	- Xem ảnh trong group
+	- Danh sách admin
+	- Thông báo nổi bật
+
+--- D.1 ĐĂNG BÀI VIẾT (CreatePostGroup) ---
+
+Use case: Thành viên đăng bài viết trong group.
+Actor: Thành viên của group (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Đăng bài" -> Form
+	User -> Frontend: Nhập nội dung, chọn ảnh (nếu có)
+	Frontend -> Backend: POST /api/group/<group_id>/create-post/ (kèm token, multipart/form-data)
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Database:
+		- Lấy Group, lấy GroupMember của user
+		- Nếu role='owner' hoặc 'admin' -> post_status='approved'
+		- Nếu role='member' -> post_status='pending' (cần duyệt)
+		- serializer.save(user=user, group=group, post_status=post_status)
+		- Nếu có photos: bulk_create PostPhoto
+	Backend -> Frontend: 201 Created
+	Frontend -> User: Hiển thị bài viết (nếu approved) hoặc chờ duyệt
+
+Activity diagram (text):
+	[Bắt đầu] -> User đăng bài -> Backend kiểm tra quyền:
+		- Là Owner/Admin? -> post_status='approved' -> Hiển thị ngay
+		- Là Member? -> post_status='pending' -> Gửi vào danh sách duyệt
+	-> Có ảnh? -> Lưu PostPhoto -> [Kết thúc]
+
+--- D.2 XÓA BÀI VIẾT (DeletePostGroup) ---
+
+Use case: Xóa bài viết trong group.
+Actor: Owner bài viết / Admin / Owner group (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Xóa" bài viết -> Xác nhận
+	Frontend -> Backend: DELETE /api/group/<group_id>/post/<post_id>/delete/ (kèm token)
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Permission:
+		- Kiểm tra request.user.has_perm('group.delete_post', post)
+		- permission này cho phép: chủ bài viết, admin group, owner group xóa
+		Nếu không -> 403
+	Backend -> Database: post.delete()
+	Backend -> Frontend: 204 No Content
+	Frontend -> User: Xóa bài viết khỏi giao diện
+
+--- D.3 SỬA BÀI VIẾT (UpdatePostGroup) ---
+
+Use case: Sửa nội dung bài viết trong group.
+Actor: Chủ bài viết (đã xác thực)
+Điều kiện: CanEditPost permission
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Sửa" bài viết
+	Frontend -> Backend: PATCH /api/group/<group_id>/post/<post_id>/update/ (kèm token)
+	Backend -> Permission: IsAuthenticated, CanEditPost -> Pass
+	Backend -> Database:
+		- Lấy post (select_related user, group, prefetch photos)
+		- Lấy member của user trong group
+		- Nếu role='owner'/'admin' -> post_status='approved'
+		- Nếu role='member' sau khi sửa -> post_status='pending' (cần duyệt lại)
+		- serializer.save(post_status=post_status)
+	Backend -> Frontend: 200 OK
+	Frontend -> User: Hiển thị bài viết đã sửa
+
+--- D.4 DANH SÁCH BÀI VIẾT (PostListGroup) ---
+
+Use case: Thành viên xem danh sách bài viết trong group (feed).
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào trang group -> Xem bài viết
+	Frontend -> Backend: GET /api/group/<group_id>/post/list/ (kèm token, ?ordering=newest|oldest)
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Database:
+		- Lọc Post(group=group, post_status='approved')
+		- select_related user, user__profile
+		- prefetch_related photos
+		- Order by: is_pinned DESC, created_at DESC/ASC
+	Backend -> Frontend: Trả về list PostSerializer kèm reaction context (200 OK, phân trang)
+	Frontend -> User: Hiển thị feed bài viết (bài ghim ở trên cùng)
+
+--- D.5 GHIM BÀI VIẾT (PinPostGroup) ---
+
+Use case: Admin/Owner ghim hoặc bỏ ghim bài viết (chỉ 1 bài ghim được).
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Ghim" vào bài viết
+	Frontend -> Backend: POST /api/group/<group_id>/post/<post_id>/pin/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Database:
+		- Lấy post (đã approved)
+		- Nếu post.is_pinned=True -> Unpin (set False) -> Trả về is_pinned=False
+		- Nếu chưa pin:
+			a. Transaction.atomic: Unpin tất cả bài khác
+			b. Pin bài này -> is_pinned=True
+	Backend -> Frontend: 200 OK {is_pinned: true/false}
+	Frontend -> User: Cập nhật UI (đưa bài ghim lên đầu)
+
+--- D.6 BÀI VIẾT CỦA TÔI (PostUserGroup) ---
+
+Use case: Thành viên xem các bài viết mình đã đăng trong group.
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào tab "Bài viết của tôi"
+	Frontend -> Backend: GET /api/group/<group_id>/post-user/ (kèm token, ?filter=pending|rejected|approved)
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Database:
+		- Lọc Post(group_id=group_id, user=request.user)
+		- Nếu filter='rejected' -> post_status='rejected'
+		- Nếu filter='pending' -> post_status='pending'
+		- Mặc định -> post_status='approved'
+	Backend -> Frontend: Trả về list GroupPostSerializer (200 OK)
+	Frontend -> User: Hiển thị bài viết theo filter
+
+--- D.7 CHI TIẾT BÀI VIẾT (PostGroupDetail) ---
+
+Use case: Thành viên xem chi tiết một bài viết (từ notification).
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm vào thông báo -> Xem bài viết
+	Frontend -> Backend: GET /api/group/<group_id>/post/<post_id>/detail/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Database:
+		- Lấy Post(pk=post_id, group_id=group_id, post_status='approved')
+		- select_related user__profile, user, group
+		- prefetch_related photos
+	Backend -> Frontend: Trả về PostSerializer (200 OK)
+	Frontend -> User: Hiển thị chi tiết bài viết
+
+--- D.8 DANH SÁCH BÀI CẦN DUYỆT (PostReviewGroupList) ---
+
+Use case: Admin/Owner xem danh sách bài viết đang chờ duyệt.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Vào tab "Duyệt bài"
+	Frontend -> Backend: GET /api/group/<group_id>/review-post/list/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Database:
+		- Lấy Post.filter(group=group, post_status='pending')
+		- order_by '-created_at'
+		- select_related user, user__profile, group
+		- prefetch_related photos
+	Backend -> Frontend: Trả về list GroupPostSerializer (200 OK, phân trang)
+	Frontend -> User: Hiển thị danh sách bài chờ duyệt
+
+--- D.9 DUYỆT/TỪ CHỐI BÀI VIẾT (ReviewPostGroup) ---
+
+Use case: Admin/Owner duyệt hoặc từ chối bài viết của member.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Duyệt" hoặc "Từ chối" trên bài viết pending
+	Frontend -> Backend: POST /api/group/<group_id>/post/<post_id>/review/ (kèm token, data: {action: 'approved'|'rejected'})
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Kiểm tra: action có hợp lệ không? Nếu không -> 400
+	Backend -> Database (transaction.atomic):
+		- Lock post: select_for_update() (tránh 2 admin duyệt cùng lúc)
+		- Cập nhật post_status=action
+		- save()
+	Backend -> Signal: review_post_request_group.send() -> Thông báo cho người đăng bài
+	Backend -> Frontend: 200 OK
+	Frontend -> User: Cập nhật trạng thái bài viết
+
+--- D.10 THÔNG BÁO NỔI BẬT (MakeNotification) ---
+
+Use case: Admin/Owner gửi thông báo nổi bật về bài viết cho tất cả thành viên.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Thông báo nổi bật"
+	Frontend -> Backend: POST /api/group/<group_id>/post/<post_id>/highlight/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Task: make_notification_group.delay(group_id, post_id, admin_id)
+		-> Task chạy background: gửi thông báo push đến tất cả member
+	Backend -> Frontend: 200 OK (ngay lập tức, không chờ task)
+	Frontend -> User: Hiển thị "Đã gửi thông báo"
+
+--- D.11 TÌM KIẾM TRONG GROUP (SearchInGroup) ---
+
+Use case: Thành viên tìm kiếm bài viết và thành viên trong group.
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Nhập từ khóa tìm kiếm
+	Frontend -> Backend: GET /api/group/<group_id>/search/?q=keyword&type=all|posts|members&page=1
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Cache: Kiểm tra cache theo hash(keyword + group + page) -> Nếu có, trả về luôn
+	Backend -> Elasticsearch:
+		- MultiSearch (nhiều search cùng lúc):
+			a. PostDocument: tìm post trong group, post_status='approved'
+			   Match trên title (fuzzy, match_phrase)
+			b. ProfileDocument: tìm member trong group
+			   Match trên full_name, first_name, last_name (fuzzy)
+	Backend -> Database:
+		- Từ ES IDs, lấy Post/Profile từ DB
+		- Giữ thứ tự relevance từ ES
+	Backend -> Cache: Lưu cache 30s
+	Backend -> Frontend: Trả về {posts: [...], members: [...], pagination: {...}}
+	Frontend -> User: Hiển thị kết quả tìm kiếm
+
+--- D.12 ẢNH TRONG GROUP (PhotoInGroup) ---
+
+Use case: Thành viên xem thư viện ảnh của group.
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào tab "Ảnh"
+	Frontend -> Backend: GET /api/group/<group_id>/photos/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Database:
+		- Lấy PostPhoto.filter(post__group=group, post__post_status='approved')
+	Backend -> Frontend: Trả về list PostPhotoSerializer (200 OK, phân trang)
+	Frontend -> User: Hiển thị thư viện ảnh
+
+--- D.13 DANH SÁCH ADMIN (AdminGroup) ---
+
+Use case: Thành viên xem danh sách admin/owner của group.
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào tab "Quản trị viên"
+	Frontend -> Backend: GET /api/group/<group_id>/admin-list/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Database:
+		- Lấy GroupMember.filter(group=group, role__in=['admin','owner'], is_active=True)
+		- select_related job_role, job_role__department, user__profile
+	Backend -> Frontend: Trả về list GroupMemberSerializer (200 OK, phân trang)
+	Frontend -> User: Hiển thị danh sách admin
+
+-----[USE CASE E] BÌNH CHỌN (VOTE)-----------------------------------------------
+
+Chức năng:
+	- Tạo bình chọn (chỉ admin/owner)
+	- Xóa bình chọn (chỉ admin/owner)
+	- Bỏ phiếu / Đổi phiếu / Hủy phiếu
+	- Cập nhật bình chọn (chỉ admin/owner)
+	- Thêm option (admin/owner hoặc member tùy)
+	- Sửa option (chỉ admin/owner)
+	- Xóa option (chỉ admin/owner)
+	- Danh sách bình chọn
+	- Danh sách user đã vote cho option
+	- Chi tiết bình chọn
+
+--- E.1 TẠO BÌNH CHỌN (CreateVoteGroup) ---
+
+Use case: Admin/Owner tạo bình chọn trong group.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Tạo bình chọn" -> Form
+	User -> Frontend: Nhập tiêu đề, danh sách option (ít nhất 2)
+	Frontend -> Backend: POST /api/group/<group_id>/create-vote/ (kèm token, data: {title, options: [...]})
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Validate:
+		- title trống? -> 400 "Vui lòng nhập tiêu đề"
+		- options < 2? -> 400 "Vui lòng chọn ít nhất 2 option"
+	Backend -> Database (transaction.atomic):
+		- Tạo Vote (content_type=Group, object_id=group_id)
+		- Bulk_create VoteOption
+	Backend -> Database: Lấy lại Vote với prefetch options, select_related created_by__profile
+	Backend -> Frontend: 201 Created (VoteSerializer data)
+	Frontend -> User: Hiển thị bình chọn mới
+
+--- E.2 XÓA BÌNH CHỌN (DeleteVoteGroup) ---
+
+Use case: Admin/Owner xóa bình chọn.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Xóa bình chọn" -> Xác nhận
+	Frontend -> Backend: DELETE /api/group/<group_id>/vote/<vote_id>/delete/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Database: Lấy Vote(id=vote_id, object_id=group_id, content_type=Group) -> delete()
+	Backend -> Frontend: 204 No Content
+	Frontend -> User: Xóa bình chọn khỏi UI
+
+--- E.3 BỎ PHIẾU / ĐỔI PHIẾU / HỦY PHIẾU (UserVoteGroup) ---
+
+Use case: Thành viên bỏ phiếu cho một option (hoặc đổi, hủy).
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm vào một option để vote
+	Frontend -> Backend: POST /api/group/<group_id>/vote/<vote_id>/option/<vote_option_id>/vote/ (kèm token)
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Kiểm tra: User có phải member không? Nếu không -> 403
+	Backend -> Database (transaction.atomic):
+		- Lấy VoteOption (kiểm tra is_closed=False)
+		- SELECT FOR UPDATE: Tìm UserVote hiện tại của user (nếu có)
+		- 3 trường hợp:
+			a. Chưa vote -> Tạo UserVote mới, increment count của option
+			b. Đã vote option này -> Hủy vote (xóa UserVote), decrement count
+			c. Đã vote option khác -> Đổi: update option, decrement cũ, increment mới
+	Backend -> Frontend: 201 Created (UserVoteSerializer) / 200 (hủy vote)
+	Frontend -> User: Cập nhật giao diện (hiển thị % vote)
+
+Activity diagram (text):
+	[Bắt đầu] -> User bấm vote vào option
+	-> Kiểm tra vote còn mở không (is_closed)? Đóng -> Báo lỗi
+	-> Mở -> Kiểm tra UserVote hiện tại:
+		1. Chưa vote: Tạo UserVote, count++
+		2. Đã vote cùng option: Xóa UserVote, count--
+		3. Đã vote option khác: Chuyển option, count cũ--, count mới++
+	-> Trả về kết quả -> [Kết thúc]
+
+--- E.4 CẬP NHẬT BÌNH CHỌN (UpdateVoteGroup) ---
+
+Use case: Admin/Owner sửa tiêu đề hoặc đóng/mở bình chọn.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Sửa bình chọn"
+	Frontend -> Backend: PATCH /api/group/<group_id>/vote/<vote_id>/update/ (kèm token, data: {title, is_closed,...})
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Database: Lấy Vote, update
+	Backend -> Frontend: 200 OK (VoteSerializer data)
+	Frontend -> User: Hiển thị thông tin đã cập nhật
+
+--- E.5 THÊM OPTION (AddOptionVoteGroup) ---
+
+Use case: Thành viên thêm option mới (chỉ member mới thêm được, admin/owner cũng thêm được).
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Thêm lựa chọn" -> Nhập option text
+	Frontend -> Backend: POST /api/group/<group_id>/vote/<vote_id>/add-options/ (kèm token, data: {options: [...]})
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Kiểm tra: User có phải member không? -> 403 nếu không
+	Backend -> Database:
+		- Lấy Vote (is_closed=False, nếu đóng thì 404)
+		- Bulk_create VoteOption
+	Backend -> Frontend: 201 Created (list VoteOptionSerializer)
+	Frontend -> User: Hiển thị option mới
+
+--- E.6 SỬA OPTION (UpdateOptionVoteGroup) ---
+
+Use case: Admin/Owner sửa nội dung option.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Sửa" option
+	Frontend -> Backend: PATCH /api/group/<group_id>/vote/<vote_id>/option/<option_id>/update/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Kiểm tra: Vote.is_closed=False? Nếu đóng -> 404
+	Backend -> Database: Lấy VoteOption, update text
+	Backend -> Frontend: 200 OK
+	Frontend -> User: Cập nhật UI
+
+--- E.7 XÓA OPTION (DeleteOptionVoteGroup) ---
+
+Use case: Admin/Owner xóa option khỏi bình chọn.
+Actor: Admin/Owner (đã xác thực)
+Điều kiện: Vote.is_closed=False (phải mở mới xóa được option)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Xóa" option
+	Frontend -> Backend: DELETE /api/group/<group_id>/vote/<vote_id>/option/<option_id>/delete/
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Database: Kiểm tra Vote mở -> Lấy VoteOption -> delete
+	Backend -> Frontend: 204 No Content
+
+--- E.8 DANH SÁCH BÌNH CHỌN (ListVoteGroup) ---
+
+Use case: Thành viên xem tất cả bình chọn trong group.
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào tab "Bình chọn"
+	Frontend -> Backend: GET /api/group/<group_id>/list-vote/ (kèm token, ?search=...)
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Database:
+		- Lọc Vote(content_type=Group, object_id=group_id)
+		- Prefetch options kèm annotate is_voted (user đã vote option nào chưa)
+		- select_related created_by__profile
+		- Order by: is_closed ASC, created_at DESC (vote đang mở lên trước)
+	Backend -> Frontend: Trả về list VoteSerializer (200 OK, phân trang)
+	Frontend -> User: Hiển thị danh sách bình chọn
+
+--- E.9 DANH SÁCH USER ĐÃ VOTE (ListUserVoteGroup) ---
+
+Use case: Thành viên xem ai đã vote cho một option cụ thể.
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm vào option -> Xem ai đã vote
+	Frontend -> Backend: GET /api/group/<group_id>/vote/<vote_id>/option/<option_id>/user-list/
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Database:
+		- Lấy UserVote.filter(option_id=option_id, option__vote_id=vote_id, ...)
+		- select_related created_by__profile, option, option__vote
+	Backend -> Frontend: Trả về list UserVoteSerializer (200 OK, phân trang)
+	Frontend -> User: Hiển thị danh sách user đã vote
+
+--- E.10 CHI TIẾT BÌNH CHỌN (DetailVoteGroup) ---
+
+Use case: Thành viên xem chi tiết bình chọn (kèm is_voted, options, count).
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm vào bình chọn
+	Frontend -> Backend: GET /api/group/<group_id>/vote/<vote_id>/detail/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Database:
+		- Lấy Vote(id=vote_id, content_type=Group, object_id=group_id)
+		- Prefetch options kèm annotate is_voted
+		- select_related created_by__profile
+	Backend -> Frontend: Trả về VoteSerializer (200 OK)
+	Frontend -> User: Hiển thị chi tiết bình chọn
+
+-----[USE CASE F] SỰ KIỆN (EVENT)-----------------------------------------------
+
+Chức năng:
+	- Xem danh sách sự kiện
+	- Tạo sự kiện (chỉ admin/owner)
+	- Xem chi tiết / Sửa / Xóa sự kiện
+	- Phản hồi sự kiện (Accept/Decline)
+	- Danh sách người tham gia
+
+--- F.1 XEM DANH SÁCH SỰ KIỆN (ListCreateEventGroup - GET) ---
+
+Use case: Thành viên xem danh sách sự kiện trong group.
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Vào tab "Sự kiện"
+	Frontend -> Backend: GET /api/group/<group_id>/event/ (kèm token, ?search=...)
+	Backend -> Permission: IsAuthenticated -> Pass
+	Backend -> Kiểm tra: User có phải member không? Nếu không -> 403
+	Backend -> Database:
+		- Lọc Event(content_type=Group, object_id=group_id)
+		- select_related created_by, created_by__profile
+		- prefetch_related participants__user__profile
+		- order_by start_time
+	Backend -> Frontend: Trả về list EventSerializer (200 OK, phân trang)
+	Frontend -> User: Hiển thị danh sách sự kiện
+
+--- F.2 TẠO SỰ KIỆN (ListCreateEventGroup - POST) ---
+
+Use case: Admin/Owner tạo sự kiện mới cho group.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Bấm "Tạo sự kiện" -> Form
+	User -> Frontend: Nhập tiêu đề, thời gian bắt đầu/kết thúc, địa điểm, mô tả
+	Frontend -> Backend: POST /api/group/<group_id>/event/ (kèm token, JSON)
+	Backend -> Permission: IsAuthenticated -> Throttle POST
+	Backend -> Kiểm tra: User có là admin/owner không? Nếu không -> 403
+	Backend -> Database:
+		- serializer.save(content_type=Group, object_id=group.id, created_by=user)
+		- Tạo EventParticipant cho chính admin (status='accept')
+		- Đặt celery task reminder trước 15 phút (send_event_reminder)
+		- Lưu celery_task_id vào event
+	Backend -> Frontend: 201 Created
+	Frontend -> User: Hiển thị sự kiện mới
+
+--- F.3 CHI TIẾT / SỬA / XÓA SỰ KIỆN (EventDetailGroup) ---
+
+Use case: Thành viên xem chi tiết; Admin/Owner sửa hoặc xóa sự kiện.
+Actor: Thành viên / Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	(User) -> Frontend: Bấm vào sự kiện
+	Frontend -> Backend: GET /api/group/<group_id>/event/<event_id>/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Database: Lấy Event(id=event_id, ...)
+	Backend -> Frontend: Trả về EventSerializer (200 OK)
+
+	(Admin sửa) -> Frontend -> Backend: PATCH (kèm data sửa)
+	Backend -> Permission: Kiểm tra admin/owner -> Pass
+	Backend -> Database:
+		- serializer.save()
+		- Nếu start_time thay đổi:
+			a. Revoke celery task cũ
+			b. Tạo celery task reminder mới
+			c. Cập nhật celery_task_id
+	Backend -> Frontend: 200 OK
+
+	(Admin xóa) -> Frontend -> Backend: DELETE
+	Backend -> Database:
+		- Revoke celery task
+		- event.delete()
+	Backend -> Frontend: 204 No Content
+
+--- F.4 PHẢN HỒI SỰ KIỆN (EventResponseGroup) ---
+
+Use case: Thành viên xác nhận tham gia hoặc từ chối sự kiện.
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Tham gia" hoặc "Từ chối" trên sự kiện
+	Frontend -> Backend: PATCH /api/group/<group_id>/event/<event_id>/update-status/ (kèm token, data: {status: 'accept'|'decline'})
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Validate: status phải là 'accept' hoặc 'decline' -> 400 nếu sai
+	Backend -> Database: update_or_create EventParticipant(event=event, user=user, defaults={'status': status})
+	Backend -> Frontend: 200 OK (thông báo)
+	Frontend -> User: Cập nhật trạng thái tham gia
+
+--- F.5 DANH SÁCH NGƯỜI THAM GIA (EventParticipantGroup) ---
+
+Use case: Thành viên xem danh sách người tham gia sự kiện.
+Actor: Thành viên (đã xác thực)
+
+Sequence diagram (text):
+	User -> Frontend: Bấm vào sự kiện -> Xem người tham gia
+	Frontend -> Backend: GET /api/group/<group_id>/event/<event_id>/participants/ (kèm token, ?search=...)
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Database:
+		- Lọc EventParticipant(event=event, status='accept')
+		- select_related user__profile
+	Backend -> Frontend: Trả về list (200 OK, phân trang)
+	Frontend -> User: Hiển thị danh sách người tham gia
+
+-----[USE CASE G] GÓP Ý (SUGGESTION)---------------------------------------------
+
+Chức năng:
+	- Gửi góp ý (thành viên)
+	- Xem danh sách góp ý (admin/owner)
+	- Chỉ group công ty mới có
+
+--- G.1 GỬI GÓP Ý (CreateSuggestionGroup) ---
+
+Use case: Thành viên gửi góp ý cho group (chỉ group công ty).
+Actor: Thành viên (đã xác thực)
+Điều kiện: group.is_company=True
+
+Sequence diagram (text):
+	User -> Frontend: Bấm "Góp ý" -> Form
+	User -> Frontend: Nhập nội dung góp ý
+	Frontend -> Backend: POST /api/group/<group_id>/create-suggestion/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsMemberGroup -> Pass
+	Backend -> Kiểm tra: !group.is_company -> 403 "Chỉ group công ty mới có chức năng này"
+	Backend -> Database: serializer.save(group=group)
+	Backend -> Frontend: 201 Created
+	Frontend -> User: Hiển thị góp ý đã gửi
+
+--- G.2 DANH SÁCH GÓP Ý (ListSuggestionGroup) ---
+
+Use case: Admin/Owner xem tất cả góp ý từ thành viên.
+Actor: Admin/Owner (đã xác thực)
+
+Sequence diagram (text):
+	User(Admin) -> Frontend: Vào tab "Góp ý"
+	Frontend -> Backend: GET /api/group/<group_id>/list-suggestion/ (kèm token)
+	Backend -> Permission: IsAuthenticated, IsAdminOrOwnerGroup -> Pass
+	Backend -> Database: Lấy GroupSuggestion.filter(group=group).order_by('-created_at')
+	Backend -> Frontend: 200 OK (phân trang)
+	Frontend -> User: Hiển thị danh sách góp ý
+
+================================================================================
+IV. TỔNG HỢP MÔ HÌNH PHÂN QUYỀN GROUP
+================================================================================
+
+					OWNER
+				(Chủ sở hữu)
+			|					|
+		Quyền cao nhất			|
+		- Xóa group				|
+		- Thêm/Xóa admin		|
+		- Rời group (cần chuyển	|
+		  owner cho admin khác)	|
+			|
+			|--- Chỉ định ---> ADMIN (Quản trị viên)
+			|			|
+			|	Quyền:	|
+			|	- Cập nhật group
+			|	- Duyệt/Từ chối yêu cầu tham gia
+			|	- Kick thành viên
+			|	- Xóa bài viết (bất kỳ)
+			|	- Duyệt bài viết
+			|	- Ghim bài viết
+			|	- Tạo/Xóa/Quản lý vote
+			|	- Tạo/Xóa/Sửa sự kiện
+			|	- Quản lý Department/Role
+			|	- Thông báo nổi bật
+			|	- Xem góp ý
+			|	- Quản lý Department/Role
+			|
+			|--- Quản lý ---> MEMBER (Thành viên)
+					|
+				Quyền:
+				- Xem bài viết, ảnh, vote, sự kiện
+				- Đăng bài (cần duyệt nếu không phải admin)
+				- Vote, thêm option vote
+				- Phản hồi sự kiện
+				- Gửi góp ý
+				- Tìm kiếm trong group
+				- Rời group
+
+================================================================================
+V. DANH SÁCH TẤT CẢ URL API GROUP (ĐẦY ĐỦ)
+================================================================================
+
+# A. GROUP CRUD
+POST   /api/group/create/								[CreateGroup]
+GET    /api/group/<int:group_id>/detail/				[GroupDetailView]
+PATCH  /api/group/<int:group_id>/update/				[UpdateGroup]			admin/owner
+DELETE /api/group/<int:group_id>/delete/				[DeleteGroup]			owner only
+GET    /api/group/user/group/							[ListGroupUser]
+GET    /api/group/explore/								[ListGroupSuggestion]
+
+# B. THÀNH VIÊN
+GET    /api/group/<int:group_id>/user-list/				[ListUserGroup]			member
+POST   /api/group/<int:group_id>/send-request/			[SendJoinRequestGroup]
+POST   /api/group/<int:group_id>/cancel-request/		[CancelJoinRequestGroup]
+GET    /api/group/my-requests/							[MyJoinRequestList]
+GET    /api/group/<int:group_id>/all-request/			[AllJoinRequest]		admin/owner
+POST   /api/group/<int:group_id>/request/<int:request_id>/accept/		[AcceptJoinRequest]		admin/owner
+POST   /api/group/<int:group_id>/request/<int:request_id>/reject/		[RejectJoinRequest]		admin/owner
+POST   /api/group/<int:group_id>/user/<int:user_id>/kick/				[KickMemberGroup]		admin/owner
+POST   /api/group/<int:group_id>/user/<int:user_id>/delete-all-posts/	[DeleteALlPostMemberGroup]	admin/owner
+POST   /api/group/<int:group_id>/user/<int:user_id>/add-admin/			[AddAdminGroup]			owner only
+POST   /api/group/<int:group_id>/user/<int:user_id>/remove-admin/		[RemoveAdminGroup]		owner only
+POST   /api/group/<int:group_id>/leave/					[LeaveGroup]
+
+# C. DEPARTMENT & ROLE
+POST   /api/group/<int:group_id>/department-add/						[AddDepartmentGroup]	admin/owner
+GET    /api/group/<int:group_id>/department-list/						[ListDepartmentGroup]	member
+PATCH  /api/group/<int:group_id>/department/<int:department_id>/		[UpdateDepartmentGroup]	admin/owner
+POST   /api/group/<int:group_id>/department/<int:department_id>/add-role/	[AddRoleGroup]			admin/owner
+GET    /api/group/<int:group_id>/department/<int:department_id>/role/	[ListRoleGroup]			member
+PATCH  /api/group/<int:group_id>/role/<int:role_id>/					[UpdateRoleGroup]		admin/owner
+POST   /api/group/<int:group_id>/user/<int:user_id>/add-role/			[AddMemberIntoJobRole]	admin/owner
+GET    /api/group/<int:group_id>/department/<int:department_id>/user-list/		[ListUserDepartmentGroup]	member
+GET    /api/group/<int:group_id>/department/<int:department_id>/role/<int:role_id>/user-list/	[ListUserRoleGroup]	member
+
+# D. BÀI VIẾT
+POST   /api/group/<int:group_id>/create-post/					[CreatePostGroup]		member
+DELETE /api/group/<int:group_id>/post/<int:post_id>/delete/		[DeletePostGroup]		owner/admin/member(bài mình)
+PATCH  /api/group/<int:group_id>/post/<int:post_id>/update/		[UpdatePostGroup]		chủ bài viết
+GET    /api/group/<int:group_id>/post/list/						[PostListGroup]			member
+POST   /api/group/<int:group_id>/post/<int:post_id>/pin/		[PinPostGroup]			admin/owner
+GET    /api/group/<int:group_id>/post-user/						[PostUserGroup]			member
+GET    /api/group/<int:group_id>/post/<int:post_id>/detail/		[PostGroupDetail]		member
+GET    /api/group/<int:group_id>/review-post/list/				[PostReviewGroupList]	admin/owner
+POST   /api/group/<int:group_id>/post/<int:post_id>/review/		[ReviewPostGroup]		admin/owner
+POST   /api/group/<int:group_id>/post/<int:post_id>/highlight/	[MakeNotification]		admin/owner
+GET    /api/group/<int:group_id>/search/						[SearchInGroup]			member
+GET    /api/group/<int:group_id>/photos/						[PhotoInGroup]			member
+GET    /api/group/<int:group_id>/admin-list/					[AdminGroup]			member
+
+# E. VOTE
+POST   /api/group/<int:group_id>/create-vote/								[CreateVoteGroup]			admin/owner
+DELETE /api/group/<int:group_id>/vote/<int:vote_id>/delete/				[DeleteVoteGroup]			admin/owner
+POST   /api/group/<int:group_id>/vote/<int:vote_id>/option/<int:vote_option_id>/vote/	[UserVoteGroup]		member
+PATCH  /api/group/<int:group_id>/vote/<int:vote_id>/update/				[UpdateVoteGroup]			admin/owner
+POST   /api/group/<int:group_id>/vote/<int:vote_id>/add-options/			[AddOptionVoteGroup]		member
+PATCH  /api/group/<int:group_id>/vote/<int:vote_id>/option/<int:option_id>/update/	[UpdateOptionVoteGroup]	admin/owner
+DELETE /api/group/<int:group_id>/vote/<int:vote_id>/option/<int:option_id>/delete/	[DeleteOptionVoteGroup]	admin/owner
+GET    /api/group/<int:group_id>/list-vote/								[ListVoteGroup]				member
+GET    /api/group/<int:group_id>/vote/<int:vote_id>/option/<int:option_id>/user-list/	[ListUserVoteGroup]	member
+GET    /api/group/<int:group_id>/vote/<int:vote_id>/detail/				[DetailVoteGroup]			member
+
+# F. EVENT
+GET/POST /api/group/<int:group_id>/event/										[ListCreateEventGroup]	member/owner
+GET/DEL/PATCH /api/group/<int:group_id>/event/<int:event_id>/					[EventDetailGroup]		member(only get)/admin(sửa xóa)
+PATCH /api/group/<int:group_id>/event/<int:event_id>/update-status/			[EventResponseGroup]	member
+GET   /api/group/<int:group_id>/event/<int:event_id>/participants/			[EventParticipantGroup]	member
+
+# G. SUGGESTION
+POST  /api/group/<int:group_id>/create-suggestion/	[CreateSuggestionGroup]		member
+GET   /api/group/<int:group_id>/list-suggestion/	[ListSuggestionGroup]		admin/owner
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

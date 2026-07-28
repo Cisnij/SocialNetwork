@@ -1,0 +1,23 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Bài viết đã lưu{% endblock %}
+{% block main_content %}
+<div class="max-w-[800px] mx-auto px-2 sm:px-4 py-4 space-y-4">
+  <div class="glass-card rounded-xl shadow-sm p-4 flex items-center justify-between">
+    <h1 class="text-xl font-bold">Bài viết đã lưu</h1>
+  </div>
+  
+  <div id="saved-post-container" class="space-y-4">
+    <!-- Posts will be loaded here -->
+  </div>
+  
+  <div id="saved-sentinel" class="h-4"></div>
+  <div id="loadingIndicator" class="hidden text-center p-4">
+    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-fb-primary border-t-transparent"></div>
+  </div>
+  <div id="endMessage" class="hidden text-center p-4 text-gray-500 font-medium">Bạn đã xem hết bài viết đã lưu</div>
+</div>
+{% endblock %}
+{% block post_scripts %}
+<script type="module" src="{% static 'js/app/saved-posts.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,917 @@
+
+
+
+================================================================================
+MODULE A: AUTHENTICATION & ACCOUNT
+================================================================================
+
+Chức năng:
+  - Đăng ký,
+  - Đăng nhập,
+  - Đăng xuất
+  - Quên mật khẩu
+  - Đặt lại mật khẩu
+  - Đăng nhập Google (OAuth)
+  - Kết nối google
+  - Kiểm tra mật khẩu
+  - Kiểm tra tài khoản có mật khẩu(dành cho google-login)
+  - Xóa tài khoản
+
+
+
+
+--- A.1 USE CASE: ĐĂNG KÝ ---
+
+API: POST /api/auth/registration/
+View: CustomeRegisterView
+
+Sequence diagram:
+  User -> Frontend: Nhập email, username, password, password2
+  Frontend -> Backend: POST /api/auth/registration/ (JSON)
+  Backend -> Validation: Kiểm tra email/username chưa tồn tại, password khớp
+  Backend -> Database: Tạo User + Profile (is_pending=True nếu cần duyệt)
+  Backend -> Email: Gửi email xác thực (nếu cấu hình)
+  Backend -> Frontend: 201 Created (token + user data)
+  Frontend -> User: Chuyển hướng đến trang chính / thông báo xác thực email
+
+--- A.2 USE CASE: ĐĂNG NHẬP ---
+
+API: POST /api/auth/login/ (dj_rest_auth - JWT)
+API: POST /api/auth/web/login/ (cookie http-only)
+
+Sequence diagram (JWT):
+  User -> Frontend: Nhập email/username, password
+  Frontend -> Backend: POST /api/auth/login/
+  Backend -> Authentication: Xác thực credentials
+  Backend -> Token: Tạo access_token + refresh_token
+  Backend -> Frontend: 200 OK (access, refresh, user data)
+  Frontend -> Storage: Lưu token vào localStorage/AsyncStorage
+
+Sequence diagram (Cookie http-only):
+  User -> Frontend: Nhập email/username, password
+  Frontend -> Backend: POST /api/auth/web/login/
+  Backend -> Authentication: Xác thực credentials
+  Backend -> Cookie: Set http-only cookie (access_token + refresh_token)
+  Backend -> Frontend: 200 OK (Set-Cookie header, user data)
+  Frontend -> (Tự động gửi cookie trong các request sau)
+
+--- A.3 USE CASE: ĐĂNG NHẬP GOOGLE ---
+
+API: POST /api/auth/google/login/
+View: GoogleLogin
+
+Sequence diagram:
+  User -> Frontend: Bấm "Đăng nhập bằng Google"
+  Frontend -> Google: Redirect đến Google OAuth consent screen
+  User -> Google: Chọn tài khoản, đồng ý
+  Google -> Frontend: Redirect về app với authorization code
+  Frontend -> Backend: POST /api/auth/google/login/ (code)
+  Backend -> Google: Xác thực code, lấy user info
+  Backend -> Database: Tìm / Tạo User (nếu chưa tồn tại)
+  Backend -> Token: Tạo JWT tokens
+  Backend -> Frontend: 200 OK (access, refresh, user data)
+  Frontend -> User: Đăng nhập thành công
+
+--- A.4 USE CASE: QUÊN MẬT KHẨU ---
+
+API: POST /api/auth/password/reset/
+View: CustomePasswordResetView
+
+Sequence diagram:
+  User -> Frontend: Bấm "Quên mật khẩu", nhập email
+  Frontend -> Backend: POST /api/auth/password/reset/ (email)
+  Backend -> Validation: Kiểm tra email tồn tại
+  Backend -> Email: Gửi email chứa link reset password
+  Backend -> Frontend: 200 OK (thông báo kiểm tra email)
+  User -> Email: Mở link reset -> Frontend form nhập mật khẩu mới
+  Frontend -> Backend: POST /api/password/reset/confirm/<uidb64>/<token>/
+  Backend -> Validation: Kiểm tra token hợp lệ
+  Backend -> Database: Cập nhật password mới
+  Backend -> Frontend: 200 OK (thành công)
+
+--- A.5 USE CASE: XÓA TÀI KHOẢN ---
+
+API: POST /api/auth/delete-account/
+View: DeleteAccount
+
+Sequence diagram:
+  User -> Frontend: Vào Settings -> Bấm "Xóa tài khoản"
+  Frontend -> Backend: POST /api/auth/delete-account/ (password)
+  Backend -> Validation: Kiểm tra password đúng
+  Backend -> Email: Gửi email xác nhận xóa
+  Backend -> Frontend: 200 OK (kiểm tra email)
+  User -> Email: Bấm link xác nhận
+  Frontend -> Backend: POST /api/email/cofirm-delete-account/ (token)
+  Backend -> Database: Xóa User (cascade all data)
+  Backend -> Frontend: 200 OK (thông báo tài khoản đã xóa)
+
+Danh sách APIs:
+  POST /api/auth/registration/                 [CustomeRegisterView]
+  POST /api/auth/password/reset/               [CustomePasswordResetView]
+  POST /api/auth/login/                        [dj_rest_auth - LoginView]
+  POST /api/auth/logout/                       [dj_rest_auth - LogoutView]
+  POST /api/auth/token/refresh/                [dj_rest_auth - TokenRefreshView]
+  POST /api/auth/password/change/              [dj_rest_auth - PasswordChangeView]
+  POST /api/auth/user/                         [dj_rest_auth - UserDetailsView]
+  POST /api/auth/registration/verify-email/    [dj_rest_auth - VerifyEmailView]
+  GET  /api/auth/account/google/login/         [allauth socialaccount]
+  POST /api/auth/google/login/                 [GoogleLogin]
+  POST /api/auth/google/connect/               [GoogleConnect]
+  POST /api/auth/google/disconnect/            [GoogleDisconnect]
+      POST /api/password/reset/confirm/<uidb64>/<token>/ [auth_views.PasswordResetConfirmView]
+  POST /api/auth/check-password/               [CheckPassword]
+  GET  /api/auth/has-password/                 [HasPassword]
+  POST /api/auth/delete-account/               [DeleteAccount]
+  POST /api/email/cofirm-delete-account/       [ConfirmDeleteAccount]
+  POST /api/auth/web/login/                    [CookieLoginView]
+  POST /api/auth/web/logout/                   [CookieLogoutView]
+  POST /api/auth/web/token/refresh/            [CookieTokenRefreshView]
+  POST /api/auth/web/google/login/             [CookieGoogleLoginView]
+
+================================================================================
+MODULE B: PROFILE (Hồ sơ người dùng)
+================================================================================
+
+Chức năng:
+  - Xem/Sửa profile (công khai)
+  - Xem/Sửa private profile (thông tin mật)
+  - Xem profile userpage của người khác
+  - Xem profile của chính mình
+  - Danh sách tất cả user (admin)
+  - Danh sách user chờ duyệt (admin)
+
+--- B.1 USE CASE: XEM PROFILE USERPAGE ---
+
+API: GET /api/auth/profile/userpage/<int:user>
+View: ProfileUser
+
+Sequence diagram:
+  User -> Frontend: Bấm vào trang cá nhân của user khác
+  Frontend -> Backend: GET /api/auth/profile/userpage/<user_id>
+  Backend -> Database: Lấy Profile(user_id=user) + Post statistics
+  Backend -> Frontend: 200 OK (profile, stats)
+  Frontend -> User: Hiển th thông tin userpage
+
+--- B.2 USE CASE: SỬA PROFILE ---
+
+API: PATCH /api/user/profile/<int:pk>/
+View: ProfileModify
+
+Sequence diagram:
+  User -> Frontend: Vào "Chỉnh sửa trang cá nhân"
+  User -> Frontend: Sửa ảnh đại diện, ảnh bìa, giới thiệu,...
+  Frontend -> Backend: PATCH /api/user/profile/<pk>/ (multipart/form-data)
+  Backend -> Permission: Kiểm tra user sở hữu profile này
+  Backend -> Database: Cập nhật profile
+  Backend -> Frontend: 200 OK (serialized profile)
+  Frontend -> User: Hiển thị profile mới
+
+Danh sách APIs:
+  GET|PATCH /api/user/profile/<int:pk>/      [ProfileModify]
+  GET|PATCH /api/user/private-profile/<int:pk>/ [PrivateProfileModify]
+  GET  /api/user/profile/                    [ProfileList] (admin)
+  GET  /api/auth/profile/userpage/<int:user> [ProfileUser]
+  GET  /api/user/                            [ProfileView]
+  GET  /api/user/pending-profile/            [PendingProfileList] (admin)
+  GET  /api/user/                            [ProfileView]
+
+================================================================================
+MODULE C: POST (Bài viết)
+================================================================================
+
+Chức năng:
+  - Tạo bài viết (kèm ảnh)
+  - Sửa/Xóa bài viết
+  - Xem bài viết của bạn bè (feed)
+  - Xem bài viết của 1 user cụ thể
+  - Đổi quyền riêng tư
+  - Ghim bài viết
+
+--- C.1 USE CASE: TẠO BÀI VIẾT ---
+
+API: POST /api/user/post/create/
+View: PostCreate
+
+Sequence diagram:
+  User -> Frontend: Bấm "Tạo bài viết"
+  User -> Frontend: Nhập nội dung, chọn ảnh, chọn privacy
+  Frontend -> Backend: POST /api/user/post/create/ (multipart/form-data)
+  Backend -> Permission: IsAuthenticated
+  Backend -> Database: Tạo Post
+  Backend -> Database: Nếu có ảnh -> tạo PostPhoto
+  Backend -> Frontend: 201 Created
+  Frontend -> Feed: Hiển thị bài viết mới
+
+--- C.2 USE CASE: XEM FEED BẠN BÈ ---
+
+API: GET /api/user/post/show/
+View: PostFriend
+
+Sequence diagram:
+  User -> Frontend: Vào trang chủ (feed)
+  Frontend -> Backend: GET /api/user/post/show/?page=1
+  Backend -> Permission: IsAuthenticated
+  Backend -> Database: Lấy post của bạn bè (đã kết bạn), + post công khai, sắp xếp mới nhất
+  Backend -> Database: Prefetch reactions, comments count, photos
+  Backend -> Frontend: 200 OK (phân trang)
+  Frontend -> User: Hiển thị feed bài viết
+
+--- C.3 USE CASE: XÓA BÀI VIẾT ---
+
+API: DELETE /api/user/post/<int:pk>/
+View: PostModify
+
+Sequence diagram:
+  User -> Frontend: Bấm "Xóa" bài viết -> Xác nhận
+  Frontend -> Backend: DELETE /api/user/post/<pk>/
+  Backend -> Permission: Kiểm tra user là chủ bài viết hoặc admin
+  Backend -> Database: Xóa Post (cascade comments, photos, reactions)
+  Backend -> Frontend: 204 No Content
+  Frontend -> User: Xóa khỏi feed
+
+Danh sách APIs:
+  POST /api/user/post/create/                 [PostCreate]
+  GET|PUT|PATCH|DELETE /api/user/post/<int:pk>/  [PostModify]
+  GET  /api/user/post/show/                   [PostFriend] (feed)
+  GET  /api/user/post/userpage/<int:user>/    [PostUser]
+  POST /api/user/post-photo/<int:post_id>/    [PostPhotoListCreate]
+  GET  /api/user/post-photo/                  [PostPhotoUser]
+  DELETE /api/user/delete-photo/<int:pk>/     [PostPhotoDelete]
+  POST /api/post/<int:post_id>/privacy-change/ [ChangePostPrivacy]
+  POST /api/post/<int:pin_id>/pin/            [PinPostView]
+  POST /api/post/<int:post_id>/report/        [PostReportView]
+  GET  /api/admin/post/                       [PostListAll] (admin)
+  POST /api/user/post/create/v2/              [CreateFullPostView] (v2)
+
+================================================================================
+MODULE D: SHARE (Chia sẻ bài viết)
+================================================================================
+
+Chức năng:
+  - Xem bài viết qua share link (public)
+  - Chia sẻ bài viết (re-share)
+  - Xóa share
+  - Xem share của bạn bè (feed share)
+  - Đổi privacy của share
+
+--- D.1 USE CASE: CHIA SẺ BÀI VIẾT ---
+
+API: POST /api/posts/<int:post_id>/share/
+View: AllPostShareView
+
+Sequence diagram:
+  User -> Frontend: Bấm "Chia sẻ" trên bài viết
+  User -> Frontend: Nhập nội dung (tùy chọn), chọn privacy
+  Frontend -> Backend: POST /api/posts/<post_id>/share/ (JSON)
+  Backend -> Permission: Kiểm tra user có quyền xem bài viết gốc không
+  Backend -> Database: Tạo SharePost (liên kết đến post gốc)
+  Backend -> Frontend: 201 Created
+  Frontend -> User: Hiển thị bài viết đã share trong feed
+
+Danh sách APIs:
+  GET /api/share/<str:share_code>/             [PostShareView] (public - HTML)
+  GET /api/share-detail/<str:share_code>/      [PostShareDetailView] (JSON)
+  GET|POST /api/posts/<int:post_id>/share/     [AllPostShareView]
+  DELETE /api/posts/share/<int:pk>/delete/     [PostUserShareDelete]
+  GET /api/posts/user/<int:user_id>/share/     [PostUserShare]
+  GET /api/posts/share/                        [PostFriendShare]
+  PATCH /api/post/share/<int:share_id>/privacy-change/ [ChangePostSharePrivacy]
+
+================================================================================
+MODULE E: COMMENT (Bình luận)
+================================================================================
+
+Chức năng:
+  - Xem danh sách comment của bài viết
+  - Tạo comment
+  - Sửa/Xóa comment
+  - Pin comment
+  - Xem nested comment (comment con)
+
+--- E.1 USE CASE: TẠO BÌNH LUẬN ---
+
+API: POST /api/user/comments/post/<int:post_id>/
+View: CommentListCreate
+
+Sequence diagram:
+  User -> Frontend: Nhập bình luận dưới bài viết
+  Frontend -> Backend: POST /api/user/comments/post/<post_id>/ (JSON)
+  Backend -> Permission: Kiểm tra user có quyền xem post không
+  Backend -> Database: Tạo Comment
+  Backend -> Frontend: 201 Created
+  Frontend -> User: Hiển thị comment mới
+
+--- E.2 USE CASE: PIN COMMENT ---
+
+API: PATCH /api/user/comment/pin/<int:pin_id>/
+View: PinCommentView
+
+Sequence diagram:
+  User -> Frontend: Bấm "Ghim" trên comment (chủ bài viết)
+  Frontend -> Backend: PATCH /api/user/comment/pin/<pin_id>/
+  Backend -> Permission: Kiểm tra user là chủ bài viết
+  Backend -> Database: Set is_pinned=True cho comment (unpin tất cả cũ)
+  Backend -> Frontend: 200 OK
+  Frontend -> User: Comment được ghim lên đầu
+
+Danh sách APIs:
+  GET|POST /api/user/comments/post/<int:post_id>/  [CommentListCreate]
+  GET|PUT|PATCH|DELETE /api/user/comments/<int:pk>/  [CommentModify]
+  GET /api/user/comment/<int:pk>/detail/           [CommentDetail]
+  PATCH /api/user/comment/pin/<int:pin_id>/         [PinCommentView]
+  GET /api/user/nested-comments/<int:pk>/           [NestedCommentList]
+  POST /api/comment/<int:comment_id>/report/        [CommentReportView]
+
+================================================================================
+MODULE F: POST-ARTICLE (Bài viết dạng Article)
+================================================================================
+
+Chức năng:
+  - Tạo/Xem danh sách bài viết dạng article
+  - Sửa/Xóa article
+
+Danh sách APIs:
+  GET|POST /api/user/post-article/               [PostArticleListCreate]
+  GET|PUT|PATCH|DELETE /api/user/post-article/<int:pk>/  [PostArticleModify]
+
+================================================================================
+MODULE G: SETTING (Cài đặt)
+================================================================================
+
+Chức năng:
+  - Xem/Sửa cài đặt của user
+  - Xem cài đặt user hiện tại
+
+Danh sách APIs:
+  GET|PATCH /api/user/setting/<int:pk>/   [SettingModify]
+  GET /api/user/setting/                  [UserSetting]
+
+================================================================================
+MODULE H: FRIEND & FOLLOW (Bạn bè & Theo dõi)
+================================================================================
+
+Chức năng:
+  - Gửi/Hủy/Chấp nhận/Từ chối lời mời kết bạn
+  - Hủy kết bạn
+  - Danh sách bạn bè
+  - Theo dõi/Hủy theo dõi
+  - Danh sách người theo dõi / đang theo dõi
+
+--- H.1 USE CASE: GỬI LỜI MỜI KẾT BẠN ---
+
+API: POST /api/friends/request/<int:pk>/
+View: SendFriendRequestView
+
+Sequence diagram:
+  User -> Frontend: Bấm "Thêm bạn bè" trên profile user khác
+  Frontend -> Backend: POST /api/friends/request/<user_id>/
+  Backend -> Permission: IsAuthenticated
+  Backend -> Validation: Không gửi cho chính mình, chưa là bạn, chưa có request pending
+  Backend -> Database: Tạo FriendshipRequest (from=user, to=user_id)
+  Backend -> Frontend: 201 Created
+  Frontend -> User: Hiển thị "Đã gửi lời mời"
+
+--- H.2 USE CASE: CHẤP NHẬN KẾT BẠN ---
+
+API: POST /api/friends/request/<int:pk>/accept/
+View: AcceptFriendRequestView
+
+Sequence diagram:
+  User -> Frontend: Bấm "Chấp nhận" trên lời mời kết bạn
+  Frontend -> Backend: POST /api/friends/request/<request_id>/accept/
+  Backend -> Permission: Kiểm tra user là người nhận request
+  Backend -> Database: 
+    1. Update request status='accepted'
+    2. Tạo Friendship (Friend.objects.add_friend)
+  Backend -> Frontend: 200 OK
+  Frontend -> User: Cập nhật danh sách bạn bè
+
+--- H.3 USE CASE: THEO DÕI NGƯỜI DÙNG ---
+
+API: POST /api/follow/<int:pk>/
+View: FollowView
+
+Sequence diagram:
+  User -> Frontend: Bấm "Theo dõi" trên profile
+  Frontend -> Backend: POST /api/follow/<user_id>/
+  Backend -> Database: Tạo Follow relation
+  Backend -> Frontend: 201 Created
+  Frontend -> User: Cập nhật UI (đã theo dõi)
+
+Danh sách APIs:
+  POST /api/friends/request/<int:pk>/          [SendFriendRequestView]
+  GET  /api/friends/requests/incoming/         [IncomingFriendRequestsView]
+  GET  /api/friends/requests/outgoing/         [OutgoingFriendRequestsView]
+  POST /api/friends/request/<int:pk>/accept/    [AcceptFriendRequestView]
+  POST /api/friends/request/<int:pk>/reject/    [RejectFriendRequestView]
+  POST /api/friends/request/<int:pk>/cancel/    [CancelFriendRequestView]
+  DELETE /api/friends/unfriend/<int:pk>/        [UnfriendView]
+  GET  /api/friends/                           [FriendListView]
+  GET  /api/friends/<int:pk>/                  [FriendUser]
+  POST /api/follow/<int:pk>/                   [FollowView]
+  DELETE /api/unfollow/<int:pk>/               [UnfollowView]
+  GET  /api/followers/                         [FollowersListView]
+  GET  /api/following/                         [FollowingListView]
+  GET  /api/user/friend-suggest/               [FriendSuggestion]
+
+================================================================================
+MODULE I: BLOCK (Chặn người dùng)
+================================================================================
+
+Chức năng:
+  - Chặn người dùng
+  - Bỏ chặn
+  - Danh sách người đã chặn / chặn mình
+
+--- I.1 USE CASE: CHẶN NGƯỜI DÙNG ---
+
+API: POST /api/block/<int:pk>/
+View: BlockView
+
+Sequence diagram:
+  User -> Frontend: Bấm "Chặn" trên profile/menu người dùng
+  Frontend -> Backend: POST /api/block/<user_id>/
+  Backend -> Database: Tạo Block relation (tự động unfriend, unfollow)
+  Backend -> Frontend: 201 Created
+  Frontend -> User: Cập nhật UI (user bị chặn)
+
+Danh sách APIs:
+  POST /api/block/<int:pk>/                    [BlockView]
+  DELETE /api/unblock/<int:pk>/                [UnblockView]
+  GET  /api/block/touser/                      [ListBlockedUser] (ai block mình)
+  GET  /api/block/user/                        [ListBlockedFromUser] (mình block ai)
+
+================================================================================
+MODULE J: REACTION (Cảm xúc - Reactions Router)
+================================================================================
+
+Chức năng:
+  - Thả react cho bài viết (Like, Love, Haha, Wow, Sad, Angry)
+  - Thả react cho comment
+  - Hủy react
+  - Xem danh sách user đã react
+
+Reactions được cấu hình qua DefaultRouter:
+  POST   /api/posts/<post_id>/react/         [PostViewSet - react]
+  DELETE /api/posts/<post_id>/react/         [PostViewSet - delete_react]
+  GET    /api/posts/<post_id>/reactions/     [PostViewSet - list]
+  POST   /api/comments/<comment_id>/react/   [CommentViewSet - react]
+  DELETE /api/comments/<comment_id>/react/   [CommentViewSet - delete_react]
+  GET    /api/comments/<comment_id>/reactions/ [CommentViewSet - list]
+
+--- J.1 USE CASE: THẢ REACT CHO BÀI VIẾT ---
+
+API: POST /api/posts/<post_id>/react/
+View: PostViewSet
+
+Sequence diagram:
+  User -> Frontend: Bấm nút cảm xúc (Like/Love/...) trên bài viết
+  Frontend -> Backend: POST /api/posts/<post_id>/react/ (reaction_type)
+  Backend -> Permission: Kiểm tra quyền xem post
+  Backend -> Database:
+    - Nếu chưa react: Tạo Reaction mới
+    - Nếu đã react cùng loại: Xóa (unreact)
+    - Nếu đã react khác loại: Update reaction_type
+  Backend -> Frontend: 200 OK (reaction data)
+  Frontend -> User: Cập nhật UI (icon, count)
+
+API cho danh sách user đã react:
+  GET /api/user/reaction/post/<int:post_id>/    [UserReactionPostList]
+  GET /api/user/reaction/comment/<int:comment_id>/ [UserReactionCommentList]
+
+================================================================================
+MODULE K: ACTIVITY & LOG (Hoạt động & Nhật ký)
+================================================================================
+
+Chức năng:
+  - Xem lịch sử hoạt động của user (qua actstream)
+  - Xem log admin
+
+Danh sách APIs:
+  GET /api/user/activity/         [UserActivity]
+  GET /api/admin/logs/            [LogList]
+  GET /api/activity/              [actstream urls]
+
+================================================================================
+MODULE L: CHAT (Nhắn tin 1-1)
+================================================================================
+
+Chức năng:
+  - Bắt đầu cuộc trò chuyện
+  - Danh sách cuộc trò chuyện
+  - Gửi/Xem tin nhắn
+  - Thu hồi tin nhắn
+  - Sửa tin nhắn
+  - Đánh dấu đã xem
+  - Xóa cuộc trò chuyện (1 phía)
+  - Ẩn/Hiện cuộc trò chuyện
+  - Upload file trong chat
+  - Chấp nhận/Từ chối tin nhắn từ người lạ
+
+--- L.1 USE CASE: BẮT ĐẦU CUỘC TRÒ CHUYỆN ---
+
+API: POST /api/chat/start/<int:user_id>/
+View: StartConversationAPIView
+
+Sequence diagram:
+  User -> Frontend: Bấm "Nhắn tin" trên profile user
+  Frontend -> Backend: POST /api/chat/start/<user_id>/
+  Backend -> Database:
+    - Nếu đã có conversation: Trả về conversation cũ
+    - Nếu chưa có: Tạo Conversation mới + add 2 user làm member
+  Backend -> Frontend: 200/201 Created (conversation data)
+  Frontend -> User: Mở cửa sổ chat
+
+--- L.2 USE CASE: GỬI TIN NHẮN ---
+
+Gửi qua WebSocket (realtime) hoặc REST API.
+
+--- L.3 USE CASE: THU HỒI TIN NHẮN ---
+
+API: POST /api/chat/messages/unsend/<int:pk>/
+View: UnsendMessageAPIView
+
+Sequence diagram:
+  User -> Frontend: Bấm "Thu hồi" tin nhắn của mình
+  Frontend -> Backend: POST /api/chat/messages/unsend/<message_id>/
+  Backend -> Permission: Kiểm tra user là người gửi
+  Backend -> Database: Set deleted=True cho message
+  Backend -> WebSocket: Broadcast đến tất cả member "message_unsent"
+  Backend -> Frontend: 200 OK
+  Frontend -> User: Hiển thị "Tin nhắn đã được thu hồi"
+
+--- L.4 USE CASE: ĐÁNH DẤU ĐÃ XEM ---
+
+API: POST /api/chat/messages/seen/<int:pk>/
+View: SeenMessage
+
+Sequence diagram:
+  User -> Frontend: Mở cuộc trò chuyện
+  Frontend -> Backend: POST /api/chat/messages/seen/<conversation_id>/
+  Backend -> Database: Cập nhật last_read_message cho user
+  Backend -> WebSocket: Broadcast "seen" đến user kia
+  Backend -> Frontend: 200 OK
+
+--- L.5 USE CASE: CHẤP NHẬN TIN NHẮN TỪ NGƯỜI LẠ ---
+
+API: POST /api/chat/accept/conversation/<int:conv_id>/
+View: AcceptMessageRequest
+
+Sequence diagram:
+  User -> Frontend: Nhận được yêu cầu nhắn tin từ người lạ
+  Frontend -> Backend: POST /api/chat/accept/conversation/<conv_id>/
+  Backend -> Database: Cập nhật conversation status='accepted'
+  Backend -> Frontend: 200 OK
+  Frontend -> User: Bắt đầu chat được
+
+Danh sách APIs:
+  GET  /api/chat/conversations/                     [ConversationListAPIView]
+  GET  /api/chat/search-conversations/               [ConversationSearch]
+  POST /api/chat/start/<int:user_id>/                [StartConversationAPIView]
+  POST /api/chat/accept/conversation/<int:conv_id>/  [AcceptMessageRequest]
+  POST /api/chat/reject/conversation/<int:conv_id>/  [RejectMessageRequest]
+  GET  /api/chat/messages/unsend/<int:pk>/           [UnsendMessageAPIView]
+  GET  /api/chat/messages/list/<int:pk>/             [ConversationMessage]
+  GET  /api/chat/conversation/members/<int:pk>/      [MemberOfConversation]
+  POST /api/chat/messages/seen/<int:pk>/             [SeenMessage]
+  PATCH /api/chat/messages/update/<int:pk>/          [UpdateMessage]
+  DELETE /api/chat/conversation/<int:pk>/delete/      [DeleteConversationOneSide]
+  POST /api/chat/conversation/<int:pk>/toogle-hidden/ [ToogleHideConversation]
+  GET  /api/chat/conversation/hidden-chat/           [ListHideConversation]
+  POST /api/chat/conversation/<int:conv_id>/upload/  [ChatAttachmentUpload]
+  GET  /api/chat/conversation/<int:conv_id>/file-list/ [GetFileFromConversation]
+
+================================================================================
+MODULE M: CHAT GROUP (Nhóm chat)
+================================================================================
+
+Chức năng:
+  - Tạo nhóm chat
+  - Thêm/Xóa thành viên
+  - Sửa thông tin nhóm
+  - Chuyển quyền admin
+  - Kick member
+  - Rời nhóm
+
+--- M.1 USE CASE: TẠO NHÓM CHAT ---
+
+API: POST /api/chat/conversation/group/create-group/
+View: CreateGroupConversation
+
+Sequence diagram:
+  User -> Frontend: Bấm "Tạo nhóm chat" -> Chọn thành viên
+  Frontend -> Backend: POST /api/chat/conversation/group/create-group/ (name, member_ids)
+  Backend -> Database:
+    - Tạo Conversation (is_group=True)
+    - Tạo GroupConversationProfile
+    - Add tất cả member
+    - Gán user làm admin
+  Backend -> Frontend: 201 Created
+  Frontend -> User: Mở cửa sổ chat nhóm
+
+Danh sách APIs:
+  POST /api/chat/conversation/group/create-group/          [CreateGroupConversation]
+  POST /api/chat/conversation/group/<int:conv_id>/transfer-admin/ [TransferAdminGroupChat]
+  POST /api/chat/conversation/group/<int:conv_id>/add/     [AddMemberGroupChat]
+  PATCH /api/chat/conversation/group/<int:conv_id>/modify/ [ModifyGroupChat]
+  DELETE /api/chat/conversation/group/<int:conv_id>/delete/ [DeleteGroupChat]
+  POST /api/chat/conversation/group/<int:conv_id>/kick/<int:kick_id>/ [KickMemberGroupChat]
+  POST /api/chat/conversation/<int:conv_id>/leave/         [LeaveGroupChat]
+
+================================================================================
+MODULE N: CHAT TASK (Công việc trong nhóm chat)
+================================================================================
+
+Chức năng:
+  - Tạo task trong nhóm chat
+  - Thêm thành viên vào task
+  - Xem danh sách thành viên task
+  - Cập nhật task
+  - Xóa task
+  - Danh sách task
+
+Danh sách APIs:
+  POST /api/chat/conversation/task/<int:conv_id>/create-task/   [CreateTaskGroupChat]
+  POST /api/chat/conversation/task/<int:conv_id>/add-member/    [AddMemberIntoTaskGroupChat]
+  GET  /api/chat/conversation/<int:conv_id>/task/<int:task_id>/member/ [MemberofTaskGroupChat]
+  PATCH /api/chat/conversation/<int:conv_id>/task/<int:task_id>/update/  [UpdateTaskGroupChat]
+  DELETE /api/chat/conversation/<int:conv_id>/task/<int:task_id>/delete/  [DeleteTaskGroupChat]
+  GET  /api/chat/conversation/task/<int:conv_id>/list-task/     [ListTaskGroupChat]
+
+================================================================================
+MODULE O: CHAT VOTE (Bình chọn trong nhóm chat)
+================================================================================
+
+Chức năng:
+  - Tạo vote
+  - Xóa vote
+  - Bỏ phiếu / Đổi phiếu
+  - Update vote
+  - Thêm/Xóa/Sửa option
+
+Danh sách APIs:
+  POST /api/chat/conversation/vote/<int:conv_id>/create-vote/     [CreateVoteGroupChat]
+  DELETE /api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/delete-vote/  [DeleteVoteGroupChat]
+  POST /api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:vote_option_id>/vote/  [UserVoteGroupChat]
+  PATCH /api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/update-vote/  [UpdateVoteGroupChat]
+  POST /api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/add-option/  [AddOptionVoteGroupChat]
+  PATCH /api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/update-option/  [UpdateOptionVoteGroupChat]
+  DELETE /api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/delete-option/  [DeleteOptionVoteGroupChat]
+  GET  /api/chat/conversation/<int:conv_id>/vote/list-vote/  [ListVoteGroupChat]
+  GET  /api/chat/conversation/<int:conv_id>/vote/<int:vote_id>/option/<int:option_id>/user/  [ListUserVoteGroupChat]
+
+================================================================================
+MODULE P: VIDEO CALL (Cuộc gọi video)
+================================================================================
+
+Chức năng:
+  - Tạo phòng gọi video
+  - Tham gia cuộc gọi
+  - Từ chối/Hủy cuộc gọi
+  - Xem trạng thái phòng
+  - Rời cuộc gọi
+
+--- P.1 USE CASE: TẠO CUỘC GỌI VIDEO ---
+
+API: POST /api/chat/conversation/<int:conv_id>/call-video/create/
+View: CreateVideoRoomView
+
+Sequence diagram:
+  User -> Frontend: Bấm "Gọi video" trong cuộc trò chuyện
+  Frontend -> Backend: POST /api/chat/conversation/<conv_id>/call-video/create/
+  Backend -> LiveKit: Tạo phòng LiveKit
+  Backend -> Database: Lưu VideoRoom info
+  Backend -> WebSocket: Gửi thông báo cuộc gọi đến member
+  Backend -> Frontend: 200 OK (room token, server URL)
+  Frontend -> User: Mở giao diện cuộc gọi
+
+Danh sách APIs:
+  POST /api/chat/conversation/<int:conv_id>/call-video/create/   [CreateVideoRoomView]
+  POST /api/chat/conversation/<int:conv_id>/call-video/join/     [JoinVideoRoomView]
+  POST /api/chat/conversation/<int:conv_id>/call-video/decline/  [DeclineCallView]
+  POST /api/chat/conversation/<int:conv_id>/call-video/cancel/   [CancelCallView]
+  POST /api/livekit/webhook/                                     [LiveKitWebhookView]
+  GET  /api/video/<int:conv_id>/status/                          [VideoRoomStatusView]
+  POST /api/video/<int:conv_id>/leave/                           [LeaveCallView]
+
+================================================================================
+MODULE Q: CHAT EVENT (Sự kiện trong nhóm chat)
+================================================================================
+
+Chức năng:
+  - Tạo/Xem danh sách sự kiện
+  - Sửa/Xóa/Chi tiết sự kiện
+  - Phản hồi tham gia
+  - Danh sách người tham gia
+
+Danh sách APIs:
+  GET|POST /api/chat/conversation/<int:conv_id>/create-event/     [ListCreateEventChat]
+  GET|PATCH|DELETE /api/chat/conversation/<int:conv_id>/event/<int:event_id>/  [EventDetailChat]
+  PATCH /api/chat/conversation/<int:conv_id>/event/<int:event_id>/update-status/  [EventResponseChat]
+  GET  /api/chat/conversation/<int:conv_id>/event/<int:event_id>/participants/  [EventParticipantChat]
+
+================================================================================
+MODULE R: GROUP (Nhóm) - LÀM MẪU CHI TIẾT
+================================================================================
+
+(Đã được làm chi tiết trong file usecase_group_documentation.txt)
+Bao gồm: GROUP CRUD, Thành viên, Department/Role, Bài viết nhóm,
+          Vote, Event, Suggestion - đầy đủ sequence diagram + activity diagram.
+
+Vui lòng xem file usecase_group_documentation.txt để biết chi tiết đầy đủ.
+
+Danh sách APIs GROUP:
+  POST   /api/group/create/                             [CreateGroup]
+  GET    /api/group/<int:group_id>/detail/              [GroupDetailView]
+  PATCH  /api/group/<int:group_id>/update/              [UpdateGroup]
+  DELETE /api/group/<int:group_id>/delete/              [DeleteGroup]
+  GET    /api/group/user/group/                         [ListGroupUser]
+  GET    /api/group/explore/                            [ListGroupSuggestion]
+  GET    /api/group/<int:group_id>/user-list/           [ListUserGroup]
+  ... (and ~50 more - xem file riêng)
+
+================================================================================
+MODULE S: NOTIFICATION (Thông báo)
+================================================================================
+
+Chức năng:
+  - Đăng ký FCM token cho thiết bị
+  - Xem danh sách thông báo in-app
+  - Đánh dấu đã đọc
+  - Đếm thông báo chưa đọc
+  - Xóa thông báo
+
+--- S.1 USE CASE: XEM THÔNG BÁO ---
+
+API: GET /api/notifications/
+View: NotificationListView
+
+Sequence diagram:
+  User -> Frontend: Mở trang thông báo
+  Frontend -> Backend: GET /api/notifications/?page=1
+  Backend -> Database: Lấy Notification của user (sắp xếp mới nhất)
+  Backend -> Frontend: 200 OK (phân trang)
+  Frontend -> User: Hiển thị danh sách thông báo
+
+--- S.2 USE CASE: ĐÁNH DẤU ĐÃ ĐỌC ---
+
+API: POST /api/notifications/mark-read/
+View: NotificationMarkReadView
+
+Sequence diagram:
+  User -> Frontend: Bấm vào thông báo hoặc "Đánh dấu đã đọc"
+  Frontend -> Backend: POST /api/notifications/mark-read/ (ids: [1,2,3])
+  Backend -> Database: Update is_read=True cho các notification
+  Backend -> Frontend: 200 OK
+  Frontend -> User: Cập nhật UI (xóa badge, đổi màu)
+
+Danh sách APIs:
+  POST /api/fcm-token/                           [SaveFCMTokenView]
+  GET  /api/notifications/                       [NotificationListView]
+  POST /api/notifications/mark-read/              [NotificationMarkReadView]
+  GET  /api/notifications/count/                  [NotificationUnreadCountView]
+  DELETE /api/notification/<int:pk>/delete/       [NotificationDelete]
+
+================================================================================
+MODULE T: EMAIL (Quản lý email)
+================================================================================
+
+Chức năng:
+  - Xem danh sách email
+  - Thêm email
+  - Đặt email mặc định
+  - Xóa email
+  - Xác nhận đổi email chính (OTP)
+
+Danh sách APIs (Note: một số định nghĩa trong custome_authen.py):
+  GET  /api/user/email/                    [UserEmail]
+  POST /api/email/add/                     [AddEmailView]
+  POST /api/email/set/<int:pk>/            [SetPrimaryEmailView]
+  DELETE /api/email/delete/<int:pk>/       [DeleteEmailView]
+  POST /api/email/confirm-change-primary/  [ConfirmChangePrimaryEmail]
+
+================================================================================
+MODULE U: SEARCH (Tìm kiếm)
+================================================================================
+
+Chức năng:
+  - Tìm kiếm tổng hợp (user, post)
+  - Lịch sử tìm kiếm
+  - Xóa lịch sử
+
+--- U.1 USE CASE: TÌM KIẾM ---
+
+API: GET /api/search/?q=keyword
+View: SearchAPIView
+
+Sequence diagram:
+  User -> Frontend: Nhập từ khóa vào ô tìm kiếm
+  Frontend -> Backend: GET /api/search/?q=keyword
+  Backend -> Database/Elasticsearch: Tìm kiếm user (theo tên), post (theo nội dung)
+  Backend -> Database: Lưu vào SearchHistory
+  Backend -> Frontend: 200 OK (users, posts)
+  Frontend -> User: Hiển thị kết quả tìm kiếm
+
+Danh sách APIs:
+  GET /api/search/                            [SearchAPIView]
+  GET|POST /api/user/search-history/          [SearchHistoryView]
+  DELETE /api/search-history/delete/          [SearchHistoryDeleteAllView]
+  DELETE /api/search-history/<int:pk>/delete/  [SearchHistoryDeleteView]
+
+================================================================================
+MODULE V: REPORT (Báo cáo)
+================================================================================
+
+Chức năng:
+  - Báo cáo bài viết
+  - Báo cáo bình luận
+
+--- V.1 USE CASE: BÁO CÁO BÀI VIẾT ---
+
+API: POST /api/post/<int:post_id>/report/
+View: PostReportView
+
+Sequence diagram:
+  User -> Frontend: Bấm "Báo cáo" -> Chọn lý do
+  Frontend -> Backend: POST /api/post/<post_id>/report/ (reason, description)
+  Backend -> Database: Tạo Report
+  Backend -> Frontend: 201 Created
+  Frontend -> User: Thông báo "Cảm ơn bạn đã báo cáo"
+
+Danh sách APIs:
+  POST /api/post/<int:post_id>/report/         [PostReportView]
+  POST /api/comment/<int:comment_id>/report/   [CommentReportView]
+
+================================================================================
+MODULE W: REACTIONS ROUTER (Router)
+================================================================================
+
+Các API từ DefaultRouter:
+  POST   /api/posts/<post_id>/react/           [PostViewSet]
+  DELETE /api/posts/<post_id>/react/           [PostViewSet]
+  GET    /api/posts/<post_id>/reactions/       [PostViewSet]
+  POST   /api/comments/<comment_id>/react/     [CommentViewSet]
+  DELETE /api/comments/<comment_id>/react/     [CommentViewSet]
+  GET    /api/comments/<comment_id>/reactions/ [CommentViewSet]
+
+================================================================================
+MODULE X: SUPPORT (Hỗ trợ)
+================================================================================
+
+Chức năng:
+  - Gửi ticket hỗ trợ
+
+Danh sách APIs:
+  POST /api/support/          [SupportTicketView]
+
+================================================================================
+MODULE Y: RELATIONSHIP (Quan hệ)
+================================================================================
+
+Chức năng:
+  - Kiểm tra mối quan hệ giữa 2 user (bạn bè, follow, block, etc.)
+
+--- Y.1 USE CASE: KIỂM TRA QUAN HỆ ---
+
+API: GET /api/relationship/<int:profile_id>/
+View: ProfileRelationship
+
+Sequence diagram:
+  User -> Frontend: Vào profile user khác
+  Frontend -> Backend: GET /api/relationship/<profile_id>/
+  Backend -> Database: Kiểm tra: IsFriend? IsFollow? IsBlocked? IsPending?
+  Backend -> Frontend: 200 OK {status: "friend"|"follow"|"blocked"|"pending"|"none"}
+  Frontend -> User: Hiển thị nút tương ứng (hủy kết bạn, theo dõi, ...)
+
+Danh sách APIs:
+  GET /api/relationship/<int:profile_id>/   [ProfileRelationship]
+
+================================================================================
+MODULE Z: UTILITY (Tiện ích)
+================================================================================
+
+Chức năng:
+  - API Schema (OpenAPI)
+  - Swagger UI
+  - Redoc
+  - Admin site
+  - i18n
+  - Activity stream
+
+Danh sách APIs:
+  GET  /api/schema/              [SpectacularAPIView]
+  GET  /api/docs/                [SpectacularSwaggerView]
+  GET  /api/redoc/               [SpectacularRedocView]
+  GET  /supremacy/admin/         [admin.site.urls]
+  GET  /api/activity/            [actstream.urls]
+  GET  /i18n/                    [django.conf.urls.i18n]
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================
+
+File tham khảo thêm:
+  - usecase_group_documentation.txt: Chi tiết đầy đủ module GROUP (56 APIs, 
+    sequence diagram, activity diagram, phân quyền)
+
+================================================================================
