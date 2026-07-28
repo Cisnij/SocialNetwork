@@ -542,7 +542,7 @@ def notify_comment(sender, instance, created, **kwargs):
             message=f'{instance.user.profile.first_name} {instance.user.profile.last_name} commented on your post {instance.post.title}'
         )
     if instance.parent: # nếu mới tạo và có parent
-        if instance.user != instance.parent.user: #nếu user comment cha mà không phải là user hiện tại thì tạo
+        if instance.user != instance.parent.user: #nếu user comment cha mà không phải là user hiện tại reply thì tạo
             Notification.objects.create(
                 reciever=instance.parent.user, # thông báo cho comment gốc rằng có reply
                 actor=instance.user,
@@ -651,6 +651,8 @@ from django.db import transaction
 @receiver(post_save, sender=Notification)
 def push_ws_notification(sender, instance, created, **kwargs):
     if not created:
+        return
+    if instance.actor_id == instance.reciever_id:  # nếu ng dùng tự thả thì sẽ không thông báo
         return
     transaction.on_commit(lambda: _push_ws(instance))
 

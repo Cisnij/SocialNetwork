@@ -86,9 +86,9 @@ class Profile(SafeDeleteModel):
         FileExtensionValidator(['jpg', 'jpeg', 'png',
                                 'webp'])])  # ví dụ post ảnh 123.png lên, nó sẽ chạy hàm sửa tên lấy ra chữ png và đổi tên file lại user_1_abc_9349832.png
     date_of_birth = models.DateField(null=True,validators=[validate_birth_date])
-    phone_number = PhoneNumberField(null=True, blank=True)  # ,unique=True)
+    phone_number = PhoneNumberField(null=True, blank=True)  # ,unique=Tre)
     bio = models.CharField(max_length=50, null=True, blank=True)
-    # friends=models.ManyToManyField('self', blank=True,symmetrical=True)#symmetrical=True (mặc định): Nếu A là bạn B → B tự động là bạn A, di voi self, self là quan hệ đi với profile vì là manytomany
+    # friends=models.ManyToManyField('self', blank=True,symmetrical=True)u#symmetrical=True (mặc định): Nếu A là bạn B → B tự động là bạn A, di voi self, self là quan hệ đi với profile vì là manytomany
     is_completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     auth_provider = models.CharField(  # tạo ô chọn
@@ -199,6 +199,22 @@ class PostVideo(SafeDeleteModel):
         indexes = [
             models.Index(fields=['post']),
         ]
+
+
+class SavedPost(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_posts')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='saved_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'post')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"SavedPost(user={self.user_id}, post={self.post_id})"
 
 
 class PostArticle(SafeDeleteModel):

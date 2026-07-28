@@ -90,12 +90,13 @@ class PostSerializer(serializers.ModelSerializer):
     # reactions
     reactions= serializers.SerializerMethodField()
     user_is_reaction=serializers.SerializerMethodField()
+    is_saved = serializers.SerializerMethodField()
     group_name = serializers.CharField(source='group.name', read_only=True)
     class Meta:
         model=Post
         fields='__all__'
 
-    def get_reactions(self, obj):
+    def get_reactions(self, obj): #logic là lấy ra tẩt cả reaction của n post và lưu id post đó là key, sau đó tới post nào thì truy cập lấy ra key id post đó kèm theo value (1: like:2,love:3...2:like:1,love:3)
         reactions_map = self.context.get('reactions_map') # cái context truyền vào bên utils.py
         if reactions_map is not None:
             return reactions_map.get(obj.post_id, [])  # đọc từ RAM nếu có
@@ -106,7 +107,7 @@ class PostSerializer(serializers.ModelSerializer):
             .values("settings__name")
             .annotate(total=Count("reactions"))
         )
-    def get_user_is_reaction(self, obj):
+    def get_user_is_reaction(self, obj): # lấy ra n post và reaction của user trong n post đó sau đó lưu vào key là post id,tới post nào thì lấy key đó, k có thì null ( 1: like)
         user_reactions_map = self.context.get('user_reactions_map')
         if user_reactions_map is not None:
             return user_reactions_map.get(obj.post_id)  # đọc từ RAM nếu có
@@ -120,6 +121,17 @@ class PostSerializer(serializers.ModelSerializer):
             reaction__object_id=obj.pk
         ).first()
         return qs.reaction.settings.name if qs else None
+
+    #logic là phân trang lấy ra 5 post 1,2,3,4,5. Sau đó lấy tất cả bài post user save nằm trong 1-5, nếu có thì lưu vào mảng. Khi tới post nào thì cứ check nằm trong thì True
+    def get_is_saved(self, obj):
+        saved_set = self.context.get('saved_post_ids')
+        if saved_set is not None:
+            return obj.post_id in saved_set # tức là nếu có thì true else thì false
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        from .models import SavedPost
+        return SavedPost.objects.filter(user=request.user, post=obj).exists()
 
 
 class PostArticalSerializer(serializers.ModelSerializer):

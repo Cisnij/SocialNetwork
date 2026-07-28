@@ -36,5 +36,5 @@ urlpatterns = [
     path('finance/', views.getFinanceDashboard, name='finance-dashboard'),
     path('group/<int:group_id>/', views.getGroupPage, name='group-page'),
     path('groups/', views.getGroupList, name='groups'),
-
+    path('saved/', views.getSavedPosts, name='saved'),
 ]

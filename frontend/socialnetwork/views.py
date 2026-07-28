@@ -145,3 +145,6 @@ def getGroupPage(request, group_id):
 
 def getGroupList(request):
     return render(request, 'app/groups.html')
+
+def getSavedPosts(request):
+    return render(request, 'app/saved.html')

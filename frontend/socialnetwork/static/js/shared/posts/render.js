@@ -1,5 +1,5 @@
 import { authFetch } from "../../authenticate/auth.js";
-import { API, DEFAULT_AVATAR, profileUrl, shareLink } from "../config.js";
+import { API, POST_ENDPOINTS, DEFAULT_AVATAR, profileUrl, shareLink } from "../config.js";
 import { openSharersModal } from "./sharers-modal.js";
 import { showToast } from "../toast.js";
 import { formatRelativeTime, cls } from "../ui.js";
@@ -440,10 +440,35 @@ export function renderPostCard(post, options = {}) {
   }
 
   if (!disableInteractions) {
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = `flex items-center gap-2 hover:text-fb-primary ${cls.hoverRow} px-2 py-1 rounded-md transition ${post.is_saved ? 'text-fb-primary' : ''}`;
+    saveBtn.innerHTML = post.is_saved 
+      ? `<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg> Đã lưu`
+      : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg> Lưu`;
+    
+    saveBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      try {
+        const res = await authFetch(POST_ENDPOINTS.toggleSavePost(post.post_id), { method: "POST" });
+        if (res.ok) {
+          const data = await res.json();
+          post.is_saved = data.is_saved;
+          saveBtn.className = `flex items-center gap-2 hover:text-fb-primary ${cls.hoverRow} px-2 py-1 rounded-md transition ${post.is_saved ? 'text-fb-primary' : ''}`;
+          saveBtn.innerHTML = post.is_saved 
+            ? `<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg> Đã lưu`
+            : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg> Lưu`;
+          showToast(post.is_saved ? "Đã lưu bài viết" : "Đã bỏ lưu bài viết");
+        }
+      } catch (err) {
+        showToast("Lỗi kết nối", "red");
+      }
+    });
+
     if (showShare) {
-      actions.append(reactionWrapper, commentBtn, shareBtn);
+      actions.append(reactionWrapper, commentBtn, shareBtn, saveBtn);
     } else {
-      actions.append(reactionWrapper, commentBtn);
+      actions.append(reactionWrapper, commentBtn, saveBtn);
     }
   }
 

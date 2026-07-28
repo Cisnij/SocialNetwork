@@ -37,6 +37,13 @@ class PostAdmin(SafeDeleteAdmin):
         for obj in queryset:
             obj.delete(force_policy=HARD_DELETE)  # xóa thật
         self.message_user(request, f"⚠️ Đã xóa cứng {count} bài viết.")
+
+@admin.register(SavedPost)
+class SavedPostAdmin(admin.ModelAdmin):
+    list_display = ('user', 'post', 'created_at')
+    list_filter = ('user',)
+    search_fields = ('user__username', 'post__title')
+
 #==========================PENDING PROFILE==========================================
 @admin.register(PendingProfile)
 class PendingProfileAdmin(admin.ModelAdmin):

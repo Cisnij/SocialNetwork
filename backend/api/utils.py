@@ -53,9 +53,18 @@ def get_reactions_post_context(queryset, user):
         for r in user_reactions
     }
 
+    saved_post_ids = set()
+    if user and user.is_authenticated:
+        from api.models import SavedPost
+        saved_post_ids = set(
+            SavedPost.objects.filter(user=user, post_id__in=post_ids)
+            .values_list('post_id', flat=True)
+        )
+
     return {
         'reactions_map': dict(reactions_map),
         'user_reactions_map': user_reactions_map,
+        'saved_post_ids': saved_post_ids,
     }
 
 
@@ -144,7 +153,17 @@ def get_reactions_share_context(share_objs, user):
         for r in user_reactions
     }
 
+    # Fetch saved posts for the current user
+    saved_post_ids = set()
+    if user and user.is_authenticated:
+        from api.models import SavedPost
+        saved_post_ids = set(
+            SavedPost.objects.filter(user=user, post_id__in=post_ids)
+            .values_list('post_id', flat=True)
+        )
+
     return {
         'reactions_map': dict(reactions_map),
         'user_reactions_map': user_reactions_map,
+        'saved_post_ids': saved_post_ids,
     }

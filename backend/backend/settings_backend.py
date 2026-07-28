@@ -57,6 +57,8 @@ CACHEOPS = {
     'api.groupdepartment': {'ops': 'all', 'timeout': 60 * 20},
     'api.postarticle': {'ops': 'all', 'timeout': 60 * 20},
     'api.postphoto': {'ops': 'all', 'timeout': 60 * 20},
+    'api.postvideo': {'ops': 'all', 'timeout': 60 * 20},
+    'api.savedpost': {'ops': 'all', 'timeout': 60 * 20},
     'api.comment': {'ops': 'all', 'timeout': 60 * 5},
     'api.notification': {'ops': 'all', 'timeout': 60 * 5},
     'api.searchHistory': {'ops': 'all', 'timeout': 60 * 5},

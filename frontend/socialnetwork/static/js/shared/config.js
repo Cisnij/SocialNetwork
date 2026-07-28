@@ -35,6 +35,8 @@ export const POST_ENDPOINTS = {
     `${API_BASE_URL}/api/user/delete-video/${videoId}/`,
   addVideo: (postId) => `${API_BASE_URL}/api/user/post-video/${postId}/`,
   create: () => `${API_BASE_URL}/api/user/post/create/v2/`,
+  savedPosts: () => `${API_BASE_URL}/api/user/saved-posts/`,
+  toggleSavePost: (postId) => `${API_BASE_URL}/api/user/post/${postId}/save/`,
 };
 
 export function profileUrl(profileId) {

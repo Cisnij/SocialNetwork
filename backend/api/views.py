@@ -445,6 +445,49 @@ class PostUser(PagedContextMixin, generics.ListAPIView):  # List tất cả post
         context.update(get_reactions_post_context(objs, self.request.user))
         return context
 
+from .models import SavedPost
+
+class SavePostToggle(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, post_id):
+        post = get_object_or_404(Post, post_id=post_id)
+        saved_post = SavedPost.objects.filter(user=request.user, post=post).first()
+        if saved_post:
+            saved_post.delete()
+            return Response({"is_saved": False}, status=status.HTTP_200_OK)
+        else:
+            SavedPost.objects.create(user=request.user, post=post)
+            return Response({"is_saved": True}, status=status.HTTP_201_CREATED)
+
+class SavedPostList(PagedContextMixin, generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostSerializer
+    pagination_class = SmallPagePagination
+
+    def get_queryset(self):
+        if not hasattr(self, '_qs'):
+            from django.db.models import Subquery, OuterRef, DateTimeField
+            saved_at_sub = SavedPost.objects.filter( # lấy tât cả post mà user đã save
+                user=self.request.user, post=OuterRef('pk')
+            ).values('created_at')[:1]
+            self._qs = Post.objects.filter( # từ post đã save lấy ra post
+                saved_by__user=self.request.user # dùng related name hay dùng savedpost__user cũng được
+            ).select_related('user', 'user__profile', 'group').prefetch_related(
+                'photos', 'videos'
+            ).annotate(
+                saved_at=Subquery(saved_at_sub, output_field=DateTimeField())
+            ).order_by('-saved_at')
+        return self._qs
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        objs = getattr(self, '_current_page_objs', None)
+        if objs is None:
+            objs = self.get_queryset()
+        context.update(get_reactions_post_context(objs, self.request.user))
+        return context
+
 
 class PostCreate(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
