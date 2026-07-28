@@ -4716,6 +4716,8 @@ function showInCallScreen() {
     const s = (secs % 60).toString().padStart(2, '0');
     durationEl.textContent = `${m}:${s}`;
   }, 1000);
+  // Hook nút thu nhỏ mỗi lần vào màn hình in-call
+  _hookMinimizeCallBtn();
 }
 
 // ── Ringing ticker (0s, 1s, 2s...) ──────────────────────────
@@ -4734,6 +4736,59 @@ function stopRingTicker() {
   if (ringTickTimer) { clearInterval(ringTickTimer); ringTickTimer = null; }
   const el = document.getElementById('callRingTimer');
   if (el) el.textContent = '';
+}
+
+// ── Helper: Chèn tin nhắn hệ thống vào khung chat ──────────────
+function _insertSystemCallMessage(text) {
+  const messagesEl = document.getElementById('chatMessages');
+  if (!messagesEl) return;
+  const div = document.createElement('div');
+  div.className = 'flex justify-center my-2';
+  div.innerHTML = `<span class="inline-flex items-center gap-1.5 text-xs text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-1 rounded-full">${text}</span>`;
+  messagesEl.appendChild(div);
+  // Cuộn xuống cuối
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+// ── Minimize / Restore call modal ──────────────────────────────
+let _callIsMinimized = false;
+function _hookMinimizeCallBtn() {
+  const minBtn = document.getElementById('minimizeCallBtn');
+  if (!minBtn) return;
+  const freshBtn = minBtn.cloneNode(true);
+  minBtn.replaceWith(freshBtn);
+  freshBtn.onclick = () => {
+    const modal = document.getElementById('videoCallModal');
+    if (!modal) return;
+    _callIsMinimized = !_callIsMinimized;
+    if (_callIsMinimized) {
+      // Thu nhỏ: đưa modal về góc phải dưới
+      modal.classList.remove('inset-0');
+      modal.style.cssText = `
+        position: fixed !important;
+        bottom: 16px !important;
+        right: 16px !important;
+        top: auto !important;
+        left: auto !important;
+        width: 340px !important;
+        height: 230px !important;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+        z-index: 499;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.15);
+        transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+      `;
+      freshBtn.title = 'Phóng to cuộc gọi';
+      freshBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>`;
+    } else {
+      // Phóng to: đưa về toàn màn hình
+      modal.style.cssText = '';
+      modal.classList.add('inset-0');
+      freshBtn.title = 'Thu nhỏ cuộc gọi';
+      freshBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>`;
+    }
+  };
 }
 
 // ── Cleanup hoàn toàn ─────────────────────────────────────────
@@ -4759,6 +4814,21 @@ function closeVideoCall() {
 
   modal?.classList.add('hidden');
   document.getElementById('callRingingScreen')?.classList.add('hidden');
+  // Restore modal về fullscreen nếu đang thu nhỏ
+  if (_callIsMinimized) {
+    const modalEl = document.getElementById('videoCallModal');
+    if (modalEl) {
+      modalEl.style.cssText = '';
+      modalEl.classList.add('inset-0');
+    }
+    _callIsMinimized = false;
+  }
+  // Ẩn REC badge
+  const recBadge = document.getElementById('recBadge');
+  if (recBadge) recBadge.classList.replace('flex', 'hidden');
+  // Xoá tất cả audio element của remote participants
+  document.getElementById('remoteAudioContainer')?.replaceChildren();
+
   document.getElementById('callInCallScreen')?.classList.add('hidden');
   document.getElementById('localVideoWrap')?.classList.add('hidden');
   if (grid) grid.innerHTML = '';
@@ -4821,10 +4891,29 @@ function connectCallWs(convId) {
         const btn = document.getElementById('toggleRecordBtn');
         if (btn) {
           btn.classList.add('bg-red-500/80');
-          btn.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/></svg>`;
-          btn.title = 'Đang ghi hình – Bấm để dừng';
         }
-        showToast('Đang ghi hình...', 'red');
+        // Hiện REC badge nhấp nháy ở topbar
+        const recBadge = document.getElementById('recBadge');
+        if (recBadge) recBadge.classList.replace('hidden', 'flex');
+        // Tin nhắn hệ thống nổi bật trong khung chat
+        const recorderName = data.recorder_name || 'Một thành viên';
+        _insertSystemCallMessage(`🔴 ${recorderName} bắt đầu ghi hình cuộc gọi`);
+        showToast(`🔴 ${recorderName} bắt đầu ghi hình`, 'red');
+
+        // Lưu lại ai đang ghi – chỉ họ mới được nhấn Stop
+        window._currentRecorderId = data.recorder_id;
+        const myId = window._myUserId; // được gán khi vào phòng (xem bên dưới)
+        if (btn && myId && String(myId) !== String(data.recorder_id)) {
+          // Người khác: chỉ đổi icon sang càm biết nhưng không cho nhấn
+          btn.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/></svg>`;
+          btn.title = 'Đang ghi hình bởi ' + recorderName;
+          btn.disabled = true;
+          btn.classList.add('opacity-60', 'cursor-not-allowed');
+        } else if (btn) {
+          // Người ghi: đổi sang icon dừng
+          btn.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+          btn.title = 'Dừng ghi hình';
+        }
       }
       if (data.type === 'recording_stopped') {
         const btn = document.getElementById('toggleRecordBtn');
@@ -4832,7 +4921,14 @@ function connectCallWs(convId) {
           btn.classList.remove('bg-red-500/80');
           btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" stroke-width="2"/></svg>`;
           btn.title = 'Ghi hình';
+          btn.disabled = false;
+          btn.classList.remove('opacity-60', 'cursor-not-allowed');
         }
+        // Ẩn REC badge
+        const recBadge = document.getElementById('recBadge');
+        if (recBadge) recBadge.classList.replace('flex', 'hidden');
+        window._currentRecorderId = null;
+        _insertSystemCallMessage('⏹ Đã dừng ghi hình cuộc gọi');
         showToast('Đã dừng ghi hình', 'gray');
       }
     } catch (_) { }
@@ -5253,7 +5349,22 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
         wrapper.appendChild(label);
         updateGridLayout();
       } else if (track.kind === 'audio') {
-        track.attach();
+        // FIX: Attach audio track vào DOM để trình duyệt phát tiếng
+        const audioEl = track.attach();
+        audioEl.autoplay = true;
+        audioEl.id = `audio-${participant.identity}`;
+        // Bật âm lượng tối đa
+        audioEl.volume = 1.0;
+        
+        const audioContainer = document.getElementById('remoteAudioContainer');
+        if (audioContainer) {
+          audioContainer.appendChild(audioEl);
+        } else {
+          document.body.appendChild(audioEl);
+        }
+        
+        // Bắt buộc trình duyệt play (vì một số trình duyệt block autoplay nếu không có Element trong DOM)
+        audioEl.play().catch(e => console.warn('Audio play error:', e));
       }
     });
 

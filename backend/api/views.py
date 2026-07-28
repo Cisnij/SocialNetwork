@@ -3844,12 +3844,22 @@ class ToggleRecordVideoRoomView(AsyncAPIView):
         if action == 'start': # nếu là start thì broadcast qua để user biết đang quay
             room.egress_id = f"client-recording-{request.user.id}" # đánh dấu cờ là room đã được quay bởi ai
             await room.asave(update_fields=['egress_id'])
+
+            # Lấy tên người dùng
+            profile = await sync_to_async(lambda: getattr(request.user, 'profile', None))()
+            if profile:
+                recorder_name = await sync_to_async(lambda: profile.full_name or request.user.username)()
+            else:
+                recorder_name = request.user.username
+
             await channel_layer.group_send(
                 f'call_{conv_id}',
-                {'type': 'recording_started', 'conv_id': conv_id,
-                 'recorder_name': (await sync_to_async(lambda: getattr(request.user, 'profile', None))()
-                                   and await sync_to_async(lambda: request.user.profile.full_name)()
-                                   or request.user.username)}
+                {
+                    'type': 'recording_started',
+                    'conv_id': conv_id,
+                    'recorder_id': request.user.id,
+                    'recorder_name': recorder_name,
+                }
             )
             return Response({"recording": True})
         else:

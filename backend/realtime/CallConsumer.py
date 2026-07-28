@@ -134,7 +134,8 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
                         'conv_id':          self.conv_id,
                     }
                 )
-                
+
+                # FLOW XỬ LÝ KHI TẮT ĐỘT NGỘT NHƯ TẮT TAB HOẶC RESET TAB KHI ĐANG GỌI TỚI VÌ DISCONNECT GỌI TỚI ĐÂY
                 if end_reason == 'cancelled': # nếu là cancel thì phải broadcast qua notification để tắt popup của các user chưa join nên chưa vào ws call
                     member_ids = await self._get_member_ids(room)
                     channel_layer = get_channel_layer()
@@ -193,7 +194,7 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
             await self._create_system_message(room, msg_type)
             duration = await self._get_duration(room)
 
-            # Báo tất cả trong ws/call/<conv_id>/
+            # Báo tất cả trong ws/call/<conv_id>/ là end, nhờ vậy live kit mới biết là phòng 1-1 mà gọi end cả 2 bên
             await self.channel_layer.group_send(
                 self.room_name,
                 {

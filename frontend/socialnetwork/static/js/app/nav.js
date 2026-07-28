@@ -63,8 +63,17 @@ function playNotifSound() {
   } catch (_) { }
 }
 
-// Resume audio context on first user interaction
-document.addEventListener("click", () => { if (audioCtx && audioCtx.state === "suspended") audioCtx.resume(); }, { once: true });
+// Resume audio context on ANY user interaction (not just first click)
+// Quan trọng: phải resume trước khi cuộc gọi đến để tránh bị block
+const _resumeAudioCtx = () => {
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => {});
+  }
+};
+document.addEventListener("click", _resumeAudioCtx);
+document.addEventListener("keydown", _resumeAudioCtx);
+document.addEventListener("touchstart", _resumeAudioCtx);
+document.addEventListener("mousemove", _resumeAudioCtx, { once: true }); // 1 lần khi di chuột là đủ
 
 // ======= NOTIFICATION POPUP =======
 let notifPopupTimeout = null;
@@ -143,10 +152,44 @@ let ringToneInterval = null;
 
 function playRingtone() {
   if (ringToneInterval) return;
-  if (window.playNotifSound) window.playNotifSound();
-  ringToneInterval = setInterval(() => {
-    if (window.playNotifSound) window.playNotifSound();
-  }, 2500);
+  // Tạo AudioContext ngay & resume nếu bị suspend
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch(_) {}
+
+  // Tạo 1 tiếng chuông reo rõ ràng (phone ring pattern)
+  const playOneRing = () => {
+    try {
+      const ctx = ensureAudioCtx();
+      if (ctx.state === 'suspended') { ctx.resume(); }
+
+      // Tiếng chuông "dring dring" gồm 2 xung ngắn
+      const playPulse = (startTime, freq1, freq2, dur) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq1, startTime);
+        osc.frequency.setValueAtTime(freq2, startTime + dur / 2);
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.4, startTime + 0.02);
+        gain.gain.setValueAtTime(0.4, startTime + dur - 0.05);
+        gain.gain.linearRampToValueAtTime(0, startTime + dur);
+        osc.start(startTime);
+        osc.stop(startTime + dur);
+      };
+
+      const t = ctx.currentTime;
+      // 2 xung ngắn cách nhau 0.2s
+      playPulse(t,       800, 960, 0.25);
+      playPulse(t + 0.3, 800, 960, 0.25);
+    } catch (_) {}
+  };
+
+  playOneRing();
+  ringToneInterval = setInterval(playOneRing, 2000); // lặp mỗi 2 giây
 }
 
 function stopRingtone() {

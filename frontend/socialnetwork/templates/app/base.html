@@ -1321,6 +1321,10 @@
         <div class="flex items-center gap-3">
           <p class="text-white font-semibold text-base" id="videoCallTitle">Video Call</p>
           <span id="callDurationDisplay" class="text-white/50 text-xs font-mono tabular-nums"></span>
+          <!-- REC Badge (ẩn mặc định, hiện khi đang ghi) -->
+          <span id="recBadge" class="hidden items-center gap-1 bg-red-600/90 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">
+            <span class="w-2 h-2 bg-white rounded-full inline-block"></span> REC
+          </span>
         </div>
         <div class="flex items-center gap-2">
           <button id="toggleRecordBtn" type="button"
@@ -1335,6 +1339,11 @@
             class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all" title="Camera">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/><line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </button>
+          <!-- Nút Thu nhỏ (minimize) -->
+          <button id="minimizeCallBtn" type="button"
+            class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all" title="Thu nhỏ cuộc gọi">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+          </button>
           <button id="endCallBtn" type="button"
             class="px-5 py-2 rounded-full bg-red-600 hover:bg-red-500 text-white font-semibold text-sm transition-all shadow-lg shadow-red-500/30">Kết thúc</button>
         </div>
@@ -1348,6 +1357,9 @@
       <div id="localVideoWrap" class="hidden absolute bottom-24 right-4 w-36 h-24 rounded-xl overflow-hidden border-2 border-white/20 shadow-xl bg-black">
         <video id="localVideo" autoplay muted playsinline class="w-full h-full object-cover"></video>
       </div>
+
+      <!-- Container ẩn để chứa các thẻ <audio> từ remote participants -->
+      <div id="remoteAudioContainer" class="hidden" aria-hidden="true"></div>
     </div>
 
   </div>
