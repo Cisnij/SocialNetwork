@@ -203,7 +203,7 @@ urlpatterns = [
     path('api/video/<int:conv_id>/status/', VideoRoomStatusView.as_view()),
     path('api/video/<int:conv_id>/leave/', LeaveCallView.as_view()),
 
-    #SCHEDULE TASK
+    #Event
     path('api/chat/conversation/<int:conv_id>/create-event/', ListCreateEventChat.as_view()),
     path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/', EventDetailChat.as_view()),# sửa, xóa, detail
     path('api/chat/conversation/<int:conv_id>/event/<int:event_id>/update-status/',EventResponseChat.as_view()),

@@ -1736,11 +1736,7 @@ class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò c
         if member and member.deleted_at_message_id is not None: # nếu là thành viên và đã xóa
             qs= qs.filter(id__gt=member.deleted_at_message_id) # lấy tin nhắn có thơi gian lớn hơn delete
         if search:
-            ids = [
-                msg.id
-                for msg in qs
-                if msg.content and search in msg.content.lower()
-            ]
+            ids = [msg.id for msg in qs if msg.content and search in msg.content.lower()]
             qs = qs.filter(id__in=ids)
         return qs
 
@@ -2008,7 +2004,7 @@ class ChatAttachmentUpload(AsyncAPIView):
             )
 
             # tạo attachment
-            attachment = await MessageAttachment.objects.acreate(
+            attachment = await MessageAttachment.objects.select_related('uploaded_by', 'uploaded_by__profile').acreate(
                 conversation_id=conv_id,
                 uploaded_by=request.user,
                 file_url=result["secure_url"],
@@ -2438,6 +2434,7 @@ class SearchAPIView(APIView):
         return Response(result)
 
 # =========================Friend Suggest===========================================
+"""ví dụ bạn của bạn mình là A,B,C và bạn mình là D thì, nó sẽ lấy ra tất cả bạn bè A trước và filter id nào nằm trong bạn của mình và đếm. Ở đây là chỉ có D thì là 1 bạn chung"""
 class FriendSuggestion(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = FriendSuggestionSerializer
@@ -2446,16 +2443,18 @@ class FriendSuggestion(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         # lọc ra bạn của mình
-        friend_ids = Friend.objects.filter(from_user=user).values_list('to_user_id', flat=True)
+        friend_ids = list(Friend.objects.filter(from_user=user).values_list('to_user_id', flat=True))
         #bạn của bạn mình
-        friends_of_friends_ids = Friend.objects.filter(from_user_id__in=friend_ids).values('to_user_id')
+        friends_of_friends_ids = list(Friend.objects.filter(from_user_id__in=friend_ids).values_list('to_user_id', flat=True))
         # loại trừ
-        sent_ids = FriendshipRequest.objects.filter(from_user=user).values_list("to_user_id", flat=True)
-        received_ids = FriendshipRequest.objects.filter(to_user=user).values_list("from_user_id", flat=True)
-        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+        sent_ids = list(FriendshipRequest.objects.filter(from_user=user).values_list("to_user_id", flat=True))
+        received_ids = list(FriendshipRequest.objects.filter(to_user=user).values_list("from_user_id", flat=True))
+        blocked_ids = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
+        blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
+
 
         # lọc các profile có id trong id danh sách bạn bè của bạn mình
+
         return (
             Profile.objects.filter(
                 user__id__in=friends_of_friends_ids
@@ -2463,8 +2462,8 @@ class FriendSuggestion(generics.ListAPIView):
             .exclude(Q(user_id__in=friend_ids) | Q(user_id=user.id)| Q(user_id__in=sent_ids) | Q(user_id__in=received_ids) | Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids))  # loại trừ những ng này
             .annotate(
                 mutual_count=Count(
-                    'user__friends', #user là 1-1 Profile và friends là related name của to_user
-                    filter=Q(user__friends__from_user_id__in=friend_ids), # dếm người user nào nằm trong danh sách bạn bè của mình nhiều nhất
+                    'user__friends', #user là 1-1 Profile và friends là related name của to_user, tức là lấy tất cả friend của to_user này
+                    filter=Q(user__friends__from_user_id__in=friend_ids), # dếm người user nào nằm trong danh sách bạn bè của mình nhiều nhất( lấy ra tất cả bạn bè user đó và lọc ra có bao id nằm trong friend id và đếm )
                     distinct=True
                 )
             )  # đếm số bạn chung
@@ -2838,7 +2837,7 @@ class AddMemberIntoTaskGroupChat(APIView):
             pass
         return Response({"success": True}, status=200)
 
-class MemberofTaskGroupChat(generics.ListAPIView):
+class MemberofTaskGroupChat(generics.ListAPIView):# khi load fe sẽ lưu mảng member đoạn chat đó, khi ấn vào addmembertask thì nó lấy gọi api member of task và lấy mảng trừ đi các thành viên đõ có trong task
     permission_classes = [IsAuthenticated]
     pagination_class = SmallPagePagination
     serializer_class = ProfileSerializer
@@ -3298,7 +3297,7 @@ class ListUserVoteGroupChat(generics.ListAPIView):
 
 
 #==============VIDEO CALL ROOM========================================================================
-"""1 user a bấm gọi, sẽ gọi api tạo phòng trả về token cho fe
+"""1 user a bấm gọi, sẽ gọi api tạo phòng trả về token cho fe, khi có user đầu kết nối livekit qua token đó mới tạo phòng 
     2 fe gọi livekit kiểm tra token có cho kết nối vào room, có cho kết nối thì video và mic user a đó trên cloud
      3 hiển thị broadcast lên phòng qua ws noti, user b thấy bấm vào và join cuộc gọi
         4. user b gọi api join phòng kiểm tra có phòng đang active thì kết nối vào và lấy token cho fe và fe gọi livekit,token có quyền thì vô phòng
@@ -3313,7 +3312,7 @@ def _get_avatar_url(profile):
         except ValueError:
             return DEFAULT_AVATAR_URL
     return DEFAULT_AVATAR_URL
-
+# kiểm tra mình có bận, phòng có đang active mà có user, kiểm tra user 1-1 có bận và group thì thêm vào set để k gửi broadcast báo cho user đó
 class CreateVideoRoomView(AsyncAPIView):
     permission_classes = [IsAuthenticated]
     throttle_classes=[ScopedRateThrottle]
@@ -3418,7 +3417,7 @@ class CreateVideoRoomView(AsyncAPIView):
         ]
         await asyncio.gather(*tasks)
 
-        token = await self._create_token(room.room_name, request.user, full_name, avatar)
+        token = await self._create_token(room.room_name, request.user, full_name, avatar) #token tự tạo nội bộ qua thư viện của live kit mà k càn gọi api
         return Response({
             'token':         token,
             'room_name':     room.room_name,
@@ -3732,12 +3731,7 @@ class VideoRoomStatusView(AsyncAPIView):
 
 
 class LeaveCallView(AsyncAPIView):
-    """Endpoint REST dự phòng khi đóng tab / mất mạng đột ngột.
-    `beforeunload` gửi qua WebSocket KHÔNG đảm bảo tới server (trình duyệt
-    có thể huỷ ngang khi đang đóng trang), và WS heartbeat cần vài chục giây
-    mới phát hiện mất kết nối thật sự. FE gọi endpoint này bằng
-    `fetch(url, {keepalive: true})` trong 'beforeunload'/'pagehide' để đảm
-    bảo phòng luôn được dọn ngay lập tức (sửa item 1 & 2)."""
+    """Endpoint REST dự phòng khi đóng tab / mất mạng đột ngột"""
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'create_call'
@@ -4243,23 +4237,30 @@ class ListGroupUser(generics.ListAPIView):
     search_fields = ['name']
     def get_queryset(self):
         user =self.request.user
+        user_is_member = GroupMember.objects.filter(
+            group=OuterRef('pk'),
+            user=user,
+            is_active=True,
+        )
+
         return Group.objects.filter(
-            members__user=user, #dùng related_name lấy vì group k thể truy cập tới groupmember
-            members__is_active = True,
+            Exists(user_is_member)  # thay vì members__user=..., members__is_active=...
         ).annotate(
-            member_count= Count('members',filter= Q(members__is_active=True)),
-            is_member = Exists(
-                GroupMember.objects.filter(group=OuterRef('pk') ,user=user,is_active=True) # lấy ra xem có user ở group hiện tại is_active
+            member_count=Count(
+                'members',
+                filter=Q(members__is_active=True),
+                distinct=True,
             ),
-            is_pending = Exists(
-                GroupJoinRequest.objects.filter(group=OuterRef('pk'),user=user,status='pending')
-            )
-        ).select_related('created_by__profile')\
-        .prefetch_related(
+            is_member=Exists(user_is_member),
+            is_pending=Exists(
+                GroupJoinRequest.objects.filter(group=OuterRef('pk'), user=user, status='pending')
+            ),
+        ).select_related('created_by__profile').prefetch_related(
             Prefetch(
-                'members', # lấy ra tất cả thành viên và lọc ra chính mình
-                queryset = GroupMember.objects.filter(user=user,is_active=True).select_related('job_role__department','job_role'),
-                to_attr = 'my_membership' #  lưu vào attribute riêng
+                'members',
+                queryset=GroupMember.objects.filter(user=user, is_active=True)
+                    .select_related('job_role__department', 'job_role'),
+                to_attr='my_membership',
             )
         )
 

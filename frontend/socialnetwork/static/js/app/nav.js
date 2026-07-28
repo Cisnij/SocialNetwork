@@ -194,7 +194,17 @@ document.getElementById("acceptCallBtn")?.addEventListener("click", async () => 
     const res = await authFetch(API.joinVideoRoom(pendingCallConvId), { method: "POST" });
     if (!res.ok) { alert("Cuộc gọi đã kết thúc"); return; }
     const callData = await res.json();
-    if (window.startVideoCall) await window.startVideoCall(callData.token, callData.livekit_url, callData.room_name, pendingCallConvId);
+    if (window.startVideoCall) {
+      await window.startVideoCall(callData.token, callData.livekit_url, callData.room_name, pendingCallConvId);
+    } else {
+      sessionStorage.setItem("pendingVideoCall", JSON.stringify({
+        token: callData.token,
+        url: callData.livekit_url,
+        roomName: callData.room_name,
+        convId: pendingCallConvId
+      }));
+      window.location.href = `/chat/`;
+    }
   } catch (e) { console.error("[nav] join call error", e); }
   pendingCallConvId = null;
 });
@@ -393,20 +403,38 @@ openPostModalMobile?.addEventListener("click", () => {
   if (openPostModal) openPostModal.click();
 });
 
-// ======= Mobile Search =======
+// ======= Mobile Search Overlay =======
 const mobileSearchBtn = document.getElementById("mobileSearchBtn");
+const mobileSearchOverlay = document.getElementById("mobileSearchOverlay");
+const mobileSearchInput = document.getElementById("mobileSearchInput");
+const closeMobileSearch = document.getElementById("closeMobileSearch");
+
 mobileSearchBtn?.addEventListener("click", () => {
-  searchInput?.focus();
-  // On mobile, we could show a modal or expand search
-  // For now, just focus the search input if it's visible
-  if (searchInput && window.innerWidth >= 640) {
-    searchInput.focus();
-  } else {
-    // On mobile, show a simple prompt or redirect to search page
-    const query = prompt("Tìm kiếm:");
-    if (query) {
-      window.location.href = `/search/?q=${encodeURIComponent(query)}`;
-    }
+  mobileSearchOverlay?.classList.remove("hidden");
+  mobileSearchOverlay?.classList.add("flex");
+  setTimeout(() => mobileSearchInput?.focus(), 80);
+});
+
+closeMobileSearch?.addEventListener("click", () => {
+  mobileSearchOverlay?.classList.add("hidden");
+  mobileSearchOverlay?.classList.remove("flex");
+});
+
+mobileSearchInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const q = mobileSearchInput.value.trim();
+    if (q) window.location.href = `/search/?q=${encodeURIComponent(q)}`;
+  }
+  if (e.key === "Escape") {
+    mobileSearchOverlay?.classList.add("hidden");
+    mobileSearchOverlay?.classList.remove("flex");
+  }
+});
+
+mobileSearchOverlay?.addEventListener("click", (e) => {
+  if (e.target === mobileSearchOverlay) {
+    mobileSearchOverlay.classList.add("hidden");
+    mobileSearchOverlay.classList.remove("flex");
   }
 });
 

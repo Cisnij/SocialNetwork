@@ -11,10 +11,6 @@
         <h2
           class="text-2xl font-black bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
           Nhóm</h2>
-        <button id="btnSettingsGroup"
-          class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover-scale">
-          <i class="fas fa-cog text-gray-500"></i>
-        </button>
       </div>
 
       <div class="relative mb-6">
@@ -64,18 +60,15 @@
   <!-- Center feed -->
   <main class="lg:col-span-9 space-y-6">
     <!-- Header/Filter mobile only -->
-    <div class="lg:hidden flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x" id="groupMobileNav">
+    <div class="lg:hidden flex flex-nowrap gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x" id="groupMobileNav">
       <button id="tabMyGroupsMobile"
-        class="nav-tab-mobile px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-bold whitespace-nowrap shadow-md snap-start">Nhóm
-        của bạn</button>
+        class="shrink-0 min-w-max nav-tab-mobile px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-bold whitespace-nowrap shadow-md snap-start">Nhóm của bạn</button>
       <button id="tabExploreMobile"
-        class="nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start">Khám
-        phá</button>
+        class="shrink-0 min-w-max nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start">Khám phá</button>
       <button id="tabMyRequestsMobile"
-        class="nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start">Yêu cầu
-        đã gửi</button>
+        class="shrink-0 min-w-max nav-tab-mobile px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-bold whitespace-nowrap snap-start">Yêu cầu đã gửi</button>
       <button id="btnCreateGroupMobile"
-        class="px-5 py-2.5 bg-fb-primary/10 text-fb-primary rounded-full font-bold whitespace-nowrap snap-start flex items-center gap-2"><i
+        class="shrink-0 min-w-max px-5 py-2.5 bg-fb-primary/10 text-fb-primary rounded-full font-bold whitespace-nowrap snap-start flex items-center gap-2"><i
           class="fas fa-plus"></i> Tạo nhóm mới</button>
     </div>
 

@@ -50,6 +50,15 @@ async function init() {
     if (els.avatarBtn) els.avatarBtn.src = picture;
     if (els.dropdownName) els.dropdownName.textContent = fullName;
     if (els.profileLink && userId) els.profileLink.href = `/profile/${userId}`;
+
+    // Mobile menu avatar/name sync
+    const mobileMenuAvatar = document.getElementById("mobileMenuAvatar");
+    const mobileMenuName = document.getElementById("mobileMenuName");
+    const mobileMenuProfileLink = document.getElementById("mobileMenuProfileLink");
+    if (mobileMenuAvatar) mobileMenuAvatar.src = picture || "https://res.cloudinary.com/dec8t19tm/image/upload/v1781533632/default-avatar_qprrlr.jpg";
+    if (mobileMenuName) mobileMenuName.textContent = fullName;
+    if (mobileMenuProfileLink && userId) mobileMenuProfileLink.href = `/profile/${userId}`;
+
     const mobileProfileLink = document.getElementById("mobileProfileLink");
     if (mobileProfileLink && userId) mobileProfileLink.href = `/profile/${userId}`;
 

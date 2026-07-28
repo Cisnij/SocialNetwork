@@ -4971,6 +4971,10 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
       }
     };
   }
+  const SVG_MIC_ON = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>`;
+  const SVG_MIC_OFF = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/><line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+  const SVG_CAM_ON = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>`;
+  const SVG_CAM_OFF = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/><line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
 
   // ── Hook Toggle Mic ────────────────────────────────────────
   const micBtn = document.getElementById('toggleMicBtn');
@@ -4983,12 +4987,12 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
         const enabled = currentVideoRoom.localParticipant.isMicrophoneEnabled;
         await currentVideoRoom.localParticipant.setMicrophoneEnabled(!enabled);
         const now = currentVideoRoom.localParticipant.isMicrophoneEnabled;
-        freshMic.innerHTML = now ? '🎙️' : '🔇';
+        freshMic.innerHTML = now ? SVG_MIC_ON : SVG_MIC_OFF;
         freshMic.classList.toggle('bg-red-500/50', !now);
       } catch (e) { showToast('Không thể bật/tắt mic', 'red'); }
     };
     // Default icon: mic off (chưa bật)
-    freshMic.innerHTML = '🔇';
+    freshMic.innerHTML = SVG_MIC_OFF;
     freshMic.classList.add('bg-red-500/50');
   }
 
@@ -5003,7 +5007,7 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
         const enabled = currentVideoRoom.localParticipant.isCameraEnabled;
         await currentVideoRoom.localParticipant.setCameraEnabled(!enabled);
         const now = currentVideoRoom.localParticipant.isCameraEnabled;
-        freshCam.innerHTML = now ? '📷' : '📵';
+        freshCam.innerHTML = now ? SVG_CAM_ON : SVG_CAM_OFF;
         freshCam.classList.toggle('bg-red-500/50', !now);
         const localWrap = document.getElementById('localVideoWrap');
         const localVideo = document.getElementById('localVideo');
@@ -5018,7 +5022,7 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
       } catch (e) { showToast('Không tìm thấy camera', 'red'); }
     };
     // Default icon: cam off
-    freshCam.innerHTML = '📵';
+    freshCam.innerHTML = SVG_CAM_OFF;
     freshCam.classList.add('bg-red-500/50');
   }
 
@@ -5056,7 +5060,7 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
         try {
           await room.localParticipant.setMicrophoneEnabled(true);
           const mic = document.getElementById('toggleMicBtn');
-          if (mic) { mic.innerHTML = '🎙️'; mic.classList.remove('bg-red-500/50'); }
+          if (mic) { mic.innerHTML = SVG_MIC_ON; mic.classList.remove('bg-red-500/50'); }
         } catch (_) { }
 
         // Tạo tile cho callee
@@ -5072,7 +5076,7 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
         const mic = document.getElementById('toggleMicBtn');
-        if (mic) { mic.innerHTML = '🎙️'; mic.classList.remove('bg-red-500/50'); }
+        if (mic) { mic.innerHTML = SVG_MIC_ON; mic.classList.remove('bg-red-500/50'); }
       } catch (_) { }
 
       // Tạo tile cho những người đã có trong phòng
@@ -5171,3 +5175,16 @@ function _addParticipantTile(grid, participant) {
 // Expose để notification consumer gọi khi callee bấm Accept
 window.startVideoCall = startVideoCall;
 
+// Auto-resume call if redirected from another page
+setTimeout(() => {
+  const pendingCallStr = sessionStorage.getItem("pendingVideoCall");
+  if (pendingCallStr) {
+    sessionStorage.removeItem("pendingVideoCall");
+    try {
+      const pc = JSON.parse(pendingCallStr);
+      startVideoCall(pc.token, pc.url, pc.roomName, pc.convId);
+    } catch(e) {
+      console.error("Failed to resume video call", e);
+    }
+  }
+}, 300);

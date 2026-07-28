@@ -354,7 +354,7 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
                     .order_by('created_at')
                     .first()
                 )
-                if first_message and self.user != first_message.sender:
+                if first_message and self.user != first_message.sender: # người gửi đầu thì đc gửi tiếp trong conv pending, còn người nhận thì báo lỗi
                     return False, "Bạn phải chấp nhận yêu cầu tin nhắn trước khi trả lời"
 
         return True, None

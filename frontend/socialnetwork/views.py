@@ -3,7 +3,10 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.http import HttpResponse
 import urllib.request
-
+# views.py
+from django.http import HttpResponse
+import os
+from django.conf import settings
 # Create your views here.
 
 def getBase(request):

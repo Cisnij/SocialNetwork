@@ -18,7 +18,7 @@ chat nhóm:
 	thêm vào setting cho chat
 
 
-
+# accept message có thể thêm broadcast nếu accept thành công
 
 
 

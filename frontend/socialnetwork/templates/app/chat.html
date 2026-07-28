@@ -3,48 +3,56 @@
 {% block title %}Messenger{% endblock %}
 {% block main_content %}
 <div id="chatPageRoot" data-page="chat"
-  class="max-w-[1400px] mx-auto h-[calc(100vh-7.5rem)] sm:h-[calc(100vh-5.5rem)] flex glass-card sm:rounded-3xl sm:border border-slate-200 dark:border-white/10 shadow-xl overflow-hidden sm:mt-2 relative animate-fade-in">
+  class="max-w-[1400px] mx-auto flex glass-card sm:rounded-3xl sm:border border-slate-200 dark:border-white/10 shadow-xl overflow-hidden sm:mt-2 relative animate-fade-in"
+  style="height: calc(100dvh - 3.5rem); margin-bottom: 0;">
+
+  <!-- Sidebar: conversation list -->
   <aside id="chatSidebar"
-    class="w-full md:w-[380px] border-r border-slate-200 dark:border-white/10 flex flex-col bg-slate-50/80 dark:bg-black/40 shrink-0">
-    <div
-      class="p-5 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-white/80 dark:bg-white/5 backdrop-blur-md">
-      <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-        Messenger</h1>
+    class="absolute inset-0 z-10 w-full md:relative md:w-[380px] md:translate-x-0 flex flex-col bg-slate-50/80 dark:bg-black/40 shrink-0 border-r border-slate-200 dark:border-white/10 transition-transform duration-300 ease-in-out">
+
+    <div class="p-4 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-white/80 dark:bg-white/5 backdrop-blur-md shrink-0">
+      <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Messenger</h1>
       <button type="button" id="showHiddenChats"
-        class="text-sm px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-semibold hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-all shadow-sm hover-scale">Đã
-        ẩn</button>
+        class="text-sm px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-semibold hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-all shadow-sm hover-scale">Đã ẩn</button>
     </div>
-    <!-- Friends strip (start new chat) -->
-    <div class="border-b border-slate-200 dark:border-white/10 py-4 bg-white/60 dark:bg-white/5">
-      <p class="px-5 text-[11px] font-bold text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">Bạn bè</p>
-      <div id="chatFriendsStrip" class="flex gap-4 overflow-x-auto px-5 pb-2 scrollbar-thin"></div>
+
+    <div class="border-b border-slate-200 dark:border-white/10 py-3 bg-white/60 dark:bg-white/5 shrink-0">
+      <p class="px-4 text-[11px] font-bold text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Bạn bè</p>
+      <div id="chatFriendsStrip" class="flex gap-3 overflow-x-auto px-4 pb-1 scrollbar-thin"></div>
     </div>
+
     <div class="flex-1 flex flex-col min-h-0 bg-white/70 dark:bg-white/5">
-      <div class="px-5 pt-4 pb-2">
-        <input type="text" id="convSearchInput" placeholder="Tìm kiếm trò chuyện..." class="w-full text-sm px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/10 dark:text-white border-none focus:ring-2 focus:ring-blue-500/50 outline-none">
+      <div class="px-4 pt-3 pb-2 shrink-0">
+        <input type="text" id="convSearchInput" placeholder="Tìm kiếm trò chuyện..."
+          class="w-full text-sm px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/10 dark:text-white border-none focus:ring-2 focus:ring-blue-500/50 outline-none">
       </div>
-      <p class="px-5 pb-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Trò chuyện</p>
-      <div id="chatConvList" class="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 space-y-1 pb-4"></div>
+      <p class="px-4 pb-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">Trò chuyện</p>
+      <div id="chatConvList" class="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 space-y-1 pb-20 md:pb-4"></div>
     </div>
   </aside>
-  <div id="sidebarResizer" class="hidden md:block w-1.5 cursor-col-resize hover:bg-fb-primary/50 active:bg-fb-primary transition-colors z-20 shrink-0"></div>
+
+  <!-- Resizer (desktop only) -->
+  <div id="sidebarResizer"
+    class="hidden md:block w-1.5 cursor-col-resize hover:bg-fb-primary/50 active:bg-fb-primary transition-colors shrink-0 z-20"></div>
+
+  <!-- Chat panel -->
   <section id="chatPanel"
-    class="hidden md:flex flex-1 flex-col min-w-0 absolute md:relative inset-0 md:inset-auto z-10 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-xl">
+    class="absolute inset-0 z-20 w-full translate-x-full md:relative md:flex-1 md:translate-x-0 flex flex-col min-w-0 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-xl transition-transform duration-300 ease-in-out">
+
     <div id="chatHeader"
-      class="h-16 px-5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between bg-white/90 dark:bg-white/10 backdrop-blur-xl z-20 shadow-sm">
+      class="h-14 px-3 border-b border-slate-200 dark:border-white/10 flex items-center justify-between bg-white/90 dark:bg-white/10 backdrop-blur-xl shadow-sm shrink-0">
       <button id="backToChatList"
-        class="md:hidden mr-2 w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center transition-colors hover-scale">
+        class="md:hidden mr-2 w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center transition-colors hover-scale shrink-0">
         <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
       </button>
-      <p id="chatTitle" class="font-bold text-lg text-gray-800 dark:text-white truncate max-w-[200px] sm:max-w-md">Chọn
-        hội thoại</p>
-      <div id="chatHeaderActions" class="flex gap-2">
-      </div>
+      <p id="chatTitle" class="font-bold text-base text-gray-800 dark:text-white truncate flex-1">Chọn hội thoại</p>
+      <div id="chatHeaderActions" class="flex gap-1 shrink-0"></div>
     </div>
-    <!-- Search bar for messages -->
-    <div id="chatSearchBar" class="hidden px-5 py-3 border-b border-slate-200 dark:border-white/10 bg-white/90 dark:bg-white/10 backdrop-blur-xl z-20">
+
+    <div id="chatSearchBar"
+      class="hidden px-4 py-3 border-b border-slate-200 dark:border-white/10 bg-white/90 dark:bg-white/10 backdrop-blur-xl shrink-0">
       <div class="flex gap-2 items-center">
         <div class="flex-1 relative">
           <input id="chatSearchInput" type="text" placeholder="Tìm kiếm tin nhắn..."
@@ -58,19 +66,18 @@
         </button>
       </div>
     </div>
+
     <div id="chatPendingBanner"
-      class="hidden p-3 bg-amber-50/95 dark:bg-amber-500/20 backdrop-blur-md border-b border-amber-200 dark:border-amber-500/30 flex gap-2 flex-wrap text-amber-900 dark:text-amber-200 text-sm font-medium z-10 shadow-sm">
+      class="hidden p-3 bg-amber-50/95 dark:bg-amber-500/20 backdrop-blur-md border-b border-amber-200 dark:border-amber-500/30 flex gap-2 flex-wrap text-amber-900 dark:text-amber-200 text-sm font-medium shadow-sm shrink-0">
     </div>
+
     <div id="chatMessages"
-      class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2 z-10 relative bg-slate-50/80 dark:bg-white/5">
-      <!-- Background pattern overlay -->
-      <div
-        class="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay">
-      </div>
+      class="flex-1 overflow-y-auto p-3 sm:p-6 space-y-2 relative bg-slate-50/80 dark:bg-white/5">
+      <div class="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
     </div>
-    <!-- Reply preview bar -->
+
     <div id="replyPreviewBar"
-      class="hidden px-4 py-2 bg-blue-50/95 dark:bg-blue-500/20 border-t border-blue-200 dark:border-blue-500/30 flex items-center gap-2 text-sm backdrop-blur-sm">
+      class="hidden px-4 py-2 bg-blue-50/95 dark:bg-blue-500/20 border-t border-blue-200 dark:border-blue-500/30 flex items-center gap-2 text-sm backdrop-blur-sm shrink-0">
       <div class="flex-1 min-w-0">
         <p class="text-xs text-blue-600 dark:text-blue-400 font-medium">Đang trả lời</p>
         <p id="replyPreviewText" class="text-gray-700 dark:text-gray-300 truncate text-xs"></p>
@@ -82,10 +89,11 @@
         </svg>
       </button>
     </div>
+
     <form id="chatForm"
-      class="p-4 sm:p-5 border-t border-slate-200 dark:border-white/10 flex gap-3 items-end bg-white/95 dark:bg-white/10 backdrop-blur-xl z-20 shadow-lg">
+      class="p-3 sm:p-5 border-t border-slate-200 dark:border-white/10 flex gap-2 sm:gap-3 items-end bg-white/95 dark:bg-white/10 backdrop-blur-xl shadow-lg shrink-0">
       <label
-        class="shrink-0 cursor-pointer w-11 h-11 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/10 hover:bg-blue-50 dark:hover:bg-blue-500/20 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm"
+        class="shrink-0 cursor-pointer w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/10 hover:bg-blue-50 dark:hover:bg-blue-500/20 text-slate-500 hover:text-blue-600 transition-all shadow-sm"
         title="Đính kèm">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -95,10 +103,10 @@
       </label>
       <div class="flex-1 relative">
         <input id="chatInput" type="text" placeholder="Aa"
-          class="w-full rounded-2xl px-5 py-3 bg-slate-100 dark:bg-white/10 dark:text-white dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all border border-transparent dark:border-white/10 shadow-inner input-glow">
+          class="w-full rounded-2xl px-4 py-2.5 sm:py-3 bg-slate-100 dark:bg-white/10 dark:text-white dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all border border-transparent dark:border-white/10 shadow-inner input-glow">
       </div>
       <button type="submit"
-        class="shrink-0 w-11 h-11 flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 shadow-lg shadow-blue-500/30 transition-all active:scale-95 hover:shadow-xl hover-lift ripple"
+        class="shrink-0 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 shadow-lg shadow-blue-500/30 transition-all active:scale-95 hover:shadow-xl ripple"
         aria-label="Gửi">
         <svg class="w-5 h-5 ml-1" fill="currentColor" viewBox="0 0 24 24">
           <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
@@ -121,4 +129,50 @@
 {% endblock %}
 {% block post_scripts %}
 <script type="module" src="{% static 'js/pages/chat.js' %}"></script>
+<script>
+  // ====== Mobile chat two-panel slide navigation ======
+  (function() {
+    const sidebar = document.getElementById('chatSidebar');
+    const panel   = document.getElementById('chatPanel');
+    const backBtn = document.getElementById('backToChatList');
+
+    function isMobile() { return window.innerWidth < 768; }
+
+    // Slide panel into view (show chat)
+    window.chatMobileOpenPanel = function() {
+      if (!isMobile()) return;
+      sidebar.style.transform = 'translateX(-100%)';
+      panel.style.transform   = 'translateX(0)';
+    };
+
+    // Slide panel out (back to sidebar)
+    function showSidebar() {
+      sidebar.style.transform = 'translateX(0)';
+      panel.style.transform   = 'translateX(100%)';
+    }
+
+    // Back button
+    backBtn?.addEventListener('click', showSidebar);
+
+    // On desktop reset transforms so layout is normal
+    function onResize() {
+      if (!isMobile()) {
+        sidebar.style.transform = '';
+        panel.style.transform   = '';
+      }
+    }
+    window.addEventListener('resize', onResize);
+
+    // Watch for chatTitle changes — that means a conversation was opened
+    const chatTitle = document.getElementById('chatTitle');
+    if (chatTitle) {
+      const observer = new MutationObserver(() => {
+        if (isMobile() && chatTitle.textContent && chatTitle.textContent !== 'Chọn hội thoại') {
+          window.chatMobileOpenPanel();
+        }
+      });
+      observer.observe(chatTitle, { characterData: true, childList: true, subtree: true });
+    }
+  })();
+</script>
 {% endblock %}
