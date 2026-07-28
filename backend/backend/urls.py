@@ -203,6 +203,8 @@ urlpatterns = [
     path('api/chat/conversation/<int:conv_id>/call-video/join/', JoinVideoRoomView.as_view()),
     path('api/chat/conversation/<int:conv_id>/call-video/decline/', DeclineCallView.as_view()),
     path('api/chat/conversation/<int:conv_id>/call-video/cancel/', CancelCallView.as_view()),
+    path('api/chat/conversation/<int:conv_id>/call-video/record/', ToggleRecordVideoRoomView.as_view()),
+    path('api/chat/conversation/<int:conv_id>/call-video/upload-recording/', UploadGroupCallRecordingView.as_view()),
     path('api/livekit/webhook/', LiveKitWebhookView.as_view()),
     path('api/video/<int:conv_id>/status/', VideoRoomStatusView.as_view()),
     path('api/video/<int:conv_id>/leave/', LeaveCallView.as_view()),

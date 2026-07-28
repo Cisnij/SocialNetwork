@@ -658,6 +658,7 @@ class VideoRoom(models.Model):
     started_at   = models.DateTimeField(null=True, blank=True) # chỉ khi bắt máy mới có
     ended_at     = models.DateTimeField(null=True, blank=True)
     end_reason   = models.CharField(max_length=15, choices=END_REASON, null=True, blank=True)
+    egress_id    = models.CharField(max_length=100, null=True, blank=True) # Lưu ID tiến trình record của LiveKit
     def __str__(self):
         return self.room_name
     @property

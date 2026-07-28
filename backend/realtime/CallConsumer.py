@@ -236,6 +236,12 @@ class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
     async def call_cancelled(self, event):
         await self.send(text_data=json.dumps(event))
 
+    async def recording_started(self, event):
+        await self.send(text_data=json.dumps(event))
+
+    async def recording_stopped(self, event):
+        await self.send(text_data=json.dumps(event))
+
     # ── DB helpers ───────────────────────────────────────────
 
     @database_sync_to_async

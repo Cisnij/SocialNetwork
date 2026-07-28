@@ -4817,6 +4817,24 @@ function connectCallWs(convId) {
       if (data.type === 'call_user_left') {
         showToast(`${data.user_name} đã rời cuộc gọi`, 'gray');
       }
+      if (data.type === 'recording_started') {
+        const btn = document.getElementById('toggleRecordBtn');
+        if (btn) {
+          btn.classList.add('bg-red-500/80');
+          btn.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/></svg>`;
+          btn.title = 'Đang ghi hình – Bấm để dừng';
+        }
+        showToast('Đang ghi hình...', 'red');
+      }
+      if (data.type === 'recording_stopped') {
+        const btn = document.getElementById('toggleRecordBtn');
+        if (btn) {
+          btn.classList.remove('bg-red-500/80');
+          btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" stroke-width="2"/></svg>`;
+          btn.title = 'Ghi hình';
+        }
+        showToast('Đã dừng ghi hình', 'gray');
+      }
     } catch (_) { }
   };
 
@@ -4971,6 +4989,130 @@ async function startVideoCall(token, url, roomName, convId, isCaller = false, re
       }
     };
   }
+  
+  // ── Hook Record Button (Group only) ───────────────────────
+  const recordBtn = document.getElementById('toggleRecordBtn');
+  if (recordBtn) {
+    const isGroupConv = activeConvMeta?.is_group;
+    if (!isGroupConv) {
+      recordBtn.classList.add('hidden');
+    } else {
+      recordBtn.classList.remove('hidden');
+      const freshRecord = recordBtn.cloneNode(true);
+      recordBtn.replaceWith(freshRecord);
+      freshRecord.classList.remove('bg-red-500/80');
+      freshRecord.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" stroke-width="2"/></svg>`;
+      freshRecord.title = 'Bắt đầu ghi hình';
+
+      let mediaRecorder = null;
+      let recordedChunks = [];
+      let isRecording = false;
+
+      freshRecord.onclick = async () => {
+        if (freshRecord.disabled) return;
+        freshRecord.disabled = true;
+
+        try {
+          if (!isRecording) {
+            // ── Bắt đầu ghi ───────────────────────────────────
+            recordedChunks = [];
+            
+            // Lấy media stream từ màn hình
+            let combinedStream = null;
+            try {
+                // Chúng ta sẽ lấy toàn màn hình hoặc tab hiện tại để đảm bảo luôn có video
+                const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+                combinedStream = displayStream;
+                
+                // Khi người dùng bấm "Dừng chia sẻ" trên trình duyệt, ta cũng tự dừng record
+                displayStream.getVideoTracks()[0].onended = () => {
+                    if (isRecording) {
+                        freshRecord.click();
+                    }
+                };
+            } catch (err) {
+                showToast('Bạn cần cấp quyền chia sẻ màn hình để ghi hình', 'red');
+                freshRecord.disabled = false;
+                return;
+            }
+
+            const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+              ? 'video/webm;codecs=vp9,opus'
+              : (MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : '');
+
+            mediaRecorder = new MediaRecorder(combinedStream, mimeType ? { mimeType } : undefined);
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+
+            mediaRecorder.onstop = async () => {
+              combinedStream.getTracks().forEach(t => t.stop());
+              const blob = new Blob(recordedChunks, { type: mimeType || 'video/webm' });
+              const file = new File([blob], `recording_${Date.now()}.webm`, { type: mimeType || 'video/webm' });
+              showToast('Đang tải bản ghi lên...', 'gray');
+
+              try {
+                const fd = new FormData();
+                fd.append('file', file);
+                // Hardcode URL để tránh lỗi cache config.js
+                const uploadUrl = API.toggleRecord(convId).replace('/record/', '/upload-recording/');
+                console.log('Bắt đầu gửi video lên:', uploadUrl, 'Kích thước file:', file.size);
+                
+                const res = await authFetch(uploadUrl, { method: 'POST', body: fd });
+                if (res.ok) {
+                  showToast('Bản ghi đã lưu vào chat nhóm ✓', 'green');
+                } else {
+                  const err = await res.json().catch(() => ({}));
+                  showToast(err.detail || 'Lỗi upload bản ghi', 'red');
+                }
+              } catch (e) {
+                showToast('Lỗi tải bản ghi lên', 'red');
+              }
+            };
+
+            mediaRecorder.start(1000); // chunk mỗi 1 giây
+            isRecording = true;
+
+            // Thông báo cho mọi người
+            await authFetch(API.toggleRecord(convId), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'start' })
+            });
+
+            freshRecord.classList.add('bg-red-500/80');
+            freshRecord.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+            freshRecord.title = 'Dừng ghi hình';
+          } else {
+            // ── Dừng ghi ──────────────────────────────────────
+            isRecording = false;
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            // Không set mediaRecorder = null ở đây để tránh bị Garbage Collector thu hồi sớm
+
+            await authFetch(API.toggleRecord(convId), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'stop' })
+            });
+
+            freshRecord.classList.remove('bg-red-500/80');
+            freshRecord.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" stroke-width="2"/></svg>`;
+            freshRecord.title = 'Bắt đầu ghi hình';
+          }
+        } catch (e) {
+          console.error('Record error:', e);
+          showToast('Lỗi ghi hình: ' + (e.message || e), 'red');
+          isRecording = false;
+          mediaRecorder = null;
+          freshRecord.classList.remove('bg-red-500/80');
+          freshRecord.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" stroke-width="2"/></svg>`;
+        } finally {
+          freshRecord.disabled = false;
+        }
+      };
+    }
+  }
+
   const SVG_MIC_ON = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>`;
   const SVG_MIC_OFF = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/><line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
   const SVG_CAM_ON = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>`;

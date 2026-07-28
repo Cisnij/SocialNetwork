@@ -3811,6 +3811,123 @@ class VideoRoomStatusView(AsyncAPIView):
         ).afirst()
         return Response({'active': bool(room)})
 
+class ToggleRecordVideoRoomView(AsyncAPIView):
+    """Broadcast trạng thái ghi hình cho tất cả thành viên trong phòng.
+    Bản thân không ghi – việc ghi do client-side MediaRecorder đảm nhận.
+    """
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'create_call'
+
+    async def post(self, request, conv_id):
+        conv = await Conversation.objects.filter(id=conv_id).afirst()
+        if not conv or not conv.is_group:
+            return Response({"detail": "Chỉ có thể ghi hình trong cuộc gọi nhóm."}, status=400)
+
+        is_member = await ConversationMember.objects.filter(
+            conversation_id=conv_id, user=request.user, is_active=True
+        ).aexists()
+        if not is_member:
+            raise PermissionDenied("Bạn không có trong nhóm này")
+
+        room = await VideoRoom.objects.filter(
+            conversation_id=conv_id, is_active=True
+        ).afirst()
+        if not room:
+            return Response({"detail": "Không có cuộc gọi nào đang diễn ra."}, status=400)
+
+        action = request.data.get('action', 'start')  # 'start' hoặc 'stop'
+        channel_layer = get_channel_layer()
+
+        if action == 'start':
+            room.egress_id = f"client-recording-{request.user.id}"
+            await room.asave(update_fields=['egress_id'])
+            await channel_layer.group_send(
+                f'call_{conv_id}',
+                {'type': 'recording_started', 'conv_id': conv_id,
+                 'recorder_name': (await sync_to_async(lambda: getattr(request.user, 'profile', None))()
+                                   and await sync_to_async(lambda: request.user.profile.full_name)()
+                                   or request.user.username)}
+            )
+            return Response({"recording": True})
+        else:
+            room.egress_id = None
+            await room.asave(update_fields=['egress_id'])
+            await channel_layer.group_send(
+                f'call_{conv_id}',
+                {'type': 'recording_stopped', 'conv_id': conv_id}
+            )
+            return Response({"recording": False})
+
+
+class UploadGroupCallRecordingView(AsyncAPIView):
+    """Nhận file video blob từ trình duyệt (MediaRecorder) → upload Cloudinary → tạo tin nhắn chat."""
+    permission_classes = [IsAuthenticated]
+    async def post(self, request, conv_id):
+        conv = await Conversation.objects.filter(id=conv_id, is_group=True).afirst()
+        if not conv:
+            return Response({"detail": "Chỉ áp dụng cho nhóm."}, status=400)
+
+        is_member = await ConversationMember.objects.filter(
+            conversation_id=conv_id, user=request.user, is_active=True
+        ).aexists()
+        if not is_member:
+            raise PermissionDenied()
+
+        file = request.FILES.get('file')
+        if not file:
+            return Response({"detail": "Thiếu file video."}, status=400)
+
+        # Giới hạn 500MB
+        if file.size > 500 * 1024 * 1024:
+            return Response({"detail": "File quá lớn (tối đa 500MB)."}, status=400)
+
+        try:
+            result = await sync_to_async(
+                cloudinary.uploader.upload,
+                thread_sensitive=False
+            )(
+                file,
+                folder=f"call_recordings/conv_{conv_id}",
+                resource_type="video",
+                public_id=f"recording_{conv_id}_{uuid.uuid4().hex[:8]}"
+            )
+        except Exception as e:
+            return Response({"detail": f"Lỗi upload: {e}"}, status=500)
+
+        file_url = result["secure_url"]
+
+        # Tạo tin nhắn trong chat
+        msg = await Message.objects.acreate(
+            conversation_id=conv_id,
+            sender=request.user,
+            content="📹 Bản ghi cuộc gọi nhóm",
+            message_type='video'
+        )
+        attachment = await MessageAttachment.objects.acreate(
+            message=msg,
+            conversation_id=conv_id,
+            uploaded_by=request.user,
+            file_url=file_url,
+            file_type='video',
+            file_name=file.name or f"recording_{conv_id}.webm",
+            file_size=file.size,
+        )
+
+        from .serializers import MessageSerializer
+        msg_data = await sync_to_async(
+            lambda: MessageSerializer(msg).data
+        )()
+
+        channel_layer = get_channel_layer()
+        await channel_layer.group_send(
+            f"chat_{conv_id}",
+            {'type': 'chat_message', 'message': msg_data}
+        )
+
+        return Response({"url": file_url, "message_id": msg.id})
+
+
 
 class LeaveCallView(AsyncAPIView):
     """Endpoint REST dự phòng khi đóng tab / mất mạng đột ngột"""
