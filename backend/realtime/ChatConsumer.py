@@ -171,7 +171,7 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
                 'type': 'chat_message',  # maps tới hàm chat_message bên dưới
                 'id': msg.id,
                 'message': message,
-                'sender': self.user.username,
+                'sender': self.sender_name,
                 'sender_id': self.user.id,
                 'message_type': message_type,
                 'created_at': msg.created_at.isoformat(),
