@@ -843,6 +843,8 @@ Authfetch sẽ truyền vào đó 1 là url, 2 là method là post put hay delet
     mã hóa https
     rate limit và chặn tại cổng và cache trả về respone tiết kiệm tài nguyên
 
+todo luồng chính: user nhập url -> tìm dns của domain này do ai quản lý -> cloudflare -> cloudflare chạy vào nginx nội bộ máy mình vì file config cấu hình vào nginx để điều hướng sang be/fe -> nginx quyết định chuyển hướng sang fe/be từ url -> chạy app tương ứng
+
 - cloudfare -> nginx -> granian server -> app -> redis/container khác
 - khi login cloudflared tunnel create chọn domain, nó sẽ tạo đường hầm từ cloudfare tunnel sang project của bạn và đường hầm đó có cloudflare edge và tunnel
 - Cloudflare: Hứng toàn bộ traffic từ người dùng. Lọc bot, chặn DDoS, và mã hóa.

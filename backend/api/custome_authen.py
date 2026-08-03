@@ -69,18 +69,18 @@ class CustomeLoginSerializer(LoginSerializer): #Sửa chức năng login nên Lo
         password = attrs.get('password')
         if not email or not password:
             raise serializers.ValidationError("Email and password are required")
-        user = authenticate(request=self.context.get('request'),username=email,password=password)
+        user = authenticate(request=self.context.get('request'),username=email,password=password) # trả ra user
 
         if not user:
-            raise serializers.ValidationError("Invalid login credentials")
+            raise serializers.ValidationError("Thông tin đăng nhập không hợp lệ")
         if not user.is_active:
-            raise serializers.ValidationError("User account is disabled.")
+            raise serializers.ValidationError("Người dùng này chưa được kích hoạt")
         
         email_verified=EmailAddress.objects.filter(user=user, email=email).first()
         if email_verified and not email_verified.verified:
             raise serializers.ValidationError("Email is not verified.")
-        
-        attrs['user'] = user
+
+        attrs['user'] = user # gán user sau khi validate 
         return attrs
 
 #====================================== Thêm tính năng chỉnh sửa email====================================

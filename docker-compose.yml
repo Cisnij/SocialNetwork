@@ -27,9 +27,9 @@ services:
       resources:
         limits:
           cpus: '2' # giới hạn cpu
-          memory: 1500m # giới hạn ram
+          memory: 4g # giới hạn ram
         reservations:
-          memory: 512m # ram tối thiểu docker luôn có cho container
+          memory: 1g # ram tối thiểu docker luôn có cho container
     volumes:
       - percona_data:/var/lib/mysql # gán ổ đĩa vĩnh viễn
     networks:
@@ -115,7 +115,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
-      - "127.0.0.1:80:80"
+      - "127.0.0.1:80:80" # khi cloudflare gọi nginx, nó gọi nội bộ từ máy này nên vẫn truy cập đc
     networks:
       - prod-network
     depends_on:

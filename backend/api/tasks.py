@@ -195,3 +195,12 @@ def backup_database():
             os.remove(path)
 
 
+
+@shared_task
+def cleanup_unverified_users():
+    User = get_user_model()
+    cutoff = timezone.now() - timedelta(days=1)  # theo ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS đã set = 1
+    User.objects.filter( #xóa những email chưa xác thực và thời gian tạo user lớn hơn ngày hết hạn`
+        emailaddress__verified=False,
+        date_joined__lt=cutoff
+    ).delete()
