@@ -10,6 +10,8 @@ from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from .google_login import FixedOAuth2Client
 from .models import Profile,PendingProfile
+from django.contrib.auth import logout as django_logout
+
 #--LƯU Ý cái này dùng để xây http only cho web và tạo ra endpoint mới như api/auth/web/login
 #-- Còn khi xây mobile sẽ dùng endpoint bth là api/auth/login để trả về token trong json
 
@@ -63,10 +65,11 @@ class CookieTokenRefreshView(TokenRefreshView): #ghi đè lấy refresh token t�
 
 class CookieLogoutView(LogoutView): #ghi đè hàm logout để xóa cookie
     def post(self, request, *args, **kwargs):
-        refresh_token = request.COOKIES.get('refreshToken')
+        refresh_token = request.COOKIES.get('refreshToken') # lấy từ cookie
         if refresh_token:
-            request.data['refresh'] = refresh_token
-        response = super().post(request, *args, **kwargs) #lấy về response gốc từ LogoutView
+            request.data['refresh'] = refresh_token # mặc định của jwt là gửi refresh trong data body, nhưng mình override lưu cookie nên lấy ra từ body gán token từ cookie
+        django_logout(request)
+        response = super().post(request, *args, **kwargs) #thực thi blacklist token lấy từ request mà mình thêm và lấy về response status gốc từ LogoutView
         response.delete_cookie('refreshToken', path='/api/auth/web/') #xóa cookie refresh token
         return response
 
@@ -82,7 +85,7 @@ class CookieGoogleLoginView(SocialLoginView):#ghi đè hàm login google để t
         original_response = super().post(request, *args, **kwargs) #bắt đầu xử lý đăng nhập và báo status, ở dưới là sau khi thành công sẽ set cookie(tạo user, pending profile, tạo profile, xóa pending)
         # Allauth đã gán sẵn: self.user, self.sociallogin, self.sociallogin.account.extra_data sau khi super().post()
 
-        if original_response.status_code != 200:
+        if original_response.status_code != 200: # đăng nhập không thành công
             return original_response
 
         user = self.user  # allauth đã gán sẵn
