@@ -86,6 +86,8 @@ export const API = {
   commentReact: (id) => `${API_BASE_URL}/api/comments/${id}/react/`,
   commentReactions: (id) =>
     `${API_BASE_URL}/api/user/reaction/comment/${id}/`,
+  messageReactions: (id) =>
+    `${API_BASE_URL}/api/user/reaction/message/${id}/`,
   reportComment: (commentId) => `${API_BASE_URL}/api/comment/${commentId}/report/`,
 
   postPrivacy: (postId) => `${API_BASE_URL}/api/post/${postId}/privacy-change/`,

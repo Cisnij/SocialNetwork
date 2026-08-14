@@ -153,6 +153,21 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
                         'sender_id': self.user.id,
                     }
                 )
+                member_ids = await self.get_member_ids()
+                for user_id in member_ids:
+                    if user_id == self.user.id:  # bỏ qua chính mình
+                        continue
+                    await self.channel_layer.group_send(
+                        f'conv_list_{user_id}',
+                        {
+                            'type': 'conversation_updated',
+                            'conversation_id': self.conversation_id,
+                            'last_message': f"{self.sender_name} đã thả cảm xúc vào tin nhắn",
+                            'sender_id': self.user.id,
+                            'sender_name': self.sender_name,
+                            'created_at': timezone.now().isoformat(),
+                        }
+                    )
             return
 
         message = data.get('message', '').strip()  # lấy message và xóa khoảng trắng
@@ -524,6 +539,9 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
                     user_reaction.save(update_fields=["reaction", "react"])
                     status = "changed"
                     returned_type = reaction_type_name
+                    
+                # Cập nhật updated_at của Conversation để khi F5 list chat vẫn nằm trên cùng
+                Conversation.objects.filter(id=self.conversation_id).update(updated_at=timezone.now())
                     
             count = list(
                 Reaction.objects.filter(

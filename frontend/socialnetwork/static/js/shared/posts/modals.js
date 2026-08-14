@@ -195,7 +195,9 @@ async function loadReactions(targetId, kind = "post", initial = true) {
     nextReactionsUrl =
       kind === "comment"
         ? buildListUrl(API.commentReactions(targetId), 20)
-        : POST_ENDPOINTS.reactions(targetId);
+        : kind === "message"
+          ? buildListUrl(API.messageReactions(targetId), 20)
+          : POST_ENDPOINTS.reactions(targetId);
     allReactionsResults = [];
     currentReactionId = targetId;
     currentReactionKind = kind;

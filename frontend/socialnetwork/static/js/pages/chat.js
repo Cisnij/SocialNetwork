@@ -8,6 +8,8 @@ import { uploadChatFiles, sendChatWsMessage } from "../shared/chat-upload.js";
 
 import { createReactionBar, buildReactionCountContent } from "../shared/posts/reactions.js";
 
+import { initPostModals, openReactionsModal } from "../shared/posts/modals.js";
+
 import { el, img, textEl } from "../shared/dom.js";
 
 import { showToast } from "../shared/toast.js";
@@ -15,6 +17,8 @@ import { showToast } from "../shared/toast.js";
 import { fullName } from "../shared/ui.js";
 
 import { confirmDialog } from "../shared/confirm.js";
+
+initPostModals();
 
 
 
@@ -1975,23 +1979,30 @@ function appendMessage(m, scroll = true, prepend = false) {
 
   messageCol.appendChild(bubble);
 
+  const reactionContainer = document.createElement("div");
+  reactionContainer.className = "msg-reaction-count cursor-pointer bg-white dark:bg-[#3a3b3c] shadow-sm rounded-full border border-gray-100 dark:border-gray-700 hidden";
+  reactionContainer.style.padding = "2px 4px";
+  if (m.reactions && m.reactions.length > 0) {
+      reactionContainer.classList.remove("hidden");
+      reactionContainer.replaceChildren(buildReactionCountContent(m.reactions));
+  }
+  reactionContainer.style.alignSelf = mine ? "flex-end" : "flex-start";
+  reactionContainer.style.marginTop = "2px";
 
+  reactionContainer.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (m.reactions && m.reactions.length > 0) {
+      openReactionsModal(m.id, "message", m.reactions);
+    }
+  });
+
+  messageCol.appendChild(reactionContainer);
 
   const seenContainer = document.createElement("div");
 
   seenContainer.className = "msg-seen-container flex justify-end gap-0.5 mt-0.5 min-h-[16px]";
 
   messageCol.appendChild(seenContainer);
-
-  const reactionContainer = document.createElement("div");
-  reactionContainer.className = "msg-reaction-count absolute bottom-[-10px] right-2 cursor-pointer bg-white dark:bg-[#3a3b3c] shadow-sm rounded-full z-10 hidden border border-gray-100 dark:border-gray-700";
-  reactionContainer.style.padding = "2px 4px";
-  if (m.reactions && m.reactions.length > 0) {
-      reactionContainer.classList.remove("hidden");
-      reactionContainer.replaceChildren(buildReactionCountContent(m.reactions));
-  }
-  bubble.classList.add("relative");
-  bubble.appendChild(reactionContainer);
 
   const reactBtnWrap = document.createElement("div");
   reactBtnWrap.className = "relative shrink-0 self-center opacity-0 group-hover:opacity-100 group-hover:z-50 transition-opacity duration-200 mx-1";
