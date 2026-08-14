@@ -13,6 +13,7 @@ import {
   getTotalReactions,
   updateReactionButton,
   applyReactionResponse,
+  buildReactionCountContent,
 } from "./reactions.js";
 import { reactToPost } from "./api.js";
 
@@ -285,9 +286,10 @@ export function renderPostCard(post, options = {}) {
   const reactionCount = document.createElement("button");
   reactionCount.type = "button";
   reactionCount.className =
-    "text-gray-600 dark:text-fb-muted hover:underline font-medium !bg-transparent border-none p-0 hover:!bg-transparent dark:hover:!bg-transparent";
-  reactionCount.textContent =
-    totalReactions > 0 ? `${totalReactions} lượt thích` : "";
+    "flex items-center text-gray-600 dark:text-fb-muted hover:underline font-medium !bg-transparent border-none p-0 hover:!bg-transparent dark:hover:!bg-transparent";
+  if (totalReactions > 0) {
+    reactionCount.appendChild(buildReactionCountContent(post.reactions));
+  }
   reactionCount.classList.toggle("hidden", totalReactions === 0);
   reactionCount.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -558,5 +560,5 @@ function buildVideoSection(post) {
   return videoWrapper;
 }
 
-export { REACTIONS };
+export { REACTIONS, buildPhotoSection, buildVideoSection };
 

@@ -53,7 +53,7 @@ class MySocialAccountAdapter(DefaultSocialAccountAdapter): #chỉnh sủa login 
                 .distinct()
             )
             if unverified_users:
-                User.objects.filter(username=email,email__iexact=email).delete() # nếu user add email đó mà chưa verified chẳng lẽ xóa cả user thật đó ?
+                User.objects.filter(username=email,email__iexact=email).delete() 
                 EmailAddress.objects.filter(email__iexact=email,user_id__in=unverified_users,verified=False).delete() # xóa các email chưa verified vì email này đã verified
             return  # tạo account mới bình thường qua Google
 

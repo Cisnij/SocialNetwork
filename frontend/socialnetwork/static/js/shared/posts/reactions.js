@@ -26,6 +26,54 @@ export function getTotalReactions(reactions) {
   return reactions.reduce((sum, r) => sum + (r.total || 0), 0);
 }
 
+/**
+ * Build a Facebook-style reaction count button:
+ * - Shows top (up to 3) reaction emoji icons stacked/overlapping
+ * - Followed by the total count number
+ * @param {Array} reactions - e.g. [{settings__name: 'like', total: 5}, ...]
+ * @returns {DocumentFragment} A fragment with icon spans + count span
+ */
+export function buildReactionCountContent(reactions) {
+  const frag = document.createDocumentFragment();
+  if (!Array.isArray(reactions) || !reactions.length) return frag;
+
+  // Sort by total descending, take top 3
+  const sorted = [...reactions]
+    .filter((r) => r.total > 0)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 3);
+
+  if (!sorted.length) return frag;
+
+  // Icons wrapper
+  const iconsWrap = document.createElement("span");
+  iconsWrap.className = "inline-flex items-center";
+
+  sorted.forEach((r, idx) => {
+    const reaction = REACTIONS.find((x) => x.type === r.settings__name);
+    if (!reaction) return;
+    const span = document.createElement("span");
+    // Overlap each icon slightly to the left after the first
+    span.className =
+      `inline-flex items-center justify-center w-5 h-5 rounded-full text-[13px] leading-none bg-white dark:bg-[#3a3b3c] shadow-sm ring-1 ring-white dark:ring-[#242526]` +
+      (idx > 0 ? " -ml-1.5" : "");
+    span.title = reaction.label;
+    span.textContent = reaction.icon;
+    iconsWrap.appendChild(span);
+  });
+
+  frag.appendChild(iconsWrap);
+
+  // Total count
+  const total = reactions.reduce((s, r) => s + (r.total || 0), 0);
+  const countSpan = document.createElement("span");
+  countSpan.className = "ml-1.5";
+  countSpan.textContent = total;
+  frag.appendChild(countSpan);
+
+  return frag;
+}
+
 export function updateReactionButton(reactBtn, type, isComment = false) {
   reactBtn.replaceChildren();
   reactBtn.classList.remove("text-indigo-600");
@@ -33,25 +81,21 @@ export function updateReactionButton(reactBtn, type, isComment = false) {
 
   if (!type) {
     reactBtn.dataset.reaction = "";
-    if (!isComment) {
-      const icon = document.createElement("span");
-      icon.textContent = "👍";
-      reactBtn.append(icon);
-    }
+    const icon = document.createElement("span");
+    icon.textContent = "👍";
+    reactBtn.append(icon);
     const text = document.createElement("span");
-    text.textContent = "Thích";
+    text.textContent = isComment ? " Thích" : " Thích";
     reactBtn.append(text);
     return;
   }
 
   const r = REACTIONS.find((x) => x.type === type) || REACTIONS[0];
-  if (!isComment) {
-    const icon = document.createElement("span");
-    icon.textContent = r.icon;
-    reactBtn.append(icon);
-  }
+  const icon = document.createElement("span");
+  icon.textContent = r.icon;
+  reactBtn.append(icon);
   const text = document.createElement("span");
-  text.textContent = r.label;
+  text.textContent = ` ${r.label}`;
   reactBtn.append(text);
   reactBtn.dataset.reaction = r.type;
   reactBtn.classList.add("text-indigo-600");
@@ -118,13 +162,12 @@ export function applyReactionResponse(
   if (Array.isArray(res.count)) {
     const total = getTotalReactions(res.count);
     if (reactionCount) {
-      // Always remove hidden first to ensure element is visible
       reactionCount.classList.remove("hidden");
-      
-      reactionCount.textContent = total > 0 ? `${total} lượt thích` : "";
-      
-      // Then hide again if no reactions
-      if (total === 0) {
+      if (total > 0) {
+        // Rebuild the FB-style icons + count
+        reactionCount.replaceChildren(buildReactionCountContent(res.count));
+      } else {
+        reactionCount.replaceChildren();
         reactionCount.classList.add("hidden");
       }
     }

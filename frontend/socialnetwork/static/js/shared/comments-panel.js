@@ -13,6 +13,7 @@ import {
   updateReactionButton,
   applyReactionResponse,
   reactToComment,
+  buildReactionCountContent,
 } from "./posts/reactions.js";
 
 let postId = null;
@@ -94,10 +95,11 @@ async function loadMore(reset) {
 
 function syncReactionCountBtn(btn, comment) {
   const total = getTotalReactions(comment.reactions);
-  btn.textContent = total > 0 ? `${total} lượt thích` : "";
   if (total === 0) {
+    btn.replaceChildren();
     btn.classList.add("hidden");
   } else {
+    btn.replaceChildren(buildReactionCountContent(comment.reactions));
     btn.classList.remove("hidden");
   }
 }
@@ -106,7 +108,7 @@ function buildCommentReactionUI(comment, meta) {
   const reactionCountBtn = document.createElement("button");
   reactionCountBtn.type = "button";
   reactionCountBtn.className =
-    "text-xs text-gray-500 dark:text-[#b0b3b8] hover:underline font-medium !bg-transparent border-none p-0 hover:!bg-transparent dark:hover:!bg-transparent";
+    "flex items-center text-xs text-gray-500 dark:text-[#b0b3b8] hover:underline font-medium !bg-transparent border-none p-0 hover:!bg-transparent dark:hover:!bg-transparent";
   syncReactionCountBtn(reactionCountBtn, comment);
   reactionCountBtn.addEventListener("click", (e) => {
     e.stopPropagation();

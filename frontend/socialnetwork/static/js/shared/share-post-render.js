@@ -4,6 +4,7 @@ import { showToast } from "./toast.js";
 import { confirmDialog } from "./confirm.js";
 import { formatRelativeTime, fullName, cls } from "./ui.js";
 import { openCommentsModal } from "./comments-panel.js";
+import { buildPhotoSection, buildVideoSection } from "./posts/render.js";
 
 /**
  * Facebook-style share card: sharer on top → optional note → embedded original post.
@@ -72,12 +73,24 @@ export function renderShareCard(share, currentProfileId) {
   embedTitle.textContent = post.title || "";
   embedBody.appendChild(embedTitle);
 
-  if (post.photos?.[0]) {
-    const img = document.createElement("img");
-    img.src = post.photos[0].photo;
-    img.className = "w-full max-h-80 object-cover mt-2 border-t dark:border-fb-divider";
-    img.alt = "";
-    embedBody.appendChild(img);
+  const photoSection = buildPhotoSection(post, (urls, index, title) => {
+    // If we want photo viewer we can call it here, but usually clicking the embed opens comments modal
+    // So we can let the event bubble up or stop it.
+    // In this case, we won't pass onOpenPhotos so it doesn't do anything special,
+    // but buildPhotoSection expects an empty function or it might throw if not handled carefully.
+    // Wait, buildPhotoSection does `onOpenPhotos?.(urls, index, post.title || "");`
+    // So we can just pass an empty function.
+  });
+  if (photoSection) {
+    // Add custom styling for the embedded context
+    photoSection.classList.add("mt-2", "border-t", "dark:border-fb-divider");
+    embedBody.appendChild(photoSection);
+  }
+
+  const videoSection = buildVideoSection(post);
+  if (videoSection) {
+    videoSection.classList.add("mt-2", "border-t", "dark:border-fb-divider");
+    embedBody.appendChild(videoSection);
   }
 
   embed.append(embedHeader, embedBody);

@@ -946,7 +946,7 @@ class CommentListCreate(PagedContextMixin, generics.ListCreateAPIView):  # thêm
             if parent.parent_id is not None: # check chỉ được reply 1 cấp , nếu parent đã có parent thì k cho và gán comment gốc đó luôn
                 parent = Comment.objects.filter(
                     id=parent.parent_id, post_id=post_id
-                ).only('id', 'parent_id').first()
+                ).only('id', 'parent_id').first() # gán comment cha của cha là parent ví dụ A-B-C thì gán A vào C
                 if parent is None:
                     raise ValidationError("Comment cha không khả dụng.")
         serializer.save(user=self.request.user, post_id=post_id, parent=parent)
