@@ -1,6 +1,8 @@
 # utils.py
+from aiohttp.web_fileresponse import content_type
+
 from django.db.models import Count
-from api.models import Post, Comment
+from api.models import Post, Comment, Message
 from django.contrib.contenttypes.models import ContentType
 from reaction.models import Reaction, UserReaction
 from collections import defaultdict
@@ -10,9 +12,9 @@ gọi n lần liên tục tương ứng với n post'''
 
 
 def get_reactions_post_context(queryset, user):
-    if hasattr(queryset, 'values_list'):
+    if hasattr(queryset, 'values_list'): # xử lý cái lazy object chưa đc lấy ra nếu curent page là None (get_queryset chưa chạy db)
         post_ids = list(queryset.values_list('post_id', flat=True))
-    else:
+    else: # xử lý khi query set là object đã được lấy ra từ list rồi(có current page)
         post_ids = [obj.post_id if hasattr(obj, 'post_id') else obj.pk for obj in queryset]
 
     if not post_ids:
@@ -153,7 +155,6 @@ def get_reactions_share_context(share_objs, user):
         for r in user_reactions
     }
 
-    # Fetch saved posts for the current user
     saved_post_ids = set()
     if user and user.is_authenticated:
         from api.models import SavedPost
@@ -166,4 +167,49 @@ def get_reactions_share_context(share_objs, user):
         'reactions_map': dict(reactions_map),
         'user_reactions_map': user_reactions_map,
         'saved_post_ids': saved_post_ids,
+    }
+
+def get_reactions_chat_context(queryset, user):
+    if hasattr(queryset, 'values_list'):
+        chat_ids = list(queryset.values_list('id', flat=True))
+    else:
+        chat_ids = [obj.id if hasattr(obj,'id') else obj.pk for obj in queryset]
+
+    if not chat_ids:
+        return {'reactions_map': {}, 'user_reactions_map': {}}
+
+    ct = ContentType.objects.get_for_model(Message)
+
+    reactions = (
+        Reaction.objects.filter(content_type=ct, object_id__in=chat_ids)
+        .select_related('settings')
+        .values('object_id', 'settings__name')
+        .annotate(total=Count('reactions')) #count user reaction thuộc cái reaction này
+    )
+    reactions_map = defaultdict(list) # dict dạng list bên tong
+
+    for r in reactions:
+        reactions_map[r['object_id']].append({
+            'settings__name': r['settings__name'],
+            'total': r['total']
+        })
+
+    user_reactions = (
+        UserReaction.objects.filter(
+            user=user,
+            reaction__content_type=ct,
+            reaction__object_id__in=chat_ids
+        )
+        .select_related('reaction__settings')
+        .values('reaction__object_id', 'reaction__settings__name')
+    )
+
+    user_reactions_map = {
+        r['reaction__object_id']: r['reaction__settings__name']
+        for r in user_reactions
+    }
+
+    return {
+        'reactions_map': dict(reactions_map),
+        'user_reactions_map': user_reactions_map,
     }

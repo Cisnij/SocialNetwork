@@ -38,7 +38,7 @@ from .permissions import IsConversationMember, PostViewPermission, IsAdminOrOwne
     CanEditPost
 from django.db import transaction # tạo đồng bộ db
 from rest_framework import status
-from .utils import get_reactions_post_context,get_reactions_comment_context,get_reactions_share_context
+from .utils import get_reactions_post_context,get_reactions_comment_context,get_reactions_share_context,get_reactions_chat_context
 from .tasks import push_notification_task, send_event_reminder, make_notification_group
 #filter
 from django_filters.rest_framework import DjangoFilterBackend
@@ -80,21 +80,21 @@ def get_online_set(objs):  # custome để gọi get user online 1 lần thay v�
     return {uid for uid in ids if f"online_user:{uid}" in hits}  # nếu các user online đang lưu trong redís nằm trong queryset thì trả ra các user đó
 
 class PagedContextMixin:
-    """Mixin lưu page hiện tại vào _current_page_objs để get_serializer_context dùng, thứ tự get_queryset -> PagedContextMixin lấy phân trang và truyền phân trang vào -> get_serializer_context"""
+    """Mixin lưu page hiện tại vào _current_page_objs để get_serializer_context dùng, thứ tự get_queryset -> PagedContextMixin thực thi lấy các obj chứ k phải ở get_queryset lấy, lấy phân trang và truyền phân trang vào -> get_serializer_context"""
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
+        queryset = self.filter_queryset(self.get_queryset()) # lấy ra queryset đã chuẩn bị từ get_queryset và áp thêm các bộ lọc filter
+        page = self.paginate_queryset(queryset) # phân trang
 
         if page is not None:
-            self._current_page_objs = page
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-            
+            self._current_page_objs = page # nếu có data thì gán vào giá trị current page
+            serializer = self.get_serializer(page, many=True) # tạo serializer với data này, chạy tới get_context_serializer
+            return self.get_paginated_response(serializer.data) # trả về response
+
+        # nếu k có data thì lấy full queryset
         self._current_page_objs = queryset
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-
-
+    """flow là list trước, list gọi tới get_queryset lấy ra các obj phân trang, sau đó tới get_serializer và trong đó lấy ra get_context_serializer, sau đó khởi tạo serializer ở trang serializer và trả response với phân trang"""
 #===========================================================================================================================================================================================
 class ProfileModify(generics.RetrieveUpdateDestroyAPIView): #Xem sửa xóa profile
     permission_classes=[IsAuthenticated]
@@ -1122,6 +1122,26 @@ class UserReactionCommentList(generics.ListAPIView):
         blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
         return UserReaction.objects.filter(reaction__object_id=comment_id,reaction__content_type=comment_ct).exclude(Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)).select_related('user','user__profile','reaction__settings', 'react')
 
+class UserReactionChatList(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ReactionSerializer
+    pagination_class = SmallPagePagination
+    filterset_class = UserReactionFilter
+    filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
+    search_fields = ['user__profile__first_name', 'user__profile__last_name']
+
+    def get_queryset(self):
+        chat_id = self.kwargs.get('chat_id')
+        message = get_object_or_404(Message, id=chat_id)
+        if not ConversationMember.objects.filter(user=self.request.user, conversation=message.conversation, is_active=True).exists():
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Bạn không ở trong cuộc hội thoại này")
+        chat_ct = ContentType.objects.get_for_model(Message)
+        user = self.request.user
+        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
+        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+        return UserReaction.objects.filter(reaction__object_id=chat_id, reaction__content_type=chat_ct).exclude(Q(user_id__in=blocked_ids) | Q(user_id__in=blocking_ids)).select_related('user', 'user__profile', 'reaction__settings', 'react')
+
 
 #===============ACTIVITY==========================
 class UserActivity(generics.ListAPIView):  # lấy ra danh sách các hoạt động. Để tạo chức năng ví dụ hoạt động của user, hoạt động trên post
@@ -1791,7 +1811,7 @@ class ConversationSearch(generics.ListAPIView):
 
 
 
-class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò chuyện
+class ConversationMessage(PagedContextMixin,generics.ListAPIView):  # xem tin nhắn cuộc trò chuyện
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = LargePagePagination
@@ -1800,27 +1820,36 @@ class ConversationMessage(generics.ListAPIView):  # xem tin nhắn cuộc trò c
     filterset_fields = ['sender']  # lọc theo người gửi
 
     def get_queryset(self):
-        convo_id = self.kwargs.get("pk")
-        conv = get_object_or_404(Conversation, id=convo_id)
-        search = self.request.query_params.get("search", "").strip().lower()
-        member= ConversationMember.objects.filter(conversation=conv,user=self.request.user).only('deleted_at_message_id','is_active','left_at').first() # chỉ lấy deleted
-        if not member:  # thêm check này
-            raise PermissionDenied("Bạn không trong nhóm")
-        qs=(
-            Message.objects
-            .filter(conversation_id=convo_id)  # lọc theo cuộc trò chuyên
-            .select_related("sender__profile","reply_to")  # lấy ra profile của sender để hiển thị thông tin người gửi đồng thời với message(1-1 với sender)
-            .prefetch_related("attachments")  # lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments n-n)
-            .order_by("-created_at")
-        )
-        if not member.is_active and member.left_at: # user đã rời/bị kick , chỉ hiện tin nhắn trước lúc rời
-            qs = qs.filter(created_at__lt=member.left_at)
-        if member and member.deleted_at_message_id is not None: # nếu là thành viên và đã xóa
-            qs= qs.filter(id__gt=member.deleted_at_message_id) # lấy tin nhắn có thơi gian lớn hơn delete
-        if search:
-            ids = [msg.id for msg in qs if msg.content and search in msg.content.lower()]
-            qs = qs.filter(id__in=ids)
-        return qs
+        if not hasattr(self,'_qs'):
+            convo_id = self.kwargs.get("pk")
+            conv = get_object_or_404(Conversation, id=convo_id)
+            search = self.request.query_params.get("search", "").strip().lower()
+            member= ConversationMember.objects.filter(conversation=conv,user=self.request.user).only('deleted_at_message_id','is_active','left_at').first() # chỉ lấy deleted
+            if not member:  # thêm check này
+                raise PermissionDenied("Bạn không trong nhóm")
+            self._qs=(
+                Message.objects
+                .filter(conversation_id=convo_id)  # lọc theo cuộc trò chuyên
+                .select_related("sender__profile","reply_to")  # lấy ra profile của sender để hiển thị thông tin người gửi đồng thời với message(1-1 với sender)
+                .prefetch_related("attachments")  # lấy ra tất cả file đính kèm trong message đồng thời với message(Foreign key tới Message Attachments n-n)
+                .order_by("-created_at")
+            )
+            if not member.is_active and member.left_at: # user đã rời/bị kick , chỉ hiện tin nhắn trước lúc rời
+                self._qs = self._qs.filter(created_at__lt=member.left_at)
+            if member and member.deleted_at_message_id is not None: # nếu là thành viên và đã xóa
+                self._qs= self._qs.filter(id__gt=member.deleted_at_message_id) # lấy tin nhắn có thơi gian lớn hơn delete
+            if search:
+                ids = [msg.id for msg in self._qs if msg.content and search in msg.content.lower()]
+                self._qs = self._qs.filter(id__in=ids)
+        return self._qs
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        objs =getattr(self,'_current_page_objs',None)
+        if objs is None:
+            objs = self.get_queryset()
+        context.update(get_reactions_chat_context(objs,self.request.user))
+        return context
 
 
 class MemberOfConversation(generics.ListAPIView):  # danh sách thành viên trong cuộc trò chuyện
@@ -4182,9 +4211,9 @@ class ListCreateEventChat(generics.ListCreateAPIView):
         start_time = event.start_time
         remind_at  = start_time - timedelta(minutes=15) #lấy 15p trước khi bắt đầu
         delta = int((remind_at - timezone.now()).total_seconds()) # tính số giây đếm ngược
-        if delta > 0:
+        if delta > 0: # ví dụ hiện tại 2h20, nhắc lúc 2h45 thì sẽ đếm còn 25p để chạy
             task = send_event_reminder.apply_async(args=[event.id, content_type.id], countdown=delta) # apply async để đặt lịch chạy
-        else:
+        else: # ví dụ hiện tại là 2h30, đặt lúc 2h35 thì remind_at - 15 = 2h20 nên delta âm,chạy luôn
             task = send_event_reminder.apply_async(args=[event.id, content_type.id]) # nếu set thời gian đã cũ thì chạy ngay
         event.celery_task_id = task.id
         event.save(update_fields=['celery_task_id'])

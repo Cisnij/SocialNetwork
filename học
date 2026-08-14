@@ -692,8 +692,9 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
    - nếu muốn gán cho foreign key như này UserReaction.objects.filter(reaction__object_id=obj.pk) Ví dụ gán model reaction có trường object_id cho model UserReaction
    - khi dùng filter(), exclude(), get(), annotate() thì khi muốn lấy foreign ke phải dùng __ , còn , dùng truy cập thẳng k phải lấy ra,
     annotate() → trả về thêm một field tính toán cho từng record (ví dụ: mỗi bài viết có thêm cột tổng số like) và thực thi ở tầng db thay vì thực hiện ở python sẽ làm chậm
-   - trình tự xử lý: api gọi, views.py xử lý theo chức năng crud trước, sau đó chạy serializer parse json và thực thi tới perform create.. mấy thứ ghi trong view sau đó thêm/lọc vào db
+   - trình tự xử lý: api gọi, views.py xử lý theo chức năng crud trước, sau đó chạy serializer parse json/validate và thực thi tới perform create.. mấy thứ ghi trong view sau đó thêm/lọc vào db
         -trình tự chi tiết, view gọi serializer get thì sẽ chạy sang từng fields, tới field nào tự custome thì thực thi logic custome
+            flow là list trước, list gọi tới get_queryset lấy ra các obj phân trang, sau đó tới get_serializer và trong đó lấy ra get_context_serializer, sau đó khởi tạo serializer ở trang serializer và trả response với phân trang
         - trình tự post: api gọi thì serializer lấy dâta validate và thêm vào db, xong sau đó trả ra theo fields
         Gọi API
         → View: get_object() → query DB → trả về model instance (object Python)

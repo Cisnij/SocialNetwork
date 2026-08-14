@@ -397,7 +397,7 @@ class Message(SafeDeleteModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     reply_to=models.ForeignKey('self',on_delete=models.SET_NULL,related_name='replies',null=True,blank=True) #khi message reply bị xóa thì cũng k xóa theo
-
+    reactions = GenericRelation(Reaction)
     def __str__(self):
         return (self.content or '')[:50]
 

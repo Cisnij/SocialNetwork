@@ -126,7 +126,7 @@ class PostSerializer(serializers.ModelSerializer):
     def get_is_saved(self, obj):
         saved_set = self.context.get('saved_post_ids')
         if saved_set is not None:
-            return obj.post_id in saved_set # tức là nếu có thì true else thì false
+            return obj.post_id in saved_set # tức là nếu có thì true else thì false, set thì dùng in, dict thì dùng get để lấy cả value
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return False
@@ -361,6 +361,8 @@ class MessageSerializer(serializers.ModelSerializer):
     attachments = MessageAttachmentSerializer(many=True, read_only=True) # tự tham chiếu qua, với mỗi object message thì gọi select messageattachment có message_id= object_id ( đầu tiên gọi lấy ra all id message của user, sau đó gọi lấy messageattachment có message_id in message ở query 1, rồi tự ghép vào lại đúng id), nested chỉ dùng đc khi lấy hết các object liên quan,  lọc ra nữa thì k đc
     conversation = serializers.PrimaryKeyRelatedField(read_only=True) #láy ra/trả ra id có liên quan đến object ở đây là override cái conversation r , Ví dụ gửi message thì message đó thuộc về conversation nào thì lấy ra id của conversation đó
     reply_to = serializers.SerializerMethodField()
+    reactions = serializers.SerializerMethodField()
+    user_is_reaction = serializers.SerializerMethodField()
     class Meta:
         model = Message
         fields = [
@@ -372,7 +374,9 @@ class MessageSerializer(serializers.ModelSerializer):
             "attachments",
             "created_at",
             "reply_to",
-            "reply_to_id"
+            "reply_to_id",
+            "reactions",        # tổng số reaction theo từng loại
+            "user_is_reaction", # reaction hiện tại của user đang đăng nhập
         ]
         read_only_fields = [ # định nghĩa các trường chỉ đọc
             "id",
@@ -391,6 +395,29 @@ class MessageSerializer(serializers.ModelSerializer):
             'content': obj.reply_to.content,
             "sender_id": obj.reply_to.sender_id,
         }
+    def get_reactions(self,obj):
+        reactions_map = self.context.get('reactions_map', {})
+        if reactions_map is not None:
+            return reactions_map.get(obj.pk,[])
+        content_type = ContentType.objects.get_for_model(Message)
+        return (
+            Reaction.objects.filter(content_type=content_type, object_id=obj.pk)
+            .values("settings__name")
+            .annotate(total=Count("reactions"))
+        )
+    def get_user_is_reaction(self, obj):  # tên hàm phải khớp với field user_is_reaction
+        user_reactions_map = self.context.get('user_reactions_map', {})
+        if user_reactions_map is not None:
+            return user_reactions_map.get(obj.pk, None)
+        user = self.context.get('request').user if self.context.get('request') else None
+        if not user or not user.is_authenticated:
+            return None
+        qs = UserReaction.objects.filter(
+            user=user,
+            reaction__content_type=ContentType.objects.get_for_model(Message),
+            reaction__object_id=obj.pk
+        ).first()
+        return qs.reaction.settings.name if qs else None
 #==========================in-app noti ===============================
 
 #     def get_actor(self, obj): ví dụ 

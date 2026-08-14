@@ -6,6 +6,8 @@ import { API, withPageSize, DEFAULT_AVATAR } from "../shared/config.js";
 
 import { uploadChatFiles, sendChatWsMessage } from "../shared/chat-upload.js";
 
+import { createReactionBar, buildReactionCountContent } from "../shared/posts/reactions.js";
+
 import { el, img, textEl } from "../shared/dom.js";
 
 import { showToast } from "../shared/toast.js";
@@ -1581,6 +1583,38 @@ function connectChatWs(convId) {
 
         if (data.type === "message_updated") { const elUpdated = document.querySelector(`[data-msg-id="${data.id}"] .msg-text`); if (elUpdated) elUpdated.textContent = `${data.content} (đã sửa)`; return; }
 
+        if (data.type === "message_reaction") {
+            const wrap = document.querySelector(`[data-msg-id="${data.message_id}"]`);
+            if (wrap) {
+                const reactionContainer = wrap.querySelector('.msg-reaction-count');
+                if (reactionContainer && Array.isArray(data.count)) {
+                    const total = data.count.reduce((s, r) => s + (r.total || 0), 0);
+                    if (total > 0) {
+                        reactionContainer.classList.remove("hidden");
+                        reactionContainer.replaceChildren(buildReactionCountContent(data.count));
+                    } else {
+                        reactionContainer.classList.add("hidden");
+                        reactionContainer.replaceChildren();
+                    }
+                }
+                const isMe = (myUserId != null && Number(data.sender_id) === Number(myUserId)) || (myProfileId != null && Number(data.sender_id) === Number(myProfileId));
+                if (isMe) {
+                    const reactBtn = wrap.querySelector('.chat-react-btn');
+                    if (reactBtn) {
+                        reactBtn.dataset.reaction = data.status === "removed" ? "" : (data.reaction_type || "");
+                        if (reactBtn.dataset.reaction) {
+                            reactBtn.classList.add("text-indigo-600");
+                            reactBtn.classList.remove("text-gray-500", "dark:text-gray-400");
+                        } else {
+                            reactBtn.classList.remove("text-indigo-600");
+                            reactBtn.classList.add("text-gray-500", "dark:text-gray-400");
+                        }
+                    }
+                }
+            }
+            return;
+        }
+
 
 
         if (data.id != null && (data.message != null || data.attachments != null)) {
@@ -1949,6 +1983,38 @@ function appendMessage(m, scroll = true, prepend = false) {
 
   messageCol.appendChild(seenContainer);
 
+  const reactionContainer = document.createElement("div");
+  reactionContainer.className = "msg-reaction-count absolute bottom-[-10px] right-2 cursor-pointer bg-white dark:bg-[#3a3b3c] shadow-sm rounded-full z-10 hidden border border-gray-100 dark:border-gray-700";
+  reactionContainer.style.padding = "2px 4px";
+  if (m.reactions && m.reactions.length > 0) {
+      reactionContainer.classList.remove("hidden");
+      reactionContainer.replaceChildren(buildReactionCountContent(m.reactions));
+  }
+  bubble.classList.add("relative");
+  bubble.appendChild(reactionContainer);
+
+  const reactBtnWrap = document.createElement("div");
+  reactBtnWrap.className = "relative shrink-0 self-center opacity-0 group-hover:opacity-100 group-hover:z-50 transition-opacity duration-200 mx-1";
+  const reactBtn = document.createElement("button");
+  reactBtn.type = "button";
+  reactBtn.title = "Bày tỏ cảm xúc";
+  reactBtn.dataset.reaction = m.user_is_reaction || "";
+  const isActive = !!m.user_is_reaction;
+  reactBtn.className = `chat-react-btn p-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors text-sm leading-none ${isActive ? "text-indigo-600" : "text-gray-500 dark:text-gray-400"}`;
+  reactBtn.innerHTML = '<i class="far fa-smile"></i>';
+  reactBtnWrap.appendChild(reactBtn);
+  const reactFn = async (msgId, type) => {
+      if (!chatWs || chatWs.readyState !== WebSocket.OPEN) return null;
+      chatWs.send(JSON.stringify({ type: "reaction", message_id: msgId, reaction_type: type }));
+      return null;
+  };
+  const bar = createReactionBar({ targetId: m.id, reactFn: reactFn, reactBtn: reactBtn, wrapper: reactBtnWrap, isComment: true });
+  if (mine) {
+      bar.classList.remove("left-0");
+      bar.classList.add("right-0");
+  }
+  reactBtnWrap.appendChild(bar);
+
 
 
   if (!content && !(m.attachments || []).length && !mine) bubble.appendChild(text);
@@ -2009,7 +2075,7 @@ function appendMessage(m, scroll = true, prepend = false) {
   timeHoverEl.className = "text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap self-center mx-1";
   timeHoverEl.textContent = m.created_at ? formatMsgTime(m.created_at) : "";
 
-  if (mine) { wrap.append(timeHoverEl, replyBtn, moreWrap, messageCol); } else {
+  if (mine) { wrap.append(timeHoverEl, reactBtnWrap, replyBtn, moreWrap, messageCol); } else {
     // --- Avatar column for received messages ---
     const avatarWrap = document.createElement("div");
     avatarWrap.className = "msg-sender-avatar shrink-0 w-8 h-8 rounded-full overflow-hidden self-end mb-1";
@@ -2036,7 +2102,7 @@ function appendMessage(m, scroll = true, prepend = false) {
       messageCol.prepend(nameLabel);
     }
 
-    wrap.append(avatarWrap, messageCol, replyBtn, timeHoverEl);
+    wrap.append(avatarWrap, messageCol, reactBtnWrap, replyBtn, timeHoverEl);
   }
 
 

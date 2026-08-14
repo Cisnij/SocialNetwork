@@ -1,9 +1,6 @@
 """flow là khi người dùng gửi tin nhắn thì chạy connect trước, sau đó là chạy receive() để server nhận tin nhắn từ người dùng
 sau đó, thông qua hàm chat_message() thì server sẽ gửi tin nhắn về ng dùng(vì thế nên bắt buộc phải lấy đúng event từ receive, vì nếu k có nó thì sao gửi)
 connect-> receive(server) -> send -> client"""
-
-
-
 """
 -flow từ back tới front end
 -Frontend: User gọi tất cả đoạn chat và gán id cho từng cái đó, front-end gọi new WebSocket và khởi tạo url với conversation_id đó khi click tương ứng,sau đó chạy open
@@ -35,7 +32,10 @@ from django.contrib.auth.models import User
 from api.tasks import push_notification_task
 from api.AI_Bot import get_gemini_reply
 from backend.env_config import env
-
+from django.db import transaction
+from django.contrib.contenttypes.models import ContentType
+from reaction.models import Reaction, UserReaction, ReactionSettings
+from django.db.models import Count
 
 class HeartbeatMixin:
     '''giúp tự kết nối khi bị ngắt, flow là server gửi ping sau 30s, client còn sống thì gửi pong. Nếu k gửi pong thì server disconnect và client k nhận ping cũng sẽ tự reconnect 3s chỉ sau khi server close'''
@@ -135,6 +135,25 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
                 }
             )
             return
+        # xử lý reaction
+        if data.get('type') == 'reaction':
+            message_id = data.get('message_id')
+            reaction_type = data.get('reaction_type')
+            if not reaction_type: return
+            saved = await self.save_reaction(message_id, reaction_type)
+            if saved:
+                await self.channel_layer.group_send(
+                    self.room_name,
+                    {
+                        'type': 'message_reaction',
+                        'message_id': message_id,
+                        'reaction_type': saved['reaction_type'],
+                        'status': saved['status'],
+                        'count': saved['count'],
+                        'sender_id': self.user.id,
+                    }
+                )
+            return
 
         message = data.get('message', '').strip()  # lấy message và xóa khoảng trắng
         message_type = data.get('message_type', 'text')  # mặc định là text
@@ -144,8 +163,6 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
         attachment_ids = data.get('attachment_ids', [])  # nhận vào id của attachment đã đc tạo hoặc rỗng
         if not message and not attachment_ids:  # không cho gửi tin rỗng
             return
-
-
 
         # check các điều kiện trước khi lưu (block, pending status...)
         if not self.is_bot:
@@ -185,9 +202,9 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
         if self.is_bot:
             async def bot_task():
                 try:
-                    old_messages = await self.get_context_messages()
-                    bot_reply_text = await get_gemini_reply(message, self.sender_name, old_messages)
-                    bot_message = await self.save_bot_message(bot_reply_text)
+                    old_messages = await self.get_context_messages() # lấy context 10 tin gần nhất
+                    bot_reply_text = await get_gemini_reply(message, self.sender_name, old_messages) # gọi api truyền context, messafge hiện tại và trả ra answer
+                    bot_message = await self.save_bot_message(bot_reply_text) # lưu tin nhắn bot trả về
                     await self.channel_layer.group_send(
                         self.room_name,
                         {
@@ -278,7 +295,18 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
             'id': event['id'],
         }))
 
-    # ===== TYPING =====
+    # ===== REACTION MESSAGE =====
+    async def message_reaction(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'message_reaction',
+            'message_id': event['message_id'],
+            'reaction_type': event['reaction_type'],  # None nếu status=removed
+            'status': event['status'],                 # added / removed / changed
+            'count': event['count'],                   # list [{'settings__name': 'like', 'total': 3}, ...]
+            'sender_id': event['sender_id'],
+        }))
+
+    #===TYPING===========
     async def typing_indicator(self, event):
         await self.send(text_data=json.dumps({
             'type': 'typing',
@@ -305,6 +333,7 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
         await self.send(text_data=json.dumps({
             'type': 'stop_call',
         }))
+
 
     # ===== MODEL CHECK =====
     @database_sync_to_async
@@ -455,6 +484,62 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
             f"{msg['sender__profile__last_name'] or 'Ẩn danh'}: {msg['content'] or '[File đính kèm]'}"
             for msg in messages_list
         ])
+
+    @database_sync_to_async
+    def save_reaction(self, message_id, reaction_type_name):
+        try:
+            ct = ContentType.objects.get_for_model(Message)
+            reaction_setting = ReactionSettings.objects.get(name=reaction_type_name) # lấy cái name emoji truyền vào
+            
+            with transaction.atomic():
+                reaction, _ = Reaction.objects.select_related('settings').get_or_create( # lâys hoặc tạo bảng đại diện type đó
+                    content_type=ct,
+                    object_id=message_id,
+                    settings=reaction_setting,
+                )
+                
+                user_reaction = UserReaction.objects.select_related('reaction__settings').filter( # kiểm tra user đã thả reaction chưa
+                    user=self.user,
+                    reaction__content_type=ct,
+                    reaction__object_id=message_id,
+                ).first()
+                
+                react_emoji = reaction_setting.react_emoji.first() # lấy ra emoji
+                
+                if not user_reaction: # tạo mới khi chưa có, trả về add và slug emoji
+                    UserReaction.objects.create(
+                        user=self.user,
+                        reaction=reaction,
+                        react=react_emoji
+                    )
+                    status = "added"
+                    returned_type = reaction_type_name
+                elif user_reaction.reaction.settings == reaction_setting: # trả về remonve và 0 emoji
+                    user_reaction.delete()
+                    status = "removed"
+                    returned_type = None
+                else: # trả về change
+                    user_reaction.reaction = reaction
+                    user_reaction.react = react_emoji
+                    user_reaction.save(update_fields=["reaction", "react"])
+                    status = "changed"
+                    returned_type = reaction_type_name
+                    
+            count = list(
+                Reaction.objects.filter(
+                    content_type=ct,
+                    object_id=message_id,
+                ).values('settings__name').annotate(total=Count('reactions')) # count theo user reaction ở cái reaction này , groupby slug emoji đó
+            )
+            return {
+                "status": status,
+                "reaction_type": returned_type,
+                "count": count
+            }
+        except Exception as e:
+            print(f"Error saving reaction: {e}")
+            return None
+
 
 
 

@@ -131,6 +131,7 @@ urlpatterns = [
     #url lấy ra user đã react và activity
     path('api/user/reaction/post/<int:post_id>/',UserReactionPostList.as_view(),name='user-reaction-post'), #lấy ra tất cả user đã thẻ react post
     path('api/user/reaction/comment/<int:comment_id>/',UserReactionCommentList.as_view(),name='user-reaction-comment'), #lấy ra tất cả user đã thẻ react commment
+    path('api/user/reaction/message/<int:chat_id>/',UserReactionChatList.as_view(),name='user-reaction-message'), #lấy ra tất cả user đã thẻ react commment
     path('api/user/activity/', UserActivity.as_view(), name='user-activity'), #lấy ra lịch sử hoạt động của user hoặc tất cả user
     path('api/admin/logs/', LogList.as_view(), name='log-list'), #lấy ra tất cả log cho admin
     # url cho chat

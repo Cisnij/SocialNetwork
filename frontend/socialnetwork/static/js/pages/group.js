@@ -464,7 +464,7 @@ async function loadGroupInfo() {
         });
         groupData = data;
         myRole = data.role || null;
-        
+
         // Get current user ID from currentUserProfile as source of truth
         try {
             await fetchUserProfileShared(); // Ensure profile is loaded
@@ -474,7 +474,7 @@ async function loadGroupInfo() {
             // Fallback to data.user_id if profile not available
             myUserId = data.user_id ? Number(data.user_id) : null;
         }
-        
+
         isMember = data.join_status === "member";
 
         renderHero(data);
@@ -679,14 +679,14 @@ function openGroupComposer() {
     const content = document.getElementById("groupPostContent");
     const preview = document.getElementById("groupPhotoPreview");
     const photoInput = document.getElementById("groupPhotoInput");
-    
+
     if (!modal) return;
-    
+
     content.value = "";
     groupComposerFiles = [];
     preview.innerHTML = "";
     photoInput.value = "";
-    
+
     modal.classList.remove("hidden");
     content.focus();
 }
@@ -695,7 +695,7 @@ function closeGroupComposer() {
     const modal = document.getElementById("groupComposerModal");
     const preview = document.getElementById("groupPhotoPreview");
     const photoInput = document.getElementById("groupPhotoInput");
-    
+
     if (modal) modal.classList.add("hidden");
     groupComposerFiles = [];
     preview.innerHTML = "";
@@ -716,7 +716,7 @@ function updateGroupPhotoPreview() {
     const preview = document.getElementById("groupPhotoPreview");
     if (!preview) return;
     preview.replaceChildren();
-    
+
     groupComposerFiles.forEach((file, index) => {
         const isVideo = file.type.startsWith("video/");
         if (isVideo) {
@@ -726,7 +726,7 @@ function updateGroupPhotoPreview() {
             vid.src = URL.createObjectURL(file);
             vid.className = "w-full h-32 object-cover rounded-lg bg-black";
             vid.controls = true;
-            
+
             const removeBtn = document.createElement("button");
             removeBtn.type = "button";
             removeBtn.className = "absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 z-10";
@@ -735,7 +735,7 @@ function updateGroupPhotoPreview() {
                 groupComposerFiles = groupComposerFiles.filter((_, i) => i !== index);
                 updateGroupPhotoPreview();
             };
-            
+
             div.appendChild(vid);
             div.appendChild(removeBtn);
             preview.appendChild(div);
@@ -748,7 +748,7 @@ function updateGroupPhotoPreview() {
                 img.src = e.target.result;
                 img.alt = "Preview";
                 img.className = "w-full h-32 object-cover rounded-lg";
-                
+
                 const removeBtn = document.createElement("button");
                 removeBtn.type = "button";
                 removeBtn.className = "absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600";
@@ -757,7 +757,7 @@ function updateGroupPhotoPreview() {
                     groupComposerFiles = groupComposerFiles.filter((_, i) => i !== index);
                     updateGroupPhotoPreview();
                 };
-                
+
                 div.appendChild(img);
                 div.appendChild(removeBtn);
                 preview.appendChild(div);
@@ -770,12 +770,12 @@ function updateGroupPhotoPreview() {
 async function submitGroupPost() {
     const content = document.getElementById("groupPostContent")?.value.trim();
     const photoInput = document.getElementById("groupPhotoInput");
-    
+
     if (!content && groupComposerFiles.length === 0) {
         showToast("⚠️ Vui lòng nhập nội dung hoặc thêm ảnh", "red");
         return;
     }
-    
+
     const formData = new FormData();
     formData.append("title", content || "Bài viết mới");
     groupComposerFiles.forEach((file) => {
@@ -785,29 +785,29 @@ async function submitGroupPost() {
             formData.append("photos", file);
         }
     });
-    
+
     const submitBtn = document.getElementById("groupComposerSubmit");
     submitBtn.disabled = true;
     submitBtn.textContent = "Đang đăng...";
-    
+
     try {
         const resPost = await authFetch(API.groupCreatePost(GROUP_ID), {
             method: "POST",
             body: formData,
         });
-        
+
         if (!resPost.ok) {
             const errorData = await resPost.json().catch(() => ({}));
             showToast(errorData.error || "⚠️ Không tạo được bài viết", "red");
             return;
         }
-        
+
         const newPost = await resPost.json();
         closeGroupComposer();
         showToast("✅ Bài viết đã được đăng!");
-        
+
         document.dispatchEvent(new CustomEvent("newPostCreated", { detail: newPost }));
-        
+
         if (isMember) {
             loadPosts();
         }
@@ -844,7 +844,7 @@ function setupPermissions(group) {
         }
         updateComposerAvatar();
     }
-    
+
     // Group composer modal events
     document.getElementById("groupComposerBackdrop")?.addEventListener("click", closeGroupComposer);
     document.getElementById("groupComposerCancel")?.addEventListener("click", closeGroupComposer);
@@ -1136,39 +1136,39 @@ function buildGroupPostCard(post, opts = {}) {
             post.post_status === "rejected",
         onPinGroupPost: isAdmin
             ? async (p) => {
-                  try {
-                      await apiMutate(API.groupPinPost(GROUP_ID, p.post_id), "POST");
-                      showToast(p.is_pinned ? "Đã bỏ ghim bài viết!" : "Đã ghim bài viết!");
-                      loadPosts();
-                  } catch (err) {
-                      showToast("Lỗi: " + err.message, "error");
-                  }
-              }
+                try {
+                    await apiMutate(API.groupPinPost(GROUP_ID, p.post_id), "POST");
+                    showToast(p.is_pinned ? "Đã bỏ ghim bài viết!" : "Đã ghim bài viết!");
+                    loadPosts();
+                } catch (err) {
+                    showToast("Lỗi: " + err.message, "error");
+                }
+            }
             : null,
         onEditGroupPost: canEdit
             ? (p) => editGroupPost(p)
             : null,
         onNotifyGroupPost: isAdmin
             ? async (p) => {
-                  try {
-                      await apiMutate(API.groupHighlightPost(GROUP_ID, p.post_id), "POST");
-                      showToast("Đã gửi thông báo đến thành viên!");
-                  } catch (err) {
-                      showToast("Lỗi: " + err.message, "error");
-                  }
-              }
+                try {
+                    await apiMutate(API.groupHighlightPost(GROUP_ID, p.post_id), "POST");
+                    showToast("Đã gửi thông báo đến thành viên!");
+                } catch (err) {
+                    showToast("Lỗi: " + err.message, "error");
+                }
+            }
             : null,
         onDeleteGroupPost: canDelete
             ? async (pid) => {
-                  if (!(await confirmAction("Xóa bài viết này?"))) return;
-                  try {
-                      await apiMutate(API.groupDeletePost(GROUP_ID, pid), "DELETE");
-                      showToast("Đã xóa bài viết!");
-                      loadPosts();
-                  } catch (err) {
-                      showToast("Lỗi: " + err.message, "error");
-                  }
-              }
+                if (!(await confirmAction("Xóa bài viết này?"))) return;
+                try {
+                    await apiMutate(API.groupDeletePost(GROUP_ID, pid), "DELETE");
+                    showToast("Đã xóa bài viết!");
+                    loadPosts();
+                } catch (err) {
+                    showToast("Lỗi: " + err.message, "error");
+                }
+            }
             : null,
         onOpenReactions: openReactionsModal,
         onOpenPhotos: openPhotoModal,
@@ -1323,7 +1323,7 @@ async function editGroupPost(post) {
             if (markedForDeletion.size > 0) {
                 await Promise.all(
                     [...markedForDeletion].map((photoId) =>
-                        authFetch(API.groupDeletePhoto(photoId), { method: "DELETE" }).catch(() => {})
+                        authFetch(API.groupDeletePhoto(photoId), { method: "DELETE" }).catch(() => { })
                     )
                 );
             }
@@ -1339,7 +1339,7 @@ async function editGroupPost(post) {
                 await authFetch(API.groupAddPhoto(post.post_id), {
                     method: "POST",
                     body: photoForm,
-                }).catch(() => {});
+                }).catch(() => { });
             }
 
             showToast("Đã cập nhật bài viết!");
@@ -1516,7 +1516,7 @@ function bindMemberActions() {
     document.querySelectorAll(".btn-kick-member").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
             const uid = e.currentTarget.dataset.id;
-            
+
             openInlineFormModal({
                 title: "Xóa thành viên",
                 bodyHtml: `
@@ -1670,10 +1670,10 @@ function loadEvents(initial = true) {
                         <button class="btn-event-response px-4 py-1.5 bg-red-100 text-red-600 text-sm font-bold rounded-xl hover:bg-red-200 transition" data-eid="${event.id}" data-response="decline"><i class="fas fa-times mr-1"></i> Hủy tham gia</button>
                       </div>`
                         : userStatus === "decline"
-                        ? `<div class="flex gap-2 mt-3">
+                            ? `<div class="flex gap-2 mt-3">
                         <button class="btn-event-response px-4 py-1.5 bg-fb-primary text-white text-sm font-bold rounded-xl hover:bg-blue-600 transition" data-eid="${event.id}" data-response="accept"><i class="fas fa-check mr-1"></i> Tham gia lại</button>
                       </div>`
-                        : `<div class="flex gap-2 mt-3">
+                            : `<div class="flex gap-2 mt-3">
                         <button class="btn-event-response px-4 py-1.5 bg-fb-primary text-white text-sm font-bold rounded-xl hover:bg-blue-600 transition" data-eid="${event.id}" data-response="accept"><i class="fas fa-check mr-1"></i> Tham gia</button>
                         <button class="btn-event-response px-4 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition" data-eid="${event.id}" data-response="decline"><i class="fas fa-times mr-1"></i> Từ chối</button>
                       </div>`
@@ -2574,7 +2574,7 @@ window.loadVotesTab = loadVotesTab;
 let nextGroupVotesUrl = null;
 let isLoadingGroupVotes = false;
 
-window.loadVotesTab = async function(reset = false) {
+window.loadVotesTab = async function (reset = false) {
     if (!GROUP_ID) return;
     const container = document.getElementById("groupVotesList");
     if (!container) return;
@@ -2591,7 +2591,7 @@ window.loadVotesTab = async function(reset = false) {
         const res = await authFetch(nextGroupVotesUrl);
         if (!res.ok) throw new Error("Failed to fetch votes");
         const data = await res.json();
-        
+
         if (reset) container.replaceChildren();
 
         const votes = data.results || (Array.isArray(data) ? data : []);
@@ -2606,7 +2606,7 @@ window.loadVotesTab = async function(reset = false) {
                 container.appendChild(renderGroupVoteCard(v));
             }
         }
-        
+
         nextGroupVotesUrl = data.next || null;
         if (nextGroupVotesUrl) {
             const btn = document.createElement("button");
@@ -2683,7 +2683,7 @@ function renderGroupVoteCard(v) {
         `;
     }
     optsHtml += `</div>`;
-    
+
     let footerHtml = `
         <div class="flex items-center justify-between mt-2 pt-2 border-t dark:border-gray-700">
             <span class="text-xs text-gray-400 font-medium">${totalVotes} lượt bình chọn</span>
@@ -2706,14 +2706,14 @@ function renderGroupVoteCard(v) {
         card.querySelector(".vote-kebab-menu").classList.add("hidden");
         openInputModal({ title: "Sửa tiêu đề bình chọn", value: v.title }).then(async val => {
             if (val && val !== v.title) {
-                const res = await authFetch(API.groupUpdateVote(GROUP_ID, v.id), { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ title: val }) });
+                const res = await authFetch(API.groupUpdateVote(GROUP_ID, v.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: val }) });
                 if (res.ok) loadVotesTab(true);
             }
         });
     });
 
     card.querySelector("[data-action='toggle-vote']")?.addEventListener("click", async () => {
-        const res = await authFetch(API.groupUpdateVote(GROUP_ID, v.id), { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ is_closed: !v.is_closed }) });
+        const res = await authFetch(API.groupUpdateVote(GROUP_ID, v.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_closed: !v.is_closed }) });
         if (res.ok) loadVotesTab(true);
     });
 
@@ -2727,7 +2727,7 @@ function renderGroupVoteCard(v) {
     card.querySelector("[data-action='add-option']")?.addEventListener("click", () => {
         openInputModal({ title: "Thêm lựa chọn", placeholder: "Nhập lựa chọn..." }).then(async val => {
             if (val) {
-                const res = await authFetch(API.groupAddVoteOption(GROUP_ID, v.id), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ options: [val] }) });
+                const res = await authFetch(API.groupAddVoteOption(GROUP_ID, v.id), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ options: [val] }) });
                 if (res.ok) loadVotesTab(true);
             }
         });
@@ -2740,7 +2740,7 @@ function renderGroupVoteCard(v) {
             const currentText = card.querySelector(`[data-option-id="${optId}"] .vote-opt-text`).textContent;
             openInputModal({ title: "Sửa lựa chọn", value: currentText }).then(async val => {
                 if (val && val !== currentText) {
-                    const res = await authFetch(API.groupUpdateVoteOption(GROUP_ID, v.id, optId), { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ text: val }) });
+                    const res = await authFetch(API.groupUpdateVoteOption(GROUP_ID, v.id, optId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: val }) });
                     if (res.ok) loadVotesTab(true);
                 }
             });
@@ -2786,7 +2786,7 @@ function renderGroupVoteCard(v) {
 let nextGroupEventsUrl = null;
 let isLoadingGroupEvents = false;
 
-window.loadEvents = async function(reset = false) {
+window.loadEvents = async function (reset = false) {
     if (!GROUP_ID) return;
     const container = document.getElementById("groupEventsList");
     if (!container) return;
@@ -2803,7 +2803,7 @@ window.loadEvents = async function(reset = false) {
         const res = await authFetch(nextGroupEventsUrl);
         if (!res.ok) throw new Error("Failed to fetch events");
         const data = await res.json();
-        
+
         if (reset) container.replaceChildren();
 
         const evts = data.results || (Array.isArray(data) ? data : []);
@@ -2818,7 +2818,7 @@ window.loadEvents = async function(reset = false) {
                 container.appendChild(renderGroupEventCard(e));
             }
         }
-        
+
         nextGroupEventsUrl = data.next || null;
         if (nextGroupEventsUrl) {
             const btn = document.createElement("button");
@@ -2902,11 +2902,11 @@ function renderGroupEventCard(e) {
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-semibold mb-1">Bắt đầu</label>
-                            <input type="datetime-local" name="start_time" value="${e.start_time ? e.start_time.slice(0,16) : ''}" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                            <input type="datetime-local" name="start_time" value="${e.start_time ? e.start_time.slice(0, 16) : ''}" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                         </div>
                         <div>
                             <label class="block text-sm font-semibold mb-1">Kết thúc (Tùy chọn)</label>
-                            <input type="datetime-local" name="end_time" value="${e.end_time ? e.end_time.slice(0,16) : ''}" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                            <input type="datetime-local" name="end_time" value="${e.end_time ? e.end_time.slice(0, 16) : ''}" class="w-full p-2.5 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                         </div>
                     </div>
                 </div>
@@ -2924,7 +2924,7 @@ function renderGroupEventCard(e) {
             }
         }).then(async val => {
             if (val) {
-                const res = await authFetch(API.groupEventDetail(GROUP_ID, e.id), { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify(val) });
+                const res = await authFetch(API.groupEventDetail(GROUP_ID, e.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(val) });
                 if (res.ok) loadEvents(true);
             }
         });
@@ -2932,7 +2932,7 @@ function renderGroupEventCard(e) {
 
     card.querySelector("[data-action='join-event']")?.addEventListener("click", async () => {
         const newStatus = e.user_status === 'accept' ? 'decline' : 'accept'; // Hủy thì coi như decline/hoặc pending
-        const res = await authFetch(API.groupEventResponse(GROUP_ID, e.id), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ status: newStatus }) });
+        const res = await authFetch(API.groupEventResponse(GROUP_ID, e.id), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
         if (res.ok) loadEvents(true);
     });
 
@@ -2977,7 +2977,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }).then(async val => {
             if (val) {
-                const res = await authFetch(API.groupCreateVote(GROUP_ID), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(val) });
+                const res = await authFetch(API.groupCreateVote(GROUP_ID), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(val) });
                 if (res.ok) loadVotesTab(true);
             }
         });
@@ -3021,14 +3021,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }).then(async val => {
             if (val) {
-                const res = await authFetch(API.groupListCreateEvent(GROUP_ID), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(val) });
+                const res = await authFetch(API.groupListCreateEvent(GROUP_ID), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(val) });
                 if (res.ok) loadEvents(true);
             }
         });
     });
 });
 
-window.openSuggestionModal = function() {
+window.openSuggestionModal = function () {
     openInlineFormModal({
         title: "Gửi Góp Ý",
         bodyHtml: `
@@ -3050,7 +3050,7 @@ window.openSuggestionModal = function() {
         }
     }).then(async val => {
         if (val) {
-            const res = await authFetch(API.groupCreateSuggestion(GROUP_ID), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(val) });
+            const res = await authFetch(API.groupCreateSuggestion(GROUP_ID), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(val) });
             if (res.ok) {
                 showToast("Gửi góp ý thành công!", "green");
             } else {

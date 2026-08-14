@@ -24,9 +24,9 @@ function loadAdminSuggestions(groupId) {
 
         list.innerHTML = "";
         items.forEach(item => {
-            const date = new Date(item.created_at).toLocaleString('vi-VN', {hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'});
+            const date = new Date(item.created_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
             const sender = item.user ? (item.user.full_name || `${item.user.first_name || ''} ${item.user.last_name || ''}`.trim()) : 'Ẩn danh';
-            
+
             const html = `
                 <div class="glass-card p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-3">
                     <div class="flex justify-between items-start mb-2">
@@ -125,18 +125,18 @@ function openFormModal({ title, bodyHtml, validate, onGetValues, okText = "Lưu"
             resolve(value);
         };
 
-            document.getElementById("formModalOk").onclick = () => {
-                const values = onGetValues ? onGetValues() : {};
-                if (validate) {
-                    const err = validate(values);
-                    if (err) {
-                        errorEl.textContent = err;
-                        errorEl.classList.remove("hidden");
-                        return;
-                    }
+        document.getElementById("formModalOk").onclick = () => {
+            const values = onGetValues ? onGetValues() : {};
+            if (validate) {
+                const err = validate(values);
+                if (err) {
+                    errorEl.textContent = err;
+                    errorEl.classList.remove("hidden");
+                    return;
                 }
-                cleanup(values);
-            };
+            }
+            cleanup(values);
+        };
 
         document.getElementById("formModalCancel").onclick = () => cleanup(null);
 
@@ -262,7 +262,7 @@ export function initAdminPanel(groupId, isCompany) {
             else if (targetId === "adminJoinRequests") loadJoinRequests(groupId, isCompany);
             else if (targetId === "adminDepartments") loadDepartments(groupId);
             else if (targetId === "adminSuggestions") loadAdminSuggestions(groupId);
-            
+
             if (targetId === "adminDepartments" && isCompany) {
                 setupDepartmentDelegation(groupId);
             }
@@ -347,8 +347,8 @@ function loadPendingPosts(groupId) {
                         ${photos.length
                         ? `<div class="grid ${photos.length === 1 ? "grid-cols-1" : "grid-cols-2"} gap-2 mt-3">${photos
                             .map(
-                              (ph) =>
-                                `<div class="relative aspect-square overflow-hidden rounded-xl"><img src="${ph.photo}" class="w-full h-full object-cover" onerror="this.src='${DEFAULT_AVATAR}'" loading="lazy"></div>`
+                                (ph) =>
+                                    `<div class="relative aspect-square overflow-hidden rounded-xl"><img src="${ph.photo}" class="w-full h-full object-cover" onerror="this.src='${DEFAULT_AVATAR}'" loading="lazy"></div>`
                             )
                             .join("")}</div>`
                         : ""
@@ -454,10 +454,10 @@ function loadJoinRequests(groupId, isCompany, silent = false) {
                     const reqId = e.currentTarget.dataset.id;
                     const req = pending.find((r) => r.id == reqId);
                     if (!req) return;
-                    
+
                     const roleId = await showRoleAssignmentModal(groupId);
                     if (roleId === null) return; // cancelled
-                    
+
                     try {
                         await apiMutate(API.groupAcceptRequest(groupId, reqId), "POST");
                         const userId = req.user?.id;
@@ -512,9 +512,9 @@ async function showRoleAssignmentModal(groupId) {
             <p class="text-sm text-red-500 dark:text-red-400 mb-3 font-semibold">Bắt buộc chọn chức vụ cho thành viên mới:</p>
             <div class="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
                 ${departments.map((dept) => {
-                    const roles = dept.roles || [];
-                    const rolesHtml = roles.length > 0
-                        ? roles.map((r) => `
+            const roles = dept.roles || [];
+            const rolesHtml = roles.length > 0
+                ? roles.map((r) => `
                             <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition border border-transparent hover:border-gray-200 dark:hover:border-gray-700">
                                 <input type="radio" name="roleOption" value="${r.id}" class="accent-fb-primary w-4 h-4" required>
                                 <div class="flex-1">
@@ -523,8 +523,8 @@ async function showRoleAssignmentModal(groupId) {
                                 </div>
                             </label>
                         `).join("")
-                        : `<p class="text-xs text-gray-500 italic px-2">Chưa có chức vụ</p>`;
-                    return `
+                : `<p class="text-xs text-gray-500 italic px-2">Chưa có chức vụ</p>`;
+            return `
                         <div class="border dark:border-gray-700 rounded-xl p-3">
                             <h4 class="font-bold text-gray-900 dark:text-white mb-2 text-xs uppercase tracking-wider">${dept.name}</h4>
                             <div class="space-y-1">
@@ -532,7 +532,7 @@ async function showRoleAssignmentModal(groupId) {
                             </div>
                         </div>
                     `;
-                }).join("")}
+        }).join("")}
             </div>
         `, async (body) => {
             const selected = body.querySelector('input[name="roleOption"]:checked');
