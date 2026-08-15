@@ -65,6 +65,7 @@ REST_FRAMEWORK={ #Cấu hình token
         'follow': '120/hour',
         'unfollow': '120/hour',
         'block': '60/hour',
+        'unblock':'60/hour',
         'start_conv': '30/hour',
         'accept_msg_request': '120/hour',
         'reject_msg_request': '120/hour',

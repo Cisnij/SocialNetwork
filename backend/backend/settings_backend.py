@@ -77,10 +77,26 @@ CACHEOPS = {
     'api.voteoption':{'ops':'all', 'timeout': 60*2},
     'api.uservote':{'ops':'all', 'timeout': 60*1},
     # thư viện
-    'friendship.*': {'ops': 'all', 'timeout': 60 * 60},
     'actstream.action': {'ops': 'all', 'timeout': 60 * 5},
     'reaction.*': {'ops': 'all', 'timeout': 60 * 15},
-
+    'friendship.friend': {
+        'ops': 'all',
+        'timeout': 60 * 10,
+        'local_get': False,
+    },
+    'friendship.block': {
+        'ops': 'all',
+        'timeout': 60 * 15,
+        'local_get': False,
+    },
+    'friendship.follow': {
+        'ops': 'all',
+        'timeout': 60 * 15,
+    },
+    'friendship.friendshiprequest': {
+        'ops': 'all',
+        'timeout': 60 * 10,
+    },
 
 }
 

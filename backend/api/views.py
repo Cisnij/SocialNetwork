@@ -55,7 +55,7 @@ from .documents import PostDocument, ProfileDocument, GroupDocument
 from elasticsearch_dsl.query import MultiMatch
 from elasticsearch_dsl import Q as ESQ, MultiSearch  # Django Q — dùng cho ORM filter
 #cacheops
-from cacheops import invalidate_model
+from cacheops import invalidate_model, invalidate_obj
 #cloudinary
 import cloudinary.uploader
 # magic-bin
@@ -363,11 +363,11 @@ class PostFriend(PagedContextMixin, generics.ListAPIView):  # List tất cả po
             #self dùng để cho các def khác có thể lấy được, và cũng private trong class này
             user = self.request.user
             # lấy ra tất cả id và chỉ id
-            friend_ids   = Friend.objects.filter(to_user=user).values_list("from_user_id", flat=True)
-            following_ids = Follow.objects.filter(follower=user).values_list("followee_id", flat=True)
-            blocked_ids  = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-            blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
-            group_ids = Group.objects.filter(members__user=user, members__is_active=True).values_list("id", flat=True)
+            friend_ids   = list(Friend.objects.filter(to_user=user).values_list("from_user_id", flat=True))
+            following_ids = list(Follow.objects.filter(follower=user).values_list("followee_id", flat=True))
+            blocked_ids  = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
+            blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
+            group_ids = list(Group.objects.filter(members__user=user, members__is_active=True).values_list("id", flat=True))
             self._qs = (
                 Post.objects
                 .filter( # câu lệnh Q..| là OR
@@ -536,8 +536,8 @@ class PinPostView(generics.UpdateAPIView):
         return post
 
     def update(self, request, *args, **kwargs):
-        post = self.get_object()
         with transaction.atomic():
+            post = self.get_object()
             if post.is_pinned:
                 post.is_pinned = False
             else:
@@ -664,12 +664,12 @@ class AllPostShareView(PagedContextMixin, generics.ListCreateAPIView): # tất c
         if not user.has_perm('api.view_post', post): # dùng rules trực tiếp check post gốc vì nhận vào id post gốc, khác là tự viết raise nhưng logic như nhau
             raise PermissionDenied("Bạn không thể xem bài viết này")
 
-        # Lọc block: loại share của người đã block / bị block
-        blocked_ids = Block.objects.filter(blocked=user).values_list('blocker_id', flat=True)
-        blocking_ids = Block.objects.filter(blocker=user).values_list('blocked_id', flat=True)
+        # list() để query ngay, tránh cacheops cache bằng subquery
+        blocked_ids = list(Block.objects.filter(blocked=user).values_list('blocker_id', flat=True))
+        blocking_ids = list(Block.objects.filter(blocker=user).values_list('blocked_id', flat=True))
 
         # Lấy share của chính mình + bạn bè (public/friends) + người lạ (chỉ public)
-        friend_ids = Friend.objects.filter(to_user=user).values_list('from_user_id', flat=True)
+        friend_ids = list(Friend.objects.filter(to_user=user).values_list('from_user_id', flat=True))
 
         return (
             PostShare.objects
@@ -730,9 +730,9 @@ class PostUserShare(PagedContextMixin, generics.ListAPIView): #tất cả share 
         if Block.objects.is_blocked(user, target_user):
             raise PermissionDenied("Cannot see posts of this user")
 
-        friend_ids = Friend.objects.filter(to_user=user).values_list('from_user_id', flat=True)
-        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+        friend_ids = list(Friend.objects.filter(to_user=user).values_list('from_user_id', flat=True))
+        blocked_ids = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
+        blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
 
         if target_user == user: # nếu target là chính user thì k có giới hạn privacy
             privacy_filter = {}
@@ -775,10 +775,10 @@ class PostFriendShare(PagedContextMixin, generics.ListAPIView): # tất cả sha
     pagination_class = LargePagePagination
     def get_queryset(self):
         user = self.request.user
-        friend_ids = Friend.objects.filter(to_user=user).values_list("from_user_id", flat=True)
-        following_ids = Follow.objects.filter(follower=user).values_list("followee_id", flat=True)
-        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+        friend_ids = list(Friend.objects.filter(to_user=user).values_list("from_user_id", flat=True))
+        following_ids = list(Follow.objects.filter(follower=user).values_list("followee_id", flat=True))
+        blocked_ids = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
+        blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
         return (PostShare.objects.filter( # thỏa 1 trong những điều kiện ở filter 1 AND trong điều kiện filter 2
             # share của mình
             Q(user=user) |
@@ -913,8 +913,8 @@ class CommentListCreate(PagedContextMixin, generics.ListCreateAPIView):  # thêm
                 raise NotFound("Post không tồn tại.")
             if post.group_id and not user.has_perm('group.is_member', post.group):
                 raise PermissionDenied("Bạn không phải thành viên của group này.")
-            blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-            blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+            blocked_ids = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
+            blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
             # if user.is_superuser or user.is_staff:
             #     return Comment.objects.all()
             #lọc ra và count các replies con bên trong cmt cha parent is null=True
@@ -1016,8 +1016,8 @@ class NestedCommentList(PagedContextMixin, generics.ListAPIView):
             comment_id = self.kwargs.get('pk')
             comment = get_object_or_404(Comment, id=comment_id)
             # lấy danh sách user bị block
-            blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-            blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+            blocked_ids = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
+            blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
             self._qs= Comment.objects.filter(
                 parent=comment,
             ).exclude(
@@ -1102,8 +1102,8 @@ class UserReactionPostList(generics.ListAPIView):  # Danh sách reaction của u
         post_id = self.kwargs.get('post_id')
         post_ct= ContentType.objects.get_for_model(Post)
         user = self.request.user
-        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True) #lazy tức là chưa query ngay mà db xử lý trực tiếp
+        blocked_ids = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
+        blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
         return UserReaction.objects.filter(reaction__object_id=post_id,reaction__content_type=post_ct).exclude(Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)).select_related('user','user__profile','reaction__settings', 'react')
 
 class UserReactionCommentList(generics.ListAPIView):
@@ -1118,8 +1118,8 @@ class UserReactionCommentList(generics.ListAPIView):
         comment_id = self.kwargs.get('comment_id')
         comment_ct=ContentType.objects.get_for_model(Comment)
         user = self.request.user
-        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+        blocked_ids = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
+        blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
         return UserReaction.objects.filter(reaction__object_id=comment_id,reaction__content_type=comment_ct).exclude(Q(user_id__in=blocked_ids) | Q(user_id__in =blocking_ids)).select_related('user','user__profile','reaction__settings', 'react')
 
 class UserReactionChatList(generics.ListAPIView):
@@ -1138,8 +1138,8 @@ class UserReactionChatList(generics.ListAPIView):
             raise PermissionDenied("Bạn không ở trong cuộc hội thoại này")
         chat_ct = ContentType.objects.get_for_model(Message)
         user = self.request.user
-        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+        blocked_ids = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
+        blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
         return UserReaction.objects.filter(reaction__object_id=chat_id, reaction__content_type=chat_ct).exclude(Q(user_id__in=blocked_ids) | Q(user_id__in=blocking_ids)).select_related('user', 'user__profile', 'reaction__settings', 'react')
 
 
@@ -1372,7 +1372,7 @@ class FriendListView(generics.ListAPIView):  # danh sách bạn bè của mình
         exclude_group_id = self.request.query_params.get('exclude_group_id') #chức năng lấy ra các thành viên chưa thêm vào group nếu có truyền
         queryset = Friend.objects.filter(from_user=self.request.user).select_related('to_user__profile')
         if exclude_group_id:
-            existing_user=ConversationMember.objects.filter(conversation_id=exclude_group_id, is_active=True).values_list("user_id", flat=True)
+            existing_user=list(ConversationMember.objects.filter(conversation_id=exclude_group_id, is_active=True).values_list("user_id", flat=True))
             queryset = queryset.exclude(to_user_id__in=existing_user)
         return queryset
 
@@ -1390,8 +1390,8 @@ class FriendUser(generics.ListAPIView): #ds bạn bè cụ thể
         user=self.request.user
         if Block.objects.is_blocked(user, target_user): #check block
             raise PermissionDenied("Cannot see friend of this user")
-        blocked_ids = Block.objects.filter(blocked=user).values_list("blocker_id", flat=True)
-        blocking_ids = Block.objects.filter(blocker=user).values_list("blocked_id", flat=True)
+        blocked_ids = list(Block.objects.filter(blocked=user).values_list("blocker_id", flat=True))
+        blocking_ids = list(Block.objects.filter(blocker=user).values_list("blocked_id", flat=True))
         return Friend.objects.filter(from_user=target_user).select_related('to_user__profile').exclude(Q(to_user_id__in=blocked_ids) | Q(to_user_id__in =blocking_ids)).order_by("-created")
 
 
@@ -1519,9 +1519,9 @@ class ListBlockedUser(generics.ListAPIView):  # ai đó đã chặn mình (api/b
     pagination_class = LargePagePagination
 
     def get_queryset(self):
-        blocker_ids = Block.objects.filter(
+        blocker_ids = list(Block.objects.filter(
             blocked=self.request.user
-        ).values_list("blocker_id", flat=True)
+        ).values_list("blocker_id", flat=True))
         return Profile.objects.filter(user_id__in=blocker_ids).select_related("user")
 
 
@@ -1530,9 +1530,9 @@ class ListBlockedFromUser(generics.ListAPIView):  # danh sách user đã bị ch
     serializer_class = ProfileSerializer
     pagination_class = LargePagePagination
     def get_queryset(self):
-        blocked_user_ids = Block.objects.filter(
+        blocked_user_ids = list(Block.objects.filter(
             blocker=self.request.user
-        ).values_list("blocked_id", flat=True)
+        ).values_list("blocked_id", flat=True))
         return Profile.objects.filter(user_id__in=blocked_user_ids).select_related("user")
 
 
