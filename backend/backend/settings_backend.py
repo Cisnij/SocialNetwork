@@ -82,12 +82,10 @@ CACHEOPS = {
     'friendship.friend': {
         'ops': 'all',
         'timeout': 60 * 10,
-        'local_get': False,
     },
     'friendship.block': {
         'ops': 'all',
         'timeout': 60 * 15,
-        'local_get': False,
     },
     'friendship.follow': {
         'ops': 'all',
