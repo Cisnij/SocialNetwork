@@ -36,7 +36,7 @@ CACHEOPS_REDIS = {
 }
 CACHEOPS_DEFAULTS = {
     'timeout': 60*15,
-    'local_get': True,#lưu và lấy từ RAM máy trước, không thấy mới hỏi Redis
+    'local_get': False, # TẮT MẶC ĐỊNH: Bắt buộc gọi Redis để lấy data mới nhất,local get là dùng ram lưu .get() nhưng lưu vào process k qua redis dễ bị k chính xác khi yêu càu realtime
 }
 CACHEOPS = {
     # ở tất cả bảng, cache(lưu vào bộ nhớ phụ và reuse) ví dụ get,filter,count...trong 15p.
@@ -48,7 +48,7 @@ CACHEOPS = {
     # ops là cache querry gì kiểu get,count,filter...timeout là bao lâu thì xóa
     'api.pendingProfile': {'ops': 'all', 'timeout': 60*60*24},
     'api.setting': {'ops': 'all', 'timeout': 60*10},  # 10 phút
-    'contenttypes.contenttype': {'ops': 'all', 'timeout': 60*60*24*30},
+    'contenttypes.contenttype': {'ops': 'all', 'timeout': 60*60*24*30, 'local_get': True}, # Bảng này không bao giờ đổi, bật local_get cho nhẹ CPU
 
     #  Cache vừa — thay đổi vừa
     'api.post': {'ops': 'all', 'timeout': 60 * 20},
