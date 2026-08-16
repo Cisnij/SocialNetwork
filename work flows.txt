@@ -13,6 +13,7 @@ work flows
 	        +Không bảng sociallogin(lần đầu): kiểm tra email có verified, nếu có verified và lấy user.email từ bảng email address và bằng với email đang login google thì kết nối, không là phụ
 	-Bước accessToken và refreshToken: viết hàm fetch tới dùng refresh để đổi access sau đó lưu vào local, xây hàm để thông qua nó khi post put máy sẽ biết access hết hạn chưa và làm mới , hàm check login sẽ redirect về trang chủ nếu có access và refresh token
 	-Tạo file cookie để set vào cookie refresh token
+	+Logic login cho phép dùng email phụ và chính nhưng login gg chỉ đc email chính
 	-Bước thêm email:
 	    Nếu chỉ có google login: Làm mất thì recover ở google
 	    Nếu chỉ có password k có gg login :có thể login qua gg để truy cập hoặc dùng password

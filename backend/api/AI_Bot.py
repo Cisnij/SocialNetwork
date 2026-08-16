@@ -4,7 +4,7 @@ from google.genai import types
 from backend.env_config import env
 
 # api_key = env("GEMINI_API_KEY").strip()
-api_key= 'AQ.Ab8RN6JZJ6mJ-DWj3vOREyA3-QGJwf9An3lb-7kGjfE_zYUzLQ'
+api_key= 'AQ.Ab8RN6L-8729o6YUz8SX6G8cTdRZK9N2JwuuKx1nRhaHBvBSHg'
 
 
 _client = genai.Client(api_key=api_key) #taọ client với api key

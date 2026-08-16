@@ -424,9 +424,23 @@ class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối
                     uploaded_by=self.user,
                     message=None  # chỉ lọc cái chưa gắn message và gắn
                 ).update(message=msg)
-            # Update updated_at của conversation để sort list chat
+            from cacheops import invalidate_obj
+            
+            # 1. Update conversation siêu tốc bằng SQL thuần và xóa cache thủ công
             Conversation.objects.filter(id=self.conversation_id).update(updated_at=timezone.now())
-            ConversationMember.objects.filter(conversation_id=self.conversation_id, is_hidden=True, is_active=True).update(is_hidden=False)
+            invalidate_obj(Conversation(id=self.conversation_id))
+            
+            # 2. Xử lý ConversationMember siêu cấp tối ưu
+            # Chỉ SELECT những thằng đang bị ẩn (99% tin nhắn bình thường sẽ không có ai ẩn -> list này rỗng)
+            hidden_members = list(ConversationMember.objects.filter(conversation_id=self.conversation_id, is_hidden=True, is_active=True))
+            if hidden_members:
+                # Chỉ bắn lệnh UPDATE nếu thật sự có người đang ẩn
+                member_ids = [m.id for m in hidden_members]
+                ConversationMember.objects.filter(id__in=member_ids).update(is_hidden=False)
+                # Dọn cache thủ công
+                for m in hidden_members:
+                    m.is_hidden = False
+                    invalidate_obj(m)
             return msg
         except Exception as e:
             print(f"Save message error: {e}")
