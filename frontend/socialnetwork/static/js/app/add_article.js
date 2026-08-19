@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        showToast(errorData.error || "⚠️ Không thể tạo bài viết", "red");
+        showToast(errorData.detail || errorData.error || "⚠️ Không thể tạo bài viết", "red");
         return;
       }
 

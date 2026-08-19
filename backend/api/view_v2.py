@@ -15,10 +15,10 @@ class CreateFullPostView(APIView):
         videos = request.FILES.getlist('videos')
         privacy = request.data.get('privacy', 'public')
         if not title:
-            return Response({"error": "Thiếu title"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Thiếu title"}, status=status.HTTP_400_BAD_REQUEST)
         valid_privacy =['public','friends','private']
         if privacy not in valid_privacy:
-            return Response({'error':'Privacy không hợp lệ'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail':'Privacy không hợp lệ'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             with transaction.atomic():
                 new_post = Post.objects.create(
@@ -36,7 +36,7 @@ class CreateFullPostView(APIView):
 
         except Exception as e:
             return Response({
-                "error": "Có lỗi xảy ra",
+                "detail": "Có lỗi xảy ra",
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     

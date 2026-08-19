@@ -94,7 +94,7 @@ class CommentViewSet(viewsets.ViewSet):
         try:
             reaction_setting= ReactionSettings.objects.prefetch_related('react_emoji').get(name=reaction_type)
         except ReactionSettings.DoesNotExist:
-            return Response({'error': 'Invalid reaction type.'}, status=400)
+            return Response({'detail': 'Invalid reaction type.'}, status=400)
         comment = get_object_or_404(Comment,pk=pk)
         comment_ct=ContentType.objects.get_for_model(Comment)
         def get_reaction_count():

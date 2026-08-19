@@ -1,5 +1,5 @@
 import { authFetch } from "../../authenticate/auth.js";
-import { API, POST_ENDPOINTS, DEFAULT_AVATAR, profileUrl, shareLink } from "../config.js";
+import { API, POST_ENDPOINTS, DEFAULT_AVATAR, profileUrl, shareLink, parseApiError } from "../config.js";
 import { openSharersModal } from "./sharers-modal.js";
 import { showToast } from "../toast.js";
 import { formatRelativeTime, cls } from "../ui.js";
@@ -230,7 +230,10 @@ export function renderPostCard(post, options = {}) {
               const res = await authFetch(API.pinPost(post.post_id), {
                 method: "PUT",
               });
-              if (!res.ok) throw new Error("pin");
+              if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(parseApiError(errData, res.status));
+              }
               const data = await res.json();
               const newPinState = data.is_pinned;
               post.is_pinned = newPinState;

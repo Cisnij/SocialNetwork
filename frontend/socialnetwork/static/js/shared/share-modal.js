@@ -1,5 +1,5 @@
 import { authFetch } from "../authenticate/auth.js";
-import { API } from "./config.js";
+import { API, parseApiError } from "./config.js";
 import { showToast } from "./toast.js";
 
 let sharePostId = null;
@@ -28,7 +28,10 @@ async function submitShare() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content, privacy }),
     });
-    if (!res.ok) throw new Error("fail");
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(parseApiError(errData, res.status));
+    }
     showToast("Đã chia sẻ bài viết");
     document.getElementById("shareModal")?.classList.add("hidden");
     window.dispatchEvent(new CustomEvent("post-shared"));

@@ -9,6 +9,23 @@ export function shareLink(shareCode) {
   return `${FRONTEND_URL}/post/share/${shareCode}/`;
 }
 
+/**
+ * Parse DRF error response thành string hiển thị được.
+ * Handle cả: { detail }, { message }, { field: ["msg"] }, { field: "msg" }
+ */
+export function parseApiError(errData, status = "") {
+    if (!errData || typeof errData !== "object") return status ? `HTTP ${status}` : "Đã xảy ra lỗi";
+    if (errData.detail) return errData.detail;
+    if (errData.message) return errData.message;
+    const firstKey = Object.keys(errData)[0];
+    if (firstKey) {
+        const msg = errData[firstKey];
+        if (Array.isArray(msg)) return `${firstKey}: ${msg[0]}`;
+        if (typeof msg === "string") return `${firstKey}: ${msg}`;
+    }
+    return status ? `HTTP ${status}` : "Đã xảy ra lỗi";
+}
+
 export const DEFAULT_AVATAR =
   window.APP_CONFIG?.DEFAULT_AVATAR ||
   "https://res.cloudinary.com/dec8t19tm/image/upload/v1781533632/default-avatar_qprrlr.jpg";

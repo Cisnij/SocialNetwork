@@ -42,6 +42,20 @@ function apiGet(url, onData) {
     return authFetchCache(url, {}, onData);
 }
 
+function parseApiError(errData, status) {
+    if (!errData || typeof errData !== "object") return `HTTP ${status}`;
+    if (errData.detail) return errData.detail;
+    if (errData.message) return errData.message;
+    // Field-level validation errors: { field: ["msg"] } or { field: "msg" }
+    const firstKey = Object.keys(errData)[0];
+    if (firstKey) {
+        const msg = errData[firstKey];
+        if (Array.isArray(msg)) return `${firstKey}: ${msg[0]}`;
+        if (typeof msg === "string") return `${firstKey}: ${msg}`;
+    }
+    return `HTTP ${status}`;
+}
+
 async function apiMutate(url, method, body = null) {
     const options = { method };
     if (body instanceof FormData) {
@@ -53,7 +67,7 @@ async function apiMutate(url, method, body = null) {
     const res = await authFetch(url, options);
     if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || errData.message || `HTTP ${res.status}`);
+        throw new Error(parseApiError(errData, res.status));
     }
     if (res.status === 204) return {};
     return res.json();
@@ -798,7 +812,7 @@ async function submitGroupPost() {
 
         if (!resPost.ok) {
             const errorData = await resPost.json().catch(() => ({}));
-            showToast(errorData.error || "⚠️ Không tạo được bài viết", "red");
+            showToast(errorData.detail || errorData.error || "⚠️ Không tạo được bài viết", "red");
             return;
         }
 

@@ -1,5 +1,5 @@
 import { authFetch } from "../authenticate/auth.js";
-import { API, POST_ENDPOINTS, profileUrl } from "../shared/config.js";
+import { API, POST_ENDPOINTS, profileUrl, parseApiError } from "../shared/config.js";
 import { getCurrentUserId } from "../app/profile.js";
 import {
   initPostModals,
@@ -157,7 +157,10 @@ async function load() {
         body: JSON.stringify({ title: newContent.trim() }),
       })
         .then((res) => {
-          if (!res.ok) throw new Error("update failed");
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(parseApiError(errData, res.status));
+          }
           showToast("Đã cập nhật bài viết", "green");
           load();
         })
@@ -170,7 +173,10 @@ async function load() {
         const res = await authFetch(API.groupDeletePost(groupId, postId), {
           method: "DELETE",
         });
-        if (!res.ok) throw new Error("delete failed");
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(parseApiError(errData, res.status));
+        }
         showToast("Đã xóa bài viết", "green");
         setTimeout(() => {
           window.location.href = `/group/${groupId}/`;

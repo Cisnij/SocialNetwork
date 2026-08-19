@@ -619,7 +619,7 @@ class EventSerializer(serializers.ModelSerializer):
         start = attrs.get('start_time')
         end   = attrs.get('end_time')
         if start and end and end <= start:
-            raise serializers.ValidationError({'end_time': 'Thời gian kết thúc phải sau thời gian bắt đầu.'})
+            raise serializers.ValidationError('Thời gian kết thúc phải sau thời gian bắt đầu.')
         return attrs
 
     def get_is_accepted(self,obj):

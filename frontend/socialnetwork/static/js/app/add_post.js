@@ -118,7 +118,7 @@ function setupBaseModal() {
 
         if (!resPost.ok) {
           const errorData = await resPost.json().catch(() => ({}));
-          showToast(errorData.error || "⚠️ Không tạo được bài viết", "red");
+          showToast(errorData.detail || errorData.error || "⚠️ Không tạo được bài viết", "red");
           return;
         }
 
@@ -330,7 +330,7 @@ function setupAddPostPage() {
       if (!resPost.ok) {
         const errorData = await resPost.json().catch(() => ({}));
         console.error("API error:", errorData);
-        showToast(errorData.error || "⚠️ Không tạo được bài viết", "red");
+        showToast(errorData.detail || errorData.error || "⚠️ Không tạo được bài viết", "red");
         return;
       }
 

@@ -1,5 +1,5 @@
 import { authFetch } from "../../authenticate/auth.js";
-import { POST_ENDPOINTS } from "../config.js";
+import { POST_ENDPOINTS, parseApiError } from "../config.js";
 
 /**
  * Fetch a paginated post list page.
@@ -22,7 +22,10 @@ export async function reactToPost(postId, reactionType) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ reaction_type: reactionType }),
   });
-  if (!res.ok) throw new Error("React failed");
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(parseApiError(errData, res.status));
+  }
   return res.json();
 }
 

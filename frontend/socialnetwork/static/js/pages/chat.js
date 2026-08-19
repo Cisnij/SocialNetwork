@@ -2721,7 +2721,7 @@ async function showDeleteGroupModal(convId) {
 
     if (res.ok) { showToast("Đã xóa nhóm", "green"); modal.remove(); activeConvId = null; messagesEl?.replaceChildren(); chatTitle ? chatTitle.textContent = "Chọn hội thoại" : null; $("chatPanel")?.classList.add("hidden"); loadConversations(); }
 
-    else { const err = await res.json().catch(() => ({})); showToast(err.error || "Xóa thất bại", "red"); }
+    else { const err = await res.json().catch(() => ({})); showToast(err.detail || err.error || "Xóa thất bại", "red"); }
 
   });
 
@@ -2978,7 +2978,10 @@ async function showTaskModal(convId, containerOverride) {
 
       loadTaskList(convId, contentEl);
 
-    } else { showToast("Tạo thất bại", "red"); }
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      showToast(errData.detail || errData.message || (() => { const k = Object.keys(errData)[0]; return k ? `${k}: ${Array.isArray(errData[k]) ? errData[k][0] : errData[k]}` : "Tạo thất bại"; })(), "red");
+    }
 
   });
 
@@ -3485,7 +3488,10 @@ async function showVoteModal(convId, containerOverride) {
     if (options.length < 2) { showToast("Cần ít nhất 2 lựa chọn", "red"); return; }
     const res = await authFetch(API.createVote(convId), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, options }) });
     if (res.ok) { showToast("Đã tạo bình chọn", "green"); contentEl.querySelector(`#createVoteForm_${convId}`)?.classList.add("hidden"); loadVoteList(convId, contentEl); }
-    else { showToast("Tạo thất bại", "red"); }
+    else {
+      const errData = await res.json().catch(() => ({}));
+      showToast(errData.detail || errData.message || (() => { const k = Object.keys(errData)[0]; return k ? `${k}: ${Array.isArray(errData[k]) ? errData[k][0] : errData[k]}` : "Tạo thất bại"; })(), "red");
+    }
   });
 
   const searchInput = contentEl.querySelector(`#voteSearchInput_${convId}`);
@@ -4457,7 +4463,8 @@ async function showEventModal(convId) {
       modal.querySelector(`#createEventForm_${convId}`).classList.add("hidden");
       loadEventList(convId, modal);
     } else {
-      showToast("Tạo thất bại", "red");
+      const errData = await res.json().catch(() => ({}));
+      showToast(errData.detail || errData.message || (() => { const k = Object.keys(errData)[0]; return k ? `${k}: ${Array.isArray(errData[k]) ? errData[k][0] : errData[k]}` : "Tạo thất bại"; })(), "red");
     }
   });
 

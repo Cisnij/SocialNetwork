@@ -19,8 +19,13 @@ async function load() {
       const un = btn("Bỏ chặn", "text-xs text-fb-primary font-semibold");
       un.onclick = async () => {
         const res = await authFetch(API.unblock(profile.id), { method: "DELETE" });
-        showToast(res.ok ? "Đã bỏ chặn" : "Lỗi", res.ok ? "green" : "red");
-        if (res.ok) load();
+        if (res.ok) {
+          showToast("Đã bỏ chặn", "green");
+          load();
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          showToast(errData.detail || "Lỗi", "red");
+        }
       };
       list.appendChild(createUserRow(profile, { actions: un }));
     });

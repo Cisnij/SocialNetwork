@@ -90,9 +90,9 @@ class AddEmailView(APIView): #Thêm 1 email khác vào tài khoản
         user= request.user
         new_email= request.data.get("new_email")
         if not new_email:
-            return Response({'Vui lòng nhập email'}, status=400)
-        if EmailAddress.objects.filter(email=new_email,verified=True).exists(): # check để tránh khi 1 người nhập đại mà sau này có ng tạo mail y hệt 
-            return Response({"error: Email already exist"},status=400)
+            return Response({'detail': 'Vui lòng nhập email'}, status=400)
+        if EmailAddress.objects.filter(email=new_email,verified=True).exists(): # check để tránh khi 1 người nhập đại mà sau này có ng tạo mail y hệt
+            return Response({'detail': "Email already exist"},status=400)
         email_address, created = EmailAddress.objects.get_or_create( # nếu get thì trả false, nếu created thì trả true vì khai báo created trước đó
             user=user,
             email=new_email,
@@ -102,7 +102,7 @@ class AddEmailView(APIView): #Thêm 1 email khác vào tài khoản
             }
         )
         if not created:
-            return Response({'error': 'Email already added before'},status=400)
+            return Response({'detail': 'Email already added before'},status=400)
 
         email_address.send_confirmation(request) #signup false để bảo đây là thêm chứ k phải đăng kí tài khoản mới
         send_email_task.delay(
@@ -123,7 +123,7 @@ class SetPrimaryEmailView(APIView): # đặt 1 email làm mặc đinh
         ).first()
         if not email_obj:
             return Response(
-                {"error": "Email not found or not verified"},
+                {"detail": "Email not found or not verified"},
                 status=status.HTTP_400_BAD_REQUEST
             )
         if email_obj.primary: # nếu là primary
@@ -153,13 +153,13 @@ class ConfirmChangePrimaryEmail(APIView):
 
         data = cache.get(f"otp_change_primary:{user.id}")
         if not data or data['otp'] != otp_input:
-            return Response({"error": "OTP không hợp lệ hoặc đã hết hạn"}, status=400)
+            return Response({"detail": "OTP không hợp lệ hoặc đã hết hạn"}, status=400)
 
         email_obj = EmailAddress.objects.filter(
             id=data['new_email_id'], user=user, verified=True
         ).first()
         if not email_obj:
-            return Response({"error": "Email not found"}, status=400)
+            return Response({"detail": "Email not found"}, status=400)
 
         with transaction.atomic():
             email_obj.set_as_primary()
@@ -180,17 +180,17 @@ class DeleteEmailView(APIView):
         if user.has_usable_password(): # Nếu user có password vì register, dùng google login không có password nên bỏ qua
             password = request.data.get("password")
             if not password:
-                return Response({'error': "Please enter password"}, status=400)
+                return Response({'detail': "Please enter password"}, status=400)
             if not authenticate(request=request,username=user.username, password=password):
-                return Response({'error': 'Wrong password'}, status=400)
+                return Response({'detail': 'Wrong password'}, status=400)
 
         email_obj = EmailAddress.objects.filter(id=pk, user=user,verified=True).first()
         if not email_obj:
-            return Response({"error": "Email not found"}, status=400)
+            return Response({"detail": "Email not found"}, status=400)
         if email_obj.primary: #là email primary
-            return Response({"error": "Cannot delete primary email"}, status=400)
+            return Response({"detail": "Cannot delete primary email"}, status=400)
         if EmailAddress.objects.filter(user=user,verified=True).count() <= 1: # nếu email chỉ có 1
-            return Response({"error": "Cannot delete the only email"}, status=400)
+            return Response({"detail": "Cannot delete the only email"}, status=400)
 
         with transaction.atomic():
             email_obj.delete() #xóa email
@@ -254,14 +254,14 @@ class ConfirmDeleteAccount(APIView):
 
         data = cache.get(f"otp_delete_account:{user.id}")
         if not data or data['otp'] != otp_input:
-            return Response({"error": "OTP không hợp lệ hoặc đã hết hạn"}, status=400)
+            return Response({"detail": "OTP không hợp lệ hoặc đã hết hạn"}, status=400)
         #check password
         if user.has_usable_password():
             password = request.data.get('password')
             if not password:
-                return Response({"error": "Vui lòng nhập mật khẩu"}, status=400)
+                return Response({"detail": "Vui lòng nhập mật khẩu"}, status=400)
             if not authenticate(request=request, username=user.username, password=password):
-                return Response({"error": "Mật khẩu không đúng"}, status=400)
+                return Response({"detail": "Mật khẩu không đúng"}, status=400)
         send_email_task.delay(
             subject="Thư cám ơn",
             message=f"Cám ơn bạn đã sử dụng dịch vụ chúng tôi! Hy vọng bạn sẽ quay trở lại",

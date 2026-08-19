@@ -67,7 +67,8 @@ from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views import View
 import json
-
+from friendship.models import bust_cache
+from friendship.signals import friendship_request_canceled,friendship_request_rejected
 
 logger = logging.getLogger(__name__)
 def get_online_set(objs):  # custome để gọi get user online 1 lần thay vì 20 lần get trong serializer, dùng chung
@@ -281,9 +282,9 @@ class PostPhotoListCreate(generics.ListCreateAPIView):
             with transaction.atomic():
                 for photo in photos:
                     photo= PostPhoto.objects.create(post=post,photo=photo)
-                return Response({'message': 'success'})
+                return Response({'detail': 'success'})
         except Exception:
-            return Response({'error': 'upload failed'},status=500)
+            return Response({'detail': 'upload failed'},status=500)
 
 class PostPhotoUser(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -344,9 +345,9 @@ class PostVideoListCreate(generics.ListCreateAPIView):  # thêm / lấy video c�
             with transaction.atomic():
                 for video in videos:
                     PostVideo.objects.create(post=post, video=video)
-                return Response({'message': 'success'})
+                return Response({'detail': 'success'})
         except Exception:
-            return Response({'error': 'upload failed'}, status=500)
+            return Response({'detail': 'upload failed'}, status=500)
 
 
 class PostFriend(PagedContextMixin, generics.ListAPIView):  # List tất cả post của bạn bè
@@ -645,7 +646,7 @@ class ChangePostPrivacy(APIView):
         privacy_type=request.data.get("privacy_type")
         if privacy_type not in ['public', 'friends', 'private']:
             return Response(
-                {'error': 'privacy_type phải là public, friends hoặc private'},
+                {'detail': 'privacy_type phải là public, friends hoặc private'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         post.privacy=privacy_type
@@ -689,14 +690,14 @@ class AllPostShareView(PagedContextMixin, generics.ListCreateAPIView): # tất c
         content =self.request.data.get('content')
         privacy = self.request.data.get('privacy', 'public') #key nhận là privacy và default là public
         if privacy not in ['public', 'friends', 'private']:
-            return Response({'error': 'privacy không hợp lệ'}, status=400)
+            return Response({'detail': 'privacy không hợp lệ'}, status=400)
         post=get_object_or_404(Post.objects.select_related('user','user__profile'),post_id=post_id, group__isnull=True)
         if not request.user.has_perm('api.view_post', post):
             raise PermissionDenied("Bạn không thể share bài viết này")
         PostShare.objects.create(post=post,user=self.request.user,content=content,privacy=privacy)
         post.share_count += 1
         post.save(update_fields=['share_count'])  # update_fields để patch update 1 phần thay vì toàn bộ
-        return Response({'message': 'Share thành công'}, status=status.HTTP_201_CREATED)
+        return Response({'detail': 'Share thành công'}, status=status.HTTP_201_CREATED)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -825,7 +826,7 @@ class ChangePostSharePrivacy(APIView):
         privacy_type=request.data.get("privacy_type")
         if privacy_type not in ['public', 'friends', 'private']:
             return Response(
-                {'error': 'privacy_type phải là public, friends hoặc private'},
+                {'detail': 'privacy_type phải là public, friends hoặc private'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         post_share.privacy=privacy_type
@@ -842,7 +843,7 @@ class PostReportView(generics.CreateAPIView):
         if post.user == self.request.user:
             raise ValidationError('Cannot report your own post') # perform create chỉ dùng đc ValidationError
         if Report.objects.filter(post=post, user=self.request.user).exists():
-            raise ValidationError({"error": "Bạn đã gửi báo cáo cho bài viết này rồi"})
+            raise ValidationError("Bạn đã gửi báo cáo cho bài viết này rồi")
         serializer.save(post=post,user=self.request.user)
 
 class CommentReportView(generics.CreateAPIView):
@@ -855,7 +856,7 @@ class CommentReportView(generics.CreateAPIView):
         if comment.user == self.request.user:
             raise ValidationError('Cannot report your own post') # perform create chỉ dùng đc ValidationError
         if Report.objects.filter(comment=comment, user=self.request.user).exists():
-            raise ValidationError({"error": "Bạn đã gửi báo cáo cho bài viết này rồi"})
+            raise ValidationError("Bạn đã gửi báo cáo cho bài viết này rồi")
         serializer.save(comment=comment,user=self.request.user)
 #===================POSTARTICLE===============================
 class PostArticleListCreate(generics.ListCreateAPIView):  # List tất cả post
@@ -999,8 +1000,8 @@ class CommentModify(generics.RetrieveUpdateDestroyAPIView):  # Xem sửa xóa co
         post_owner = comment.post.user
         if post_owner == user or comment.user == user: # user và chủ post có thể xóa
             comment.delete()
-            return Response({'Success'}, status=200)
-        return Response({'Cannot delete'}, status=403)
+            return Response({'detail':'Success'}, status=200)
+        return Response({'detail':'Cannot delete'}, status=403)
 
 class NestedCommentList(PagedContextMixin, generics.ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -1203,27 +1204,27 @@ class SendFriendRequestView(generics.CreateAPIView):  # tạo lời mời kết 
 
         # Kiểm tra ID hợp lệ
         if request.user == profile.user:
-            return Response({"error": "Cannot send friend request to yourself"}, status=400)
+            return Response({"detail": "Cannot send friend request to yourself"}, status=400)
 
         # Kiểm tra xem đã là bạn bè chưa
         if Friend.objects.are_friends(request.user, to_user):
-            return Response({"error": "Already friends"}, status=400)
+            return Response({"detail": "Already friends"}, status=400)
 
         # Kiểm tra đã gửi trước đó chưa
         if FriendshipRequest.objects.filter(
                 from_user=request.user, to_user=to_user, rejected__isnull=True
                 # tên trường__isnull = True để kiểm tra có null k
         ).exists():
-            return Response({"error": "Friend request already sent"}, status=400)
+            return Response({"detail": "Friend request already sent"}, status=400)
 
         # Kiểm tra xem có bị chặn không
         if Block.objects.is_blocked(request.user, to_user):
-            return Response({"error": "Cannot send friend request due to blocking"}, status=400)
+            return Response({"detail": "Cannot send friend request due to blocking"}, status=400)
 
         # kiểm tra trên 1k bạn thì k đc thêm
         if Friend.objects.filter(from_user=request.user).count() >1000 or Friend.objects.filter(from_user=to_user).count() >1000:
             return Response(
-                {'error': 'Đã đạt giới hạn bạn bè'},
+                {'detail': 'Đã đạt giới hạn bạn bè'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         # Tạo request
@@ -1264,13 +1265,13 @@ class AcceptFriendRequestView(generics.UpdateAPIView):  # đồng ý lời mời
     def update(self, request, *args, **kwargs):
         fr_id = self.kwargs.get('pk')
         if not fr_id:
-            return Response({"error": "Friend request ID is required"}, status=400)
+            return Response({"detail": "Friend request ID is required"}, status=400)
 
         friend_request = get_object_or_404(FriendshipRequest.objects.select_related("to_user"), pk=fr_id)
 
         # Chỉ người nhận lời mời mới có quyền accept, người khác thì k được accept vì k có quyền kể cả ng gửi
         if friend_request.to_user != request.user:
-            return Response({"error": "Not allowed"}, status=403)
+            return Response({"detail": "Not allowed"}, status=403)
 
         # Accept lời mời
         from_user = friend_request.from_user
@@ -1298,16 +1299,20 @@ class RejectFriendRequestView(generics.UpdateAPIView):  # từ chối lời mờ
     def update(self, request, *args, **kwargs):
         fr_id = self.kwargs.get('pk')
         if not fr_id:
-            return Response({"error": "Friend request ID is required"}, status=400)
+            return Response({"detail": "Friend request ID is required"}, status=400)
 
         friend_request = get_object_or_404(FriendshipRequest.objects.select_related("to_user"), pk=fr_id)
 
         # Chỉ người nhận mới có quyền reject(nếu người nhận không phải là mình thì mình k đc accept)
         if friend_request.to_user != request.user:
-            return Response({"error": "Not allowed"}, status=403)
+            return Response({"detail": "Not allowed"}, status=403)
 
-        # Reject lời mời
-        friend_request.reject()
+        to_user_pk = friend_request.to_user_id
+        from_user_pk = friend_request.from_user_id
+        friendship_request_rejected.send(sender=friend_request)
+        friend_request.delete()
+        bust_cache("requests", to_user_pk)
+        bust_cache("sent_requests", from_user_pk)
 
         return Response({"detail": "Friend request rejected"})
 
@@ -1322,16 +1327,24 @@ class CancelFriendRequestView(generics.DestroyAPIView):
         # Lấy ID lời mời từ URL
         fr_id = self.kwargs.get('pk')
         if not fr_id:
-            return Response({"error": "ID is required"}, status=400)
+            return Response({"detail": "ID is required"}, status=400)
 
         # Lấy FriendshipRequest theo ID
         fr_obj = get_object_or_404(FriendshipRequest.objects.select_related("from_user"), pk=fr_id)
 
         # Chỉ người gửi mới có quyền hủy
         if fr_obj.from_user != request.user:
-            return Response({"error": "Not allowed"}, status=403)
+            return Response({"detail": "Not allowed"}, status=403)
 
-        fr_obj.cancel()
+        to_user_pk = fr_obj.to_user_id
+        from_user_pk = fr_obj.from_user_id
+
+        with transaction.atomic():
+            friendship_request_canceled.send(sender=fr_obj)
+            fr_obj.delete()
+
+        bust_cache("requests", to_user_pk)
+        bust_cache("sent_requests", from_user_pk)
         return Response({"detail": "Friend request canceled"})
 
 
@@ -1348,7 +1361,7 @@ class UnfriendView(generics.DestroyAPIView):  # hủy kết bạn
         friend_user = profile.user
 
         if not Friend.objects.are_friends(request.user, friend_user):  # kiểm tra có phải là bạn trước khi xóa
-            return Response({"error": "Not friends"}, status=400)
+            return Response({"detail": "Not friends"}, status=400)
         # Xóa bạn bè
         with transaction.atomic():
             Friend.objects.remove_friend(request.user, friend_user)
@@ -1407,15 +1420,15 @@ class FollowView(generics.CreateAPIView):  # theo dõi người dùng
 
         # check không follow chính mình
         if request.user == user_to_follow:
-            return Response({"error": "Cannot follow yourself"}, status=400)
+            return Response({"detail": "Cannot follow yourself"}, status=400)
 
         # check đã follow chưa
         if Follow.objects.follows(request.user, user_to_follow):
-            return Response({"error": "Already following"}, status=400)
+            return Response({"detail": "Already following"}, status=400)
 
         # kiểm tra block
         if Block.objects.is_blocked(request.user, user_to_follow):
-            return Response({"error": "Cannot follow user due to blocking"}, status=400)
+            return Response({"detail": "Cannot follow user due to blocking"}, status=400)
 
         Follow.objects.add_follower(request.user, user_to_follow)
         return Response({"detail": "Followed"}, status=201)
@@ -1432,7 +1445,7 @@ class UnfollowView(generics.DestroyAPIView):  # hủy follow
 
         # check có đang follow không
         if not Follow.objects.follows(request.user, user_to_unfollow):
-            return Response({"error": "Not following"}, status=400)
+            return Response({"detail": "Not following"}, status=400)
 
         Follow.objects.remove_follower(request.user, user_to_unfollow)
         return Response({"detail": "Unfollowed"})
@@ -1672,7 +1685,7 @@ class AcceptMessageRequest(APIView):
 
         if Block.objects.is_blocked(request.user,
                                     first_message.sender):  # kiểm tra người gửi request có bị mình block trước đó k
-            return Response({"error": "Cannot accept request due to blocking"}, status=400)
+            return Response({"detail": "Cannot accept request due to blocking"}, status=400)
 
         # người gửi message đầu tiên KHÔNG được accept
         if request.user == first_message.sender:
@@ -1695,9 +1708,9 @@ class RejectMessageRequest(APIView):
     def post(self, request, conv_id):
         conv = get_object_or_404(Conversation, pk=conv_id)
         if conv.is_group:
-            return Response({'error': 'invalid'}, status=400)
+            return Response({'detail': 'invalid'}, status=400)
         if not ConversationMember.objects.filter(conversation=conv, user=request.user).exists():
-            return Response({'error': 'You are not member of this conversation'}, status=400)
+            return Response({'detail': 'You are not member of this conversation'}, status=400)
         if conv.status == 'accept':
             return Response({'This conversation has already accepted'}, status=400)
         first_message = Message.objects.filter(conversation=conv).order_by('created_at').first()
@@ -1915,7 +1928,7 @@ class UpdateMessage(APIView):
         message = get_object_or_404(Message, pk=pk)
         self.check_object_permissions(request, message.conversation)
         if message.message_type != 'text':
-            return Response({'error': 'You can only edit text'}, status=400)
+            return Response({'detail': 'You can only edit text'}, status=400)
         if message.sender != request.user:
             raise PermissionDenied("You can only edit your own message")
         new_content = request.data.get('new_content')
@@ -2050,7 +2063,7 @@ class ChatAttachmentUpload(AsyncAPIView):
 
         if not is_member:
             return Response(
-                {"error": "Không có quyền"},
+                {"detail": "Không có quyền"},
                 status=403
             )
 
@@ -2058,7 +2071,7 @@ class ChatAttachmentUpload(AsyncAPIView):
 
         if not files:
             return Response(
-                {"error": "Thiếu file"},
+                {"detail": "Thiếu file"},
                 status=400
             )
 
@@ -2069,7 +2082,7 @@ class ChatAttachmentUpload(AsyncAPIView):
             # giới hạn 50MB
             if file.size > 50 * 1024 * 1024:
                 return Response(
-                    {"error": f"{file.name} vượt quá 50MB"},
+                    {"detail": f"{file.name} vượt quá 50MB"},
                     status=400
                 )
 
@@ -2086,7 +2099,7 @@ class ChatAttachmentUpload(AsyncAPIView):
 
             if mime in BLOCKED_MIMES: #loại mime bị block
                 return Response(
-                    {"error": f"{file.name} không được hỗ trợ"},
+                    {"detail": f"{file.name} không được hỗ trợ"},
                     status=400
                 )
 
@@ -2236,7 +2249,7 @@ class SaveFCMTokenView(APIView):
     def post(self, request):
         token = request.data.get("token")  # nhận token từ client gửi lên
         if not token:
-            return Response({"error": "missing token"}, status=400)
+            return Response({"detail": "missing token"}, status=400)
 
         FCMToken.objects.update_or_create(  # nếu có thì update còn không thì cập nhật
             token=token,
@@ -2600,9 +2613,9 @@ class CreateGroupConversation(APIView):
         name = request.data.get('name')
         member_ids= request.data.get('members',[]) # mặc định list rỗng
         if not name:
-            return Response({'error':'Tên nhóm không được rỗng'},status=400)
+            return Response({'detail':'Tên nhóm không được rỗng'},status=400)
         if len(member_ids) <2:
-            return Response({'error':'Nhóm cần ít nhất 2 thành viên'},status=400)
+            return Response({'detail':'Nhóm cần ít nhất 2 thành viên'},status=400)
         with transaction.atomic():
             conversation = Conversation.objects.create(
                 is_group=True,
@@ -2633,11 +2646,11 @@ class TransferAdminGroupChat(APIView):
         try: #check user hiện tại có phải admin
             membership= ConversationMember.objects.get(conversation_id=conv_id, conversation__is_group=True, user=request.user, role='admin',is_active=True)
         except ConversationMember.DoesNotExist:
-            return Response({"error": "Bạn không có quyền"}, status=403)
+            return Response({"detail": "Bạn không có quyền"}, status=403)
         # check người được trao admin có trong nhóm
         new_admin = ConversationMember.objects.filter(conversation_id=conv_id, user_id=new_admin_id,is_active=True).first()
         if not new_admin:
-            return Response({"error": "Người dùng không trong nhóm"}, status=404)
+            return Response({"detail": "Người dùng không trong nhóm"}, status=404)
 
         with transaction.atomic():
             membership.role='member'
@@ -2673,10 +2686,10 @@ class AddMemberGroupChat(APIView):
         new_member_ids= request.data.get('new_members',[])
         profile = request.user.profile
         if not ConversationMember.objects.filter(conversation_id=conv_id, user=request.user, is_active=True).exists(): #check user có trong nhóm k
-            return Response({"error": "Bạn không trong nhóm"}, status=403)
+            return Response({"detail": "Bạn không trong nhóm"}, status=403)
 
         if not new_member_ids:
-            return Response({"error": "Danh sách thành viên không được để trống"}, status=400)
+            return Response({"detail": "Danh sách thành viên không được để trống"}, status=400)
 
         new_member_ids= list(set(new_member_ids)) # thêm vào set tránh bị lặp thành viên
         new_members= ConversationMember.objects.filter(conversation_id=conv_id, user_id__in=new_member_ids, is_active=True).values_list('user_id',flat=True) #láy ra các thành viên đã ở sẵn trong group rồi
@@ -2734,7 +2747,7 @@ class ModifyGroupChat(APIView):
             conv.name = name
             update_fields.append('name')
         if not update_fields:
-            return Response({"error": "Không có gì để cập nhật"}, status=400)
+            return Response({"detail": "Không có gì để cập nhật"}, status=400)
         conv.save(update_fields=update_fields)
         serializer = ConversationSerializer(conv, context={'request': request})
         messages_to_send = []
@@ -2773,16 +2786,16 @@ class DeleteGroupChat(APIView):
         try:
             user_member = ConversationMember.objects.get(conversation_id=conv_id, conversation__is_group=True, user=request.user, role='admin', is_active=True)
         except ConversationMember.DoesNotExist:
-            return Response({"error": "Bạn không có quyền"}, status=403)
+            return Response({"detail": "Bạn không có quyền"}, status=403)
         if request.user.has_usable_password():  # Nếu user có password vì register, dùng google login không có password nên bỏ qua
             password = request.data.get("password")
             if not password:
-                return Response({'error': "Please enter password"}, status=400)
+                return Response({'detail': "Please enter password"}, status=400)
             if not authenticate(request=request, username=request.user.username, password=password):
-                return Response({'error': 'Wrong password'}, status=400)
+                return Response({'detail': 'Wrong password'}, status=400)
         deleted, _ = Conversation.objects.filter(id=conv_id,is_group=True).delete()
         if not deleted:
-            return Response({"error": "Không có group này"}, status=400)
+            return Response({"detail": "Không có group này"}, status=400)
         return Response({"conv_id": conv_id,}, status=200)
 
 class KickMemberGroupChat(APIView):
@@ -2794,17 +2807,17 @@ class KickMemberGroupChat(APIView):
         user_kick_id = self.kwargs.get('kick_id')
         profile = request.user.profile
         if not user_kick_id:
-            return Response({"error":"không có user kick"},status=400)
+            return Response({"detail":"không có user kick"},status=400)
         if user_kick_id == request.user.id:
-            return Response({"error":"không thể kick chính mình"},status=400)
+            return Response({"detail":"không thể kick chính mình"},status=400)
         try: #check valid conv_id truyền vào và cả check admin
             ConversationMember.objects.get(conversation_id=conv_id, conversation__is_group=True, user=request.user, role='admin', is_active=True) #conversation is group sẽ được JOIN vào
         except ConversationMember.DoesNotExist:
-            return Response({"error": "Bạn không có quyền"}, status=403)
+            return Response({"detail": "Bạn không có quyền"}, status=403)
         #lọc ra có member k và xóa
         member = ConversationMember.objects.filter(conversation_id=conv_id,user_id=user_kick_id,role='member',is_active=True).select_related('user__profile').first()
         if not member:
-            return Response({"error": "Không có thành viên này"}, status=400)
+            return Response({"detail": "Không có thành viên này"}, status=400)
         member.is_active = False
         member.left_at = timezone.now()
         member.save(update_fields=['is_active', 'left_at'])
@@ -2836,15 +2849,15 @@ class LeaveGroupChat(APIView):
         try:
             user_member = ConversationMember.objects.get(conversation_id=conv_id,conversation__is_group=True, user=request.user,is_active=True)
         except ConversationMember.DoesNotExist:
-            return Response({"error": "Bạn không có trong group"}, status=403)
+            return Response({"detail": "Bạn không có trong group"}, status=403)
         if user_member.role == 'admin':
             next_admin_user_id = request.data.get('next_admin_user_id')
             if not next_admin_user_id:
-                return Response({"error": "chọn user kế thừa admin"}, status=400)
+                return Response({"detail": "chọn user kế thừa admin"}, status=400)
             with transaction.atomic():
                 updated = ConversationMember.objects.filter(conversation_id=conv_id, user_id=next_admin_user_id, is_active=True).update(role='admin')
                 if not updated:
-                    return Response({"error": "Thành viên không hợp lệ"}, status=400)
+                    return Response({"detail": "Thành viên không hợp lệ"}, status=400)
                 user_member.is_active = False
                 user_member.left_at = timezone.now()
                 user_member.save(update_fields=['is_active', 'left_at'])
@@ -3084,9 +3097,9 @@ class CreateVoteGroupChat(APIView):
             raise PermissionDenied("Bạn không có trong group")
         contenttype= ContentType.objects.get_for_model(Conversation)
         if not title:
-            return Response({"error": "Vui lòng nhập tiêu đề"}, status=400)
+            return Response({"detail": "Vui lòng nhập tiêu đề"}, status=400)
         if len(options) < 2:
-            return Response({"error": "Vui lòng chọn ít nhất 2 option"}, status=400)
+            return Response({"detail": "Vui lòng chọn ít nhất 2 option"}, status=400)
         
         with transaction.atomic():
             vote = Vote.objects.create(
@@ -3194,7 +3207,7 @@ class UserVoteGroupChat(APIView):
                 # Đã vote option thì hủy
                 existing_vote.delete()
                 VoteOption.objects.filter(id=vote_option.id).update(count=F('count') - 1)
-                return Response({"message": "Đã hủy vote"}, status=200)
+                return Response({'detail': "Đã hủy vote"}, status=200)
 
             else:
                 # Đã vote option khác → đổi sang option mới
@@ -3278,7 +3291,7 @@ class AddOptionVoteGroupChat(generics.CreateAPIView):
         profile = request.user.profile
         options = request.data.get("options",[])
         if not options:
-            return Response({"error": "Vui lòng truyền option"}, status=400)
+            return Response({"detail": "Vui lòng truyền option"}, status=400)
         if not ConversationMember.objects.filter(conversation_id=conv_id, user=self.request.user,is_active=True).exists():
             raise PermissionDenied("Bạn không có trong group")
         contenttype= ContentType.objects.get_for_model(Conversation)
@@ -4346,7 +4359,7 @@ class EventResponseChat(APIView):
 
         new_status = request.data.get('status')
         if new_status not in ('accept', 'decline'):
-            raise ValidationError({'status': 'Chỉ chấp nhận "accept" hoặc "decline".'})
+            raise ValidationError('Chỉ chấp nhận "accept" hoặc "decline".')
 
         content_type = ContentType.objects.get_for_model(Conversation)
         event = get_object_or_404(Event, id=event_id, content_type=content_type, object_id=conv_id)
@@ -5432,9 +5445,9 @@ class CreateVoteGroup(APIView):
         self.check_object_permissions(self.request, group)
         contenttype = ContentType.objects.get_for_model(Group)
         if not title:
-            return Response({"error": "Vui lòng nhập tiêu đề"}, status=400)
+            return Response({"detail": "Vui lòng nhập tiêu đề"}, status=400)
         if len(options) < 2:
-            return Response({"error": "Vui lòng chọn ít nhất 2 option"}, status=400)
+            return Response({"detail": "Vui lòng chọn ít nhất 2 option"}, status=400)
 
         with transaction.atomic():
             vote = Vote.objects.create(
@@ -5501,7 +5514,7 @@ class UserVoteGroup(APIView):
                 # Đã vote option thì hủy
                 existing_vote.delete()
                 VoteOption.objects.filter(id=vote_option.id).update(count=F('count') - 1)
-                return Response({"message": "Đã hủy vote"}, status=200)
+                return Response({'detail': "Đã hủy vote"}, status=200)
 
             else:
                 # Đã vote option khác → đổi sang option mới
@@ -5547,7 +5560,7 @@ class AddOptionVoteGroup(generics.CreateAPIView):
         if not self.request.user.has_perm('group.is_member',group):
             raise PermissionDenied("Bạn không phải thành viên group")
         if not options:
-            return Response({"error": "Vui lòng truyền option"}, status=400)
+            return Response({"detail": "Vui lòng truyền option"}, status=400)
         contenttype = ContentType.objects.get_for_model(Group)
         vote = get_object_or_404(Vote, id=vote_id, content_type=contenttype, object_id=group_id, is_closed=False)
         created = VoteOption.objects.bulk_create([
@@ -5802,7 +5815,7 @@ class EventResponseGroup(APIView):
 
         new_status = request.data.get('status')
         if new_status not in ('accept', 'decline'):
-            raise ValidationError({'status': 'Chỉ chấp nhận "accept" hoặc "decline".'})
+            raise ValidationError('Chỉ chấp nhận "accept" hoặc "decline".')
 
         event = get_object_or_404(Event, id=event_id, content_type=content_type, object_id=group_id)
 

@@ -141,6 +141,9 @@ async function acceptIncoming(profileId, refresh) {
   if (r.ok) {
     showToast("Đã chấp nhận");
     refresh();
+  } else {
+    const errData = await r.json().catch(() => ({}));
+    showToast(errData.detail || "Không thể chấp nhận", "red");
   }
 }
 
@@ -148,7 +151,11 @@ async function rejectIncoming(profileId, refresh) {
   const res = await authFetch(API.incomingRequests());
   const req = (await res.json()).results?.find((r) => r.sender?.id === profileId);
   if (!req) return;
-  await authFetch(API.rejectRequest(req.id), { method: "PUT" });
+  const r = await authFetch(API.rejectRequest(req.id), { method: "PUT" });
+  if (!r.ok) {
+    const errData = await r.json().catch(() => ({}));
+    showToast(errData.detail || "Không thể từ chối", "red");
+  }
   refresh();
 }
 
@@ -156,7 +163,11 @@ async function cancelOutgoing(profileId, refresh) {
   const res = await authFetch(API.outgoingRequests());
   const req = (await res.json()).results?.find((r) => r.receiver?.id === profileId);
   if (!req) return showToast("Không tìm thấy lời mời", "red");
-  await authFetch(API.cancelRequest(req.id), { method: "DELETE" });
+  const r = await authFetch(API.cancelRequest(req.id), { method: "DELETE" });
+  if (!r.ok) {
+    const errData = await r.json().catch(() => ({}));
+    showToast(errData.detail || "Không thể hủy lời mời", "red");
+  }
   showToast("Đã hủy lời mời");
   refresh();
 }

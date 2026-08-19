@@ -1,5 +1,5 @@
 import { authFetch } from "../authenticate/auth.js";
-import { API, withPageSize, DEFAULT_AVATAR } from "../shared/config.js";
+import { API, withPageSize, DEFAULT_AVATAR, parseApiError } from "../shared/config.js";
 import { el, img, textEl } from "../shared/dom.js";
 import { showToast } from "../shared/toast.js";
 import { showEmpty } from "../shared/ui.js";
@@ -67,7 +67,10 @@ function renderSuggestCard(profile) {
     addBtn.textContent = "Đang gửi...";
     try {
       const res = await authFetch(API.friendRequest(profile.id), { method: "POST" });
-      if (!res.ok) throw new Error("request failed");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(parseApiError(errData, res.status));
+      }
       addBtn.textContent = "Đã gửi";
       addBtn.className =
         "px-4 py-2 bg-fb-secondary dark:bg-[#4e4f50] text-gray-700 dark:text-[#e4e6eb] rounded-lg text-sm shrink-0 cursor-default";

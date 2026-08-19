@@ -1,5 +1,5 @@
 import { authFetch } from "../authenticate/auth.js";
-import { API, buildListUrl, withPageSize } from "../shared/config.js";
+import { API, buildListUrl, withPageSize, parseApiError } from "../shared/config.js";
 import { showToast } from "../shared/toast.js";
 import { confirmDialog, passwordPrompt } from "../shared/confirm.js";
 import { saveDarkMode, isDarkMode, bootstrapTheme, parseDarkmode, updateCurrentSetting } from "../shared/theme.js";
@@ -75,7 +75,10 @@ function setupDefaultPostPrivacy() {
         body: JSON.stringify({ default_post_privacy: e.target.value }),
       });
 
-      if (!patchRes.ok) throw new Error("Failed to save setting");
+      if (!patchRes.ok) {
+        const errData = await patchRes.json().catch(() => ({}));
+        throw new Error(parseApiError(errData, patchRes.status));
+      }
       
       // Update local setting variable and global state
       setting = await patchRes.json();
@@ -318,7 +321,7 @@ function setupEmailAdd() {
       showToast("Đã gửi email xác minh — kiểm tra hộp thư");
       document.getElementById("newEmail").value = "";
       loadEmails();
-    } else showToast(data.error || "Thêm thất bại", "red");
+    } else showToast(data.detail || data.error || "Thêm thất bại", "red");
   });
 }
 
@@ -472,7 +475,7 @@ function setupDeleteAccount() {
         }, 2000);
       } else {
         const err = await confirmRes.json().catch(() => ({}));
-        showToast(err.error || "OTP sai hoặc mật khẩu không đúng", "red");
+            showToast(err.detail || err.error || "OTP sai hoặc mật khẩu không đúng", "red");
       }
     });
   });
@@ -572,7 +575,7 @@ function showOtpModal(emailId, email) {
         loadEmails();
       } else {
         const err = await res.json().catch(() => ({}));
-        showToast(err.error || "OTP không hợp lệ hoặc đã hết hạn", "red");
+        showToast(err.detail || err.error || "OTP không hợp lệ hoặc đã hết hạn", "red");
       }
     } catch (err) {
       showToast("Lỗi mạng", "red");
