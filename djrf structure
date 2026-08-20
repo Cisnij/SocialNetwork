@@ -1,0 +1,155 @@
+=================================Cách 1 nếu dự án lớn, mỗi chức năng là 1 app riêng=================================
+backend/
+├── apps/
+│   ├── users/              # App riêng cho user/profile
+│   │   ├── models.py
+│   │   ├── views.py
+│   │   ├── serializers.py
+│   │   ├── urls.py
+│   │   ├── signals.py
+│   │   ├── tasks.py
+│   │   └── services.py     ← business logic
+│   │
+│   ├── posts/              # App riêng cho post
+│   │   ├── models.py
+│   │   ├── views.py
+│   │   └── ...
+│   │
+│   ├── chat/
+│   ├── groups/
+│   ├── notifications/
+│   └── friends/
+│
+└── core/                   # Config chung
+    ├── settings/
+    │   ├── base.py
+    │   ├── dev.py
+    │   └── prod.py
+    └── urls.py             # Chỉ include các app.urls
+
+===========================Cách 2 nếu dự án nhỏ, chung 1 app nhưng chia file=================================
+backend/api/
+├── views/
+│   ├── __init__.py         # re-export tất cả
+│   ├── post.py
+│   ├── chat.py
+│   └── group.py
+│
+├── serializers/
+│   ├── __init__.py
+│   ├── post.py
+│   └── chat.py
+│
+├── services/               ← business logic (không phải views, không phải models)
+│   ├── post_service.py
+│   └── chat_service.py
+│
+├── signals/
+│   ├── __init__.py
+│   ├── post.py
+│   └── chat.py
+│
+├── urls/
+│   ├── __init__.py
+│   ├── post.py
+│   └── chat.py
+│
+├── models.py               # hoặc models/ nếu quá lớn
+├── permissions.py
+├── tasks.py
+└── admin.py
+
+
+========LOGIC CODE====================================
+## 1. `services.py` — business logic, tách khỏi view
+
+# friendship/services.py
+
+def cancel_friend_request(*, fr_obj, user) -> None:
+    """Hủy lời mời kết bạn. Raise PermissionDenied nếu user không phải người gửi."""
+    if fr_obj.from_user != user:
+        raise PermissionDenied("Not allowed")
+
+    if fr_obj.rejected is not None:
+        raise RequestAlreadyRejectedException() # dùng exception
+
+    to_user_pk = fr_obj.to_user_id
+    from_user_pk = fr_obj.from_user_id
+
+    # check block thì viết ở selector lấy ra danh sách block sau đó vào service và raise exception
+    blocked_ids = get_blocked_user_ids(blocker=from_user)
+    if fr_obj.to_user_id in blocked_ids:
+        raise BlockedException()
+
+    with transaction.atomic():
+        friendship_request_canceled.send(sender=fr_obj)
+        fr_obj.delete()
+
+    bust_cache("requests", to_user_pk)
+    bust_cache("sent_requests", from_user_pk)
+
+
+
+## 2. `selectors.py` — tách riêng phần đọc dữ liệu
+
+# friendship/selectors.py
+
+def get_friend_request_or_404(*, fr_id: int) -> FriendshipRequest: # trả về instance model FriendshipRequest
+    return get_object_or_404(
+        FriendshipRequest.objects.select_related("from_user", "to_user"),
+        pk=fr_id
+    )
+
+def get_pending_requests_for_user(*, user) -> "QuerySet[FriendshipRequest]": # trả về 1 queryset instance
+    return FriendshipRequest.objects.filter(
+        to_user=user, rejected__isnull=True
+    ).select_related("from_user")
+
+def get_blocked_user_ids(*, blocker) -> set[int]:
+    """Trả về set các user_id mà 'blocker' đã block."""
+    return set(
+        Block.objects.filter(blocker=blocker).values_list("blocked_id", flat=True)
+    )
+## 3. `exceptions.py` — custom exception rõ nghĩa, dùng để báo lỗi chi tiết khi phạm logic ví dụ bạn bè.count >1000, còn permission chỉ check có quyền hay k th
+
+# friendship/exceptions.py
+
+class RequestAlreadyRejectedException(APIException):
+    """Raise khi cố hủy 1 request đã bị từ chối trước đó."""
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "This friend request has already been rejected" # chi tiết lỗi để load ra fe
+    default_code = "request_already_rejected" # mã lỗi chung để fe có thể dích sang nhiều ngôn ngữ mà k phụ thuộc detail
+
+#todo cái exception thuộc lỗi logic còn permission dùng để phân quyền (who) đc thực hiện, ví dụ lời mời đã chấp nhận, k đc hủy là exception còn user(who) gửi lời mời không đc accept là permission
+
+## 4. `permissions.py` — tách permission logic phức tạp
+
+# friendship/permissions.py
+
+class IsRequestSender(BasePermission):
+    message = "Not allowed"
+
+    def has_object_permission(self, request, view, obj):
+        return obj.from_user == request.user
+
+
+## 5. `views.py` — giờ rất mỏng, chỉ orchestration
+
+# friendship/views.py
+
+class CancelFriendRequestView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated, IsRequestSender]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'cancel_friend_request'
+
+    def destroy(self, request, *args, **kwargs):
+        fr_id = self.kwargs.get('pk')
+        if not fr_id:
+            return Response({"detail": "ID is required"}, status=400)
+
+        fr_obj = get_friend_request_or_404(fr_id=fr_id)
+        self.check_object_permissions(request, fr_obj)  # kích hoạt IsRequestSender permission check quyền
+
+        cancel_friend_request(fr_obj=fr_obj, user=request.user)
+        return Response({"detail": "Friend request canceled"}, status=status.HTTP_200_OK)
+ày để refactor lại toàn bộ 3 view bạn đã cho xem (`Cancel`, `Reject`, `Send`) thành bộ file hoàn chỉnh không?
