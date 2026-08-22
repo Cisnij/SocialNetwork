@@ -76,6 +76,8 @@ name_validator = RegexValidator(
     regex=r'^[a-zA-ZÀ-ỹ\s]+$',
     message='Tên chỉ được chứa chữ cái và khoảng trắng'
 )
+
+'''Manager thì thiên về thực thi logic lấy dữ liệu tạo xóa và đc gọi từ hàm khác(nên dùng selector/service nếu có), còn method thì thường tự thực thi trên chính model đó dùng self(đặc điểm nhận dạng) cập nhật, property thiên về tính toán'''
 class Profile(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE  # khi xóa profile thì chỉ xóa mềm profile thôi k ảnh hưởng đến user
     id = models.BigAutoField(primary_key=True, editable=False)

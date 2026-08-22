@@ -1,3 +1,5 @@
+
+luôn viết theo thứ tự 1.Service → 2. Selector → 3. Exception → 4. Permission → 5. View
 =================================Cách 1 nếu dự án lớn, mỗi chức năng là 1 app riêng=================================
 backend/
 ├── apps/
@@ -65,7 +67,7 @@ backend/api/
 
 # friendship/services.py
 
-def cancel_friend_request(*, fr_obj, user) -> None:
+def cancel_friend_request(*, fr_obj, user) -> None: # dấu * để bắt buộc truyền tên trong hàm thay vì chỉ truyền tham số ví dụ cancel_friend_request(fr_obj=fr_obj, user=request.user)
     """Hủy lời mời kết bạn. Raise PermissionDenied nếu user không phải người gửi."""
     if fr_obj.from_user != user:
         raise PermissionDenied("Not allowed")

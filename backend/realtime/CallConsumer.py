@@ -19,11 +19,11 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 #
 # Callee bấm Accept
 #   → POST /video/join/ → nhận token
-#   → connect ws/call/<conv_id>/z`
+#   → connect ws/call/<conv_id>/z` qua token và phòng
 #   → connect LiveKit → đang gọi
 #
 # Callee bấm Decline
-#   → POST /video/decline/  (REST, không cần WS)
+#   → POST /video/decline/  
 #   → 1-1: server báo caller qua ws/call/<conv_id>/, và đóng phòng
 #   → FE caller nhận call_ended → đóng màn hình gọi
 #
@@ -48,6 +48,8 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 # có 3 trạng thái
     # nếu user call mà nhấn gọi api decline thì cập nhật status là decline
     # nếu trước khi close room accepted -> left và pending -> missed
+
+'''luôn gọi endcall trong mọi cái, sau đó vào endcall nó mới check là room và là callee thì vô leave call còn ko thì đóng room chuyển trạng thái, còn leave call mỗi khi có user leave thì chuyển status, và fallback kiểm tra chắc chắn nếu k còn ai trong phòng thì đóng luôn'''
 class CallConsumer(HeartbeatMixin, AsyncWebsocketConsumer):
 
     async def connect(self):
