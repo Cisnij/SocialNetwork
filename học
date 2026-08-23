@@ -550,7 +550,7 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         #pip install "django-allauth[socialaccount]": gói của allauth
         #+pip install dj_rest_auth: dùng login logout token api và dễ dùng hơn jwt  
         #pip install 'dj-rest-auth[with-social]': gói mở rộng dj rest 
-        #pip install djangorestframework-simple jwt : token
+        #pip install djangorestframework-simplejwt : token
         #django-ratelimit: chống spam nâng cao, chỉ dùng cho mvc, api thì có throttle
         #+pip install  django-csp: chống mã độc
         dj_rest_auth_mfa : xác minh 2 lớp , tạo mã code khôi phục như bitcoin
@@ -578,6 +578,8 @@ celery: phân phối hàng đợi mà k làm chậm user và hệ thống
         #django-cleanup: xóa những db bị xóa ở ổ tạm(tiết kiệm tài nguyên), ví dụ khi xóa profile thì sẽ xóa ảnh
         #+django-safedelete: dùng để lưu trạng thái xóa mềm thay vì xóa thật và tạo chức năng khôi phục, pip install django-safedelete-admin: cho admin
         #whitenoise: xử lý nhanh static file
+        pip install django-db-connection-pool[mysql]: giữ connecttion cho db tái sử dụng
+        pip install mysqlclient : python kết nối đc mysql 
     }
     
     

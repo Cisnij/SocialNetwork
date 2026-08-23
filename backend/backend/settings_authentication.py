@@ -192,9 +192,9 @@ SIMPLE_JWT={
 
 
 
-    "USER_ID_FIELD": "id",
+    "USER_ID_FIELD": "id", # khi tạo token thì dùng id user nhúng vào tạo token để định danh, có thể đổi sang uuid nếu dùng uuid
 
-    "USER_ID_CLAIM": "user_id",
+    "USER_ID_CLAIM": "user_id", # tên key khi trả về accesstoken và user
 
 
 
@@ -236,7 +236,7 @@ ACCOUNT_EMAIL_VERIFICATION='mandatory' #để confirm email, và bắt buộc ph
 
 ACCOUNT_UNIQUE_EMAIL=True #mỗi email chỉ 1 tài khoản duy nhất
 
-ACCOUNT_CONFIRM_EMAIL_ON_GET=False  # nếu True là cần nhân nút truyền token về, False thì chỉ cần nhấn link
+ACCOUNT_CONFIRM_EMAIL_ON_GET=False # nếu True là cần nhân nút truyền token về ngay, False thì chỉ cần nhấn link để gửi token về
 
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1 #Thời hạn hết hạn verify email
 

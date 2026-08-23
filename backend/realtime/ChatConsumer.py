@@ -75,7 +75,7 @@ class HeartbeatMixin:
             return True
         return False
 
-
+'''kiến trúc: fe gửi tin nhắn -> be nhận và xử lý connect receive -> groupsend và lưu vào hàng đợi redis -> consumer nhận và xử lý event send -> ra khỏi hàng đợi xử lý message'''
 class ChatConsumer(HeartbeatMixin, AsyncWebsocketConsumer):  # chỉ kết nối khi gọi tới url ở routing, khi out đoạn chat sẽ chạy disconnect
 
     # ===== CONNECT =====
